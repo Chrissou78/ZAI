@@ -53,21 +53,26 @@ export function useNFC() {
                 const nfcData: NFCData = {
                   tagId: event.serialNumber || '',
                   serialNumber: event.serialNumber,
-                  timestamp: Date.now(), // Change from new Date() to Date.now()
-                  data: {},
+                  timestamp: Date.now(),
+                  data: {
+                    tagId: event.serialNumber,
+                    serialNumber: event.serialNumber,
+                  },
                 };
 
                 // Parse NDEF records
-                for (const record of event.message.records) {
-                  if (record.recordType === 'text') {
-                    nfcData.data.text = decoder.decode(record.data);
-                  } else if (record.recordType === 'url') {
-                    nfcData.data.url = decoder.decode(record.data);
-                  } else if (record.recordType === 'mime') {
-                    nfcData.data.mime = {
-                      type: record.mediaType,
-                      data: new Uint8Array(record.data),
-                    };
+                if (nfcData.data) {
+                  for (const record of event.message.records) {
+                    if (record.recordType === 'text') {
+                      nfcData.data.text = decoder.decode(record.data);
+                    } else if (record.recordType === 'url') {
+                      nfcData.data.url = decoder.decode(record.data);
+                    } else if (record.recordType === 'mime') {
+                      nfcData.data.mime = {
+                        type: record.mediaType,
+                        data: new Uint8Array(record.data),
+                      };
+                    }
                   }
                 }
 

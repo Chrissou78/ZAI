@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { useWalletTwo } from '@oc-labs/wallettwo-sdk';
-import { Product, ClaimProductPayload, TransactionResult, ApiResponse } from '../types';
+import { Product, ClaimProductPayload, TransactionResult } from '../types';
 import { blockchainService } from '../services/blockchain';
 import { apiService } from '../services/api';
 
@@ -54,7 +54,9 @@ export function useProductClaim() {
         );
 
         // Step 3: Register claim in backend
-        const response = await apiService.post<ApiResponse<Product>>(
+        // Use Product as generic, not ApiResponse<Product>
+        // apiService wraps response in ApiResponse automatically
+        const response = await apiService.post<Product>(
           '/products/claim',
           {
             ...payload,
@@ -62,15 +64,17 @@ export function useProductClaim() {
           }
         );
 
-        // Handle AxiosResponse structure
-        if (response.data?.success && response.data.data) {
+        // response.data is ApiResponse<Product>
+        // response.data.data is Product
+        if (response.data?.success && response.data?.data) {
+          const productData = response.data.data as Product;
           setState({
             isLoading: false,
             error: null,
             success: true,
             transactionHash: txResult.txHash,
           });
-          return response.data.data;
+          return productData;
         } else {
           throw new Error(response.data?.error || 'Failed to claim product');
         }

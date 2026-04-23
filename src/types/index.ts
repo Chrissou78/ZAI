@@ -25,13 +25,19 @@ export interface WalletState {
 
 export interface NFCData {
   tagId: string;
-  serialNumber: string;
+  serialNumber?: string;
   productId?: string;
   timestamp?: number;
   data?: {
     tagId?: string;
     serialNumber?: string;
     productId?: string;
+    text?: string;
+    url?: string;
+    mime?: {
+      type: string;
+      data: Uint8Array;
+    };
   };
 }
 
