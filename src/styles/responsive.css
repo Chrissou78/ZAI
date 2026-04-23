@@ -1,0 +1,75 @@
+/* Mobile First Approach */
+
+/* Tablets (768px and up) */
+@media (min-width: 768px) {
+  body {
+    font-size: 15px;
+  }
+}
+
+/* Desktop (1024px and up) */
+@media (min-width: 1024px) {
+  body {
+    font-size: 16px;
+  }
+}
+
+/* Large Desktop (1440px and up) */
+@media (min-width: 1440px) {
+  body {
+    font-size: 17px;
+  }
+}
+
+/* Sidebar responsive */
+@media (max-width: 1023px) {
+  .sidebar {
+    position: fixed;
+    left: -220px;
+    transition: left 0.3s ease;
+    z-index: 1000;
+  }
+
+  .sidebar.open {
+    left: 0;
+  }
+
+  .main {
+    margin-left: 0;
+  }
+
+  .menu-toggle {
+    display: block;
+  }
+}
+
+/* Mobile Navigation */
+@media (max-width: 768px) {
+  .nav-items {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .profile-card {
+    text-align: center;
+  }
+
+  .header {
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1.5rem;
+  }
+
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .stats-row {
+    flex-direction: column;
+  }
+
+  .profile-layout {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+}

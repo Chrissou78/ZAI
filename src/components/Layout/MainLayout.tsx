@@ -1,19 +1,54 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation, Outlet } from 'react-router-dom';
 import { useAppContext } from '../../context/AppContext';
 
 const MainLayout: React.FC = () => {
   const { user } = useAppContext();
   const location = useLocation();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
+
+  // Track window resize
+  React.useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 1024);
+      if (window.innerWidth >= 1024) {
+        setSidebarOpen(false);
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Close sidebar on route change
+  React.useEffect(() => {
+    setSidebarOpen(false);
+  }, [location.pathname]);
 
   const isActive = (path: string) => location.pathname === path;
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh' }}>
-      {/* SIDENAV */}
+      {/* Mobile Overlay */}
+      {sidebarOpen && isMobile && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0,0,0,0.5)',
+            zIndex: 99,
+          }}
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* SIDENAV - Only visible on desktop or when mobile menu is open */}
       <nav
         style={{
-          position: 'fixed',
+          position: isMobile ? 'fixed' : 'relative',
           top: 0,
           left: 0,
           width: '220px',
@@ -26,6 +61,8 @@ const MainLayout: React.FC = () => {
           overflowY: 'auto',
           color: '#f5f4f0',
           fontFamily: "'Inter', sans-serif",
+          transform: isMobile && !sidebarOpen ? 'translateX(-100%)' : 'translateX(0)',
+          transition: 'transform 0.3s ease',
         }}
       >
         {/* Logo Section */}
@@ -76,39 +113,36 @@ const MainLayout: React.FC = () => {
 
         {/* Navigation */}
         <nav style={{ flex: 1, padding: '1rem 0' }}>
-          {/* Overview Section */}
           <div style={{ padding: '0.5rem 1.5rem', fontSize: '11px', letterSpacing: '0.3em', textTransform: 'uppercase', color: '#555' }}>
             Overview
           </div>
-          <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '0.65rem 1.5rem', color: isActive('/') ? '#f5f4f0' : '#6a6a6a', textDecoration: 'none', fontSize: '12px', letterSpacing: '0.05em', borderLeft: isActive('/') ? '2px solid #c8102e' : '2px solid transparent', backgroundColor: isActive('/') ? 'rgba(255,255,255,0.05)' : 'transparent', transition: 'all 0.2s' }}>
+          <Link to="/" onClick={() => setSidebarOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '0.65rem 1.5rem', color: isActive('/') ? '#f5f4f0' : '#6a6a6a', textDecoration: 'none', fontSize: '12px', letterSpacing: '0.05em', borderLeft: isActive('/') ? '2px solid #c8102e' : '2px solid transparent', backgroundColor: isActive('/') ? 'rgba(255,255,255,0.05)' : 'transparent', transition: 'all 0.2s' }}>
             <span>🏠</span> Home
           </Link>
-          <Link to="/dashboard" style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '0.65rem 1.5rem', color: isActive('/dashboard') ? '#f5f4f0' : '#6a6a6a', textDecoration: 'none', fontSize: '12px', letterSpacing: '0.05em', borderLeft: isActive('/dashboard') ? '2px solid #c8102e' : '2px solid transparent', backgroundColor: isActive('/dashboard') ? 'rgba(255,255,255,0.05)' : 'transparent', transition: 'all 0.2s' }}>
+          <Link to="/dashboard" onClick={() => setSidebarOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '0.65rem 1.5rem', color: isActive('/dashboard') ? '#f5f4f0' : '#6a6a6a', textDecoration: 'none', fontSize: '12px', letterSpacing: '0.05em', borderLeft: isActive('/dashboard') ? '2px solid #c8102e' : '2px solid transparent', backgroundColor: isActive('/dashboard') ? 'rgba(255,255,255,0.05)' : 'transparent', transition: 'all 0.2s' }}>
             <span>📊</span> Dashboard
           </Link>
 
-          {/* My zai Section */}
           <div style={{ padding: '0.5rem 1.5rem 0.5rem', marginTop: '1rem', fontSize: '11px', letterSpacing: '0.3em', textTransform: 'uppercase', color: '#555' }}>
             My zai
           </div>
-          <Link to="/products" style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '0.65rem 1.5rem', color: isActive('/products') ? '#f5f4f0' : '#6a6a6a', textDecoration: 'none', fontSize: '12px', letterSpacing: '0.05em', borderLeft: isActive('/products') ? '2px solid #c8102e' : '2px solid transparent', backgroundColor: isActive('/products') ? 'rgba(255,255,255,0.05)' : 'transparent', transition: 'all 0.2s' }}>
+          <Link to="/products" onClick={() => setSidebarOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '0.65rem 1.5rem', color: isActive('/products') ? '#f5f4f0' : '#6a6a6a', textDecoration: 'none', fontSize: '12px', letterSpacing: '0.05em', borderLeft: isActive('/products') ? '2px solid #c8102e' : '2px solid transparent', backgroundColor: isActive('/products') ? 'rgba(255,255,255,0.05)' : 'transparent', transition: 'all 0.2s' }}>
             <span>🛍️</span> My Products
           </Link>
-          <Link to="/events" style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '0.65rem 1.5rem', color: isActive('/events') ? '#f5f4f0' : '#6a6a6a', textDecoration: 'none', fontSize: '12px', letterSpacing: '0.05em', borderLeft: isActive('/events') ? '2px solid #c8102e' : '2px solid transparent', backgroundColor: isActive('/events') ? 'rgba(255,255,255,0.05)' : 'transparent', transition: 'all 0.2s' }}>
+          <Link to="/events" onClick={() => setSidebarOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '0.65rem 1.5rem', color: isActive('/events') ? '#f5f4f0' : '#6a6a6a', textDecoration: 'none', fontSize: '12px', letterSpacing: '0.05em', borderLeft: isActive('/events') ? '2px solid #c8102e' : '2px solid transparent', backgroundColor: isActive('/events') ? 'rgba(255,255,255,0.05)' : 'transparent', transition: 'all 0.2s' }}>
             <span>📅</span> Events
           </Link>
-          <Link to="/community" style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '0.65rem 1.5rem', color: isActive('/community') ? '#f5f4f0' : '#6a6a6a', textDecoration: 'none', fontSize: '12px', letterSpacing: '0.05em', borderLeft: isActive('/community') ? '2px solid #c8102e' : '2px solid transparent', backgroundColor: isActive('/community') ? 'rgba(255,255,255,0.05)' : 'transparent', transition: 'all 0.2s' }}>
+          <Link to="/community" onClick={() => setSidebarOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '0.65rem 1.5rem', color: isActive('/community') ? '#f5f4f0' : '#6a6a6a', textDecoration: 'none', fontSize: '12px', letterSpacing: '0.05em', borderLeft: isActive('/community') ? '2px solid #c8102e' : '2px solid transparent', backgroundColor: isActive('/community') ? 'rgba(255,255,255,0.05)' : 'transparent', transition: 'all 0.2s' }}>
             <span>👥</span> Community
           </Link>
 
-          {/* Account Section */}
           <div style={{ padding: '0.5rem 1.5rem 0.5rem', marginTop: '1rem', fontSize: '11px', letterSpacing: '0.3em', textTransform: 'uppercase', color: '#555' }}>
             Account
           </div>
-          <Link to="/profile" style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '0.65rem 1.5rem', color: isActive('/profile') ? '#f5f4f0' : '#6a6a6a', textDecoration: 'none', fontSize: '12px', letterSpacing: '0.05em', borderLeft: isActive('/profile') ? '2px solid #c8102e' : '2px solid transparent', backgroundColor: isActive('/profile') ? 'rgba(255,255,255,0.05)' : 'transparent', transition: 'all 0.2s' }}>
+          <Link to="/profile" onClick={() => setSidebarOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '0.65rem 1.5rem', color: isActive('/profile') ? '#f5f4f0' : '#6a6a6a', textDecoration: 'none', fontSize: '12px', letterSpacing: '0.05em', borderLeft: isActive('/profile') ? '2px solid #c8102e' : '2px solid transparent', backgroundColor: isActive('/profile') ? 'rgba(255,255,255,0.05)' : 'transparent', transition: 'all 0.2s' }}>
             <span>👤</span> Profile
           </Link>
-          <Link to="/settings" style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '0.65rem 1.5rem', color: isActive('/settings') ? '#f5f4f0' : '#6a6a6a', textDecoration: 'none', fontSize: '12px', letterSpacing: '0.05em', borderLeft: isActive('/settings') ? '2px solid #c8102e' : '2px solid transparent', backgroundColor: isActive('/settings') ? 'rgba(255,255,255,0.05)' : 'transparent', transition: 'all 0.2s' }}>
+          <Link to="/settings" onClick={() => setSidebarOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '0.65rem 1.5rem', color: isActive('/settings') ? '#f5f4f0' : '#6a6a6a', textDecoration: 'none', fontSize: '12px', letterSpacing: '0.05em', borderLeft: isActive('/settings') ? '2px solid #c8102e' : '2px solid transparent', backgroundColor: isActive('/settings') ? 'rgba(255,255,255,0.05)' : 'transparent', transition: 'all 0.2s' }}>
             <span>⚙️</span> Settings
           </Link>
         </nav>
@@ -120,8 +154,46 @@ const MainLayout: React.FC = () => {
       </nav>
 
       {/* MAIN CONTENT */}
-      <main style={{ marginLeft: '220px', flex: 1, minHeight: '100vh', background: '#f5f4f0' }}>
-        <Outlet />
+      <main style={{
+        marginLeft: !isMobile ? '220px' : '0',
+        flex: 1,
+        minHeight: '100vh',
+        background: '#f5f4f0',
+        transition: 'margin-left 0.3s ease',
+        display: 'flex',
+        flexDirection: 'column',
+      }}>
+        {/* Mobile Header with Hamburger */}
+        {isMobile && (
+          <div style={{
+            padding: '1rem',
+            background: '#0a0a0a',
+            borderBottom: '1px solid #2a2a2a',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '1rem',
+            zIndex: 50,
+          }}>
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#f5f4f0',
+                fontSize: '24px',
+                cursor: 'pointer',
+                padding: 0,
+              }}
+            >
+              ☰
+            </button>
+            <span style={{ fontSize: '14px', fontWeight: 500, color: '#f5f4f0' }}>zai</span>
+          </div>
+        )}
+
+        <div style={{ flex: 1 }}>
+          <Outlet />
+        </div>
       </main>
     </div>
   );
