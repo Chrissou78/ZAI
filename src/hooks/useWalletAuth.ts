@@ -8,9 +8,8 @@ export function useWalletAuth() {
   const { setUser, setWalletState } = useAppContext();
   const [walletState, setLocalWalletState] = useState<WalletState>({
     isConnected: false,
-    address: null,
+    address: undefined,
     token: null,
-    chainId: '137', // Default to Polygon
     isLoading: false,
     error: null,
   });
@@ -18,31 +17,24 @@ export function useWalletAuth() {
   // Update wallet state when Wallettwo user changes
   useEffect(() => {
     if (user && token) {
-      setLocalWalletState({
+      const newState: WalletState = {
         isConnected: true,
         address: user.id,
         token,
-        chainId: '137',
         isLoading: false,
         error: null,
-      });
-      setWalletState({
-        isConnected: true,
-        address: user.id,
-        token,
-        chainId: '137',
-        isLoading: false,
-        error: null,
-      });
+      };
+      setLocalWalletState(newState);
+      setWalletState?.(newState);
     } else {
-      setLocalWalletState({
+      const newState: WalletState = {
         isConnected: false,
-        address: null,
+        address: undefined,
         token: null,
-        chainId: '137',
         isLoading: false,
         error: null,
-      });
+      };
+      setLocalWalletState(newState);
     }
   }, [user, token, setWalletState]);
 
@@ -55,7 +47,7 @@ export function useWalletAuth() {
       } catch (error) {
         setLocalWalletState((prev) => ({
           ...prev,
-          error: 'Failed to sign message. Please try again.',
+          error: error instanceof Error ? error.message : 'Failed to sign message',
         }));
         throw error;
       }
@@ -67,15 +59,15 @@ export function useWalletAuth() {
     try {
       setLocalWalletState((prev) => ({ ...prev, isLoading: true }));
       await walletLogout();
-      setLocalWalletState({
+      const newState: WalletState = {
         isConnected: false,
-        address: null,
+        address: undefined,
         token: null,
-        chainId: '137',
         isLoading: false,
         error: null,
-      });
-      setUser(null);
+      };
+      setLocalWalletState(newState);
+      setUser?.(null);
     } catch (error) {
       setLocalWalletState((prev) => ({
         ...prev,

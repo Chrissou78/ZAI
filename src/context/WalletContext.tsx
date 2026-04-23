@@ -11,9 +11,8 @@ const WalletContext = createContext<WalletContextType | undefined>(undefined);
 export function WalletProvider({ children }: { children: ReactNode }) {
   const [wallet, setWallet] = React.useState<WalletState>({
     isConnected: false,
-    address: null,
+    address: undefined,
     token: null,
-    chainId: '137',
     isLoading: false,
     error: null,
   });

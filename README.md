@@ -51,63 +51,95 @@ The **ZAI Experience Club** is a premium digital platform for luxury ski brand Z
 
 ### High-Level System Design
 
-Copy
-┌─────────────────────────────────────────────────────────────────┐ │ ZAI Experience Club │ ├─────────────────────────────────────────────────────────────────┤ │ │ │ ┌──────────────────┐ ┌──────────────────────────────┐ │ │ │ Frontend │ │ Backend Services │ │ │ │ (React) │────────▶│ (Node.js/Express) │ │ │ │ │ │ │ │ │ │ - Dashboard │ │ - User Management │ │ │ │ - Products │ │ - Product Registry │ │ │ │ - Events │ │ - Event Management │ │ │ │ - Community │ │ - Blockchain Orchestration │ │ │ └──────────────────┘ └──────────────────────────────┘ │ │ ▲ ▲ │ │ │ │ │ │ └────────────────┬───────────────────┘ │ │ │ │ │ ┌──────▼───────┐ │ │ │ Database │ │ │ │ (PostgreSQL) │ │ │ └───────────────┘ │ │ │ │ ┌─────────────────────────────────────────────────────────────┐ │ │ │ Web3 & Blockchain Layer │ │ │ ├─────────────────────────────────────────────────────────────┤ │ │ │ │ │ │ │ ┌──────────────┐ ┌──────────────┐ ┌──────────────┐ │ │ │ │ │ Wallettwo │ │ Smart │ │ IPFS/NFT │ │ │ │ │ │ SDK │ │ Contracts │ │ Storage │ │ │ │ │ │ (Auth/Txn) │ │ (Polygon) │ │ │ │ │ │ │ └──────────────┘ └──────────────┘ └──────────────┘ │ │ │ │ │ │ │ └─────────────────────────────────────────────────────────────┘ │ │ │ └─────────────────────────────────────────────────────────────────┘
 
-Copy
+┌─────────────────────────────────────────────────────────────────┐ 
+│                   ZAI Experience Club                           │ 
+├─────────────────────────────────────────────────────────────────┤ 
+│                                                                 │ 
+│      ┌──────────────────┐ ┌──────────────────────────────┐      │ 
+│      │ Frontend         │ │ Backend Services             │      │  
+│      │ (React)          │ │ (Node.js/Express)            │      │  
+│      │                  │ │                              │      │
+│      │                  │ │                              │      │
+│      │ - Dashboard      │ │ - User Management            │      │ 
+│      │ - Products       │ │ - Product Registry           │      │ 
+│      │ - Events         │ │ - Event Management           │      │ 
+│      │ - Community      │ │ - Blockchain Orchestration   │      │ 
+│      └──────────────────┘ └──────────────────────────────┘      │
+│               ▲                          ▲                      │ 
+└───────────────────────────────┬─────────────────────────────────┘ 
+│                               │                                 │ 
+│                        ┌──────▼───────┐                         │ 
+│                        │   Database   │                         │ 
+│                        │ (PostgreSQL) │                         │ 
+│                        └──────────────┘                         │
+│                                                                 │ 
+│ ┌─────────────────────────────────────────────────────────────┐ │ 
+│ │                  Web3 & Blockchain Layer                    │ │ 
+│ ├─────────────────────────────────────────────────────────────┤ │  
+│ │     ┌──────────────┐ ┌──────────────┐ ┌──────────────┐      │ │ 
+│ │     │ Wallettwo    │ │ Smart        │ │ IPFS/NFT     │      │ │ 
+│ │     │   SDK        │ │ Contracts    │ │ Storage      │      │ │ 
+│ │     │ (Auth/Txn)   │ │ (Polygon)    │ │              │      │ │ 
+│ │     └──────────────┘ └──────────────┘ └──────────────┘      │ │ 
+│ └─────────────────────────────────────────────────────────────┘ │ 
+│                                                                 │ 
+└─────────────────────────────────────────────────────────────────┘
+
+
 ### Monorepo Structure (Future)
 
 We'll use a **monorepo approach** with Turbo to manage web and mobile apps:
 
 zai-experience-club/ ├── apps/ │ ├── web/ # React web application │ └── mobile/ # React Native mobile app ├── packages/ │ ├── shared/ # Shared types, utils, hooks │ ├── ui/ # Reusable UI components │ └── blockchain/ # Web3 service layer ├── docs/ # Documentation ├── turbo.json # Turbo configuration ├── pnpm-workspace.yaml # Workspace configuration └── package.json # Root package.json
 
-Copy
+
 ---
 
 ## 🛠️ Tech Stack
 
 ### Frontend
 
-| Layer | Technology | Purpose |
-|-------|-----------|---------|
-| **Framework** | React 18 | UI library |
-| **Language** | TypeScript 5 | Type safety |
-| **Styling** | CSS-in-JS + Tailwind | Responsive design |
-| **Build Tool** | Vite | Fast development server |
-| **State Management** | Context API + Hooks | App state |
-| **Web3** | Wallettwo SDK + ethers.js | Blockchain integration |
-| **NFC** | Web NFC API | Product scanning |
+| Layer                 | Technology                | Purpose                   |
+|-----------------------|---------------------------|---------------------------|
+| **Framework**         | React 18                  | UI library                |
+| **Language**          | TypeScript 5              | Type safety               |
+| **Styling**           | CSS-in-JS + Tailwind      | Responsive design         |
+| **Build Tool**        | Vite                      | Fast development server   |
+| **State Management**  | Context API + Hooks       | App state                 |
+| **Web3**              | Wallettwo SDK + ethers.js | Blockchain integration    |
+| **NFC**               | Web NFC API               | Product scanning          |
 
 ### Backend (Reference)
 
-| Layer | Technology | Purpose |
-|-------|-----------|---------|
-| **Runtime** | Node.js 20 | Server runtime |
-| **Framework** | Express.js | REST API |
-| **Database** | PostgreSQL | Data persistence |
-| **ORM** | Prisma | Database queries |
-| **Authentication** | JWT + Wallettwo | User auth |
-| **Blockchain** | web3.js | Smart contract interaction |
+| Layer                 | Technology        | Purpose                       |
+|-----------------------|-------------------|-------------------------------|
+| **Runtime**           | Node.js 20        | Server runtime                |
+| **Framework**         | Express.js        | REST API                      |
+| **Database**          | PostgreSQL        | Data persistence              |
+| **ORM**               | Prisma            | Database queries              |
+| **Authentication**    | JWT + Wallettwo   | User auth                     |
+| **Blockchain**        | web3.js           | Smart contract interaction    |
 
 ### Blockchain
 
-| Component | Network | Purpose |
-|-----------|---------|---------|
-| **Primary Chain** | Polygon (137) | Main operations, low fees |
-| **Wallet SDK** | Wallettwo | Secure wallet management |
-| **Contract Language** | Solidity | Smart contracts |
-| **NFT Standard** | ERC-721 | Membership NFTs |
-| **Token Standard** | ERC-20 | Reward tokens |
+| Component             | Network       | Purpose                   |
+|-----------------------|---------------|---------------------------|
+| **Primary Chain**     | Polygon (137) | Main operations, low fees |
+| **Wallet SDK**        | Wallettwo     | Secure wallet management  |
+| **Contract Language** | Solidity      | Smart contracts           |
+| **NFT Standard**      | ERC-721       | Membership NFTs           |
+| **Token Standard**    | ERC-20        | Reward tokens             |
 
 ### DevOps & Testing
 
-| Tool | Purpose |
-|------|---------|
-| **Testing** | Vitest + React Testing Library |
-| **CI/CD** | GitHub Actions |
-| **Deployment** | Vercel (Frontend) + AWS (Backend) |
-| **Monitoring** | Sentry + LogRocket |
-| **Documentation** | Storybook + JSDoc |
+| Tool              | Purpose                           |
+|-------------------|-----------------------------------|
+| **Testing**       | Vitest + React Testing Library    |
+| **CI/CD**         | GitHub Actions                    |
+| **Deployment**    | Vercel (Frontend) + AWS (Backend) |
+| **Monitoring**    | Sentry + LogRocket                |
+| **Documentation** | Storybook + JSDoc                 |
 
 ---
 
@@ -115,7 +147,7 @@ Copy
 
 apps/web/ ├── src/ │ ├── components/ # React components │ │ ├── Auth/ # Authentication components │ │ │ ├── WalletConnectButton.tsx │ │ │ ├── LoginModal.tsx │ │ │ ├── UserProfile.tsx │ │ │ └── LogoutButton.tsx │ │ ├── Products/ # Product management │ │ │ ├── ProductCarousel.tsx │ │ │ ├── ProductCard.tsx │ │ │ ├── ClaimProductFlow.tsx │ │ │ ├── ProductModal.tsx │ │ │ └── ProductCard.test.tsx │ │ ├── Events/ # Event management │ │ │ ├── EventCard.tsx │ │ │ ├── EventGrid.tsx │ │ │ ├── EventModal.tsx │ │ │ └── EventFilters.tsx │ │ ├── Community/ # Community features │ │ │ ├── MemberList.tsx │ │ │ ├── FeedGrid.tsx │ │ │ ├── IGConnect.tsx │ │ │ └── WhatsAppChannel.tsx │ │ ├── Layout/ # Layout components │ │ │ ├── Sidebar.tsx │ │ │ ├── Header.tsx │ │ │ ├── MobileNav.tsx │ │ │ ├── Footer.tsx │ │ │ └── MainLayout.tsx │ │ ├── Common/ # Reusable components │ │ │ ├── Button.tsx │ │ │ ├── Modal.tsx │ │ │ ├── Card.tsx │ │ │ ├── Toast.tsx │ │ │ ├── Loading.tsx │ │ │ ├── Empty.tsx │ │ │ └── Tabs.tsx │ │ └── Pages/ # Page components │ │ ├── Home.tsx │ │ ├── Dashboard.tsx │ │ ├── Products.tsx │ │ ├── Events.tsx │ │ ├── Community.tsx │ │ ├── Profile.tsx │ │ ├── Settings.tsx │ │ └── NotFound.tsx │ ├── hooks/ # Custom React hooks │ │ ├── useWalletAuth.ts │ │ ├── useProductClaim.ts │ │ ├── useNFC.ts │ │ ├── useEventManager.ts │ │ ├── useResponsive.ts │ │ ├── useLocalStorage.ts │ │ ├── useDebounce.ts │ │ └── useAsync.ts │ ├── context/ # React Context providers │ │ ├── AppContext.tsx │ │ ├── WalletContext.tsx │ │ ├── UserContext.tsx │ │ └── NotificationContext.tsx │ ├── services/ # API & business logic │ │ ├── api.ts # HTTP client │ │ ├── blockchain.ts # Web3 operations │ │ ├── nfc.ts # NFC reading │ │ ├── storage.ts # Local storage │ │ └── analytics.ts # Event tracking │ ├── types/ # TypeScript definitions │ │ ├── index.ts # Core types │ │ ├── wallet.ts # Wallet types │ │ ├── product.ts # Product types │ │ ├── event.ts # Event types │ │ └── user.ts # User types │ ├── utils/ # Utility functions │ │ ├── validators.ts # Input validation │ │ ├── formatters.ts # Data formatting │ │ ├── constants.ts # App constants │ │ ├── helpers.ts # Helper functions │ │ ├── errors.ts # Error handling │ │ └── logger.ts # Logging utility │ ├── styles/ # Global styles │ │ ├── globals.css # Global styles │ │ ├── theme.ts # Design tokens │ │ └── responsive.ts # Responsive utilities │ ├── config/ # Configuration │ │ ├── env.ts # Environment config │ │ ├── constants.ts # App constants │ │ └── blockchain.ts # Blockchain config │ ├── App.tsx # Root component │ ├── Router.tsx # Route definitions │ ├── index.tsx # Entry point │ └── main.tsx # Vite entry ├── public/ # Static assets │ ├── images/ │ ├── icons/ │ └── favicon.ico ├── tests/ # Test files │ ├── unit/ │ ├── integration/ │ └── setup.ts ├── .env.example # Example environment variables ├── tsconfig.json # TypeScript config ├── vite.config.ts # Vite config ├── vitest.config.ts # Vitest config ├── package.json └── README.md
 
-Copy
+
 ---
 
 ## 🚀 Getting Started
@@ -135,20 +167,20 @@ Copy
 git clone https://github.com/zai-ski/experience-club.git
 cd zai-experience-club
 2. Install Dependencies
-Copy# Using pnpm (recommended)
+# Using pnpm (recommended)
 pnpm install
 
 # Or using npm
 npm install
 3. Set Up Environment Variables
-Copy# Copy example to .env.local
+#  example to .env.local
 cp apps/web/.env.example apps/web/.env.local
 
 # Edit with your values
 nano apps/web/.env.local
 Required Environment Variables:
 
-Copy# Application
+# Application
 VITE_APP_NAME=ZAI Experience Club
 VITE_APP_URL=http://localhost:5173
 
@@ -178,7 +210,7 @@ VITE_ENABLE_COMMUNITY=true
 VITE_SENTRY_DSN=https://...
 VITE_LOGROCKET_ID=...
 4. Start Development Server
-Copy# Web app only
+# Web app only
 pnpm dev --filter=web
 
 # All apps
@@ -189,7 +221,7 @@ pnpm dev --filter=web -- --debug
 The application will be available at http://localhost:5173
 
 5. Verify Setup
-Copy# Type checking
+# Type checking
 pnpm type-check
 
 # Linting
@@ -318,7 +350,7 @@ Privacy Controls: Data sharing & visibility
 Region & Currency: Localization settings
 Security: Password, 2FA, session management
 📊 Database Schema (Reference)
-CopyUsers
+Users
 ├── id (UUID)
 ├── email (String, unique)
 ├── walletAddress (String, unique)
@@ -393,12 +425,12 @@ Phase 3: 85% coverage
 Phase 4: 90%+ coverage
 🚀 Deployment
 Development
-Copypnpm dev
+pnpm dev
 Staging
-Copypnpm build
+pnpm build
 pnpm preview
 Production
-Copy# Build
+# Build
 pnpm build
 
 # Deploy to Vercel (configured)
@@ -437,9 +469,9 @@ Upcoming
 🤝 Contributing
 Development Workflow
 Create Feature Branch
-Copygit checkout -b feature/feature-name
+git checkout -b feature/feature-name
 Make Changes
-Copy# Run type check
+# Run type check
 pnpm type-check
 
 # Run linter
@@ -448,9 +480,9 @@ pnpm lint --fix
 # Run tests
 pnpm test
 Commit
-Copygit commit -m "feat: add feature description"
+git commit -m "feat: add feature description"
 Push & Create PR
-Copygit push origin feature/feature-name
+git push origin feature/feature-name
 Code Standards
 TypeScript strict mode enabled
 ESLint + Prettier for formatting
@@ -463,7 +495,7 @@ CI/CD checks must pass
 Test coverage must meet minimum
 Documentation must be updated
 📦 Scripts Reference
-Copy# Development
+# Development
 pnpm dev              # Start dev server
 pnpm dev:debug       # Debug mode
 pnpm dev --filter=web # Web only
@@ -496,7 +528,7 @@ pnpm docs:dev       # Dev docs server
 pnpm clean          # Clean node_modules & build
 pnpm reinstall      # Clean install
 pnpm update-deps    # Update dependencies
-Copy
+
 📞 Support & Contact
 Project Lead: [Contact]
 Team Email: team@zaiclub.com
@@ -506,7 +538,7 @@ Issue Tracker: GitHub Issues
 This project is proprietary software for ZAI AG. All rights reserved.
 
 🗺️ Roadmap
-Copy2026 Q2 (NOW)
+2026 Q2 (NOW)
 ├── Phase 1: Web App Core
 │   ├── Week 1-2: Setup & Architecture ✅
 │   ├── Week 3-4: Core Components 🔄
@@ -540,7 +572,7 @@ Version: 1.0.0
 Last Updated: April 23, 2026
 Next Review: May 7, 2026
 
-Copy
+
 ---
 
 ## Summary

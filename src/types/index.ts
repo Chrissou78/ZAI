@@ -20,6 +20,7 @@ export interface WalletState {
   isConnected: boolean;
   isLoading?: boolean;
   error?: string | null;
+  token?: string | null;
 }
 
 export interface NFCData {
@@ -27,6 +28,11 @@ export interface NFCData {
   serialNumber: string;
   productId?: string;
   timestamp?: number;
+  data?: {
+    tagId?: string;
+    serialNumber?: string;
+    productId?: string;
+  };
 }
 
 export interface ClaimProductPayload {
