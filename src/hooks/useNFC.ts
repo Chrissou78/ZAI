@@ -1,99 +1,143 @@
-import { useCallback, useState } from 'react';
-import { useWalletTwo } from '@oc-labs/wallettwo-sdk';
-import { Product, ClaimProductPayload, TransactionResult, ApiResponse } from '../types';
-import { blockchainService } from '../services/blockchain';
-import { apiService } from '../services/api';
+import { useCallback, useEffect, useState } from 'react';
+import { NFCData } from '../types';
 
-interface ClaimProductState {
-  isLoading: boolean;
+interface NFCState {
+  isSupported: boolean;
+  isScanning: boolean;
   error: string | null;
-  success: boolean;
-  transactionHash?: string;
+  data: NFCData | null;
 }
 
-export function useProductClaim() {
-  const { executeTransaction } = useWalletTwo();
-  const [state, setState] = useState<ClaimProductState>({
-    isLoading: false,
+export function useNFC() {
+  const [state, setState] = useState<NFCState>({
+    isSupported: false,
+    isScanning: false,
     error: null,
-    success: false,
+    data: null,
   });
 
-  const claimProduct = useCallback(
-    async (payload: ClaimProductPayload): Promise<Product | null> => {
-      setState({ isLoading: true, error: null, success: false });
+  // Check NFC API support
+  useEffect(() => {
+    const isSupported = 'NDEFReader' in window;
+    setState((prev) => ({ ...prev, isSupported }));
+  }, []);
 
-      try {
-        // Step 1: Generate blockchain proof
-        const proof = await blockchainService.generateProductProof(payload);
+  const startScanning = useCallback(async (): Promise<NFCData | null> => {
+    if (!state.isSupported) {
+      setState((prev) => ({
+        ...prev,
+        error: 'NFC is not supported on this device',
+      }));
+      return null;
+    }
 
-        // Step 2: Execute smart contract transaction
-        const txResult = await new Promise<TransactionResult>(
-          (resolve, reject) => {
-            executeTransaction(
-              [
-                {
-                  method: 'claimProduct',
-                  address: process.env.VITE_ZAI_CONTRACT_ADDRESS || '',
-                  params: [payload.serialNumber || payload.nfcData?.tagId, proof],
-                },
-              ],
-              '137' // network as second parameter
-            )
-              .then((txId: string) => {
-                resolve({
-                  txHash: txId,
-                  status: 'success' as const,
-                  timestamp: new Date(),
-                });
-              })
-              .catch((error: Error) => {
-                reject(new Error(error.message || 'Transaction failed'));
-              });
+    setState((prev) => ({ ...prev, isScanning: true, error: null }));
+
+    try {
+      // Type assertion for Web NFC API (not fully typed in TypeScript yet)
+      const ndef = (window as any).NDEFReader;
+      const reader = new ndef();
+
+      return new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          setState((prev) => ({ ...prev, isScanning: false }));
+          reject(new Error('NFC scan timeout'));
+        }, 30000); // 30 second timeout
+
+        reader.scan().then(
+          async () => {
+            reader.onreading = (event: any) => {
+              clearTimeout(timeout);
+              try {
+                const decoder = new TextDecoder();
+                const nfcData: NFCData = {
+                  tagId: event.serialNumber || '',
+                  serialNumber: event.serialNumber,
+                  timestamp: Date.now(), // Change from new Date() to Date.now()
+                  data: {},
+                };
+
+                // Parse NDEF records
+                for (const record of event.message.records) {
+                  if (record.recordType === 'text') {
+                    nfcData.data.text = decoder.decode(record.data);
+                  } else if (record.recordType === 'url') {
+                    nfcData.data.url = decoder.decode(record.data);
+                  } else if (record.recordType === 'mime') {
+                    nfcData.data.mime = {
+                      type: record.mediaType,
+                      data: new Uint8Array(record.data),
+                    };
+                  }
+                }
+
+                setState((prev) => ({
+                  ...prev,
+                  isScanning: false,
+                  data: nfcData,
+                  error: null,
+                }));
+                resolve(nfcData);
+              } catch (err) {
+                setState((prev) => ({
+                  ...prev,
+                  isScanning: false,
+                  error: 'Failed to parse NFC data',
+                }));
+                reject(err);
+              }
+            };
+
+            reader.onreadingerror = () => {
+              clearTimeout(timeout);
+              setState((prev) => ({
+                ...prev,
+                isScanning: false,
+                error: 'NFC read error',
+              }));
+              reject(new Error('NFC read error'));
+            };
+          },
+          (error: any) => {
+            clearTimeout(timeout);
+            setState((prev) => ({
+              ...prev,
+              isScanning: false,
+              error: error.message || 'Failed to start NFC scan',
+            }));
+            reject(error);
           }
         );
+      });
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'NFC scan failed';
+      setState((prev) => ({
+        ...prev,
+        isScanning: false,
+        error: errorMessage,
+      }));
+      return null;
+    }
+  }, [state.isSupported]);
 
-        // Step 3: Register claim in backend
-        const response = await apiService.post<Product>('/products/claim', {
-          ...payload,
-          blockchainTxHash: txResult.txHash,
-        });
-
-        // response.data is AxiosResponse<ApiResponse<Product>>
-        // So response.data.data contains the actual Product
-        if (response.data?.success && response.data?.data) {
-          const productData = response.data.data;
-          setState({
-            isLoading: false,
-            error: null,
-            success: true,
-            transactionHash: txResult.txHash,
-          });
-          return productData;
-        } else {
-          throw new Error(response.data?.error || 'Failed to claim product');
-        }
-      } catch (error) {
-        const errorMessage =
-          error instanceof Error ? error.message : 'Unknown error occurred';
-        setState({
-          isLoading: false,
-          error: errorMessage,
-          success: false,
-        });
-        return null;
-      }
-    },
-    [executeTransaction]
-  );
+  const stopScanning = useCallback(() => {
+    setState((prev) => ({ ...prev, isScanning: false }));
+  }, []);
 
   const reset = useCallback(() => {
-    setState({ isLoading: false, error: null, success: false });
-  }, []);
+    setState({
+      isSupported: state.isSupported,
+      isScanning: false,
+      error: null,
+      data: null,
+    });
+  }, [state.isSupported]);
 
   return {
     ...state,
-    claimProduct,
+    startScanning,
+    stopScanning,
     reset,
   };
 }

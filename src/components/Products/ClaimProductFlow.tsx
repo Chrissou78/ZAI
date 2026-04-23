@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNFC } from '../../hooks/useNFC';
+import { useNFC } from '../../hooks';
 import { useProductClaim } from '../../hooks/useProductClaim';
 import { useWalletTwo } from '@oc-labs/wallettwo-sdk';
 import Button from '../Common/Button';
