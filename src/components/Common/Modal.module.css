@@ -1,0 +1,86 @@
+.zai-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  z-index: 200;
+  animation: fadeIn 0.25s ease;
+}
+
+.zai-modal {
+  background: #ffffff;
+  border: 1px solid #e0ddd6;
+  border-radius: 8px;
+  max-height: 82vh;
+  overflow-y: auto;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.15);
+}
+
+.zai-modal--sm {
+  width: 100%;
+  max-width: 400px;
+}
+
+.zai-modal--md {
+  width: 100%;
+  max-width: 580px;
+}
+
+.zai-modal--lg {
+  width: 100%;
+  max-width: 800px;
+}
+
+.zai-modal-header {
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid #e0ddd6;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.zai-modal-title {
+  font-size: 20px;
+  font-weight: 300;
+  margin: 0;
+  margin-bottom: 0.5rem;
+  color: #1a1a1a;
+}
+
+.zai-modal-subtitle {
+  font-size: 13px;
+  color: #6a6a6a;
+  margin: 0;
+}
+
+.zai-modal-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: #6a6a6a;
+  cursor: pointer;
+  padding: 0;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s;
+}
+
+.zai-modal-close:hover {
+  color: #1a1a1a;
+}
+
+.zai-modal-body {
+  padding: 1.5rem;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}

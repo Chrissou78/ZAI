@@ -1,0 +1,22 @@
+.zai-card {
+  background: #ffffff;
+  border-radius: 8px;
+  padding: 1.5rem;
+}
+
+.zai-card--default {
+  border: 1px solid #e0ddd6;
+  transition: background 0.2s;
+}
+
+.zai-card--default:hover {
+  background: #f0ede6;
+}
+
+.zai-card--elevated {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.zai-card--outlined {
+  border: 1px solid #e0ddd6;
+}
