@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { useWalletTwo } from '@oc-labs/wallettwo-sdk';
-import { Product, ClaimProductPayload, TransactionResult } from '../types';
+import { Product, ClaimProductPayload, TransactionResult, ApiResponse } from '../types';
 import { blockchainService } from '../services/blockchain';
 import { apiService } from '../services/api';
 
@@ -29,28 +29,28 @@ export function useProductClaim() {
 
         // Step 2: Execute smart contract transaction
         const txResult = await new Promise<TransactionResult>(
-            (resolve, reject) => {
-                executeTransaction(
-                [
-                    {
-                    method: 'claimProduct',
-                    address: process.env.VITE_ZAI_CONTRACT_ADDRESS || '',
-                    params: [payload.serialNumber || payload.nfcData?.tagId, proof],
-                    },
-                ],
-                '137' // network as second parameter
-                )
-                .then((txId: string) => {
-                    resolve({ 
-                    txHash: txId, 
-                    status: 'success' as const, 
-                    timestamp: new Date() 
-                    });
-                })
-                .catch((error: Error) => {
-                    reject(new Error(error.message || 'Transaction failed'));
+          (resolve, reject) => {
+            executeTransaction(
+              [
+                {
+                  method: 'claimProduct',
+                  address: process.env.VITE_ZAI_CONTRACT_ADDRESS || '',
+                  params: [payload.serialNumber || payload.nfcData?.tagId, proof],
+                },
+              ],
+              '137' // network as second parameter
+            )
+              .then((txId: string) => {
+                resolve({
+                  txHash: txId,
+                  status: 'success' as const,
+                  timestamp: new Date(),
                 });
-            }
+              })
+              .catch((error: Error) => {
+                reject(new Error(error.message || 'Transaction failed'));
+              });
+          }
         );
 
         // Step 3: Register claim in backend
@@ -59,16 +59,19 @@ export function useProductClaim() {
           blockchainTxHash: txResult.txHash,
         });
 
-        if (response.success && response.data) {
+        // response.data is AxiosResponse<ApiResponse<Product>>
+        // So response.data.data contains the actual Product
+        if (response.data?.success && response.data?.data) {
+          const productData = response.data.data;
           setState({
             isLoading: false,
             error: null,
             success: true,
             transactionHash: txResult.txHash,
           });
-          return response.data;
+          return productData;
         } else {
-          throw new Error(response.error || 'Failed to claim product');
+          throw new Error(response.data?.error || 'Failed to claim product');
         }
       } catch (error) {
         const errorMessage =

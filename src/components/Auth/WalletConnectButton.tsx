@@ -30,9 +30,8 @@ export function WalletConnectButton() {
           }
         );
 
-        if (response?.data) {
-          const userData = response.data;
-          setUser(userData);
+        if (response.data?.success && response.data?.data) {
+          setUser(response.data.data); // Use response.data.data instead of response.data
           if (setWalletState) {
             setWalletState({
               isConnected: true,
