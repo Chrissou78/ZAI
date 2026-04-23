@@ -1,50 +1,69 @@
 export interface User {
   id: string;
   walletAddress: string;
-  email?: string;
   name?: string;
   firstName?: string;
   lastName?: string;
-  avatar?: string;
-  tier?: 'bronze' | 'silver' | 'gold' | 'platinum';
+  email?: string;
+  phone?: string;
+  dob?: string;
+  address?: string;
   location?: string;
-  memberSince?: Date | string;
-  createdAt?: Date;
+  memberSince?: string;
+  tier?: 'bronze' | 'silver' | 'gold' | 'platinum' | 'member';
+  nfcCardId?: string;
+  verified?: boolean;
 }
 
 export interface WalletState {
-  address: string | null;
+  address?: string;
   isConnected: boolean;
-  chainId: string;
-  balance: string;
-  token: string | null;
+  isLoading?: boolean;
+  error?: string | null;
+}
+
+export interface NFCData {
+  tagId: string;
+  serialNumber: string;
+  productId?: string;
+  timestamp?: number;
+}
+
+export interface ClaimProductPayload {
+  serialNumber?: string;
+  nfcData?: NFCData;
+  proof?: string;
+  productId?: string;
 }
 
 export interface Product {
   id: string;
   name: string;
-  description: string;
+  description?: string;
   serialNumber: string;
-  nfcTagId?: string;
-  imageUrl?: string;
-  tier?: string;
-  claimedAt?: Date;
-  blockchainTx?: string;
-}
-
-export interface Event {
-  id: string;
-  title: string;
-  description: string;
-  date: Date;
-  location: string;
-  tier?: string;
-  imageUrl?: string;
-  capacity?: number;
+  claimed?: boolean;
+  claimedAt?: string;
+  nfcCardId?: string;
 }
 
 export interface TransactionResult {
   txHash: string;
-  status: 'success' | 'failed' | 'pending';
+  status: 'success' | 'pending' | 'failed';
   timestamp: Date;
+}
+
+export interface Event {
+  id: string;
+  name: string;
+  description?: string;
+  date: string;
+  location?: string;
+  registered?: boolean;
+}
+
+export interface ApiResponse<T = any> {
+  success: boolean;
+  data?: T;
+  error?: string;
+  message?: string;
 }

@@ -23,21 +23,26 @@ export function WalletConnectButton() {
             walletAddress: walletUser?.id,
             token: accessToken,
           },
-          accessToken
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+            },
+          }
         );
 
-        if (response.success && response.data) {
-          setUser(response.data);
-          setWalletState({
-            isConnected: true,
-            address: walletUser?.id || null,
-            token: accessToken,
-            chainId: '137',
-            isLoading: false,
-            error: null,
-          });
+        if (response?.data) {
+          const userData = response.data;
+          setUser(userData);
+          if (setWalletState) {
+            setWalletState({
+              isConnected: true,
+              address: walletUser?.id,
+              isLoading: false,
+              error: null,
+            });
+          }
         } else {
-          setError(response.error || 'Authentication failed');
+          setError('Authentication failed');
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Unknown error');
@@ -45,10 +50,14 @@ export function WalletConnectButton() {
         setIsLoading(false);
       }
     },
-    [walletUser, setUser, setWalletState]
+    [walletUser?.id, setUser, setWalletState]
   );
 
   if (user && walletUser) {
+    const firstName = user.firstName || 'U';
+    const lastName = user.lastName || '';
+    const initials = `${firstName[0]}${lastName[0] || ''}`.toUpperCase();
+
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
         <div
@@ -65,11 +74,11 @@ export function WalletConnectButton() {
             fontWeight: 500,
           }}
         >
-          {user.firstName[0]}{user.lastName[0]}
+          {initials}
         </div>
         <div style={{ fontSize: '12px' }}>
-          <div style={{ fontWeight: 500 }}>{user.firstName}</div>
-          <div style={{ color: '#b8a06a', fontSize: '10px' }}>{user.tier}</div>
+          <div style={{ fontWeight: 500 }}>{firstName}</div>
+          <div style={{ color: '#b8a06a', fontSize: '10px' }}>{user.tier || 'member'}</div>
         </div>
       </div>
     );
