@@ -1,5 +1,5 @@
 import { ClaimProductPayload, NFCData } from '../types';
-import { ethers } from 'ethers';
+import { ethers, verifyMessage } from 'ethers';
 
 class BlockchainService {
   async generateProductProof(payload: ClaimProductPayload): Promise<string> {
@@ -27,13 +27,10 @@ class BlockchainService {
   ): Promise<boolean> {
     // Verify that the signature matches the product
     try {
-      const recoveredAddress = ethers.utils.recoverAddress(
-        ethers.utils.hashMessage(serialNumber),
-        signature
-      );
-      return !!recoveredAddress;
+        const recoveredAddress = verifyMessage(serialNumber, signature);
+        return !!recoveredAddress;
     } catch {
-      return false;
+        return false;
     }
   }
 

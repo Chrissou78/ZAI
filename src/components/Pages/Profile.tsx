@@ -3,16 +3,16 @@ import { useAppContext } from '../../context/AppContext';
 import Button from '../Common/Button';
 
 const Profile: React.FC = () => {
-  const { user, setUser } = useAppContext();
+  const { user } = useAppContext();
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
     firstName: user?.firstName || '',
     lastName: user?.lastName || '',
     email: user?.email || '',
-    phone: '+41 79 123 45 67',
-    dob: '14 March 1988',
+    phone: user?.phone || '+41 79 123 45 67',
+    dob: user?.dob || '14 March 1988',
     location: user?.location || '',
-    address: 'Bahnhofstrasse 42, 8001 Zürich',
+    address: user?.address || 'Bahnhofstrasse 42, 8001 Zürich',
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -22,17 +22,19 @@ const Profile: React.FC = () => {
 
   const handleSave = () => {
     if (user) {
-      setUser({
-        ...user,
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        location: formData.location,
-      });
+      // TODO: Save to API or context
+      console.log('Profile updated:', formData);
       setIsEditing(false);
     }
   };
 
-  if (!user) return null;
+  if (!user) {
+    return <div style={{ padding: '3rem 4rem' }}>Loading profile...</div>;
+  }
+
+  const firstName = user.firstName || 'User';
+  const lastName = user.lastName || '';
+  const initials = `${firstName[0]}${lastName[0] || ''}`;
 
   return (
     <div style={{ padding: '3rem 4rem 5rem' }}>
@@ -117,13 +119,13 @@ const Profile: React.FC = () => {
               color: '#1a1a1a',
             }}
           >
-            {user.firstName[0]}{user.lastName[0]}
+            {initials}
           </div>
           <div style={{ fontSize: '16px', fontWeight: 300, marginBottom: '3px' }}>
-            {user.firstName} {user.lastName}
+            {firstName} {lastName}
           </div>
           <div style={{ fontSize: '10px', color: '#6a6a6a', marginBottom: '1.25rem' }}>
-            @{user.firstName.toLowerCase()}.{user.lastName.toLowerCase()}
+            @{firstName.toLowerCase()}.{lastName.toLowerCase()}
           </div>
 
           {/* Tier Pill */}
@@ -140,7 +142,7 @@ const Profile: React.FC = () => {
               borderRadius: '20px',
             }}
           >
-            ● {user.tier}
+            ● {user.tier || 'member'}
           </div>
 
           {/* Stats */}
@@ -171,8 +173,8 @@ const Profile: React.FC = () => {
           {/* Info */}
           <div style={{ width: '100%', textAlign: 'left' }}>
             {[
-              { label: 'Member since', value: 'January 2023' },
-              { label: 'Location', value: user.location },
+              { label: 'Member since', value: user.memberSince || 'January 2023' },
+              { label: 'Location', value: user.location || 'Switzerland' },
               { label: 'NFC Card ID', value: user.nfcCardId || 'ZAI-2024-7823' },
               { label: 'Region & Currency', value: 'CHF · Alpine region' },
             ].map((item, i) => (
@@ -269,10 +271,11 @@ const Profile: React.FC = () => {
 
             {/* Other fields */}
             {[
-              { name: 'dob', label: 'Date of Birth' },
-              { name: 'phone', label: 'Phone Number' },
               { name: 'email', label: 'Email Address' },
+              { name: 'phone', label: 'Phone Number' },
+              { name: 'dob', label: 'Date of Birth' },
               { name: 'address', label: 'Home Address' },
+              { name: 'location', label: 'Location' },
             ].map((field) => (
               <div key={field.name} style={{ background: '#ffffff', padding: '1rem 1.25rem' }}>
                 <label
@@ -315,25 +318,16 @@ const Profile: React.FC = () => {
             {!isEditing ? (
               <Button
                 variant="primary"
-                fullWidth
                 onClick={() => setIsEditing(true)}
               >
                 Edit Profile
               </Button>
             ) : (
               <div style={{ display: 'flex', gap: '1rem' }}>
-                <Button
-                  variant="primary"
-                  style={{ flex: 1 }}
-                  onClick={handleSave}
-                >
+                <Button variant="primary" onClick={handleSave}>
                   Save Changes
                 </Button>
-                <Button
-                  variant="secondary"
-                  style={{ flex: 1 }}
-                  onClick={() => setIsEditing(false)}
-                >
+                <Button variant="secondary" onClick={() => setIsEditing(false)}>
                   Cancel
                 </Button>
               </div>

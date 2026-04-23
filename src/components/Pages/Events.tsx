@@ -173,19 +173,6 @@ const Events: React.FC = () => {
                   fontFamily: "'Inter', sans-serif",
                   transition: 'all 0.2s',
                 }}
-                style={{
-                  padding: '9px 18px',
-                  fontSize: '11px',
-                  letterSpacing: '0.15em',
-                  textTransform: 'uppercase',
-                  cursor: 'pointer',
-                  background: typeFilter === filter ? '#1a1a1a' : '#ffffff',
-                  color: typeFilter === filter ? '#ffffff' : '#6a6a6a',
-                  border: 'none',
-                  borderRight: filter === 'partner' ? 'none' : '1px solid #e0ddd6',
-                  fontFamily: "'Inter', sans-serif",
-                  transition: 'all 0.2s',
-                }}
               >
                 {filter === 'all' ? 'All' : filter.charAt(0).toUpperCase() + filter.slice(1)}
               </button>

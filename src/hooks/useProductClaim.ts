@@ -29,27 +29,28 @@ export function useProductClaim() {
 
         // Step 2: Execute smart contract transaction
         const txResult = await new Promise<TransactionResult>(
-          (resolve, reject) => {
-            executeTransaction({
-              network: '137',
-              transactions: [
-                {
-                  method: 'claimProduct',
-                  address: process.env.REACT_APP_ZAI_CONTRACT_ADDRESS || '',
-                  params: [payload.serialNumber || payload.nfcData?.tagId, proof],
-                },
-              ],
-              onSuccess: (txId) => {
-                resolve({ txHash: txId, status: 'success', timestamp: new Date() });
-              },
-              onFailure: (error) => {
-                reject(new Error(error));
-              },
-              onCancel: () => {
-                reject(new Error('User cancelled transaction'));
-              },
-            });
-          }
+            (resolve, reject) => {
+                executeTransaction(
+                [
+                    {
+                    method: 'claimProduct',
+                    address: process.env.VITE_ZAI_CONTRACT_ADDRESS || '',
+                    params: [payload.serialNumber || payload.nfcData?.tagId, proof],
+                    },
+                ],
+                '137' // network as second parameter
+                )
+                .then((txId: string) => {
+                    resolve({ 
+                    txHash: txId, 
+                    status: 'success' as const, 
+                    timestamp: new Date() 
+                    });
+                })
+                .catch((error: Error) => {
+                    reject(new Error(error.message || 'Transaction failed'));
+                });
+            }
         );
 
         // Step 3: Register claim in backend

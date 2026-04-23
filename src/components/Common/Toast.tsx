@@ -11,7 +11,7 @@ export interface ToastProps {
 const Toast = React.forwardRef<HTMLDivElement, ToastProps>(
   ({ message, type = 'info', duration = 3000, onClose }, ref) => {
     useEffect(() => {
-      if (duration) {
+      if (duration && onClose) {
         const timer = setTimeout(onClose, duration);
         return () => clearTimeout(timer);
       }

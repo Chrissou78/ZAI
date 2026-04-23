@@ -2,10 +2,7 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAppContext } from './context/AppContext';
 
-// Layouts
 import MainLayout from './components/Layout/MainLayout';
-
-// Pages
 import Home from './components/Pages/Home';
 import Dashboard from './components/Pages/Dashboard';
 import Products from './components/Pages/Products';
@@ -14,7 +11,6 @@ import Community from './components/Pages/Community';
 import Profile from './components/Pages/Profile';
 import Settings from './components/Pages/Settings';
 
-// Protected Route Wrapper
 interface ProtectedRouteProps {
   children: React.ReactNode;
 }
@@ -23,11 +19,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   const { user, isLoading } = useAppContext();
 
   if (isLoading) {
-    return (
-      <div style={{ padding: '2rem', textAlign: 'center' }}>
-        Loading...
-      </div>
-    );
+    return <div style={{ padding: '2rem', textAlign: 'center' }}>Loading...</div>;
   }
 
   if (!user) {
@@ -38,75 +30,27 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
 };
 
 const Router: React.FC = () => {
-  const { user } = useAppContext();
-
   return (
     <BrowserRouter>
       <Routes>
-        {/* Public Routes */}
+        {/* Public route - NO sidebar */}
         <Route path="/" element={<Home />} />
 
-        {/* Protected Routes */}
+        {/* Protected routes - WITH sidebar */}
         <Route
-          path="/dashboard"
           element={
             <ProtectedRoute>
-              <MainLayout>
-                <Dashboard />
-              </MainLayout>
+              <MainLayout />
             </ProtectedRoute>
           }
-        />
-        <Route
-          path="/products"
-          element={
-            <ProtectedRoute>
-              <MainLayout>
-                <Products />
-              </MainLayout>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/events"
-          element={
-            <ProtectedRoute>
-              <MainLayout>
-                <Events />
-              </MainLayout>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/community"
-          element={
-            <ProtectedRoute>
-              <MainLayout>
-                <Community />
-              </MainLayout>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/profile"
-          element={
-            <ProtectedRoute>
-              <MainLayout>
-                <Profile />
-              </MainLayout>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/settings"
-          element={
-            <ProtectedRoute>
-              <MainLayout>
-                <Settings />
-              </MainLayout>
-            </ProtectedRoute>
-          }
-        />
+        >
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/products" element={<Products />} />
+          <Route path="/events" element={<Events />} />
+          <Route path="/community" element={<Community />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/settings" element={<Settings />} />
+        </Route>
 
         {/* 404 */}
         <Route path="*" element={<Navigate to="/" replace />} />

@@ -10,11 +10,15 @@ const Home: React.FC = () => {
   const { user } = useAppContext();
 
   // Redirect authenticated users to dashboard
-  useEffect(() => {
-    if (user) {
-      navigate('/dashboard', { replace: true });
-    }
-  }, [user, navigate]);
+ // useEffect(() => {
+  //  if (user && user.id) {
+   //   // Only redirect if user exists AND we're not already on home
+   //   const timer = setTimeout(() => {
+   //     navigate('/dashboard', { replace: true });
+   //   }, 500); // Small delay to allow page to render
+   //   return () => clearTimeout(timer);
+   // }
+  //}, [user, navigate]);
 
   return (
     <div style={{ minHeight: '100vh' }}>
@@ -427,7 +431,18 @@ const Home: React.FC = () => {
               <div style={{ fontSize: '10px', letterSpacing: '0.25em', textTransform: 'uppercase', color: '#444', marginBottom: '0.6rem' }}>
                 Subscribe
               </div>
-              <div style={{ display: 'flex', gap: 0, maxWidth: '280px', marginBottom: '1rem' }}>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const input = (e.currentTarget.querySelector('input') as HTMLInputElement);
+                  if (input?.value) {
+                    console.log('Newsletter signup:', input.value);
+                    alert('Thank you for subscribing!');
+                    input.value = '';
+                  }
+                }}
+                style={{ display: 'flex', gap: 0, maxWidth: '280px', marginBottom: '1rem' }}
+              >
                 <input
                   type="email"
                   placeholder="Your email"
@@ -442,8 +457,10 @@ const Home: React.FC = () => {
                     fontFamily: "'Inter', sans-serif",
                     outline: 'none',
                   }}
+                  required
                 />
                 <button
+                  type="submit"
                   style={{
                     background: '#7D1E2C',
                     color: '#fff',
@@ -457,7 +474,7 @@ const Home: React.FC = () => {
                 >
                   Subscribe
                 </button>
-              </div>
+              </form>
             </div>
           </div>
         </div>

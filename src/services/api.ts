@@ -1,114 +1,63 @@
-import { APIResponse } from '../types';
+import axios, { AxiosInstance, AxiosRequestConfig, AxiosError } from 'axios';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://api.zaiclub.com';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 class APIService {
-  private getHeaders(token?: string): HeadersInit {
-    const headers: HeadersInit = {
-      'Content-Type': 'application/json',
-    };
+  private client: AxiosInstance;
 
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
+  constructor(baseURL: string = API_BASE_URL) {
+    this.client = axios.create({
+      baseURL,
+      timeout: 10000,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
 
-    return headers;
+    // Request interceptor
+    this.client.interceptors.request.use(
+      (config) => {
+        const token = localStorage.getItem('zai_token');
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`;
+        }
+        config.headers['X-Request-ID'] = `${Date.now()}-${Math.random()}`;
+        return config;
+      },
+      (error) => Promise.reject(error)
+    );
+
+    // Response interceptor
+    this.client.interceptors.response.use(
+      (response) => response,
+      (error: AxiosError) => {
+        if (error.response?.status === 401) {
+          localStorage.removeItem('zai_token');
+          window.location.href = '/';
+        }
+        return Promise.reject(error);
+      }
+    );
   }
 
-  async get<T = any>(
-    endpoint: string,
-    token?: string
-  ): Promise<APIResponse<T>> {
-    try {
-      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-        method: 'GET',
-        headers: this.getHeaders(token),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-
-      return await response.json();
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Request failed',
-      };
-    }
+  async get<T>(url: string, config?: AxiosRequestConfig) {
+    return this.client.get<T>(url, config);
   }
 
-  async post<T = any>(
-    endpoint: string,
-    body: any,
-    token?: string
-  ): Promise<APIResponse<T>> {
-    try {
-      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-        method: 'POST',
-        headers: this.getHeaders(token),
-        body: JSON.stringify(body),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-
-      return await response.json();
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Request failed',
-      };
-    }
+  async post<T>(url: string, data?: any, config?: AxiosRequestConfig) {
+    return this.client.post<T>(url, data, config);
   }
 
-  async put<T = any>(
-    endpoint: string,
-    body: any,
-    token?: string
-  ): Promise<APIResponse<T>> {
-    try {
-      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-        method: 'PUT',
-        headers: this.getHeaders(token),
-        body: JSON.stringify(body),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-
-      return await response.json();
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Request failed',
-      };
-    }
+  async put<T>(url: string, data?: any, config?: AxiosRequestConfig) {
+    return this.client.put<T>(url, data, config);
   }
 
-  async delete<T = any>(
-    endpoint: string,
-    token?: string
-  ): Promise<APIResponse<T>> {
-    try {
-      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-        method: 'DELETE',
-        headers: this.getHeaders(token),
-      });
+  async delete<T>(url: string, config?: AxiosRequestConfig) {
+    return this.client.delete<T>(url, config);
+  }
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-
-      return await response.json();
-    } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Request failed',
-      };
-    }
+  async patch<T>(url: string, data?: any, config?: AxiosRequestConfig) {
+    return this.client.patch<T>(url, data, config);
   }
 }
 

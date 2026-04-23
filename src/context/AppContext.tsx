@@ -1,71 +1,86 @@
-import React, { createContext, useContext, ReactNode, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, WalletState } from '../types';
 
 interface AppContextType {
   user: User | null;
-  setUser: (user: User | null) => void;
-  walletState: WalletState;
-  setWalletState: (state: WalletState) => void;
+  walletState: WalletState | null;
   isLoading: boolean;
-  error: string | null;
-  setError: (error: string | null) => void;
+  error: Error | null;
+  setUser: (user: User | null) => void;
+  setWalletState: (state: WalletState | null) => void;
+  setIsLoading: (loading: boolean) => void;
+  setError: (error: Error | null) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-export function AppProvider({ children }: { children: ReactNode }) {
-  const [user, setUserState] = React.useState<User | null>(() => {
-    const stored = localStorage.getItem('zai_user');
-    return stored ? JSON.parse(stored) : null;
-  });
+export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [user, setUser] = useState<User | null>(null);
+  const [walletState, setWalletState] = useState<WalletState | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
 
-  const [walletState, setWalletStateInternal] = React.useState<WalletState>({
-    isConnected: false,
-    address: null,
-    token: null,
-    chainId: '137',
-    isLoading: false,
-    error: null,
-  });
+  useEffect(() => {
+    // Initialize from localStorage
+    const savedUser = localStorage.getItem('zai_user');
+    const savedWallet = localStorage.getItem('zai_wallet');
 
-  const [isLoading, setIsLoading] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
-
-  const setUser = useCallback((newUser: User | null) => {
-    setUserState(newUser);
-    if (newUser) {
-      localStorage.setItem('zai_user', JSON.stringify(newUser));
+    if (savedUser) {
+      try {
+        setUser(JSON.parse(savedUser));
+      } catch (e) {
+        console.error('Failed to parse saved user:', e);
+      }
     } else {
-      localStorage.removeItem('zai_user');
+      // For testing: create a mock user with all required properties
+      const mockUser: any = {
+        id: 'test-user-1',
+        walletAddress: '0x1234567890123456789012345678901234567890',
+        name: 'Anna Kirchner',
+        firstName: 'Anna',
+        lastName: 'Kirchner',
+        tier: 'gold',
+        email: 'anna@example.com',
+        location: 'Pontresina, Switzerland',
+        memberSince: new Date('2024-01-15'),
+      };
+      setUser(mockUser);
+      localStorage.setItem('zai_user', JSON.stringify(mockUser));
     }
-  }, []);
 
-  const setWalletState = useCallback((state: WalletState) => {
-    setWalletStateInternal(state);
-    localStorage.setItem('zai_wallet_state', JSON.stringify(state));
+    if (savedWallet) {
+      try {
+        setWalletState(JSON.parse(savedWallet));
+      } catch (e) {
+        console.error('Failed to parse saved wallet:', e);
+      }
+    }
+
+    setIsLoading(false);
   }, []);
 
   return (
     <AppContext.Provider
       value={{
         user,
-        setUser,
         walletState,
-        setWalletState,
         isLoading,
         error,
+        setUser,
+        setWalletState,
+        setIsLoading,
         setError,
       }}
     >
       {children}
     </AppContext.Provider>
   );
-}
+};
 
-export function useAppContext() {
+export const useAppContext = () => {
   const context = useContext(AppContext);
   if (!context) {
     throw new Error('useAppContext must be used within AppProvider');
   }
   return context;
-}
+};
