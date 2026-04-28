@@ -1,7 +1,7 @@
 import axios, { AxiosInstance, AxiosResponse, AxiosRequestConfig } from 'axios';
 import { ApiResponse } from '../types';
 
-// Use VITE_API_URL from env, fallback to /api (relative URL for same domain)
+// Use VITE_API_URL from env, it should be /api or full URL
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
 class APIService {
