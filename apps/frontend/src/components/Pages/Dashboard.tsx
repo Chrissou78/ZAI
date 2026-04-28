@@ -63,7 +63,7 @@ const Dashboard: React.FC = () => {
               <span style={{ color: '#b8a06a' }}>{user.firstName}.</span>
             </div>
             <div style={{ fontSize: '12px', color: '#999', lineHeight: 1.8, maxWidth: '380px' }}>
-              {user.verified ? '✓ Email verified · ' : ''}
+              {user.emailVerified  ? '✓ Email verified · ' : ''}
               {user.address ? `${user.city}, ${user.country}` : 'Update your profile to complete verification'}
             </div>
           </div>
@@ -142,8 +142,8 @@ const Dashboard: React.FC = () => {
 
             <div style={{ marginTop: '1rem' }}>
               <strong style={{ color: '#1a1a1a' }}>Verified:</strong> 
-              <span style={{ marginLeft: '0.5rem', color: user.verified ? '#2ecc71' : '#e74c3c' }}>
-                {user.verified ? '✓ Yes' : '✗ No'}
+              <span style={{ marginLeft: '0.5rem', color: user.emailVerified  ? '#2ecc71' : '#e74c3c' }}>
+                {user.emailVerified  ? '✓ Yes' : '✗ No'}
               </span>
             </div>
           </div>
