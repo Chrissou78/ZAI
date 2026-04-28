@@ -38,7 +38,7 @@ export default async function handler(req, res) {
       }
     );
 
-    console.log('✅ Exchange successful');
+    console.log('✅ Exchange successful:', JSON.stringify(exchangeResponse.data, null, 2));
 
     const sessionToken = exchangeResponse.data.session?.token;
     const sessionUserId = exchangeResponse.data.session?.id || userId;
@@ -48,19 +48,22 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Invalid exchange response' });
     }
 
-    // Fetch full user profile from /auth/wallettwo/profile
-    console.log('📥 Fetching user profile...');
-    const profileUrl = `${baseUrl}/auth/api/auth/get-session`;
-    const profileResponse = await axios.get(profileUrl, {
-      headers: {
-        'Authorization': `Bearer ${sessionToken}`,
-        'Content-Type': 'application/json',
-      },
-    });
+    console.log('📥 Fetching user profile with sessionToken...');
 
-    console.log('✅ Profile fetched:', JSON.stringify(profileResponse.data, null, 2));
+    // Call your own profile endpoint with the session token
+    const profileResponse = await axios.get(
+      `${process.env.VERCEL_URL || 'https://zai-chi.vercel.app'}/api/auth/wallettwo/profile`,
+      {
+        headers: {
+          'Authorization': `Bearer ${sessionToken}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
 
-    const userProfile = profileResponse.data || {};
+    console.log('✅ Profile response:', JSON.stringify(profileResponse.data, null, 2));
+
+    const userProfile = profileResponse.data?.data || {};
 
     // Sign JWT
     const jwtToken = jwt.sign(
@@ -75,13 +78,12 @@ export default async function handler(req, res) {
       user: {
         id: sessionUserId,
         walletAddress: wallet,
-        firstName: userProfile.name || userProfile.firstName || 'User',
+        firstName: userProfile.firstName || 'User',
         lastName: userProfile.lastName || '',
         email: userProfile.email || '',
         phone: userProfile.phone || '',
-        location: userProfile.location || userProfile.city || '',
         verified: userProfile.verified || false,
-        tier: 'member',
+        tier: userProfile.tier || 'member',
       },
     });
   } catch (error) {
