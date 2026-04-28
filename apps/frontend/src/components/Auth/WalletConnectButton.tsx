@@ -104,6 +104,7 @@ export function WalletConnectButton() {
   iframeUrl.searchParams.append('action', 'session');
   iframeUrl.searchParams.append('iframe', 'true');
   iframeUrl.searchParams.append('companyId', companyId);
+  iframeUrl.searchParams.append('force_login', 'true');
 
   return (
     <>
