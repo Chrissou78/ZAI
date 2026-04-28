@@ -167,7 +167,7 @@ const Profile: React.FC = () => {
             {[
               ...(user.city ? [{ label: 'City', value: user.city }] : []),
               ...(user.country ? [{ label: 'Country', value: user.country }] : []),
-              ...(user.wallet ? [{ label: 'Wallet', value: user.wallet.slice(0, 6) + '...' + user.wallet.slice(-4) }] : []),
+              ...(user.walletAddress ? [{ label: 'Wallet', value: user.walletAddress.slice(0, 6) + '...' + user.walletAddress.slice(-4) }] : []),
             ].map((item, i) => (
               <div
                 key={i}
