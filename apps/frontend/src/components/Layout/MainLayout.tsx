@@ -188,39 +188,8 @@ const MainLayout: React.FC = () => {
             flexShrink: 0,
           }}
         >
-          <button
-            onClick={handleLogout}
-            disabled={isLoggingOut}
-            style={{
-              width: '100%',
-              padding: '0.75rem 1rem',
-              background: isLoggingOut ? '#999' : '#c8102e',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '4px',
-              fontSize: '12px',
-              fontWeight: 500,
-              letterSpacing: '0.1em',
-              textTransform: 'uppercase',
-              cursor: isLoggingOut ? 'not-allowed' : 'pointer',
-              transition: 'all 0.2s',
-              opacity: isLoggingOut ? 0.6 : 1,
-            }}
-            onMouseEnter={(e) => {
-              if (!isLoggingOut) {
-                (e.currentTarget as HTMLButtonElement).style.background = '#a0071f';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!isLoggingOut) {
-                (e.currentTarget as HTMLButtonElement).style.background = '#c8102e';
-              }
-            }}
-          >
-            {isLoggingOut ? 'Logging out...' : 'Logout'}
-          </button>
+          <LogoutButton />
         </div>
-
         {/* Footer Info */}
         <div
           style={{
