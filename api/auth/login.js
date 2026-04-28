@@ -26,7 +26,6 @@ export default async function handler(req, res) {
     const baseUrl = process.env.WALLETTWO_API_URL || 'https://api.wallettwo.com';
     const exchangeUrl = `${baseUrl}/auth/api/auth/one-time-token/verify`;
 
-    // Exchange token for session
     const exchangeResponse = await axios.post(
       exchangeUrl,
       { token },
@@ -38,34 +37,19 @@ export default async function handler(req, res) {
       }
     );
 
-    console.log('✅ Exchange successful:', JSON.stringify(exchangeResponse.data, null, 2));
+    console.log('✅ Exchange successful');
 
     const sessionToken = exchangeResponse.data.session?.token;
     const sessionUserId = exchangeResponse.data.session?.id || userId;
+    const userProfile = exchangeResponse.data.user || {};
 
     if (!sessionToken) {
-      console.error('❌ Missing sessionToken in exchange response');
+      console.error('❌ Missing sessionToken');
       return res.status(400).json({ error: 'Invalid exchange response' });
     }
 
-    console.log('📥 Fetching user profile with sessionToken...');
+    console.log('✅ User profile extracted from exchange response');
 
-    // Call your own profile endpoint with the session token
-    const profileResponse = await axios.get(
-      `${process.env.VERCEL_URL || 'https://zai-chi.vercel.app'}/api/auth/wallettwo/profile`,
-      {
-        headers: {
-          'Authorization': `Bearer ${sessionToken}`,
-          'Content-Type': 'application/json',
-        },
-      }
-    );
-
-    console.log('✅ Profile response:', JSON.stringify(profileResponse.data, null, 2));
-
-    const userProfile = profileResponse.data?.data || {};
-
-    // Sign JWT
     const jwtToken = jwt.sign(
       { userId: sessionUserId, wallet, wallettwoToken: sessionToken },
       process.env.JWT_SECRET || 'fallback-secret',
@@ -78,17 +62,22 @@ export default async function handler(req, res) {
       user: {
         id: sessionUserId,
         walletAddress: wallet,
-        firstName: userProfile.firstName || 'User',
-        lastName: userProfile.lastName || '',
+        firstName: userProfile.givenName || userProfile.name?.split(' ')[0] || 'User',
+        lastName: userProfile.familyName || userProfile.name?.split(' ')[1] || '',
         email: userProfile.email || '',
-        phone: userProfile.phone || '',
-        verified: userProfile.verified || false,
-        tier: userProfile.tier || 'member',
+        phone: userProfile.phoneNumber || '',
+        address: userProfile.address || '',
+        city: userProfile.city || '',
+        country: userProfile.country || '',
+        postalCode: userProfile.postalCode || '',
+        verified: userProfile.emailVerified || false,
+        tier: 'member',
       },
     });
   } catch (error) {
     console.error('❌ Error:', error.message);
-    console.error('   Response:', error.response?.data);
-    return res.status(500).json({ error: error.message });
+    console.error('   Status:', error.response?.status);
+    console.error('   Data:', error.response?.data);
+    return res.status(500).json({ error: error.message, details: error.response?.data });
   }
 }
