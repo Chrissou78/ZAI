@@ -103,12 +103,25 @@ export function WalletConnectButton() {
     );
   }
 
+  const handleOpenModal = () => {
+    // Clear WalletTwo cookies/storage
+    document.cookie = 'wallettwo_session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.wallettwo.com;';
+    document.cookie = 'wallettwo_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.wallettwo.com;';
+    
+    // Clear localStorage keys that WalletTwo might use
+    const keysToRemove = Object.keys(localStorage).filter(k => k.includes('wallettwo') || k.includes('wallet_two'));
+    keysToRemove.forEach(k => localStorage.removeItem(k));
+    
+    // Force a new login by adding timestamp to iframe URL
+    setShowModal(true);
+  };
+
   const companyId = import.meta.env.VITE_COMPANY_ID || 'p7IH5cVirHbWy1a0hPxeKro5j9bRSJtt';
   const iframeUrl = new URL('https://wallet.wallettwo.com/auth/login');
   iframeUrl.searchParams.append('action', 'session');
   iframeUrl.searchParams.append('iframe', 'true');
   iframeUrl.searchParams.append('companyId', companyId);
-  iframeUrl.searchParams.append('force_login', 'true');
+  iframeUrl.searchParams.append('_t', Date.now().toString());
 
   return (
     <>
