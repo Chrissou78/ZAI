@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const axios = require('axios');
 const jwt = require('jsonwebtoken');
+const axios = require('axios');
 
 // ============================================
 // Login with WalletTwo
@@ -10,69 +10,60 @@ router.post('/login', async (req, res) => {
   try {
     const { token, wallet, userId } = req.body;
 
+    console.log('✅ Login received:', { userId, wallet });
+
     if (!token || !wallet) {
       return res.status(400).json({ error: 'Missing token or wallet' });
     }
 
-    console.log('✅ Login received:', { userId, wallet });
-    console.log('📤 Exchanging token with WalletTwo...');
-
+    // Exchange the WalletTwo code for a session token
     const baseUrl = process.env.WALLETTWO_API_URL || 'https://api.wallettwo.com';
-    const authUrl = `${baseUrl}/auth`;
-    const exchangeUrl = `${authUrl}/api/auth/one-time-token/verify`;
+    const exchangeUrl = `${baseUrl}/auth/api/auth/one-time-token/verify`;
 
-    const exchangeResponse = await axios.post(exchangeUrl, {
-      token: token,
-    });
+    console.log('🔄 Exchanging token with WalletTwo...');
 
-    console.log('📥 Exchange response received');
+    const exchangeResponse = await axios.post(
+      exchangeUrl,
+      { token },
+      {
+        headers: {
+          'Authorization': `Bearer ${process.env.WALLETTWO_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
 
-    const sessionToken = exchangeResponse.data?.session?.token;
-    const userData = exchangeResponse.data?.user;
+    console.log('✅ Exchange successful:', JSON.stringify(exchangeResponse.data, null, 2));
 
-    if (!sessionToken || !userData) {
-      console.error('❌ Missing session token or user data');
-      return res.status(400).json({ error: 'Failed to exchange token' });
-    }
+    const sessionToken = exchangeResponse.data.token || exchangeResponse.data.accessToken;
 
-    console.log('✅ Got session token and user data');
-    console.log('👤 User:', userData.email);
-
+    // Create JWT token for the app
     const jwtToken = jwt.sign(
-      { 
-        userId: userData.id, 
-        wallet: userData.wallet, 
-        token: sessionToken,
-        wallettwoToken: sessionToken,
-        email: userData.email,
-        name: userData.name,
-      },
+      { userId, wallet, wallettwoToken: sessionToken },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
 
+    console.log('📝 JWT created for user:', userId);
+
     res.json({
       success: true,
-      jwtToken: jwtToken,
+      jwtToken,
       user: {
-        id: userData.id,
-        walletAddress: userData.wallet,  // Add this
-        wallet: userData.wallet,          // Keep this too
-        firstName: userData.givenName || userData.name?.split(' ')[0] || 'User',
-        lastName: userData.familyName || userData.name?.split(' ')[1] || '',
-        email: userData.email || '',
-        phone: userData.phoneNumber || '',
-        verified: userData.emailVerified || false,
+        id: userId,
+        walletAddress: wallet,
+        firstName: 'User',
+        lastName: '',
+        email: '',
+        phone: '',
+        verified: false,
         tier: 'member',
-        address: userData.address,
-        city: userData.city,
-        country: userData.country,
-        postalCode: userData.postalCode,
       },
     });
   } catch (error) {
     console.error('❌ Login error:', error.message);
-    console.error('Response:', error.response?.data);
+    console.error('   Status:', error.response?.status);
+    console.error('   Data:', JSON.stringify(error.response?.data, null, 2));
     res.status(500).json({ error: 'Login failed', message: error.message });
   }
 });
@@ -81,8 +72,8 @@ router.post('/login', async (req, res) => {
 // Logout
 // ============================================
 router.post('/logout', (req, res) => {
-  console.log('🚪 User logged out');
-  res.json({ success: true });
+  console.log('👋 Logout request');
+  res.json({ success: true, message: 'Logged out' });
 });
 
 // ============================================
@@ -90,15 +81,17 @@ router.post('/logout', (req, res) => {
 // ============================================
 router.post('/verify', (req, res) => {
   try {
-    const token = req.headers.authorization?.replace('Bearer ', '');
-
-    if (!token) {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
       return res.status(401).json({ error: 'No token provided' });
     }
 
+    const token = authHeader.replace('Bearer ', '');
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
     res.json({ success: true, user: decoded });
   } catch (error) {
+    console.error('❌ Token verification error:', error.message);
     res.status(401).json({ error: 'Invalid token' });
   }
 });
