@@ -50,6 +50,30 @@ export default async function handler(req, res) {
 
     console.log('✅ User profile extracted');
 
+    // Extract exactly the available WalletTwo fields
+    const mappedUser = {
+      id: userProfile.id || sessionUserId,
+      name: userProfile.name || '',
+      givenName: userProfile.givenName || '',
+      familyName: userProfile.familyName || '',
+      email: userProfile.email || '',
+      emailVerified: userProfile.emailVerified || false,
+      phoneNumber: userProfile.phoneNumber || '',
+      address: userProfile.address || '',
+      city: userProfile.city || '',
+      country: userProfile.country || '',
+      postalCode: userProfile.postalCode || '',
+      image: userProfile.image || null,
+      birthdate: userProfile.birthdate || null,
+      wallet: userProfile.wallet || wallet,
+      walletSecured: userProfile.walletSecured || false,
+      role: userProfile.role || 'user',
+      banned: userProfile.banned || false,
+      isPublic: userProfile.isPublic || false,
+    };
+
+    console.log('📋 Mapped user fields:', Object.keys(mappedUser));
+
     const jwtToken = jwt.sign(
       { userId: sessionUserId, wallet, wallettwoToken: sessionToken },
       process.env.JWT_SECRET || 'fallback-secret',
@@ -59,20 +83,7 @@ export default async function handler(req, res) {
     return res.status(200).json({
       success: true,
       jwtToken,
-      user: {
-        id: sessionUserId,
-        walletAddress: wallet,
-        firstName: userProfile.givenName || userProfile.name?.split(' ')[0] || '',
-        lastName: userProfile.familyName || '',
-        email: userProfile.email || '',
-        phone: userProfile.phoneNumber || '',
-        address: userProfile.address || '',
-        city: userProfile.city || '',
-        country: userProfile.country || '',
-        postalCode: userProfile.postalCode || '',
-        verified: userProfile.emailVerified || false,
-        tier: 'member',
-      },
+      user: mappedUser,
     });
   } catch (error) {
     console.error('❌ Error:', error.message);
