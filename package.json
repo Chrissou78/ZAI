@@ -2,15 +2,15 @@
   "name": "zai-monorepo",
   "version": "1.0.0",
   "private": true,
+  "dependencies": {
+    "jsonwebtoken": "^9.0.2",
+    "axios": "^1.6.0"
+  },
+  "devDependencies": {},
   "scripts": {
     "dev": "pnpm -r --parallel dev",
     "build": "pnpm -r build",
-    "frontend": "cd apps/frontend && pnpm dev",
-    "backend": "cd apps/backend && pnpm dev",
-    "frontend:build": "cd apps/frontend && pnpm build",
-    "backend:build": "cd apps/backend && pnpm build"
-  },
-  "pnpm": {
-    "overrides": {}
+    "frontend": "pnpm --filter zai-frontend dev",
+    "backend": "pnpm --filter zai-backend dev"
   }
 }

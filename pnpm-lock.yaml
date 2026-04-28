@@ -6,7 +6,14 @@ settings:
 
 importers:
 
-  .: {}
+  .:
+    dependencies:
+      axios:
+        specifier: ^1.6.0
+        version: 1.15.2
+      jsonwebtoken:
+        specifier: ^9.0.2
+        version: 9.0.3
 
   apps/backend:
     dependencies:
