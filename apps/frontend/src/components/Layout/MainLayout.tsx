@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useLocation, Outlet, useNavigate } from 'react-router-dom';
 import { useAppContext } from '../../context/AppContext';
+import { LogoutButton } from '../Auth/LogoutButton';
 
 const MainLayout: React.FC = () => {
   const { user, setUser, setWalletState } = useAppContext();
@@ -27,7 +28,7 @@ const MainLayout: React.FC = () => {
     setIsLoggingOut(true);
     
     // Create hidden logout iframe to properly disconnect from WalletTwo
-    const companyId = import.meta.env.VITE_COMPANY_ID || 'zai';
+    const companyId = import.meta.env.VITE_COMPANY_ID || 'p7IH5cVirHbWy1a0hPxeKro5j9bRSJtt';
     const logoutUrl = new URL('https://wallet.wallettwo.com/auth/login');
     logoutUrl.searchParams.append('action', 'logout');
     logoutUrl.searchParams.append('iframe', 'true');
