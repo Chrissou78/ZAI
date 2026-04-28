@@ -20,7 +20,7 @@ const Dashboard: React.FC = () => {
   const memberSince = user.createdAt ? new Date(user.createdAt).getFullYear() : new Date().getFullYear();
 
   const handleCopyWallet = () => {
-    navigator.clipboard.writeText(user.walletAddress || '');
+    navigator.clipboard.writeText(user.wallet || '');
     setCopiedWallet(true);
     setTimeout(() => setCopiedWallet(false), 2000);
   };
@@ -108,7 +108,7 @@ const Dashboard: React.FC = () => {
               <strong style={{ color: '#1a1a1a' }}>Wallet Address:</strong>
               <div style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <span style={{ fontFamily: 'monospace', fontSize: '11px', background: '#f5f4f0', padding: '0.5rem', borderRadius: '4px', flex: 1, wordBreak: 'break-all' }}>
-                  {user.walletAddress}
+                  {user.wallet}
                 </span>
                 <button
                   onClick={handleCopyWallet}
