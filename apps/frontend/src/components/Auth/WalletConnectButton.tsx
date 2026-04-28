@@ -18,16 +18,25 @@ export function WalletConnectButton() {
       const iframe = document.getElementById('wallettwo-auth-iframe') as HTMLIFrameElement;
       if (!iframe || event.source !== iframe.contentWindow) return;
 
-      const { token, type } = event.data;
+      const { token, type, user, wallet } = event.data;
 
       if (type !== 'wallet_session') return;
 
-      console.log('✅ WalletTwo session received, exchanging token...');
+      console.log('✅ WalletTwo session received');
       setIsLoading(true);
 
       try {
-        // Call backend to exchange token
-        const response = await apiService.post('/auth/login', { token });
+        if (!token || !user || !wallet) {
+          throw new Error('Missing token, user, or wallet from WalletTwo');
+        }
+
+        // Send all required fields
+        console.log('SENDING:', { token, userId: user, wallet });
+        const response = await apiService.post('/auth/login', {
+          token,
+          userId: user,
+          wallet,
+        });
 
         if (response.data?.success && response.data?.jwtToken) {
           console.log('✅ Login successful');
@@ -35,7 +44,7 @@ export function WalletConnectButton() {
           setUser(response.data.user as any);
           setWalletState({
             isConnected: true,
-            address: response.data.user?.walletAddress || '',
+            address: wallet,
             token: jwtToken,
             isLoading: false,
             error: null,
