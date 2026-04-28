@@ -184,10 +184,9 @@ const Profile: React.FC = () => {
           {/* Info */}
           <div style={{ width: '100%', textAlign: 'left' }}>
             {[
-              { label: 'Member since', value: user.memberSince || 'January 2023' },
-              { label: 'Location', value: user.location || 'Switzerland' },
-              { label: 'NFC Card ID', value: user.nfcCardId || 'ZAI-2024-7823' },
-              { label: 'Region & Currency', value: 'CHF · Alpine region' },
+              ...(user.city ? [{ label: 'City', value: user.city }] : []),
+              ...(user.country ? [{ label: 'Country', value: user.country }] : []),
+              ...(user.address ? [{ label: 'Address', value: user.address }] : []),
             ].map((item, i) => (
               <div
                 key={i}
@@ -196,7 +195,7 @@ const Profile: React.FC = () => {
                   alignItems: 'center',
                   gap: '8px',
                   padding: '6px 0',
-                  borderBottom: i < 3 ? '1px solid #e0ddd6' : 'none',
+                  borderBottom: i < 2 ? '1px solid #e0ddd6' : 'none',
                   fontSize: '11px',
                   color: '#6a6a6a',
                 }}
