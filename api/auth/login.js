@@ -14,10 +14,10 @@ export default async function handler(req, res) {
       body = JSON.parse(body);
     }
 
-    const { token } = body;
+    const { token, userId, wallet } = body;
 
-    if (!token) {
-      return res.status(400).json({ error: 'Missing token' });
+    if (!token || !userId || !wallet) {
+      return res.status(400).json({ error: 'Missing token, userId, or wallet' });
     }
 
     console.log('🔄 Exchanging WalletTwo token...');
@@ -36,48 +36,37 @@ export default async function handler(req, res) {
       }
     );
 
-    console.log('✅ Exchange successful:', JSON.stringify(exchangeResponse.data, null, 2));
+    console.log('✅ Exchange successful');
 
-    const sessionToken = exchangeResponse.data.token || exchangeResponse.data.accessToken;
-    const userId = exchangeResponse.data.userId || exchangeResponse.data.user?.id || exchangeResponse.data.session?.id;
-    const walletAddress = exchangeResponse.data.wallet || exchangeResponse.data.address || 'unknown';
+    // Extract from nested structure
+    const sessionToken = exchangeResponse.data.session?.token;
+    const userInfo = exchangeResponse.data.user || {};
+    const sessionUserId = exchangeResponse.data.session?.userId || userId;
 
-    if (!sessionToken || !userId) {
-      console.error('❌ Missing sessionToken or userId in response');
-      return res.status(400).json({ error: 'Invalid exchange response' });
+    if (!sessionToken) {
+      console.error('❌ No session token in response');
+      return res.status(400).json({ error: 'No session token in response' });
     }
 
-    // Fetch user profile from WalletTwo
-    console.log('📥 Fetching user profile...');
-    const profileUrl = `${baseUrl}/auth/api/auth/get-session`;
-    const profileResponse = await axios.get(profileUrl, {
-      headers: {
-        'Authorization': `Bearer ${sessionToken}`,
-        'Content-Type': 'application/json',
-      },
-    });
-
-    console.log('✅ Profile received:', JSON.stringify(profileResponse.data, null, 2));
-
-    const userProfile = profileResponse.data || {};
-
     const jwtToken = jwt.sign(
-      { userId, wallet: walletAddress, wallettwoToken: sessionToken },
+      { userId: sessionUserId, wallet, wallettwoToken: sessionToken },
       process.env.JWT_SECRET || 'fallback-secret',
       { expiresIn: '7d' }
     );
+
+    console.log('✅ Login successful, JWT created');
 
     return res.status(200).json({
       success: true,
       jwtToken,
       user: {
-        id: userId,
-        walletAddress: userProfile.wallet || walletAddress,
-        firstName: userProfile.firstName || userProfile.given_name || 'User',
-        lastName: userProfile.lastName || userProfile.family_name || '',
-        email: userProfile.email || '',
-        phone: userProfile.phone || '',
-        verified: userProfile.verified || false,
+        id: sessionUserId,
+        walletAddress: userInfo.wallet || wallet,
+        firstName: userInfo.givenName || userInfo.name?.split('.')[0] || 'User',
+        lastName: userInfo.familyName || '',
+        email: userInfo.email || '',
+        phone: userInfo.phoneNumber || '',
+        verified: userInfo.emailVerified || false,
         tier: 'member',
       },
     });
