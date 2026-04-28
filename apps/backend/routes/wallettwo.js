@@ -67,4 +67,49 @@ router.get('/profile', authMiddleware, async (req, res) => {
   }
 });
 
+// ============================================
+// Exchange WalletTwo Token
+// ============================================
+router.post('/exchange', async (req, res) => {
+  try {
+    const { code } = req.body;
+
+    console.log('🔄 Exchanging WalletTwo token...');
+
+    if (!code) {
+      console.error('❌ No code provided');
+      return res.status(400).json({ error: 'No code provided' });
+    }
+
+    const baseUrl = process.env.WALLETTWO_API_URL || 'https://api.wallettwo.com';
+    const exchangeUrl = `${baseUrl}/auth/api/auth/one-time-token/verify`;
+
+    console.log('🔗 Exchange URL:', exchangeUrl);
+    console.log('🔑 Using API Key:', process.env.WALLETTWO_API_KEY ? '***' : 'NOT SET');
+
+    const response = await axios.post(
+      exchangeUrl,
+      { token: code },
+      {
+        headers: {
+          'Authorization': `Bearer ${process.env.WALLETTWO_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    console.log('✅ Exchange successful:', JSON.stringify(response.data, null, 2));
+
+    res.json({
+      success: true,
+      data: response.data,
+    });
+  } catch (error) {
+    console.error('❌ Exchange error:', error.message);
+    console.error('   Status:', error.response?.status);
+    console.error('   Data:', JSON.stringify(error.response?.data, null, 2));
+    res.status(500).json({ error: 'Exchange failed', message: error.message });
+  }
+});
+
 module.exports = router;

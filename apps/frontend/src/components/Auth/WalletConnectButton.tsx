@@ -44,46 +44,21 @@ export function WalletConnectButton() {
   const loginWithBackend = async (walletToken: string, wallet: string, userId: string) => {
     try {
       console.log('📤 Calling backend login...');
-
-      const response = await apiService.post('/auth/login', {
-        token: walletToken,
-        wallet,
-        userId,
-      });
-
-      console.log('📥 Backend response:', response.data);
-
+      const response = await apiService.post('/auth/login', { token: walletToken, wallet, userId });
       if (response.data?.success && response.data?.jwtToken) {
         const jwtToken = response.data.jwtToken;
-        const userData = response.data.user;
-
-        console.log('✅ Setting user data:', userData);
-
-        setUser(userData as any);
-        setWalletState({
-          isConnected: true,
-          address: wallet,
-          token: jwtToken,
-          isLoading: false,
-          error: null,
-        });
-
-        localStorage.setItem('zai_user', JSON.stringify(userData));
+        setUser(response.data.user as any);
+        setWalletState({ isConnected: true, address: wallet, token: jwtToken, isLoading: false, error: null });
+        localStorage.setItem('zai_user', JSON.stringify(response.data.user));
         localStorage.setItem('zai_token', jwtToken);
-
-        // Redirect to dashboard with complete user data
-        setTimeout(() => {
-          setIsLoading(false);
-          setShowModal(false);
-          navigate('/dashboard');
-        }, 500);
+        setTimeout(() => { setIsLoading(false); setShowModal(false); navigate('/dashboard'); }, 500);
       } else {
         throw new Error('Invalid login response');
       }
     } catch (error) {
       console.error('❌ Backend login error:', error);
-      alert('Login failed. Please try again.');
       setIsLoading(false);
+      alert('Login failed. Please try again.');
     }
   };
 
