@@ -6,6 +6,5 @@
     "VITE_API_URL": "/api",
     "VITE_COMPANY_ID": "zai",
     "NODE_ENV": "production"
-  },
-  "envPrefix": "VITE_"
+  }
 }
