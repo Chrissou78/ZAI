@@ -2,7 +2,9 @@
   "buildCommand": "pnpm install --prod=false && cd apps/frontend && pnpm exec vite build",
   "installCommand": "pnpm install",
   "outputDirectory": "apps/frontend/dist",
-  "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/$1" }
-  ]
+  "functions": {
+    "api/**/*.js": {
+      "runtime": "nodejs18.x"
+    }
+  }
 }

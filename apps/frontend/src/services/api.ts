@@ -1,7 +1,6 @@
 import axios, { AxiosInstance, AxiosResponse, AxiosRequestConfig } from 'axios';
 import { ApiResponse } from '../types';
 
-// Use VITE_API_URL from env, it should be /api or full URL
 const API_BASE_URL = '/api';
 
 class APIService {
@@ -11,16 +10,12 @@ class APIService {
     this.client = axios.create({
       baseURL: API_BASE_URL,
       timeout: 10000,
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
     });
 
     this.client.interceptors.request.use((config) => {
       const token = localStorage.getItem('zai_token');
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-      }
+      if (token) config.headers.Authorization = `Bearer ${token}`;
       return config;
     });
 
