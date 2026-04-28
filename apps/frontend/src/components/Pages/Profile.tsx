@@ -10,10 +10,10 @@ const Profile: React.FC = () => {
     firstName: user?.firstName || '',
     lastName: user?.lastName || '',
     email: user?.email || '',
-    phone: user?.phone || '+41 79 123 45 67',
-    dob: user?.dob || '14 March 1988',
+    phone: user?.phone || '',
+    dob: user?.dob || '',
     location: user?.location || '',
-    address: user?.address || 'Bahnhofstrasse 42, 8001 Zürich',
+    address: user?.address || '',
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -26,9 +26,7 @@ const Profile: React.FC = () => {
       try {
         const response = await apiService.put('/auth/profile', formData);
         if (response.data?.success) {
-          // Update context with new user data
           const updatedUser = { ...user, ...formData };
-          // Assuming you have a setUser function in your context
           localStorage.setItem('zai_user', JSON.stringify(updatedUser));
           console.log('Profile updated successfully');
           setIsEditing(false);
@@ -156,31 +154,6 @@ const Profile: React.FC = () => {
             ● {user.tier || 'member'}
           </div>
 
-          {/* Stats */}
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr 1fr',
-              gap: '1px',
-              background: '#e0ddd6',
-              border: '1px solid #e0ddd6',
-              width: '100%',
-              marginBottom: '1.5rem',
-            }}
-          >
-            {[
-              { n: '4', l: 'Products' },
-              { n: '3', l: 'Events' },
-            ].map((stat, i) => (
-              <div key={i} style={{ background: '#ffffff', padding: '0.75rem', textAlign: 'center' }}>
-                <div style={{ fontSize: '18px', fontWeight: 200 }}>{stat.n}</div>
-                <div style={{ fontSize: '11px', letterSpacing: '0.15em', textTransform: 'uppercase', color: '#6a6a6a', marginTop: '2px' }}>
-                  {stat.l}
-                </div>
-              </div>
-            ))}
-          </div>
-
           {/* Info */}
           <div style={{ width: '100%', textAlign: 'left' }}>
             {[
@@ -282,10 +255,10 @@ const Profile: React.FC = () => {
             {/* Other fields */}
             {[
               { name: 'email', label: 'Email Address' },
-              { name: 'phone', label: 'Phone Number' },
-              { name: 'dob', label: 'Date of Birth' },
-              { name: 'address', label: 'Home Address' },
-              { name: 'location', label: 'Location' },
+              { name: 'address', label: 'Residential Address' },
+              { name: 'city', label: 'City' },
+              { name: 'country', label: 'Country' },
+              { name: 'postalCode', label: 'Postal Code' },
             ].map((field) => (
               <div key={field.name} style={{ background: '#ffffff', padding: '1rem 1.25rem' }}>
                 <label
@@ -303,7 +276,7 @@ const Profile: React.FC = () => {
                 <input
                   type="text"
                   name={field.name}
-                  value={formData[field.name as keyof typeof formData]}
+                  value={formData[field.name as keyof typeof formData] || ''}
                   onChange={handleChange}
                   disabled={!isEditing}
                   style={{
@@ -318,6 +291,7 @@ const Profile: React.FC = () => {
                     outline: 'none',
                     cursor: isEditing ? 'text' : 'default',
                   }}
+                  placeholder="Not provided"
                 />
               </div>
             ))}
