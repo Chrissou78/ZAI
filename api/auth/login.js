@@ -19,6 +19,8 @@ export default async function handler(req, res) {
     const exchangeUrl = `${baseUrl}/auth/api/auth/one-time-token/verify`;
 
     console.log('🔄 Exchanging token with WalletTwo...');
+    console.log('   URL:', exchangeUrl);
+    console.log('   API Key:', process.env.WALLETTWO_API_KEY ? '***' : 'NOT SET');
 
     const exchangeResponse = await axios.post(
       exchangeUrl,
@@ -31,16 +33,24 @@ export default async function handler(req, res) {
       }
     );
 
-    console.log('✅ Exchange successful');
+    console.log('✅ Exchange successful:', exchangeResponse.data);
 
-    const sessionToken = exchangeResponse.data.token || exchangeResponse.data.accessToken;
+    const sessionToken = exchangeResponse.data.token || exchangeResponse.data.accessToken || exchangeResponse.data.session_token;
+    
+    if (!sessionToken) {
+      console.error('❌ No session token in response');
+      return res.status(400).json({ error: 'No session token in exchange response' });
+    }
+
     const jwtToken = jwt.sign(
       { userId, wallet, wallettwoToken: sessionToken },
-      process.env.JWT_SECRET,
+      process.env.JWT_SECRET || 'your-secret-key',
       { expiresIn: '7d' }
     );
 
-    res.json({
+    console.log('📝 JWT created');
+
+    res.status(200).json({
       success: true,
       jwtToken,
       user: {
@@ -56,6 +66,8 @@ export default async function handler(req, res) {
     });
   } catch (error) {
     console.error('❌ Login error:', error.message);
+    console.error('   Status:', error.response?.status);
+    console.error('   Data:', error.response?.data);
     res.status(500).json({ error: 'Login failed', message: error.message });
   }
 }
