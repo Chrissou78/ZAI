@@ -57,7 +57,7 @@ export function LogoutButton() {
         setTimeout(() => {
           setIsLoading(false);
           navigate('/');
-        }, 500);
+        }, 5);
       };
 
       window.addEventListener('message', handleLogoutMessage);
