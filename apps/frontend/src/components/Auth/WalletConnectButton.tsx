@@ -30,8 +30,9 @@ export function WalletConnectButton() {
           throw new Error('Missing token, user, or wallet from WalletTwo');
         }
 
+        console.log('📤 Sending to backend:', { token, userId: user, wallet });
+
         // Send all required fields
-        console.log('SENDING:', { token, userId: user, wallet });
         const response = await apiService.post('/auth/login', {
           token,
           userId: user,
@@ -52,9 +53,11 @@ export function WalletConnectButton() {
           localStorage.setItem('zai_user', JSON.stringify(response.data.user));
           localStorage.setItem('zai_token', jwtToken);
 
+          // CLOSE IFRAME IMMEDIATELY
+          setShowModal(false);
+
           setTimeout(() => {
             setIsLoading(false);
-            setShowModal(false);
             navigate('/dashboard');
           }, 500);
         }
@@ -64,6 +67,7 @@ export function WalletConnectButton() {
         alert('Login failed. Please try again.');
       }
 
+      // REMOVE LISTENER
       window.removeEventListener('message', handleMessage);
     };
 
