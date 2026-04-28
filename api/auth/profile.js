@@ -14,7 +14,7 @@ export default async function handler(req, res) {
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret');
 
     if (req.method === 'PUT') {
-      const { firstName, lastName, email, phone, dob, address, location } = req.body;
+      const { firstName, lastName, email, address, city, country, postalCode } = req.body;
 
       console.log('📝 Updating profile for user:', decoded.userId);
 
@@ -24,7 +24,16 @@ export default async function handler(req, res) {
       return res.status(200).json({
         success: true,
         message: 'Profile updated successfully',
-        user: { ...decoded, firstName, lastName, email, phone, dob, address, location },
+        user: { 
+          ...decoded, 
+          firstName, 
+          lastName, 
+          email, 
+          address, 
+          city, 
+          country, 
+          postalCode 
+        },
       });
     }
 

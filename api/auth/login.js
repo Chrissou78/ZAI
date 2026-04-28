@@ -48,7 +48,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Invalid exchange response' });
     }
 
-    console.log('✅ User profile extracted from exchange response');
+    console.log('✅ User profile extracted');
 
     const jwtToken = jwt.sign(
       { userId: sessionUserId, wallet, wallettwoToken: sessionToken },
@@ -62,8 +62,8 @@ export default async function handler(req, res) {
       user: {
         id: sessionUserId,
         walletAddress: wallet,
-        firstName: userProfile.givenName || userProfile.name?.split(' ')[0] || 'User',
-        lastName: userProfile.familyName || userProfile.name?.split(' ')[1] || '',
+        firstName: userProfile.givenName || userProfile.name?.split(' ')[0] || '',
+        lastName: userProfile.familyName || '',
         email: userProfile.email || '',
         phone: userProfile.phoneNumber || '',
         address: userProfile.address || '',
