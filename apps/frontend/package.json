@@ -20,7 +20,7 @@
     "vite": "^4.5.14"
   },
   "scripts": {
-    "build": "vite build",
+    "build": "cd ../../ && pnpm exec vite build --root apps/frontend",
     "dev": "vite",
     "preview": "vite preview"
   }

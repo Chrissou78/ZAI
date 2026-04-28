@@ -1,5 +1,5 @@
 {
-  "buildCommand": "pnpm install && pnpm build",
+  "buildCommand": "cd apps/frontend && pnpm install && ../../node_modules/.bin/vite build",
   "installCommand": "pnpm install",
   "outputDirectory": "apps/frontend/dist",
   "env": {
