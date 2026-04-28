@@ -1,37 +1,112 @@
 import React, { useState } from 'react';
-import { Link, useLocation, Outlet } from 'react-router-dom';
+import { Link, useLocation, Outlet, useNavigate } from 'react-router-dom';
 import { useAppContext } from '../../context/AppContext';
 
 const MainLayout: React.FC = () => {
-  const { user } = useAppContext();
+  const { user, setUser, setWalletState } = useAppContext();
+  const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
-  // Track window resize
   React.useEffect(() => {
     const handleResize = () => {
       setIsMobile(window.innerWidth < 1024);
-      if (window.innerWidth >= 1024) {
-        setSidebarOpen(false);
-      }
+      if (window.innerWidth >= 1024) setSidebarOpen(false);
     };
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Close sidebar on route change
-  React.useEffect(() => {
-    setSidebarOpen(false);
-  }, [location.pathname]);
+  React.useEffect(() => setSidebarOpen(false), [location.pathname]);
 
   const isActive = (path: string) => location.pathname === path;
 
+  const handleLogout = () => {
+    setIsLoggingOut(true);
+    
+    // Create hidden logout iframe to properly disconnect from WalletTwo
+    const companyId = import.meta.env.VITE_COMPANY_ID || 'zai';
+    const logoutUrl = new URL('https://wallet.wallettwo.com/auth/login');
+    logoutUrl.searchParams.append('action', 'logout');
+    logoutUrl.searchParams.append('iframe', 'true');
+    logoutUrl.searchParams.append('companyId', companyId);
+    logoutUrl.searchParams.append('auto_accept', 'true');
+
+    const logoutIframe = document.createElement('iframe');
+    logoutIframe.id = 'wallettwo-logout-iframe';
+    logoutIframe.src = logoutUrl.toString();
+    logoutIframe.style.display = 'none';
+    document.body.appendChild(logoutIframe);
+
+    const logoutHandler = (event: MessageEvent) => {
+      if (!event.origin.includes('wallettwo.com')) return;
+
+      console.log('🚪 Logout event:', event.data);
+
+      if (event.data.type === 'wallet_logout') {
+        console.log('✅ WalletTwo logout confirmed');
+        
+        // Clear local state
+        setUser(null);
+        setWalletState({
+          isConnected: false,
+          address: undefined,
+          token: null,
+          isLoading: false,
+          error: null,
+        });
+
+        // Clear storage
+        localStorage.removeItem('zai_user');
+        localStorage.removeItem('zai_token');
+
+        // Clean up
+        window.removeEventListener('message', logoutHandler);
+        if (document.body.contains(logoutIframe)) {
+          document.body.removeChild(logoutIframe);
+        }
+
+        // Redirect to home
+        setTimeout(() => {
+          navigate('/');
+          setIsLoggingOut(false);
+        }, 500);
+      }
+    };
+
+    window.addEventListener('message', logoutHandler);
+
+    // Fallback timeout - proceed with logout after 5 seconds regardless
+    setTimeout(() => {
+      window.removeEventListener('message', logoutHandler);
+      if (document.body.contains(logoutIframe)) {
+        document.body.removeChild(logoutIframe);
+      }
+
+      setUser(null);
+      setWalletState({
+        isConnected: false,
+        address: undefined,
+        token: null,
+        isLoading: false,
+        error: null,
+      });
+
+      localStorage.removeItem('zai_user');
+      localStorage.removeItem('zai_token');
+
+      navigate('/');
+      setIsLoggingOut(false);
+    }, 5000);
+  };
+
   return (
     <div style={{ display: 'flex', minHeight: '100vh' }}>
-      {/* Mobile Overlay */}
       {sidebarOpen && isMobile && (
         <div
+          onClick={() => setSidebarOpen(false)}
           style={{
             position: 'fixed',
             top: 0,
@@ -41,14 +116,13 @@ const MainLayout: React.FC = () => {
             background: 'rgba(0,0,0,0.5)',
             zIndex: 99,
           }}
-          onClick={() => setSidebarOpen(false)}
         />
       )}
 
-      {/* SIDENAV - Only visible on desktop or when mobile menu is open */}
+      {/* SIDEBAR */}
       <nav
         style={{
-          position: isMobile ? 'fixed' : 'relative',
+          position: isMobile ? 'fixed' : 'sticky',
           top: 0,
           left: 0,
           width: '220px',
@@ -60,120 +134,169 @@ const MainLayout: React.FC = () => {
           zIndex: 100,
           overflowY: 'auto',
           color: '#f5f4f0',
-          fontFamily: "'Inter', sans-serif",
           transform: isMobile && !sidebarOpen ? 'translateX(-100%)' : 'translateX(0)',
           transition: 'transform 0.3s ease',
+          flexShrink: 0,
         }}
       >
-        {/* Logo Section */}
-        <div style={{ padding: '1.5rem 1.5rem 1rem', borderBottom: '1px solid #2a2a2a' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-            <svg width="80" height="25" viewBox="0 0 110 35" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <g clipPath="url(#clip-nav-logo)">
-                <path d="M24.4032 15.5546C24.4032 14.215 25.4329 13.1253 26.7025 13.1253H32.6908C33.9604 13.1253 34.9901 14.215 34.9901 15.5546V19.4435C34.9901 20.7831 33.9604 21.8728 32.6908 21.8728H26.7025C25.4329 21.8728 24.4032 20.7831 24.4032 19.4435V15.5546ZM12.6665 2.29837C12.6665 1.02873 13.6962 -0.000976562 14.9658 -0.000976562H20.0344C21.304 -0.000976562 22.3337 1.02873 22.3337 2.29837V32.6897C22.3337 33.9593 21.304 34.989 20.0344 34.989H14.9658C13.6962 34.989 12.6665 33.9593 12.6665 32.6897V2.29837ZM0.00012207 21.8728L3.00926 16.3144C3.28918 15.8045 3.09924 15.3946 2.58938 15.3946H0.00012207C0.0201164 14.135 1.03983 13.1253 2.29947 13.1253H10.5871V13.1553L7.54797 18.7537C7.26805 19.2635 7.45799 19.6734 7.96785 19.6734H10.5871C10.5271 20.8931 9.5274 21.8728 8.28776 21.8728H0.00012207Z" fill="#f5f4f0"/>
-                <path d="M63.7822 31.2694H52.0256C51.5457 31.2694 51.2758 31.1395 50.9259 30.7796C50.4461 30.2497 50.3961 29.5499 50.746 28.9701L60.9631 13.6445H52.0256C51.1858 13.6445 50.526 12.9447 50.576 12.1049C50.576 11.3151 51.2358 10.6953 52.0256 10.6953H63.7822C64.2221 10.6953 64.482 10.7853 64.8419 11.1352C65.3718 11.625 65.4118 12.3648 65.0219 12.9847L54.6748 28.3103H63.7922C64.582 28.3103 65.2418 29.0201 65.2418 29.8099C65.2418 30.5996 64.582 31.2594 63.7922 31.2594" fill="#f5f4f0"/>
-                <path d="M86.1055 22.4627H78.7476C77.468 22.4627 77.298 24.1322 77.298 25.4119C77.298 26.6915 77.478 28.321 78.7476 28.321H86.1055V22.4627ZM88.7048 30.7803C88.3949 31.1302 88.045 31.2702 87.5551 31.2702H78.7476C75.8884 31.2702 74.3489 28.281 74.3489 25.4119C74.3489 22.5427 75.8884 19.5135 78.7476 19.5135H86.1055V16.6044C86.1055 15.7246 85.8456 15.1048 85.2258 14.495C84.6059 13.8751 84.0361 13.6552 83.1564 13.6552H77.298C76.5083 13.6552 75.7985 12.9954 75.7985 12.2056C75.7985 11.4159 76.5083 10.7061 77.298 10.7061H83.1564C84.8759 10.7061 86.1055 11.1459 87.3452 12.3756C88.5748 13.6052 89.0147 14.8449 89.0147 16.6044V29.8106C89.0147 30.1605 88.9247 30.4704 88.7048 30.7803Z" fill="#f5f4f0"/>
-                <path d="M106.279 3.39661C106.279 0.887328 109.978 0.887328 109.978 3.39661C109.978 5.90589 106.279 5.86591 106.279 3.39661ZM108.129 31.2687C107.339 31.2687 106.679 30.6088 106.679 29.8191V13.7437H100.161C99.2413 13.7437 98.5715 13.3438 98.4015 12.644C98.1316 11.5443 98.9713 10.7545 99.7211 10.7545C99.7211 10.7545 107.739 10.7145 108.129 10.7145C108.918 10.7145 109.578 11.4143 109.578 12.2141V29.8291C109.578 30.6188 108.918 31.2786 108.129 31.2786" fill="#f5f4f0"/>
-              </g>
-              <defs>
-                <clipPath id="clip-nav-logo">
-                  <rect width="109.979" height="35" fill="white" />
-                </clipPath>
-              </defs>
-            </svg>
-          </div>
-          <div style={{ fontSize: '11px', letterSpacing: '0.35em', textTransform: 'uppercase', color: '#6a6a6a', marginTop: '4px' }}>
-            experience club
+        {/* Logo */}
+        <div style={{ padding: '1.5rem', borderBottom: '1px solid #2a2a2a' }}>
+          <div style={{ fontSize: '18px', fontWeight: 300, letterSpacing: '0.15em' }}>
+            zai
           </div>
         </div>
 
-        {/* User Section */}
-        <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid #2a2a2a', display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <div style={{
-            width: '32px',
-            height: '32px',
-            borderRadius: '50%',
-            background: '#2e2e2e',
-            border: '1px solid #b8a06a',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '10px',
-            color: '#b8a06a',
-            flexShrink: 0,
-          }}>
-            {user?.firstName?.[0]}{user?.lastName?.[0]}
-          </div>
-          <div>
-            <div style={{ fontSize: '12px', color: '#f5f4f0', fontWeight: 500 }}>
-              {user?.firstName} {user?.lastName}
+        {/* User Profile */}
+        {user && (
+          <div style={{ padding: '1rem', borderBottom: '1px solid #2a2a2a' }}>
+            <div
+              style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: '50%',
+                background: 'linear-gradient(135deg, #b8a06a, #8a7045)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'white',
+                fontSize: '14px',
+                fontWeight: 500,
+                marginBottom: '0.75rem',
+              }}
+            >
+              {`${(user.firstName || 'U')[0]}${(user.lastName || '')[0] || ''}`}
+            </div>
+            <div style={{ fontSize: '12px', fontWeight: 500 }}>{user.firstName || 'User'}</div>
+            <div style={{ fontSize: '10px', color: '#b8a06a', marginTop: '2px' }}>
+              {user.tier || 'member'}
             </div>
           </div>
+        )}
+
+        {/* Navigation Links */}
+        <div style={{ flex: 1, padding: '1rem 0' }}>
+          {[
+            { path: '/', label: 'Home', icon: '🏠' },
+            { path: '/dashboard', label: 'Dashboard', icon: '📊' },
+            { path: '/products', label: 'Products', icon: '📦' },
+            { path: '/events', label: 'Events', icon: '📅' },
+            { path: '/community', label: 'Community', icon: '👥' },
+            { path: '/profile', label: 'Profile', icon: '👤' },
+            { path: '/settings', label: 'Settings', icon: '⚙️' },
+          ].map((item) => (
+            <Link
+              key={item.path}
+              to={item.path}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.75rem',
+                padding: '0.75rem 1rem',
+                color: isActive(item.path) ? '#b8a06a' : '#888',
+                textDecoration: 'none',
+                fontSize: '13px',
+                borderLeft: isActive(item.path) ? '2px solid #b8a06a' : '2px solid transparent',
+                transition: 'all 0.2s',
+              }}
+              onMouseEnter={(e) => {
+                if (!isActive(item.path)) {
+                  (e.currentTarget as HTMLAnchorElement).style.color = '#b8a06a';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!isActive(item.path)) {
+                  (e.currentTarget as HTMLAnchorElement).style.color = '#888';
+                }
+              }}
+            >
+              <span>{item.icon}</span>
+              <span>{item.label}</span>
+            </Link>
+          ))}
         </div>
 
-        {/* Navigation */}
-        <nav style={{ flex: 1, padding: '1rem 0' }}>
-          <div style={{ padding: '0.5rem 1.5rem', fontSize: '11px', letterSpacing: '0.3em', textTransform: 'uppercase', color: '#555' }}>
-            Overview
-          </div>
-          <Link to="/" onClick={() => setSidebarOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '0.65rem 1.5rem', color: isActive('/') ? '#f5f4f0' : '#6a6a6a', textDecoration: 'none', fontSize: '12px', letterSpacing: '0.05em', borderLeft: isActive('/') ? '2px solid #c8102e' : '2px solid transparent', backgroundColor: isActive('/') ? 'rgba(255,255,255,0.05)' : 'transparent', transition: 'all 0.2s' }}>
-            <span>🏠</span> Home
-          </Link>
-          <Link to="/dashboard" onClick={() => setSidebarOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '0.65rem 1.5rem', color: isActive('/dashboard') ? '#f5f4f0' : '#6a6a6a', textDecoration: 'none', fontSize: '12px', letterSpacing: '0.05em', borderLeft: isActive('/dashboard') ? '2px solid #c8102e' : '2px solid transparent', backgroundColor: isActive('/dashboard') ? 'rgba(255,255,255,0.05)' : 'transparent', transition: 'all 0.2s' }}>
-            <span>📊</span> Dashboard
-          </Link>
+        {/* Logout Button at Bottom */}
+        <div
+          style={{
+            padding: '1rem',
+            borderTop: '1px solid #2a2a2a',
+            marginTop: 'auto',
+            flexShrink: 0,
+          }}
+        >
+          <button
+            onClick={handleLogout}
+            disabled={isLoggingOut}
+            style={{
+              width: '100%',
+              padding: '0.75rem 1rem',
+              background: isLoggingOut ? '#999' : '#c8102e',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '4px',
+              fontSize: '12px',
+              fontWeight: 500,
+              letterSpacing: '0.1em',
+              textTransform: 'uppercase',
+              cursor: isLoggingOut ? 'not-allowed' : 'pointer',
+              transition: 'all 0.2s',
+              opacity: isLoggingOut ? 0.6 : 1,
+            }}
+            onMouseEnter={(e) => {
+              if (!isLoggingOut) {
+                (e.currentTarget as HTMLButtonElement).style.background = '#a0071f';
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!isLoggingOut) {
+                (e.currentTarget as HTMLButtonElement).style.background = '#c8102e';
+              }
+            }}
+          >
+            {isLoggingOut ? 'Logging out...' : 'Logout'}
+          </button>
+        </div>
 
-          <div style={{ padding: '0.5rem 1.5rem 0.5rem', marginTop: '1rem', fontSize: '11px', letterSpacing: '0.3em', textTransform: 'uppercase', color: '#555' }}>
-            My zai
-          </div>
-          <Link to="/products" onClick={() => setSidebarOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '0.65rem 1.5rem', color: isActive('/products') ? '#f5f4f0' : '#6a6a6a', textDecoration: 'none', fontSize: '12px', letterSpacing: '0.05em', borderLeft: isActive('/products') ? '2px solid #c8102e' : '2px solid transparent', backgroundColor: isActive('/products') ? 'rgba(255,255,255,0.05)' : 'transparent', transition: 'all 0.2s' }}>
-            <span>🛍️</span> My Products
-          </Link>
-          <Link to="/events" onClick={() => setSidebarOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '0.65rem 1.5rem', color: isActive('/events') ? '#f5f4f0' : '#6a6a6a', textDecoration: 'none', fontSize: '12px', letterSpacing: '0.05em', borderLeft: isActive('/events') ? '2px solid #c8102e' : '2px solid transparent', backgroundColor: isActive('/events') ? 'rgba(255,255,255,0.05)' : 'transparent', transition: 'all 0.2s' }}>
-            <span>📅</span> Events
-          </Link>
-          <Link to="/community" onClick={() => setSidebarOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '0.65rem 1.5rem', color: isActive('/community') ? '#f5f4f0' : '#6a6a6a', textDecoration: 'none', fontSize: '12px', letterSpacing: '0.05em', borderLeft: isActive('/community') ? '2px solid #c8102e' : '2px solid transparent', backgroundColor: isActive('/community') ? 'rgba(255,255,255,0.05)' : 'transparent', transition: 'all 0.2s' }}>
-            <span>👥</span> Community
-          </Link>
-
-          <div style={{ padding: '0.5rem 1.5rem 0.5rem', marginTop: '1rem', fontSize: '11px', letterSpacing: '0.3em', textTransform: 'uppercase', color: '#555' }}>
-            Account
-          </div>
-          <Link to="/profile" onClick={() => setSidebarOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '0.65rem 1.5rem', color: isActive('/profile') ? '#f5f4f0' : '#6a6a6a', textDecoration: 'none', fontSize: '12px', letterSpacing: '0.05em', borderLeft: isActive('/profile') ? '2px solid #c8102e' : '2px solid transparent', backgroundColor: isActive('/profile') ? 'rgba(255,255,255,0.05)' : 'transparent', transition: 'all 0.2s' }}>
-            <span>👤</span> Profile
-          </Link>
-          <Link to="/settings" onClick={() => setSidebarOpen(false)} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '0.65rem 1.5rem', color: isActive('/settings') ? '#f5f4f0' : '#6a6a6a', textDecoration: 'none', fontSize: '12px', letterSpacing: '0.05em', borderLeft: isActive('/settings') ? '2px solid #c8102e' : '2px solid transparent', backgroundColor: isActive('/settings') ? 'rgba(255,255,255,0.05)' : 'transparent', transition: 'all 0.2s' }}>
-            <span>⚙️</span> Settings
-          </Link>
-        </nav>
-
-        {/* Footer */}
-        <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid #2a2a2a', fontSize: '11px', color: '#555', display: 'flex', alignItems: 'center', gap: '6px' }}>
-          ▲ Crafted in the Alps
+        {/* Footer Info */}
+        <div
+          style={{
+            padding: '0.75rem 1rem',
+            fontSize: '10px',
+            color: '#555',
+            borderTop: '1px solid #2a2a2a',
+            textAlign: 'center',
+            flexShrink: 0,
+          }}
+        >
+          Crafted in the Alps<br />Since 2003
         </div>
       </nav>
 
       {/* MAIN CONTENT */}
-      <main style={{
-        marginLeft: !isMobile ? '220px' : '0',
-        flex: 1,
-        minHeight: '100vh',
-        background: '#f5f4f0',
-        transition: 'margin-left 0.3s ease',
-        display: 'flex',
-        flexDirection: 'column',
-      }}>
-        {/* Mobile Header with Hamburger */}
+      <main
+        style={{
+          marginLeft: !isMobile ? '220px' : '0',
+          flex: 1,
+          minHeight: '100vh',
+          background: '#f5f4f0',
+          transition: 'margin-left 0.3s ease',
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+      >
         {isMobile && (
-          <div style={{
-            padding: '1rem',
-            background: '#0a0a0a',
-            borderBottom: '1px solid #2a2a2a',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '1rem',
-            zIndex: 50,
-          }}>
+          <div
+            style={{
+              padding: '1rem',
+              background: '#0a0a0a',
+              borderBottom: '1px solid #2a2a2a',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '1rem',
+              zIndex: 50,
+              flexShrink: 0,
+            }}
+          >
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
               style={{
@@ -182,7 +305,6 @@ const MainLayout: React.FC = () => {
                 color: '#f5f4f0',
                 fontSize: '24px',
                 cursor: 'pointer',
-                padding: 0,
               }}
             >
               ☰

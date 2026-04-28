@@ -7,7 +7,7 @@ import './styles/globals.css';
 
 export function App() {
   return (
-    <WalletTwoProvider companyId={import.meta.env.VITE_WALLETTWO_COMPANY_ID || 'zai'}>
+    <WalletTwoProvider companyId={import.meta.env.VITE_COMPANY_ID || 'zai'}>
       <AppProvider>
         <WalletProvider>
           <Router />

@@ -30,13 +30,45 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
 };
 
 const Router: React.FC = () => {
+  const { user, isLoading } = useAppContext();
+
+  // If user is connected, wrap Home with MainLayout to show sidebar
+  if (!isLoading && user) {
+    return (
+      <BrowserRouter>
+        <Routes>
+          {/* Home with sidebar when authenticated */}
+          <Route
+            element={
+              <ProtectedRoute>
+                <MainLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route path="/" element={<Home />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/products" element={<Products />} />
+            <Route path="/events" element={<Events />} />
+            <Route path="/community" element={<Community />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/settings" element={<Settings />} />
+          </Route>
+
+          {/* 404 */}
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </BrowserRouter>
+    );
+  }
+
+  // If user is NOT connected, Home has no sidebar
   return (
     <BrowserRouter>
       <Routes>
-        {/* Public route - NO sidebar */}
+        {/* Public home without sidebar */}
         <Route path="/" element={<Home />} />
 
-        {/* Protected routes - WITH sidebar */}
+        {/* Protected routes with layout */}
         <Route
           element={
             <ProtectedRoute>

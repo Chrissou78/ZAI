@@ -1,24 +1,12 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useWalletTwo } from '@oc-labs/wallettwo-sdk';
 import { useAppContext } from '../../context/AppContext';
+import { WalletConnectButton } from '../Auth/WalletConnectButton';
 import Button from '../Common/Button';
 
 const Home: React.FC = () => {
   const navigate = useNavigate();
-  const { user: walletUser } = useWalletTwo();
   const { user } = useAppContext();
-
-  // Redirect authenticated users to dashboard
- // useEffect(() => {
-  //  if (user && user.id) {
-   //   // Only redirect if user exists AND we're not already on home
-   //   const timer = setTimeout(() => {
-   //     navigate('/dashboard', { replace: true });
-   //   }, 500); // Small delay to allow page to render
-   //   return () => clearTimeout(timer);
-   // }
-  //}, [user, navigate]);
 
   return (
     <div style={{ minHeight: '100vh' }}>
@@ -48,16 +36,23 @@ const Home: React.FC = () => {
             zIndex: 3,
           }}
         >
-          <div style={{ fontSize: '24px', fontWeight: 300, letterSpacing: '0.15em' }}>
-            zai
-          </div>
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => navigate('/dashboard')}
+          <button
+            onClick={() => navigate('/')}
+            style={{
+              fontSize: '24px',
+              fontWeight: 300,
+              letterSpacing: '0.15em',
+              background: 'none',
+              border: 'none',
+              color: '#ffffff',
+              cursor: 'pointer',
+            }}
           >
-            Log In
-          </Button>
+            zai
+          </button>
+          
+          {/* Show WalletConnectButton (handles both login and user display) */}
+          <WalletConnectButton />
         </div>
 
         {/* Content */}
@@ -80,8 +75,8 @@ const Home: React.FC = () => {
               fontWeight: 200,
               lineHeight: 1.05,
               letterSpacing: '-0.02em',
-              marginBottom: '1.5rem',
               margin: 0,
+              marginBottom: '1.5rem',
             }}
           >
             Your world.
@@ -97,7 +92,6 @@ const Home: React.FC = () => {
               fontSize: '17px',
               maxWidth: '480px',
               lineHeight: 1.8,
-              marginBottom: '2rem',
               margin: '0 0 2rem',
             }}
           >
@@ -109,13 +103,25 @@ const Home: React.FC = () => {
           <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
             <Button
               variant="primary"
-              onClick={() => navigate('/products')}
+              onClick={() => {
+                if (user) {
+                  navigate('/products');
+                } else {
+                  alert('Please log in first');
+                }
+              }}
             >
               Claim Your Product
             </Button>
             <Button
               variant="outline"
-              onClick={() => navigate('/events')}
+              onClick={() => {
+                if (user) {
+                  navigate('/events');
+                } else {
+                  alert('Please log in first');
+                }
+              }}
             >
               See Events
             </Button>
@@ -193,9 +199,8 @@ const Home: React.FC = () => {
                 fontSize: 'clamp(24px, 3.5vw, 40px)',
                 fontWeight: 300,
                 lineHeight: 1.15,
-                marginBottom: '1rem',
-                color: '#1a1a1a',
                 margin: '0 0 1rem',
+                color: '#1a1a1a',
               }}
             >
               Your key to

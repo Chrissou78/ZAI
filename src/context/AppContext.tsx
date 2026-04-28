@@ -1,63 +1,75 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User, WalletState } from '../types';
 
 interface AppContextType {
   user: User | null;
-  walletState: WalletState | null;
+  walletState: WalletState;
   isLoading: boolean;
-  error: Error | null;
+  error: string | null;
   setUser: (user: User | null) => void;
-  setWalletState: (state: WalletState | null) => void;
-  setIsLoading: (loading: boolean) => void;
-  setError: (error: Error | null) => void;
+  setWalletState: (state: WalletState) => void;
+  logout: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export function AppProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [walletState, setWalletState] = useState<WalletState | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
+  const [walletState, setWalletState] = useState<WalletState>({
+    isConnected: false,
+    address: undefined,
+    token: null,
+    isLoading: false,
+    error: null,
+  });
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
+  // Load persisted user on mount
   useEffect(() => {
-    // Initialize from localStorage
-    const savedUser = localStorage.getItem('zai_user');
-    const savedWallet = localStorage.getItem('zai_wallet');
-
-    if (savedUser) {
+    const storedUser = localStorage.getItem('zai_user');
+    const storedToken = localStorage.getItem('zai_token');
+    if (storedUser && storedToken) {
       try {
-        setUser(JSON.parse(savedUser));
-      } catch (e) {
-        console.error('Failed to parse saved user:', e);
-      }
-    } else {
-      // For testing: create a mock user with all required properties
-      const mockUser: any = {
-        id: 'test-user-1',
-        walletAddress: '0x1234567890123456789012345678901234567890',
-        name: 'Anna Kirchner',
-        firstName: 'Anna',
-        lastName: 'Kirchner',
-        tier: 'gold',
-        email: 'anna@example.com',
-        location: 'Pontresina, Switzerland',
-        memberSince: new Date('2024-01-15'),
-      };
-      setUser(mockUser);
-      localStorage.setItem('zai_user', JSON.stringify(mockUser));
-    }
-
-    if (savedWallet) {
-      try {
-        setWalletState(JSON.parse(savedWallet));
-      } catch (e) {
-        console.error('Failed to parse saved wallet:', e);
+        setUser(JSON.parse(storedUser));
+        setWalletState((prev) => ({ ...prev, isConnected: true, token: storedToken }));
+      } catch {
+        localStorage.removeItem('zai_user');
+        localStorage.removeItem('zai_token');
       }
     }
-
-    setIsLoading(false);
   }, []);
+
+  const logout = async (): Promise<void> => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      // Clear localStorage
+      localStorage.removeItem('zai_user');
+      localStorage.removeItem('zai_token');
+      localStorage.removeItem('zai_wallet');
+
+      // Reset state
+      setUser(null);
+      setWalletState({
+        isConnected: false,
+        address: undefined,
+        token: null,
+        isLoading: false,
+        error: null,
+      });
+
+      // Redirect to home
+      window.location.href = '/';
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Logout failed';
+      setError(errorMessage);
+      console.error('Logout error:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <AppContext.Provider
@@ -68,19 +80,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         error,
         setUser,
         setWalletState,
-        setIsLoading,
-        setError,
+        logout,
       }}
     >
       {children}
     </AppContext.Provider>
   );
-};
+}
 
-export const useAppContext = () => {
+export function useAppContext() {
   const context = useContext(AppContext);
   if (!context) {
     throw new Error('useAppContext must be used within AppProvider');
   }
   return context;
-};
+}

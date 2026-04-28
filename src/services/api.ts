@@ -10,48 +10,41 @@ class APIService {
     this.client = axios.create({
       baseURL: API_BASE_URL,
       timeout: 10000,
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
     });
 
-    // Request interceptor
     this.client.interceptors.request.use((config) => {
       const token = localStorage.getItem('zai_token');
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-      }
-      config.headers['X-Request-ID'] = `req_${Date.now()}`;
+      if (token) config.headers.Authorization = `Bearer ${token}`;
       return config;
     });
 
-    // Response interceptor
     this.client.interceptors.response.use(
-      (response) => response,
-      (error) => {
-        if (error.response?.status === 401) {
+      (res) => res,
+      (err) => {
+        if (err.response?.status === 401) {
           localStorage.removeItem('zai_token');
           window.location.href = '/';
         }
-        return Promise.reject(error);
+        return Promise.reject(err);
       }
     );
   }
 
-  get<T = any>(url: string, config?: AxiosRequestConfig): Promise<AxiosResponse<ApiResponse<T>>> {
-    return this.client.get(url, config);
+  get<T = any>(url: string, cfg?: AxiosRequestConfig): Promise<AxiosResponse<ApiResponse<T>>> {
+    return this.client.get(url, cfg);
   }
 
-  post<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<AxiosResponse<ApiResponse<T>>> {
-    return this.client.post(url, data, config);
+  post<T = any>(url: string, data?: any, cfg?: AxiosRequestConfig): Promise<AxiosResponse<ApiResponse<T>>> {
+    return this.client.post(url, data, cfg);
   }
 
-  put<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<AxiosResponse<ApiResponse<T>>> {
-    return this.client.put(url, data, config);
+  put<T = any>(url: string, data?: any, cfg?: AxiosRequestConfig): Promise<AxiosResponse<ApiResponse<T>>> {
+    return this.client.put(url, data, cfg);
   }
 
-  delete<T = any>(url: string, config?: AxiosRequestConfig): Promise<AxiosResponse<ApiResponse<T>>> {
-    return this.client.delete(url, config);
+  delete<T = any>(url: string, cfg?: AxiosRequestConfig): Promise<AxiosResponse<ApiResponse<T>>> {
+    return this.client.delete(url, cfg);
   }
 }
 

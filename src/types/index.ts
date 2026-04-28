@@ -1,18 +1,17 @@
 export interface User {
   id: string;
   walletAddress: string;
-  name?: string;
   firstName?: string;
   lastName?: string;
   email?: string;
   phone?: string;
-  dob?: string;
-  address?: string;
-  location?: string;
-  memberSince?: string;
-  tier?: 'bronze' | 'silver' | 'gold' | 'platinum' | 'member';
-  nfcCardId?: string;
   verified?: boolean;
+  tier?: 'bronze' | 'silver' | 'gold' | 'platinum' | 'member';
+  address?: string;
+  city?: string;
+  country?: string;
+  postalCode?: string;
+  createdAt?: string;
 }
 
 export interface WalletState {
@@ -78,4 +77,6 @@ export interface ApiResponse<T = any> {
   data?: T;
   error?: string;
   message?: string;
+  jwtToken?: string;
+  user?: User;
 }
