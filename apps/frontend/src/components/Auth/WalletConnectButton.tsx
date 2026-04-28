@@ -12,61 +12,58 @@ export function WalletConnectButton() {
   React.useEffect(() => {
     if (!showModal) return;
 
-    const handleMessage = (event: MessageEvent) => {
-      if (!event.origin.includes('wallettwo.com')) return;
+    const handleMessage = async (event: MessageEvent) => {
+      if (event.origin !== 'https://wallet.wallettwo.com') return;
 
-      const data = event.data;
-      console.log('🔔 WalletTwo message:', data);
+      const iframe = document.getElementById('wallettwo-auth-iframe') as HTMLIFrameElement;
+      if (!iframe || event.source !== iframe.contentWindow) return;
 
-      const isLoginEvent = data && (
-        data.event === 'wallet_login' ||
-        data.type === 'wallet_login' ||
-        data.event === 'wallet_session' ||
-        data.type === 'wallet_session'
-      );
+      const { token, type } = event.data;
 
-      if (isLoginEvent && (data.code || data.token)) {
-        console.log('✅ Login successful');
-        setIsLoading(true);
+      if (type !== 'wallet_session') return;
 
-        const token = data.code || data.token;
-        const wallet = data.wallet || data.address || data.wlt;
-        const userId = data.user;
+      console.log('✅ WalletTwo session received, exchanging token...');
+      setIsLoading(true);
 
-        loginWithBackend(token, wallet, userId);
+      try {
+        // Call backend to exchange token
+        const response = await apiService.post('/auth/login', { token });
+
+        if (response.data?.success && response.data?.jwtToken) {
+          console.log('✅ Login successful');
+          const jwtToken = response.data.jwtToken;
+          setUser(response.data.user as any);
+          setWalletState({
+            isConnected: true,
+            address: response.data.user?.walletAddress || '',
+            token: jwtToken,
+            isLoading: false,
+            error: null,
+          });
+          localStorage.setItem('zai_user', JSON.stringify(response.data.user));
+          localStorage.setItem('zai_token', jwtToken);
+
+          setTimeout(() => {
+            setIsLoading(false);
+            setShowModal(false);
+            navigate('/dashboard');
+          }, 500);
+        }
+      } catch (error) {
+        console.error('❌ Login error:', error);
+        setIsLoading(false);
+        alert('Login failed. Please try again.');
       }
+
+      window.removeEventListener('message', handleMessage);
     };
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
   }, [showModal, setUser, setWalletState, navigate]);
 
-  const loginWithBackend = async (walletToken: string, wallet: string, userId: string) => {
-    try {
-      console.log('📤 Calling backend login...');
-      const response = await apiService.post('/auth/login', { token: walletToken, wallet, userId });
-      if (response.data?.success && response.data?.jwtToken) {
-        const jwtToken = response.data.jwtToken;
-        setUser(response.data.user as any);
-        setWalletState({ isConnected: true, address: wallet, token: jwtToken, isLoading: false, error: null });
-        localStorage.setItem('zai_user', JSON.stringify(response.data.user));
-        localStorage.setItem('zai_token', jwtToken);
-        setTimeout(() => { setIsLoading(false); setShowModal(false); navigate('/dashboard'); }, 500);
-      } else {
-        throw new Error('Invalid login response');
-      }
-    } catch (error) {
-      console.error('❌ Backend login error:', error);
-      setIsLoading(false);
-      alert('Login failed. Please try again.');
-    }
-  };
-
   if (user) {
-    const firstName = user.firstName || 'U';
-    const lastName = user.lastName || '';
-    const initials = `${firstName[0]}${lastName[0] || ''}`.toUpperCase();
-
+    const initials = `${user.firstName?.[0] ?? ''}${user.lastName?.[0] ?? ''}`.toUpperCase();
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
         <div
@@ -86,15 +83,18 @@ export function WalletConnectButton() {
           {initials}
         </div>
         <div style={{ fontSize: '12px' }}>
-          <div style={{ fontWeight: 500 }}>{firstName}</div>
+          <div style={{ fontWeight: 500 }}>{user.firstName}</div>
           <div style={{ color: '#b8a06a', fontSize: '10px' }}>{user.tier || 'member'}</div>
         </div>
       </div>
     );
   }
 
-  const companyId = import.meta.env.VITE_COMPANY_ID || 'zai';
-  const iframeUrl = `https://wallet.wallettwo.com/auth/login?action=session&iframe=true&companyId=${companyId}&_t=${Date.now()}`;
+  const companyId = import.meta.env.VITE_COMPANY_ID || 'p7IH5cVirHbWy1a0hPxeKro5j9bRSJtt';
+  const iframeUrl = new URL('https://wallet.wallettwo.com/auth/login');
+  iframeUrl.searchParams.append('action', 'session');
+  iframeUrl.searchParams.append('iframe', 'true');
+  iframeUrl.searchParams.append('companyId', companyId);
 
   return (
     <>
@@ -112,14 +112,6 @@ export function WalletConnectButton() {
           borderRadius: '4px',
           cursor: 'pointer',
           transition: 'all 0.2s',
-        }}
-        onMouseEnter={(e) => {
-          (e.currentTarget as HTMLButtonElement).style.background = '#a0071f';
-          (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(-2px)';
-        }}
-        onMouseLeave={(e) => {
-          (e.currentTarget as HTMLButtonElement).style.background = '#c8102e';
-          (e.currentTarget as HTMLButtonElement).style.transform = 'translateY(0)';
         }}
       >
         Log In
@@ -205,7 +197,8 @@ export function WalletConnectButton() {
             )}
 
             <iframe
-              src={iframeUrl}
+              src={iframeUrl.toString()}
+              id="wallettwo-auth-iframe"
               style={{
                 flex: 1,
                 border: 'none',
@@ -213,7 +206,6 @@ export function WalletConnectButton() {
                 height: '100%',
               }}
               title="WalletTwo Authentication"
-              allow="clipboard-write"
             />
           </div>
         </div>
