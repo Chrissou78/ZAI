@@ -1,28 +1,16 @@
 {
-  "name": "zai-experience-club",
+  "name": "zai-monorepo",
   "version": "1.0.0",
-  "type": "module",
-  "dependencies": {
-    "@oc-labs/wallettwo-sdk": "^0.0.30",
-    "axios": "^1.15.2",
-    "ethers": "^6.7.0",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "react-router-dom": "^7.14.2",
-    "typescript": "^5.0.0"
-  },
-  "devDependencies": {
-    "@types/node": "^20.0.0",
-    "@types/react": "^19.2.14",
-    "@types/react-dom": "^19.2.3",
-    "@types/react-router-dom": "^5.3.3",
-    "@vitejs/plugin-react": "^4.0.0",
-    "vite": "^4.3.0"
-  },
+  "private": true,
   "scripts": {
-    "dev": "vite",
-    "build": "tsc && vite build",
-    "preview": "vite preview",
-    "type-check": "tsc --noEmit"
+    "dev": "pnpm -r --parallel dev",
+    "build": "pnpm -r build",
+    "frontend": "cd apps/frontend && pnpm dev",
+    "backend": "cd apps/backend && pnpm dev",
+    "frontend:build": "cd apps/frontend && pnpm build",
+    "backend:build": "cd apps/backend && pnpm build"
+  },
+  "pnpm": {
+    "overrides": {}
   }
 }

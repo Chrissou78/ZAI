@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "buildCommand": "pnpm build",
+  "installCommand": "pnpm install",
+  "outputDirectory": "apps/frontend/dist",
+  "framework": "vite",
+  "env": {
+    "VITE_API_URL": "@vite_api_url",
+    "WALLETTWO_API_KEY": "@wallettwo_api_key",
+    "WALLETTWO_COMPANY_ID": "@wallettwo_company_id",
+    "JWT_SECRET": "@jwt_secret",
+    "FRONTEND_URL": "@frontend_url"
+  }
+}
