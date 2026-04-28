@@ -20,8 +20,8 @@
     "vite": "^4.5.14"
   },
     "scripts": {
-    "build": "vite build",
-    "dev": "vite",
-    "preview": "vite preview"
-  }
+      "build": "pnpm exec vite build",
+      "dev": "vite",
+      "preview": "vite preview"
+    }
 }
