@@ -26,8 +26,24 @@ const MainLayout: React.FC = () => {
 
   const handleLogout = () => {
     setIsLoggingOut(true);
-    
-    // Create hidden logout iframe to properly disconnect from WalletTwo
+
+    console.log('🚪 Logging out...');
+
+    // Clear local state immediately
+    setUser(null);
+    setWalletState({
+      isConnected: false,
+      address: undefined,
+      token: null,
+      isLoading: false,
+      error: null,
+    });
+
+    // Clear storage immediately
+    localStorage.removeItem('zai_user');
+    localStorage.removeItem('zai_token');
+
+    // Call WalletTwo logout endpoint (fire and forget)
     const companyId = import.meta.env.VITE_COMPANY_ID || 'p7IH5cVirHbWy1a0hPxeKro5j9bRSJtt';
     const logoutUrl = new URL('https://wallet.wallettwo.com/auth/login');
     logoutUrl.searchParams.append('action', 'logout');
@@ -36,71 +52,18 @@ const MainLayout: React.FC = () => {
     logoutUrl.searchParams.append('auto_accept', 'true');
 
     const logoutIframe = document.createElement('iframe');
-    logoutIframe.id = 'wallettwo-logout-iframe';
     logoutIframe.src = logoutUrl.toString();
     logoutIframe.style.display = 'none';
     document.body.appendChild(logoutIframe);
 
-    const logoutHandler = (event: MessageEvent) => {
-      if (!event.origin.includes('wallettwo.com')) return;
-
-      console.log('🚪 Logout event:', event.data);
-
-      if (event.data.type === 'wallet_logout') {
-        console.log('✅ WalletTwo logout confirmed');
-        
-        // Clear local state
-        setUser(null);
-        setWalletState({
-          isConnected: false,
-          address: undefined,
-          token: null,
-          isLoading: false,
-          error: null,
-        });
-
-        // Clear storage
-        localStorage.removeItem('zai_user');
-        localStorage.removeItem('zai_token');
-
-        // Clean up
-        window.removeEventListener('message', logoutHandler);
-        if (document.body.contains(logoutIframe)) {
-          document.body.removeChild(logoutIframe);
-        }
-
-        // Redirect to home
-        setTimeout(() => {
-          navigate('/');
-          setIsLoggingOut(false);
-        }, 500);
-      }
-    };
-
-    window.addEventListener('message', logoutHandler);
-
-    // Fallback timeout - proceed with logout after 5 seconds regardless
+    // Redirect after 500ms
     setTimeout(() => {
-      window.removeEventListener('message', logoutHandler);
       if (document.body.contains(logoutIframe)) {
         document.body.removeChild(logoutIframe);
       }
-
-      setUser(null);
-      setWalletState({
-        isConnected: false,
-        address: undefined,
-        token: null,
-        isLoading: false,
-        error: null,
-      });
-
-      localStorage.removeItem('zai_user');
-      localStorage.removeItem('zai_token');
-
-      navigate('/');
       setIsLoggingOut(false);
-    }, 5000);
+      navigate('/');
+    }, 500);
   };
 
   return (
