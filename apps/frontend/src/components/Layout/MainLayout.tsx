@@ -208,7 +208,6 @@ const MainLayout: React.FC = () => {
       {/* MAIN CONTENT */}
       <main
         style={{
-          marginLeft: !isMobile ? '220px' : '0',
           flex: 1,
           minHeight: '100vh',
           background: '#f5f4f0',
