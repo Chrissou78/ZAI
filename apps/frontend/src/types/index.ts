@@ -7,11 +7,16 @@ export interface User {
   phone?: string;
   verified?: boolean;
   tier?: 'bronze' | 'silver' | 'gold' | 'platinum' | 'member';
+  createdAt?: string;
   address?: string;
   city?: string;
   country?: string;
   postalCode?: string;
-  createdAt?: string;
+
+  dob?: string;                    // Date of birth
+  location?: string;               // Location/city
+  memberSince?: string;            // Member since date
+  nfcCardId?: string;              // NFC card ID
 }
 
 export interface WalletState {
