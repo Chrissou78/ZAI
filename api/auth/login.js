@@ -17,6 +17,7 @@ export default async function handler(req, res) {
     const { token, userId, wallet } = body;
 
     if (!token || !userId || !wallet) {
+      console.error('❌ Missing fields:', { token: !!token, userId: !!userId, wallet: !!wallet });
       return res.status(400).json({ error: 'Missing token, userId, or wallet' });
     }
 
@@ -25,6 +26,7 @@ export default async function handler(req, res) {
     const baseUrl = process.env.WALLETTWO_API_URL || 'https://api.wallettwo.com';
     const exchangeUrl = `${baseUrl}/auth/api/auth/one-time-token/verify`;
 
+    // Exchange token for session
     const exchangeResponse = await axios.post(
       exchangeUrl,
       { token },
@@ -38,35 +40,47 @@ export default async function handler(req, res) {
 
     console.log('✅ Exchange successful');
 
-    // Extract from nested structure
     const sessionToken = exchangeResponse.data.session?.token;
-    const userInfo = exchangeResponse.data.user || {};
-    const sessionUserId = exchangeResponse.data.session?.userId || userId;
+    const sessionUserId = exchangeResponse.data.session?.id || userId;
 
     if (!sessionToken) {
-      console.error('❌ No session token in response');
-      return res.status(400).json({ error: 'No session token in response' });
+      console.error('❌ Missing sessionToken in exchange response');
+      return res.status(400).json({ error: 'Invalid exchange response' });
     }
 
+    // Fetch full user profile from /auth/wallettwo/profile
+    console.log('📥 Fetching user profile...');
+    const profileUrl = `${baseUrl}/auth/api/auth/get-session`;
+    const profileResponse = await axios.get(profileUrl, {
+      headers: {
+        'Authorization': `Bearer ${sessionToken}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    console.log('✅ Profile fetched:', JSON.stringify(profileResponse.data, null, 2));
+
+    const userProfile = profileResponse.data || {};
+
+    // Sign JWT
     const jwtToken = jwt.sign(
       { userId: sessionUserId, wallet, wallettwoToken: sessionToken },
       process.env.JWT_SECRET || 'fallback-secret',
       { expiresIn: '7d' }
     );
 
-    console.log('✅ Login successful, JWT created');
-
     return res.status(200).json({
       success: true,
       jwtToken,
       user: {
         id: sessionUserId,
-        walletAddress: userInfo.wallet || wallet,
-        firstName: userInfo.givenName || userInfo.name?.split('.')[0] || 'User',
-        lastName: userInfo.familyName || '',
-        email: userInfo.email || '',
-        phone: userInfo.phoneNumber || '',
-        verified: userInfo.emailVerified || false,
+        walletAddress: wallet,
+        firstName: userProfile.name || userProfile.firstName || 'User',
+        lastName: userProfile.lastName || '',
+        email: userProfile.email || '',
+        phone: userProfile.phone || '',
+        location: userProfile.location || userProfile.city || '',
+        verified: userProfile.verified || false,
         tier: 'member',
       },
     });
