@@ -7,32 +7,40 @@ const Profile: React.FC = () => {
   const { user } = useAppContext();
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
-    firstName: user?.firstName || '',
-    lastName: user?.lastName || '',
+    givenName: user?.givenName || '',
+    familyName: user?.familyName || '',
     email: user?.email || '',
-    phone: user?.phone || '',
-    dob: user?.dob || '',
-    location: user?.location || '',
+    phoneNumber: user?.phoneNumber || '',
     address: user?.address || '',
+    city: user?.city || '',
+    country: user?.country || '',
+    postalCode: user?.postalCode || '',
+    birthdate: user?.birthdate || '',
+    isPublic: user?.isPublic || false,
   });
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    const { name, value, type, checked } = e.target;
+    setFormData((prev) => ({ 
+      ...prev, 
+      [name]: type === 'checkbox' ? checked : value 
+    }));
   };
 
   const handleSave = async () => {
     if (user) {
+      setIsLoading(true);
       try {
         const response = await apiService.put('/auth/profile', formData);
         if (response.data?.success) {
-          const updatedUser = { ...user, ...formData };
-          localStorage.setItem('zai_user', JSON.stringify(updatedUser));
           console.log('Profile updated successfully');
           setIsEditing(false);
         }
       } catch (error) {
         console.error('Error updating profile:', error);
+      } finally {
+        setIsLoading(false);
       }
     }
   };
@@ -41,8 +49,8 @@ const Profile: React.FC = () => {
     return <div style={{ padding: '3rem 4rem' }}>Loading profile...</div>;
   }
 
-  const firstName = user.firstName || 'User';
-  const lastName = user.lastName || '';
+  const firstName = user.givenName || 'User';
+  const lastName = user.familyName || '';
   const initials = `${firstName[0]}${lastName[0] || ''}`;
 
   return (
@@ -85,8 +93,8 @@ const Profile: React.FC = () => {
           </p>
         </div>
         {isEditing && (
-          <Button variant="primary" onClick={handleSave}>
-            Save Changes
+          <Button variant="primary" onClick={handleSave} disabled={isLoading}>
+            {isLoading ? 'Saving...' : 'Save Changes'}
           </Button>
         )}
       </div>
@@ -96,7 +104,7 @@ const Profile: React.FC = () => {
         style={{
           display: 'grid',
           gridTemplateColumns: '280px 1fr',
-          gap: '1px',
+          gap: '0px',
           background: '#e0ddd6',
           border: '1px solid #e0ddd6',
         }}
@@ -134,7 +142,7 @@ const Profile: React.FC = () => {
             {firstName} {lastName}
           </div>
           <div style={{ fontSize: '10px', color: '#6a6a6a', marginBottom: '1.25rem' }}>
-            @{firstName.toLowerCase()}.{lastName.toLowerCase()}
+            {user.email}
           </div>
 
           {/* Tier Pill */}
@@ -151,7 +159,7 @@ const Profile: React.FC = () => {
               borderRadius: '20px',
             }}
           >
-            ● {user.tier || 'member'}
+            ● {user.role || 'user'}
           </div>
 
           {/* Info */}
@@ -159,7 +167,7 @@ const Profile: React.FC = () => {
             {[
               ...(user.city ? [{ label: 'City', value: user.city }] : []),
               ...(user.country ? [{ label: 'Country', value: user.country }] : []),
-              ...(user.address ? [{ label: 'Address', value: user.address }] : []),
+              ...(user.wallet ? [{ label: 'Wallet', value: user.wallet.slice(0, 6) + '...' + user.wallet.slice(-4) }] : []),
             ].map((item, i) => (
               <div
                 key={i}
@@ -205,18 +213,21 @@ const Profile: React.FC = () => {
           </div>
 
           {/* Form */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', background: '#e0ddd6', border: '1px solid #e0ddd6' }}>
-            {/* First Name & Last Name */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0px', background: '#e0ddd6', border: '1px solid #e0ddd6' }}>
+            {/* Given Name & Family Name */}
             <div
               style={{
                 display: 'grid',
                 gridTemplateColumns: '1fr 1fr',
-                gap: '1px',
+                gap: '0px',
                 background: '#e0ddd6',
               }}
             >
-              {['firstName', 'lastName'].map((field) => (
-                <div key={field} style={{ background: '#ffffff', padding: '1rem 1.25rem' }}>
+              {[
+                { name: 'givenName', label: 'First Name' },
+                { name: 'familyName', label: 'Last Name' },
+              ].map((field) => (
+                <div key={field.name} style={{ background: '#ffffff', padding: '1rem 1.25rem' }}>
                   <label
                     style={{
                       fontSize: '11px',
@@ -227,12 +238,12 @@ const Profile: React.FC = () => {
                       display: 'block',
                     }}
                   >
-                    {field === 'firstName' ? 'First Name' : 'Last Name'}
+                    {field.label}
                   </label>
                   <input
                     type="text"
-                    name={field}
-                    value={formData[field as keyof typeof formData]}
+                    name={field.name}
+                    value={formData[field.name as keyof typeof formData] || ''}
                     onChange={handleChange}
                     disabled={!isEditing}
                     style={{
@@ -254,11 +265,13 @@ const Profile: React.FC = () => {
 
             {/* Other fields */}
             {[
-              { name: 'email', label: 'Email Address' },
-              { name: 'address', label: 'Residential Address' },
-              { name: 'city', label: 'City' },
-              { name: 'country', label: 'Country' },
-              { name: 'postalCode', label: 'Postal Code' },
+              { name: 'email', label: 'Email Address', type: 'email' },
+              { name: 'phoneNumber', label: 'Phone Number', type: 'tel' },
+              { name: 'address', label: 'Address', type: 'text' },
+              { name: 'city', label: 'City', type: 'text' },
+              { name: 'country', label: 'Country', type: 'text' },
+              { name: 'postalCode', label: 'Postal Code', type: 'text' },
+              { name: 'birthdate', label: 'Date of Birth', type: 'date' },
             ].map((field) => (
               <div key={field.name} style={{ background: '#ffffff', padding: '1rem 1.25rem' }}>
                 <label
@@ -274,7 +287,7 @@ const Profile: React.FC = () => {
                   {field.label}
                 </label>
                 <input
-                  type="text"
+                  type={field.type}
                   name={field.name}
                   value={formData[field.name as keyof typeof formData] || ''}
                   onChange={handleChange}
@@ -295,6 +308,30 @@ const Profile: React.FC = () => {
                 />
               </div>
             ))}
+
+            {/* Public Profile Toggle */}
+            <div style={{ background: '#ffffff', padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <label
+                style={{
+                  fontSize: '11px',
+                  letterSpacing: '0.2em',
+                  textTransform: 'uppercase',
+                  color: '#6a6a6a',
+                }}
+              >
+                Public Profile
+              </label>
+              <input
+                type="checkbox"
+                name="isPublic"
+                checked={formData.isPublic || false}
+                onChange={handleChange}
+                disabled={!isEditing}
+                style={{
+                  cursor: isEditing ? 'pointer' : 'default',
+                }}
+              />
+            </div>
           </div>
 
           {/* Edit Button */}
@@ -308,10 +345,31 @@ const Profile: React.FC = () => {
               </Button>
             ) : (
               <div style={{ display: 'flex', gap: '1rem' }}>
-                <Button variant="primary" onClick={handleSave}>
-                  Save Changes
+                <Button 
+                  variant="primary" 
+                  onClick={handleSave}
+                  disabled={isLoading}
+                >
+                  {isLoading ? 'Saving...' : 'Save Changes'}
                 </Button>
-                <Button variant="secondary" onClick={() => setIsEditing(false)}>
+                <Button 
+                  variant="secondary" 
+                  onClick={() => {
+                    setFormData({
+                      givenName: user?.givenName || '',
+                      familyName: user?.familyName || '',
+                      email: user?.email || '',
+                      phoneNumber: user?.phoneNumber || '',
+                      address: user?.address || '',
+                      city: user?.city || '',
+                      country: user?.country || '',
+                      postalCode: user?.postalCode || '',
+                      birthdate: user?.birthdate || '',
+                      isPublic: user?.isPublic || false,
+                    });
+                    setIsEditing(false);
+                  }}
+                >
                   Cancel
                 </Button>
               </div>
