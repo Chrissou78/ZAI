@@ -20,7 +20,7 @@
     "vite": "^4.5.14"
   },
   "scripts": {
-    "build": "vite build",
+    "build": "./node_modules/.bin/vite build",
     "dev": "vite",
     "preview": "vite preview"
   }
