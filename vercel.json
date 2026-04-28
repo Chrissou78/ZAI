@@ -2,6 +2,9 @@
   "buildCommand": "pnpm install --prod=false && cd apps/frontend && pnpm exec vite build",
   "installCommand": "pnpm install",
   "outputDirectory": "apps/frontend/dist",
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/apps/backend/routes/:1" }
+  ],
   "env": {
     "VITE_API_URL": "/api",
     "VITE_COMPANY_ID": "zai"
