@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAppContext } from '../../context/AppContext';
 import Button from '../Common/Button';
+import { apiService } from '../../services/api';
 
 const Profile: React.FC = () => {
   const { user } = useAppContext();
@@ -20,11 +21,21 @@ const Profile: React.FC = () => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (user) {
-      // TODO: Save to API or context
-      console.log('Profile updated:', formData);
-      setIsEditing(false);
+      try {
+        const response = await apiService.put('/auth/profile', formData);
+        if (response.data?.success) {
+          // Update context with new user data
+          const updatedUser = { ...user, ...formData };
+          // Assuming you have a setUser function in your context
+          localStorage.setItem('zai_user', JSON.stringify(updatedUser));
+          console.log('Profile updated successfully');
+          setIsEditing(false);
+        }
+      } catch (error) {
+        console.error('Error updating profile:', error);
+      }
     }
   };
 
