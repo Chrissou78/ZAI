@@ -243,7 +243,7 @@ const Profile: React.FC = () => {
                   <input
                     type="text"
                     name={field.name}
-                    value={formData[field.name as keyof typeof formData] || ''}
+                    value={(formData[field.name as keyof typeof formData] as string) || ''}
                     onChange={handleChange}
                     disabled={!isEditing}
                     style={{
@@ -289,7 +289,7 @@ const Profile: React.FC = () => {
                 <input
                   type={field.type}
                   name={field.name}
-                  value={formData[field.name as keyof typeof formData] || ''}
+                  value={(formData[field.name as keyof typeof formData] as string) || ''}
                   onChange={handleChange}
                   disabled={!isEditing}
                   style={{

@@ -1,22 +1,33 @@
 export interface User {
   id: string;
   walletAddress: string;
-  firstName?: string;
-  lastName?: string;
+  name?: string;
+  givenName?: string;
+  familyName?: string;
   email?: string;
-  phone?: string;
-  verified?: boolean;
-  tier?: 'bronze' | 'silver' | 'gold' | 'platinum' | 'member';
-  createdAt?: string;
+  emailVerified?: boolean;
+  phoneNumber?: string;
   address?: string;
   city?: string;
   country?: string;
   postalCode?: string;
-
-  dob?: string;                    // Date of birth
-  location?: string;               // Location/city
-  memberSince?: string;            // Member since date
-  nfcCardId?: string;              // NFC card ID
+  image?: string | null;
+  birthdate?: string | null;
+  wallet?: string;
+  walletSecured?: boolean;
+  role?: string;
+  banned?: boolean;
+  isPublic?: boolean;
+  verified?: boolean;
+  tier?: 'bronze' | 'silver' | 'gold' | 'platinum' | 'member';
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  location?: string;
+  createdAt?: string;
+  dob?: string;
+  memberSince?: string;
+  nfcCardId?: string;
 }
 
 export interface WalletState {
