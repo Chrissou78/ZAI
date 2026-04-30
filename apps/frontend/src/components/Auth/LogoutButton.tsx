@@ -26,7 +26,35 @@ export function LogoutButton() {
   };
 
   return (
-    <button onClick={handleLogout} disabled={isLoading} style={{ width: '100%', padding: '0.75rem 1rem', background: '#c8102e', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '12px', fontWeight: 500, cursor: isLoading ? 'not-allowed' : 'pointer' }}>
+    <button 
+      onClick={handleLogout} 
+      disabled={isLoading} 
+      style={{ 
+        width: '100%', 
+        padding: '0.75rem 1rem', 
+        background: '#7D1E2C', 
+        color: '#fff', 
+        border: 'none', 
+        borderRadius: '4px', 
+        fontSize: '12px', 
+        fontWeight: 500, 
+        cursor: isLoading ? 'not-allowed' : 'pointer',
+        transition: 'all 0.2s',
+        opacity: isLoading ? 0.6 : 1,
+        letterSpacing: '0.1em',
+        textTransform: 'uppercase',
+      }}
+      onMouseEnter={(e) => {
+        if (!isLoading) {
+          (e.currentTarget as HTMLButtonElement).style.background = '#5a1620';
+        }
+      }}
+      onMouseLeave={(e) => {
+        if (!isLoading) {
+          (e.currentTarget as HTMLButtonElement).style.background = '#7D1E2C';
+        }
+      }}
+    >
       {isLoading ? 'Logging out...' : 'Logout'}
     </button>
   );
