@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAppContext } from '../../context/AppContext';
 import Button from '../Common/Button';
 import { apiService } from '../../services/api';
@@ -6,6 +6,7 @@ import { apiService } from '../../services/api';
 const Profile: React.FC = () => {
   const { user } = useAppContext();
   const [isEditing, setIsEditing] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     givenName: user?.givenName || '',
     familyName: user?.familyName || '',
@@ -18,7 +19,23 @@ const Profile: React.FC = () => {
     birthdate: user?.birthdate || '',
     isPublic: user?.isPublic || false,
   });
-  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      setFormData({
+        givenName: user.givenName || '',
+        familyName: user.familyName || '',
+        email: user.email || '',
+        phoneNumber: user.phoneNumber || '',
+        address: user.address || '',
+        city: user.city || '',
+        country: user.country || '',
+        postalCode: user.postalCode || '',
+        birthdate: user.birthdate || '',
+        isPublic: user.isPublic || false,
+      });
+    }
+  }, [user]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
@@ -29,16 +46,29 @@ const Profile: React.FC = () => {
   };
 
   const handleSave = async () => {
-    if (user) {
+    if (user?.id) {
       setIsLoading(true);
       try {
-        const response = await apiService.put('/auth/profile', formData);
+        const response = await apiService.put(`/users/me`, {
+          firstName: formData.givenName,
+          lastName: formData.familyName,
+          email: formData.email,
+          phone: formData.phoneNumber,
+          address: formData.address,
+          city: formData.city,
+          country: formData.country,
+          postalCode: formData.postalCode,
+          birthdate: formData.birthdate,
+          isPublic: formData.isPublic,
+        });
+        
         if (response.data?.success) {
           console.log('Profile updated successfully');
           setIsEditing(false);
         }
       } catch (error) {
         console.error('Error updating profile:', error);
+        alert('Failed to update profile');
       } finally {
         setIsLoading(false);
       }
@@ -165,8 +195,8 @@ const Profile: React.FC = () => {
           {/* Info */}
           <div style={{ width: '100%', textAlign: 'left' }}>
             {[
-              ...(user.city ? [{ label: 'City', value: user.city }] : []),
-              ...(user.country ? [{ label: 'Country', value: user.country }] : []),
+              ...(formData.city ? [{ label: 'City', value: formData.city }] : []),
+              ...(formData.country ? [{ label: 'Country', value: formData.country }] : []),
               ...(user.walletAddress ? [{ label: 'Wallet', value: user.walletAddress.slice(0, 6) + '...' + user.walletAddress.slice(-4) }] : []),
             ].map((item, i) => (
               <div

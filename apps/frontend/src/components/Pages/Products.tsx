@@ -1,10 +1,28 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useAppContext } from '../../context/AppContext';
-import { useProductClaim } from '../../hooks/useProductClaim';
+import { apiService } from '../../services/api';
 import Button from '../Common/Button';
-import Card from '../Common/Card';
-import EmptyState from '../Common/Empty';
 import Modal from '../Common/Modal';
+
+interface Product {
+  id: string;
+  name: string;
+  type: string;
+  color: string;
+  size: string;
+  serialNumber: string;
+  claimedAt: string;
+  warranty: {
+    active: boolean;
+    expiresAt: string;
+    years: number;
+  };
+  insurance: {
+    active: boolean;
+    activatedAt: string | null;
+  };
+  specs: Record<string, any>;
+}
 
 interface ProductCarouselState {
   currentIndex: number;
@@ -13,54 +31,51 @@ interface ProductCarouselState {
 
 const Products: React.FC = () => {
   const { user } = useAppContext();
-  const { claimProduct, isLoading, error, success } = useProductClaim();
+  const [products, setProducts] = useState<Product[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [carouselState, setCarouselState] = useState<ProductCarouselState>({
     currentIndex: 0,
-    totalCards: 5,
+    totalCards: 0,
   });
   const [showClaimModal, setShowClaimModal] = useState(false);
   const [claimMethod, setClaimMethod] = useState<'nfc' | 'serial' | null>(null);
   const [serialInput, setSerialInput] = useState('');
+  const [claimLoading, setClaimLoading] = useState(false);
+  const [claimError, setClaimError] = useState<string | null>(null);
+  const [claimSuccess, setClaimSuccess] = useState(false);
 
-  // Mock products data
-  const mockProducts = [
-    {
-      id: '1',
-      name: 'N2.1 Ski — Fire Orange',
-      category: 'skis',
-      desc: '180cm · Titanal construction',
-      hasInsurance: true,
-      claimed: true,
-    },
-    {
-      id: '2',
-      name: 'N2.1 Ski — Anthracite',
-      category: 'skis',
-      desc: '175cm · Carbon/Titanal',
-      hasInsurance: true,
-      claimed: true,
-    },
-    {
-      id: '3',
-      name: 'Oversize Hoodie — Rust',
-      category: 'apparel',
-      desc: 'Unisex · Organic cotton',
-      hasInsurance: false,
-      claimed: true,
-    },
-    {
-      id: '4',
-      name: 'Softshell Jacket — Ochre',
-      category: 'apparel',
-      desc: 'Technical 3-layer',
-      hasInsurance: true,
-      claimed: true,
-    },
-  ];
+  // Fetch user products on mount
+  useEffect(() => {
+    if (user?.id) {
+      fetchUserProducts();
+    }
+  }, [user?.id]);
 
-  const cardWidth = 241; // pixels
+  const fetchUserProducts = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const response = await apiService.get(`/products/user/${user?.id}`);
+      
+      if (response.data?.success) {
+        setProducts(response.data.data || []);
+        setCarouselState(prev => ({
+          ...prev,
+          totalCards: (response.data.data?.length || 0) + 1, // +1 for add card
+        }));
+      }
+    } catch (err: any) {
+      console.error('Error fetching products:', err);
+      setError(err.response?.data?.error || 'Failed to load products');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const cardWidth = 241;
   const cardsPerPage = Math.floor(800 / cardWidth);
-  const maxIndex = Math.max(0, mockProducts.length + 1 - cardsPerPage);
+  const maxIndex = Math.max(0, (products.length + 1) - cardsPerPage);
 
   const handleSlide = (direction: number) => {
     setCarouselState((prev) => ({
@@ -73,17 +88,70 @@ const Products: React.FC = () => {
   };
 
   const handleClaimSubmit = useCallback(async () => {
-    if (claimMethod === 'serial' && serialInput) {
-      const result = await claimProduct({
-        serialNumber: serialInput,
-      });
-      if (result) {
-        setShowClaimModal(false);
-        setSerialInput('');
-        setClaimMethod(null);
+    if (claimMethod === 'serial' && serialInput.trim()) {
+      setClaimLoading(true);
+      setClaimError(null);
+      
+      try {
+        const response = await apiService.post('/products/claim', {
+          serialNumber: serialInput.trim(),
+        });
+
+        if (response.data?.success) {
+          setClaimSuccess(true);
+          setTimeout(() => {
+            setShowClaimModal(false);
+            setSerialInput('');
+            setClaimMethod(null);
+            setClaimSuccess(false);
+            fetchUserProducts(); // Refresh products list
+          }, 1500);
+        }
+      } catch (err: any) {
+        setClaimError(
+          err.response?.data?.error || 'Failed to claim product. Please check the serial number.'
+        );
+      } finally {
+        setClaimLoading(false);
       }
     }
-  }, [claimMethod, serialInput, claimProduct]);
+  }, [claimMethod, serialInput]);
+
+  const handleActivateInsurance = async (productId: string) => {
+    try {
+      const response = await apiService.post(`/products/${productId}/activate-insurance`);
+      
+      if (response.data?.success) {
+        fetchUserProducts(); // Refresh to show updated insurance status
+      }
+    } catch (err: any) {
+      console.error('Error activating insurance:', err);
+      alert(err.response?.data?.error || 'Failed to activate insurance');
+    }
+  };
+
+  const statsData = [
+    {
+      icon: '📦',
+      label: 'Products claimed',
+      value: products.length.toString(),
+      color: '#1a1a1a',
+    },
+    {
+      icon: '✓',
+      label: 'Insurance active',
+      value: products.filter(p => p.insurance?.active).length.toString(),
+      color: '#4caf7d',
+    },
+  ];
+
+  if (isLoading && products.length === 0) {
+    return (
+      <div style={{ padding: '3rem 4rem 5rem', textAlign: 'center' }}>
+        <div style={{ fontSize: '16px', color: '#6a6a6a' }}>Loading your products...</div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ padding: '3rem 4rem 5rem' }}>
@@ -130,7 +198,7 @@ const Products: React.FC = () => {
         </Button>
       </div>
 
-      {/* Summary */}
+      {/* Summary Stats */}
       <div
         style={{
           display: 'grid',
@@ -141,10 +209,7 @@ const Products: React.FC = () => {
           marginBottom: '2rem',
         }}
       >
-        {[
-          { icon: '📦', label: 'Products claimed', value: '4' },
-          { icon: '✓', label: 'Insurance active', value: '2', color: '#4caf7d' },
-        ].map((stat, i) => (
+        {statsData.map((stat, i) => (
           <div
             key={i}
             style={{
@@ -171,7 +236,7 @@ const Products: React.FC = () => {
               {stat.icon}
             </div>
             <div>
-              <div style={{ fontSize: '24px', fontWeight: 200, color: stat.color || '#1a1a1a' }}>
+              <div style={{ fontSize: '24px', fontWeight: 200, color: stat.color }}>
                 {stat.value}
               </div>
               <div style={{ fontSize: '11px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#6a6a6a', marginTop: '2px' }}>
@@ -182,104 +247,129 @@ const Products: React.FC = () => {
         ))}
       </div>
 
-      {/* Carousel */}
-      <div style={{ position: 'relative', marginBottom: '2rem' }}>
-        <button
-          onClick={() => handleSlide(-1)}
-          disabled={carouselState.currentIndex === 0}
-          style={{
-            position: 'absolute',
-            top: '50%',
-            left: '-18px',
-            transform: 'translateY(-50%)',
-            width: '36px',
-            height: '36px',
-            background: '#ffffff',
-            border: '1px solid #e0ddd6',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
-            zIndex: 10,
-            opacity: carouselState.currentIndex === 0 ? 0.3 : 1,
-          }}
-        >
-          ←
-        </button>
-
+      {/* Empty State */}
+      {products.length === 0 && (
         <div
           style={{
-            overflow: 'hidden',
-            border: '1px solid #e0ddd6',
+            padding: '3.5rem 2rem',
+            textAlign: 'center',
+            border: '1px dashed #e0ddd6',
+            background: '#f0ede6',
+            marginBottom: '2rem',
           }}
         >
-          <div
+          <div style={{ fontSize: '48px', marginBottom: '1rem' }}>📦</div>
+          <div style={{ fontSize: '16px', fontWeight: 300, marginBottom: '8px', color: '#1a1a1a' }}>
+            No products claimed yet
+          </div>
+          <p style={{ fontSize: '13px', color: '#6a6a6a', maxWidth: '360px', margin: '0 auto 1.5rem', lineHeight: 1.8 }}>
+            Tap your zai Experience Card or enter a serial number to register your first product and activate your warranty.
+          </p>
+          <Button variant="primary" onClick={() => setShowClaimModal(true)}>
+            Claim your first product
+          </Button>
+        </div>
+      )}
+
+      {/* Carousel */}
+      {products.length > 0 && (
+        <div style={{ position: 'relative', marginBottom: '2rem' }}>
+          <button
+            onClick={() => handleSlide(-1)}
+            disabled={carouselState.currentIndex === 0}
             style={{
+              position: 'absolute',
+              top: '50%',
+              left: '-18px',
+              transform: 'translateY(-50%)',
+              width: '36px',
+              height: '36px',
+              background: '#ffffff',
+              border: '1px solid #e0ddd6',
               display: 'flex',
-              transform: `translateX(-${carouselState.currentIndex * cardWidth}px)`,
-              transition: 'transform 0.4s ease',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              zIndex: 10,
+              opacity: carouselState.currentIndex === 0 ? 0.3 : 1,
             }}
           >
-            {/* Add Card */}
-            <div
-              onClick={() => setShowClaimModal(true)}
-              style={{
-                background: '#ffffff',
-                minWidth: '240px',
-                maxWidth: '240px',
-                flexShrink: 0,
-                borderRight: '1px solid #e0ddd6',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-                padding: '2rem',
-                minHeight: '280px',
-                transition: 'background 0.2s',
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = '#f0ede6')}
-              onMouseLeave={(e) => (e.currentTarget.style.background = '#ffffff')}
-            >
-              <div style={{ textAlign: 'center' }}>
-                <div
-                  style={{
-                    width: '36px',
-                    height: '36px',
-                    border: '1px solid #6a6a6a',
-                    borderRadius: '50%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '18px',
-                    color: '#6a6a6a',
-                    margin: '0 auto 8px',
-                  }}
-                >
-                  +
-                </div>
-                <div style={{ fontSize: '11px', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#6a6a6a' }}>
-                  Claim a product
-                </div>
-              </div>
-            </div>
+            ←
+          </button>
 
-            {/* Product Cards */}
-            {mockProducts.map((product) => (
+          <div
+            style={{
+              overflow: 'hidden',
+              border: '1px solid #e0ddd6',
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                transform: `translateX(-${carouselState.currentIndex * cardWidth}px)`,
+                transition: 'transform 0.4s ease',
+              }}
+            >
+              {/* Add Card */}
               <div
-                key={product.id}
+                onClick={() => setShowClaimModal(true)}
                 style={{
                   background: '#ffffff',
                   minWidth: '240px',
                   maxWidth: '240px',
-                  cursor: 'pointer',
-                  borderRight: '1px solid #e0ddd6',
                   flexShrink: 0,
+                  borderRight: '1px solid #e0ddd6',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  padding: '2rem',
+                  minHeight: '280px',
                   transition: 'background 0.2s',
                 }}
                 onMouseEnter={(e) => (e.currentTarget.style.background = '#f0ede6')}
                 onMouseLeave={(e) => (e.currentTarget.style.background = '#ffffff')}
               >
-                {product.claimed && (
+                <div style={{ textAlign: 'center' }}>
+                  <div
+                    style={{
+                      width: '36px',
+                      height: '36px',
+                      border: '1px solid #6a6a6a',
+                      borderRadius: '50%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '18px',
+                      color: '#6a6a6a',
+                      margin: '0 auto 8px',
+                    }}
+                  >
+                    +
+                  </div>
+                  <div style={{ fontSize: '11px', letterSpacing: '0.1em', textTransform: 'uppercase', color: '#6a6a6a' }}>
+                    Claim a product
+                  </div>
+                </div>
+              </div>
+
+              {/* Product Cards */}
+              {products.map((product) => (
+                <div
+                  key={product.id}
+                  style={{
+                    background: '#ffffff',
+                    minWidth: '240px',
+                    maxWidth: '240px',
+                    cursor: 'pointer',
+                    borderRight: '1px solid #e0ddd6',
+                    flexShrink: 0,
+                    transition: 'background 0.2s',
+                    position: 'relative',
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = '#f0ede6')}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = '#ffffff')}
+                >
                   <div
                     style={{
                       position: 'absolute',
@@ -296,80 +386,107 @@ const Products: React.FC = () => {
                   >
                     Claimed
                   </div>
-                )}
-                <div
-                  style={{
-                    height: '200px',
-                    background: '#f0ede6',
-                    borderBottom: '1px solid #e0ddd6',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  {product.category === 'skis' ? '🎿' : '👕'}
-                </div>
-                <div style={{ padding: '1.1rem' }}>
-                  <div style={{ fontSize: '12px', fontWeight: 500, marginBottom: '3px' }}>
-                    {product.name}
+
+                  <div
+                    style={{
+                      height: '200px',
+                      background: '#f0ede6',
+                      borderBottom: '1px solid #e0ddd6',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '48px',
+                    }}
+                  >
+                    {product.type === 'ski' ? '🎿' : '👕'}
                   </div>
-                  <div style={{ fontSize: '11px', color: '#6a6a6a' }}>
-                    {product.desc}
-                  </div>
-                  {product.hasInsurance && (
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                        marginTop: '6px',
-                        paddingTop: '6px',
-                        borderTop: '1px solid #e0ddd6',
-                      }}
-                    >
+
+                  <div style={{ padding: '1.1rem' }}>
+                    <div style={{ fontSize: '12px', fontWeight: 500, marginBottom: '3px' }}>
+                      {product.name}
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#6a6a6a', marginBottom: '6px' }}>
+                      {product.size ? `${product.size}` : ''} {product.color ? `• ${product.color}` : ''}
+                    </div>
+
+                    {product.insurance?.active && (
                       <div
                         style={{
-                          width: '5px',
-                          height: '5px',
-                          background: '#4caf7d',
-                          borderRadius: '50%',
-                          boxShadow: '0 0 4px #4caf7d',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          marginTop: '6px',
+                          paddingTop: '6px',
+                          borderTop: '1px solid #e0ddd6',
                         }}
-                      />
-                      <span style={{ fontSize: '11px', letterSpacing: '0.15em', textTransform: 'uppercase', color: '#4caf7d' }}>
-                        Insurance active
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+                      >
+                        <div
+                          style={{
+                            width: '5px',
+                            height: '5px',
+                            background: '#4caf7d',
+                            borderRadius: '50%',
+                            boxShadow: '0 0 4px #4caf7d',
+                          }}
+                        />
+                        <span style={{ fontSize: '11px', letterSpacing: '0.15em', textTransform: 'uppercase', color: '#4caf7d' }}>
+                          Insurance active
+                        </span>
+                      </div>
+                    )}
 
-        <button
-          onClick={() => handleSlide(1)}
-          disabled={carouselState.currentIndex >= maxIndex}
-          style={{
-            position: 'absolute',
-            top: '50%',
-            right: '-18px',
-            transform: 'translateY(-50%)',
-            width: '36px',
-            height: '36px',
-            background: '#ffffff',
-            border: '1px solid #e0ddd6',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer',
-            zIndex: 10,
-            opacity: carouselState.currentIndex >= maxIndex ? 0.3 : 1,
-          }}
-        >
-          →
-        </button>
-      </div>
+                    {!product.insurance?.active && product.warranty?.active && (
+                      <button
+                        onClick={() => handleActivateInsurance(product.id)}
+                        style={{
+                          marginTop: '6px',
+                          paddingTop: '6px',
+                          borderTop: '1px solid #e0ddd6',
+                          background: 'none',
+                          border: 'none',
+                          fontSize: '11px',
+                          letterSpacing: '0.15em',
+                          textTransform: 'uppercase',
+                          color: '#c8102e',
+                          cursor: 'pointer',
+                          padding: '6px 0',
+                          width: '100%',
+                          textAlign: 'left',
+                        }}
+                      >
+                        + Activate Insurance
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <button
+            onClick={() => handleSlide(1)}
+            disabled={carouselState.currentIndex >= maxIndex}
+            style={{
+              position: 'absolute',
+              top: '50%',
+              right: '-18px',
+              transform: 'translateY(-50%)',
+              width: '36px',
+              height: '36px',
+              background: '#ffffff',
+              border: '1px solid #e0ddd6',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              zIndex: 10,
+              opacity: carouselState.currentIndex >= maxIndex ? 0.3 : 1,
+            }}
+          >
+            →
+          </button>
+        </div>
+      )}
 
       {/* Info */}
       <div
@@ -413,6 +530,7 @@ const Products: React.FC = () => {
                   color: '#c8102e',
                   flexShrink: 0,
                   marginTop: '1px',
+                  fontWeight: 'bold',
                 }}
               >
                 {i + 1}
@@ -432,11 +550,22 @@ const Products: React.FC = () => {
           setShowClaimModal(false);
           setClaimMethod(null);
           setSerialInput('');
+          setClaimError(null);
         }}
         title="Claim Your Product"
         size="md"
       >
-        {!claimMethod ? (
+        {claimSuccess ? (
+          <div style={{ textAlign: 'center', padding: '2rem 0' }}>
+            <div style={{ fontSize: '48px', marginBottom: '16px' }}>✓</div>
+            <div style={{ fontSize: '16px', fontWeight: 500, color: '#4caf7d', marginBottom: '8px' }}>
+              Product Claimed!
+            </div>
+            <p style={{ color: '#6a6a6a', marginBottom: '0' }}>
+              Your product has been successfully registered.
+            </p>
+          </div>
+        ) : !claimMethod ? (
           <div>
             <p style={{ color: '#6a6a6a', marginBottom: '24px' }}>
               Choose how you'd like to register your zai product
@@ -476,6 +605,7 @@ const Products: React.FC = () => {
                 placeholder="e.g. ZAI-N21-2024-XXXX"
                 value={serialInput}
                 onChange={(e) => setSerialInput(e.target.value)}
+                disabled={claimLoading}
                 style={{
                   width: '100%',
                   padding: '12px',
@@ -484,28 +614,29 @@ const Products: React.FC = () => {
                   fontFamily: 'monospace',
                   fontSize: '14px',
                   outline: 'none',
+                  opacity: claimLoading ? 0.6 : 1,
                 }}
               />
             </label>
-            {error && (
-              <div style={{ color: '#c8102e', fontSize: '12px', marginBottom: '12px' }}>
-                {error}
+            {claimError && (
+              <div style={{ color: '#c8102e', fontSize: '12px', marginBottom: '12px', padding: '8px', background: '#fff5f5', borderRadius: '4px' }}>
+                {claimError}
               </div>
             )}
             <Button
               variant="primary"
               fullWidth
-              isLoading={isLoading}
-              disabled={!serialInput || isLoading}
+              disabled={!serialInput.trim() || claimLoading}
               onClick={handleClaimSubmit}
               style={{ marginBottom: '12px' }}
             >
-              Claim Product
+              {claimLoading ? 'Claiming...' : 'Claim Product'}
             </Button>
             <Button
               variant="secondary"
               fullWidth
               onClick={() => setClaimMethod(null)}
+              disabled={claimLoading}
             >
               Back
             </Button>

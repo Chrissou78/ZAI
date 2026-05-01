@@ -1,6 +1,7 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppContext } from '../../context/AppContext';
+import { apiService } from '../../services/api';
 import Button from '../Common/Button';
 import Modal from '../Common/Modal';
 import Tabs from '../Common/Tabs';
@@ -11,7 +12,7 @@ type EventStatus = 'upcoming' | 'past' | 'all';
 interface Event {
   id: string;
   title: string;
-  type: EventType;
+  tag: string;
   location: string;
   date: string;
   description: string;
@@ -24,96 +25,132 @@ interface Event {
 const Events: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAppContext();
+  const [events, setEvents] = useState<Event[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [typeFilter, setTypeFilter] = useState<EventType>('all');
   const [statusFilter, setStatusFilter] = useState<EventStatus>('upcoming');
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [showEventModal, setShowEventModal] = useState(false);
+  const [registering, setRegistering] = useState(false);
 
-  // Mock events data
-  const mockEvents: Event[] = [
-    {
-      id: '1',
-      title: 'Winter Test Camp — Engadin',
-      type: 'demo',
-      location: 'St. Moritz, Switzerland',
-      date: '14 Feb 2025',
-      description: 'Three days on the Corvatsch glacier with the complete 2025 N-series lineup. One-on-one fitting sessions with zai engineers.',
-      tier: 'all',
-      status: 'upcoming',
-      registered: false,
-    },
-    {
-      id: '2',
-      title: 'zai × Ikon Pass Rider Days',
-      type: 'partner',
-      location: 'Zermatt, Switzerland',
-      date: '3 Mar 2025',
-      description: 'A curated weekend with Ikon Pass holders. Guided freeriding and an exclusive preview of the 2026 N3 prototype.',
-      tier: 'silver',
-      status: 'upcoming',
-      registered: false,
-    },
-    {
-      id: '3',
-      title: 'Factory Open Day — Pontresina',
-      type: 'factory',
-      location: 'Pontresina, Switzerland',
-      date: '22 Apr 2025',
-      description: 'Tour the atelier. Meet the craftspeople. Commission your bespoke piece.',
-      tier: 'platinum',
-      status: 'upcoming',
-      registered: false,
-    },
-    {
-      id: '4',
-      title: 'Engadin Demo Day 2024',
-      type: 'demo',
-      location: 'St. Moritz, Switzerland',
-      date: '28 Nov 2024',
-      description: 'Test the full 2024 lineup on world-class terrain.',
-      tier: 'all',
-      status: 'past',
-      registered: true,
-    },
-    {
-      id: '5',
-      title: 'Quarry Visit — Maloja',
-      type: 'factory',
-      location: 'Maloja, Switzerland',
-      date: '5 Jul 2024',
-      description: 'Visit our stone quarry and learn about our materials sourcing.',
-      tier: 'gold',
-      status: 'past',
-      registered: true,
-    },
-  ];
+  // Fetch events on mount
+  useEffect(() => {
+    fetchEvents();
+  }, []);
+
+  const fetchEvents = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      // Fetch upcoming events
+      const upcomingResponse = await apiService.get('/events', {
+        params: { status: 'upcoming' }
+      });
+
+      // Fetch past events
+      const pastResponse = await apiService.get('/events', {
+        params: { status: 'past' }
+      });
+
+      const allEvents = [
+        ...(upcomingResponse.data?.data || []).map((event: any) => ({
+          ...event,
+          status: 'upcoming',
+          registered: false,
+        })),
+        ...(pastResponse.data?.data || []).map((event: any) => ({
+          ...event,
+          status: 'past',
+          registered: true,
+        })),
+      ];
+
+      setEvents(allEvents);
+    } catch (err: any) {
+      console.error('Error fetching events:', err);
+      setError(err.response?.data?.error || 'Failed to load events');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Filter events
   const filteredEvents = useMemo(() => {
-    return mockEvents.filter((event) => {
+    return events.filter((event) => {
       if (statusFilter !== 'all' && event.status !== statusFilter) return false;
-      if (typeFilter !== 'all' && event.type !== typeFilter) return false;
+      if (typeFilter !== 'all') {
+        const eventType = event.tag?.toLowerCase().split(' ')[0];
+        if (eventType !== typeFilter) return false;
+      }
       return true;
     });
-  }, [typeFilter, statusFilter]);
+  }, [typeFilter, statusFilter, events]);
 
-  const upcomingCount = mockEvents.filter((e) => e.status === 'upcoming').length;
-  const pastCount = mockEvents.filter((e) => e.status === 'past').length;
+  const upcomingCount = events.filter((e) => e.status === 'upcoming').length;
+  const pastCount = events.filter((e) => e.status === 'past').length;
 
   const handleEventSelect = (event: Event) => {
     setSelectedEvent(event);
     setShowEventModal(true);
   };
 
-  const handleRegister = () => {
-    if (selectedEvent) {
-      setShowEventModal(false);
-      // API call would go here
-      setTimeout(() => {
-        setSelectedEvent(null);
-      }, 300);
+  const handleRegister = async () => {
+    if (selectedEvent && user?.id) {
+      setRegistering(true);
+      try {
+        const response = await apiService.post(`/events/${selectedEvent.id}/register`);
+
+        if (response.data?.success) {
+          setShowEventModal(false);
+          // Update event registration status
+          setEvents(events.map(e =>
+            e.id === selectedEvent.id ? { ...e, registered: true } : e
+          ));
+          setTimeout(() => {
+            setSelectedEvent(null);
+            alert('Successfully registered for the event!');
+          }, 300);
+        }
+      } catch (err: any) {
+        console.error('Error registering for event:', err);
+        alert(err.response?.data?.error || 'Failed to register for event');
+      } finally {
+        setRegistering(false);
+      }
     }
   };
+
+  const getEventTypeEmoji = (tag: string) => {
+    const lowerTag = tag?.toLowerCase() || '';
+    if (lowerTag.includes('demo')) return '🎿';
+    if (lowerTag.includes('factory')) return '🏭';
+    if (lowerTag.includes('partner')) return '🤝';
+    if (lowerTag.includes('community')) return '👥';
+    return '📍';
+  };
+
+  const parseDate = (dateStr: string) => {
+    try {
+      const date = new Date(dateStr);
+      return {
+        day: date.getDate(),
+        month: date.toLocaleString('en-US', { month: 'short' }).toUpperCase(),
+        full: date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+      };
+    } catch {
+      return { day: '?', month: '?', full: dateStr };
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div style={{ padding: '3rem 4rem 5rem', textAlign: 'center' }}>
+        <div style={{ fontSize: '16px', color: '#6a6a6a' }}>Loading events...</div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ padding: '3rem 4rem 5rem' }}>
@@ -169,7 +206,7 @@ const Events: React.FC = () => {
                   background: typeFilter === filter ? '#1a1a1a' : '#ffffff',
                   color: typeFilter === filter ? '#ffffff' : '#6a6a6a',
                   border: 'none',
-                  borderRight: '1px solid #e0ddd6',
+                  borderRight: filter !== 'partner' ? '1px solid #e0ddd6' : 'none',
                   fontFamily: "'Inter', sans-serif",
                   transition: 'all 0.2s',
                 }}
@@ -189,140 +226,148 @@ const Events: React.FC = () => {
             label: `Upcoming (${upcomingCount})`,
             content: (
               <div>
-                <div
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(3, 1fr)',
-                    gap: '1px',
-                    background: '#e0ddd6',
-                    border: '1px solid #e0ddd6',
-                  }}
-                >
-                  {filteredEvents
-                    .filter((e) => e.status === 'upcoming')
-                    .map((event) => (
-                      <div
-                        key={event.id}
-                        onClick={() => handleEventSelect(event)}
-                        style={{
-                          background: '#ffffff',
-                          cursor: 'pointer',
-                          overflow: 'hidden',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          transition: 'background 0.2s',
-                        }}
-                        onMouseEnter={(e) => (e.currentTarget.style.background = '#f0ede6')}
-                        onMouseLeave={(e) => (e.currentTarget.style.background = '#ffffff')}
-                      >
-                        {/* Image */}
-                        <div
-                          style={{
-                            position: 'relative',
-                            overflow: 'hidden',
-                            height: '160px',
-                            background: '#0d0d0d',
-                          }}
-                        >
+                {filteredEvents.filter((e) => e.status === 'upcoming').length === 0 ? (
+                  <div style={{ padding: '3rem', textAlign: 'center', background: '#f0ede6', border: '1px solid #e0ddd6' }}>
+                    <p style={{ color: '#6a6a6a' }}>No upcoming events at the moment.</p>
+                  </div>
+                ) : (
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+                      gap: '1px',
+                      background: '#e0ddd6',
+                      border: '1px solid #e0ddd6',
+                    }}
+                  >
+                    {filteredEvents
+                      .filter((e) => e.status === 'upcoming')
+                      .map((event) => {
+                        const dateInfo = parseDate(event.date);
+                        return (
                           <div
+                            key={event.id}
+                            onClick={() => handleEventSelect(event)}
                             style={{
-                              width: '100%',
-                              height: '100%',
-                              background: '#f0ede6',
+                              background: '#ffffff',
+                              cursor: 'pointer',
+                              overflow: 'hidden',
                               display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              fontSize: '48px',
+                              flexDirection: 'column',
+                              transition: 'background 0.2s',
                             }}
+                            onMouseEnter={(e) => (e.currentTarget.style.background = '#f0ede6')}
+                            onMouseLeave={(e) => (e.currentTarget.style.background = '#ffffff')}
                           >
-                            {event.type === 'demo' && '🎿'}
-                            {event.type === 'factory' && '🏭'}
-                            {event.type === 'partner' && '🤝'}
-                            {event.type === 'community' && '👥'}
-                          </div>
-                          {/* Date Badge */}
-                          <div
-                            style={{
-                              position: 'absolute',
-                              top: '0.75rem',
-                              left: '0.75rem',
-                              background: '#c8102e',
-                              padding: '5px 8px',
-                              textAlign: 'center',
-                            }}
-                          >
-                            <div style={{ fontSize: '16px', fontWeight: 200, lineHeight: 1, color: 'white' }}>
-                              {event.date.split(' ')[0]}
+                            {/* Image */}
+                            <div
+                              style={{
+                                position: 'relative',
+                                overflow: 'hidden',
+                                height: '160px',
+                                background: '#0d0d0d',
+                              }}
+                            >
+                              <div
+                                style={{
+                                  width: '100%',
+                                  height: '100%',
+                                  background: '#f0ede6',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  fontSize: '48px',
+                                }}
+                              >
+                                {getEventTypeEmoji(event.tag)}
+                              </div>
+                              {/* Date Badge */}
+                              <div
+                                style={{
+                                  position: 'absolute',
+                                  top: '0.75rem',
+                                  left: '0.75rem',
+                                  background: '#c8102e',
+                                  padding: '5px 8px',
+                                  textAlign: 'center',
+                                }}
+                              >
+                                <div style={{ fontSize: '16px', fontWeight: 200, lineHeight: 1, color: 'white' }}>
+                                  {dateInfo.day}
+                                </div>
+                                <div style={{ fontSize: '8px', letterSpacing: '0.2em', textTransform: 'uppercase', color: 'white' }}>
+                                  {dateInfo.month}
+                                </div>
+                              </div>
                             </div>
-                            <div style={{ fontSize: '8px', letterSpacing: '0.2em', textTransform: 'uppercase', color: 'white' }}>
-                              {event.date.split(' ')[1]}
-                            </div>
-                          </div>
-                        </div>
 
-                        {/* Info */}
-                        <div style={{ padding: '1.25rem', flex: 1, display: 'flex', flexDirection: 'column' }}>
-                          <div
-                            style={{
-                              fontSize: '11px',
-                              letterSpacing: '0.3em',
-                              textTransform: 'uppercase',
-                              color: '#c8102e',
-                              marginBottom: '5px',
-                            }}
-                          >
-                            {event.type}
+                            {/* Info */}
+                            <div style={{ padding: '1.25rem', flex: 1, display: 'flex', flexDirection: 'column' }}>
+                              <div
+                                style={{
+                                  fontSize: '11px',
+                                  letterSpacing: '0.3em',
+                                  textTransform: 'uppercase',
+                                  color: '#c8102e',
+                                  marginBottom: '5px',
+                                }}
+                              >
+                                {event.tag || 'Event'}
+                              </div>
+                              <h3
+                                style={{
+                                  fontSize: '13px',
+                                  fontWeight: 500,
+                                  margin: '0 0 4px',
+                                  lineHeight: 1.35,
+                                }}
+                              >
+                                {event.title}
+                              </h3>
+                              <div
+                                style={{
+                                  fontSize: '11px',
+                                  color: '#6a6a6a',
+                                  marginBottom: '5px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                }}
+                              >
+                                📍 {event.location}
+                              </div>
+                              <p
+                                style={{
+                                  fontSize: '11px',
+                                  color: '#6a6a6a',
+                                  lineHeight: 1.6,
+                                  flex: 1,
+                                  margin: 0,
+                                }}
+                              >
+                                {event.description}
+                              </p>
+                              <div
+                                style={{
+                                  display: 'flex',
+                                  justifyContent: 'space-between',
+                                  alignItems: 'center',
+                                  marginTop: '10px',
+                                  paddingTop: '10px',
+                                  borderTop: '1px solid #e0ddd6',
+                                }}
+                              >
+                                <div style={{ fontSize: '12px', color: '#6a6a6a' }}>
+                                  {event.tier === 'all' ? 'Open' : event.tier}
+                                </div>
+                                <span style={{ fontSize: '12px', color: '#6a6a6a' }}>›</span>
+                              </div>
+                            </div>
                           </div>
-                          <h3
-                            style={{
-                              fontSize: '13px',
-                              fontWeight: 500,
-                              margin: '0 0 4px',
-                              lineHeight: 1.35,
-                            }}
-                          >
-                            {event.title}
-                          </h3>
-                          <div
-                            style={{
-                              fontSize: '11px',
-                              color: '#6a6a6a',
-                              marginBottom: '5px',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                            }}
-                          >
-                            📍 {event.location}
-                          </div>
-                          <p
-                            style={{
-                              fontSize: '11px',
-                              color: '#6a6a6a',
-                              lineHeight: 1.6,
-                              flex: 1,
-                              margin: 0,
-                            }}
-                          >
-                            {event.description}
-                          </p>
-                          <div
-                            style={{
-                              display: 'flex',
-                              justifyContent: 'space-between',
-                              alignItems: 'center',
-                              marginTop: '10px',
-                              paddingTop: '10px',
-                              borderTop: '1px solid #e0ddd6',
-                            }}
-                          >
-                            <div style={{ fontSize: '12px', color: '#6a6a6a' }}>{event.tier}</div>
-                            <span style={{ fontSize: '12px', color: '#6a6a6a' }}>›</span>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                </div>
+                        );
+                      })}
+                  </div>
+                )}
               </div>
             ),
           },
@@ -330,32 +375,39 @@ const Events: React.FC = () => {
             id: 'past',
             label: `Past (${pastCount})`,
             content: (
-              <div style={{ background: '#f0ede6', padding: '1.5rem', borderRadius: '4px' }}>
-                {filteredEvents
-                  .filter((e) => e.status === 'past')
-                  .map((event) => (
-                    <div
-                      key={event.id}
-                      onClick={() => handleEventSelect(event)}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        padding: '1rem 1.25rem',
-                        borderBottom: '1px solid #e0ddd6',
-                        cursor: 'pointer',
-                        background: 'white',
-                        marginBottom: '1px',
-                      }}
-                    >
-                      <div style={{ width: '4px', height: '4px', background: '#c8102e', borderRadius: '50%', marginRight: '12px', flexShrink: 0 }} />
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: '12px', fontWeight: 500 }}>{event.title}</div>
-                        <div style={{ fontSize: '10px', color: '#6a6a6a' }}>
-                          {event.date} · {event.location}
+              <div>
+                {filteredEvents.filter((e) => e.status === 'past').length === 0 ? (
+                  <div style={{ padding: '3rem', textAlign: 'center', background: '#f0ede6', border: '1px solid #e0ddd6' }}>
+                    <p style={{ color: '#6a6a6a' }}>No past events.</p>
+                  </div>
+                ) : (
+                  <div style={{ background: '#f0ede6', padding: '0', borderRadius: '4px', border: '1px solid #e0ddd6' }}>
+                    {filteredEvents
+                      .filter((e) => e.status === 'past')
+                      .map((event, idx) => (
+                        <div
+                          key={event.id}
+                          onClick={() => handleEventSelect(event)}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            padding: '1rem 1.25rem',
+                            borderBottom: idx < filteredEvents.filter((e) => e.status === 'past').length - 1 ? '1px solid #e0ddd6' : 'none',
+                            cursor: 'pointer',
+                            background: 'white',
+                          }}
+                        >
+                          <div style={{ width: '4px', height: '4px', background: '#c8102e', borderRadius: '50%', marginRight: '12px', flexShrink: 0 }} />
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: '12px', fontWeight: 500 }}>{event.title}</div>
+                            <div style={{ fontSize: '10px', color: '#6a6a6a' }}>
+                              {event.date} · {event.location}
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    </div>
-                  ))}
+                      ))}
+                  </div>
+                )}
               </div>
             ),
           },
@@ -396,7 +448,7 @@ const Events: React.FC = () => {
         <Modal
           isOpen={showEventModal}
           onClose={() => setShowEventModal(false)}
-          title={selectedEvent.type.toUpperCase()}
+          title={selectedEvent.tag || 'EVENT'}
           size="md"
         >
           <h2 style={{ fontSize: '20px', fontWeight: 300, margin: '0 0 5px' }}>
@@ -424,20 +476,23 @@ const Events: React.FC = () => {
             <div style={{ width: '4px', height: '4px', background: '#b8a06a', borderRadius: '50%' }} />
             {selectedEvent.tier === 'all' ? 'Open to all members' : `Requires ${selectedEvent.tier} tier`}
           </div>
-          <Button
-            variant="primary"
-            fullWidth
-            onClick={handleRegister}
-            style={{ marginBottom: '12px' }}
-          >
-            Register Interest
-          </Button>
+          {!selectedEvent.registered && (
+            <Button
+              variant="primary"
+              fullWidth
+              onClick={handleRegister}
+              disabled={registering}
+              style={{ marginBottom: '12px' }}
+            >
+              {registering ? 'Registering...' : 'Register Interest'}
+            </Button>
+          )}
           <Button
             variant="secondary"
             fullWidth
             onClick={() => setShowEventModal(false)}
           >
-            Close
+            {selectedEvent.registered ? 'Close' : 'Close'}
           </Button>
         </Modal>
       )}

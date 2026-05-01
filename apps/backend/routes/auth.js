@@ -35,29 +35,37 @@ router.post('/login', async (req, res) => {
 
     console.log('✅ Exchange successful:', JSON.stringify(exchangeResponse.data, null, 2));
 
-    const sessionToken = exchangeResponse.data.token || exchangeResponse.data.accessToken;
+    const wtUser = exchangeResponse.data.user || {};
+    const wtSession = exchangeResponse.data.session || {};
 
     // Create JWT token for the app
     const jwtToken = jwt.sign(
-      { userId, wallet, wallettwoToken: sessionToken },
+      { userId: wtUser.id || userId, wallet, wallettwoToken: wtSession.token },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
 
-    console.log('📝 JWT created for user:', userId);
+    console.log('📝 JWT created for user:', wtUser.id || userId);
 
     res.json({
       success: true,
       jwtToken,
       user: {
-        id: userId,
-        walletAddress: wallet,
-        firstName: 'User',
-        lastName: '',
-        email: '',
-        phone: '',
-        verified: false,
-        tier: 'member',
+        id: wtUser.id || userId,
+        walletAddress: wtUser.wallet || wallet,
+        givenName: wtUser.givenName || '',
+        familyName: wtUser.familyName || '',
+        email: wtUser.email || '',
+        phoneNumber: wtUser.phoneNumber || '',
+        address: wtUser.address || '',
+        city: wtUser.city || '',
+        country: wtUser.country || '',
+        postalCode: wtUser.postalCode || '',
+        birthdate: wtUser.birthdate || '',
+        isPublic: wtUser.isPublic || false,
+        role: wtUser.role || 'user',
+        createdAt: wtUser.createdAt,
+        emailVerified: wtUser.emailVerified || false,
       },
     });
   } catch (error) {

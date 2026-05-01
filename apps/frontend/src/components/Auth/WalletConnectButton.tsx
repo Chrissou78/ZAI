@@ -76,7 +76,7 @@ export function WalletConnectButton() {
   }, [showModal, setUser, setWalletState, navigate]);
 
   if (user) {
-    const initials = `${user.firstName?.[0] ?? ''}${user.lastName?.[0] ?? ''}`.toUpperCase();
+    const initials = `${user.givenName?.[0] ?? ''}${user.familyName?.[0] ?? ''}`.toUpperCase();
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
         <div
@@ -96,8 +96,8 @@ export function WalletConnectButton() {
           {initials}
         </div>
         <div style={{ fontSize: '12px' }}>
-          <div style={{ fontWeight: 500 }}>{user.firstName}</div>
-          <div style={{ color: '#b8a06a', fontSize: '10px' }}>{user.tier || 'member'}</div>
+          <div style={{ fontWeight: 500 }}>{user.givenName}</div>
+          <div style={{ color: '#b8a06a', fontSize: '10px' }}>{user.role || 'member'}</div>
         </div>
       </div>
     );
@@ -126,7 +126,7 @@ export function WalletConnectButton() {
   return (
     <>
       <button
-        onClick={() => setShowModal(true)}
+        onClick={handleOpenModal}
         style={{
           background: '#c8102e',
           color: '#fff',

@@ -26,6 +26,15 @@ app.use('/api/users', require('./routes/users'));
 // WalletTwo routes
 app.use('/api/wallettwo', require('./routes/wallettwo'));
 
+// Community routes
+app.use('/api/community', require('./routes/community'));
+
+// Products routes
+app.use('/api/products', require('./routes/products'));
+
+// Events routes
+app.use('/api/events', require('./routes/events'));
+
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date() });

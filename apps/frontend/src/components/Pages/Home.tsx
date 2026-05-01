@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { StarIcon, CalendarIcon, LocationIcon, MountainIcon } from '../Icons/BenefitIcons';
 import { ZaiLogo, InstagramIcon, FacebookIcon, LinkedInIcon, YouTubeIcon, WhatsAppIcon } from '../Icons/LogoIcons';
+import { WalletConnectButton } from '../Auth/WalletConnectButton';
 
 const Home: React.FC = () => {
   const navigate = useNavigate();
@@ -20,6 +21,25 @@ const Home: React.FC = () => {
           padding: '5rem 4rem',
         }}
       >
+        {/* Top Bar */}
+        <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            padding: '1.5rem 4rem',
+            zIndex: 3,
+          }}
+        >
+          <div style={{ fontSize: '24px', fontWeight: 300, letterSpacing: '0.15em', color: '#ffffff' }}>
+            zai
+          </div>
+          <WalletConnectButton />
+        </div>
         {/* Overlay */}
         <div
           style={{
