@@ -28,8 +28,10 @@ export default async function handler(req, res) {
   if (userMatch && req.method === 'GET') {
     const user = authenticate(req);
     if (!user) return res.status(401).json({ error: 'No token provided' });
-    if (user.userId !== userMatch[1] && user.role !== 'admin') return res.status(403).json({ success: false, error: 'Unauthorized' });
-    return res.json({ success: true, data: [], count: 0, stats: { totalProducts: 0, withInsurance: 0 } });
+    // Allow if userId matches OR wallet matches OR user is admin
+    if (user.userId !== userMatch[1] && user.wallet !== userMatch[1] && user.role !== 'admin') {
+      return res.status(403).json({ success: false, error: 'Unauthorized' });
+    }
   }
 
   // POST /api/products/:productId/activate-insurance

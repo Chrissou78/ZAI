@@ -37,15 +37,15 @@ async function handleLogin(req, res) {
     });
 
     const sessionToken = exchangeResponse.data.session?.token;
-    const sessionUserId = exchangeResponse.data.session?.id || userId;
     const userProfile = exchangeResponse.data.user || {};
 
     if (!sessionToken) {
       return res.status(400).json({ error: 'Invalid exchange response' });
     }
 
+    // ALWAYS use the original userId from the request — this is what the frontend knows
     const mappedUser = {
-      id: userProfile.id || sessionUserId,
+      id: userId,
       name: userProfile.name || '',
       givenName: userProfile.givenName || '',
       familyName: userProfile.familyName || '',
@@ -59,6 +59,7 @@ async function handleLogin(req, res) {
       image: userProfile.image || null,
       birthdate: userProfile.birthdate || null,
       wallet: userProfile.wallet || wallet,
+      walletAddress: wallet,
       walletSecured: userProfile.walletSecured || false,
       role: userProfile.role || 'user',
       banned: userProfile.banned || false,
@@ -66,7 +67,7 @@ async function handleLogin(req, res) {
     };
 
     const jwtToken = jwt.sign(
-      { userId: sessionUserId, wallet, wallettwoToken: sessionToken },
+      { userId: userId, wallet, wallettwoToken: sessionToken },
       process.env.JWT_SECRET || 'fallback-secret',
       { expiresIn: '7d' }
     );
