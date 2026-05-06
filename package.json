@@ -2,6 +2,7 @@
   "name": "zai-monorepo",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "dependencies": {
     "jsonwebtoken": "^9.0.2",
     "axios": "^1.6.0"
