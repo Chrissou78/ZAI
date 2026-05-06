@@ -6,11 +6,8 @@
     "jsonwebtoken": "^9.0.2",
     "axios": "^1.6.0"
   },
-  "devDependencies": {},
   "scripts": {
-    "dev": "pnpm -r --parallel dev",
-    "build": "pnpm -r build",
-    "frontend": "pnpm --filter zai-frontend dev",
-    "backend": "pnpm --filter zai-backend dev"
+    "dev": "pnpm --filter zai-frontend dev",
+    "build": "pnpm --filter zai-frontend build"
   }
 }

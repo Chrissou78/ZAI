@@ -1,4 +1,4 @@
-const jwt = require('jsonwebtoken');
+import jwt from 'jsonwebtoken';
 
 export default async function handler(req, res) {
   res.setHeader('Content-Type', 'application/json');

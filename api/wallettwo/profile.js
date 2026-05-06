@@ -1,4 +1,4 @@
-const axios = require('axios');
+import axios from 'axios';
 
 function authMiddleware(req, res, next) {
   const authHeader = req.headers.authorization;
