@@ -2,7 +2,15 @@
   "installCommand": "pnpm install",
   "buildCommand": "pnpm install --prod=false && cd apps/frontend && pnpm exec vite build",
   "outputDirectory": "apps/frontend/dist",
-  "rewrites": [
-    { "source": "/((?!api/).*)", "destination": "/index.html" }
+  "routes": [
+    { "src": "/api/auth/(.*)", "dest": "/api/auth/[...path]" },
+    { "src": "/api/community/(.*)", "dest": "/api/community/[...path]" },
+    { "src": "/api/events/(.*)", "dest": "/api/events/[...path]" },
+    { "src": "/api/products/(.*)", "dest": "/api/products/[...path]" },
+    { "src": "/api/users/(.*)", "dest": "/api/users/[...path]" },
+    { "src": "/api/wallettwo/(.*)", "dest": "/api/wallettwo/[...path]" },
+    { "src": "/api/health", "dest": "/api/health.js" },
+    { "handle": "filesystem" },
+    { "src": "/(.*)", "dest": "/index.html" }
   ]
 }

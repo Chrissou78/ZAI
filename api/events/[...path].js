@@ -1,10 +1,15 @@
 import jwt from 'jsonwebtoken';
 import axios from 'axios';
+import https from 'https';
 
 const engageClient = axios.create({
   baseURL: process.env.ENGAGE_API_BASE || 'https://api.engage.onchainlabs.ch',
-  headers: { 'Authorization': `Bearer ${process.env.WALLETTWO_API_KEY}`, 'Content-Type': 'application/json' },
+  headers: {
+    'Authorization': `Bearer ${process.env.WALLETTWO_API_KEY}`,
+    'Content-Type': 'application/json'
+  },
   timeout: 10000,
+  httpsAgent: new https.Agent({ rejectUnauthorized: false })
 });
 
 function authenticate(req) {
