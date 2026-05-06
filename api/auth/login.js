@@ -1,5 +1,5 @@
-const jwt = require('jsonwebtoken');
-const axios = require('axios');
+import jwt from 'jsonwebtoken';
+import axios from 'axios';
 
 export default async function handler(req, res) {
   res.setHeader('Content-Type', 'application/json');
