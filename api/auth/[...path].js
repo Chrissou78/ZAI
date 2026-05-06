@@ -2,55 +2,48 @@ import jwt from 'jsonwebtoken';
 import axios from 'axios';
 
 export default async function handler(req, res) {
-  res.setHeader('Content-Type', 'application/json');
+  const path = Array.isArray(req.query.path) ? req.query.path.join('/') : req.query.path || '';
 
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+  if (path === 'login' && req.method === 'POST') {
+    return handleLogin(req, res);
   }
 
+  if (path === 'profile' && req.method === 'PUT') {
+    return handleProfile(req, res);
+  }
+
+  return res.status(404).json({ error: 'Route not found' });
+}
+
+async function handleLogin(req, res) {
+  res.setHeader('Content-Type', 'application/json');
   try {
     let body = req.body;
-    if (typeof body === 'string') {
-      body = JSON.parse(body);
-    }
+    if (typeof body === 'string') body = JSON.parse(body);
 
     const { token, userId, wallet } = body;
-
     if (!token || !userId || !wallet) {
-      console.error('❌ Missing fields:', { token: !!token, userId: !!userId, wallet: !!wallet });
       return res.status(400).json({ error: 'Missing token, userId, or wallet' });
     }
-
-    console.log('🔄 Exchanging WalletTwo token...');
 
     const baseUrl = process.env.WALLETTWO_API_URL || 'https://api.wallettwo.com';
     const exchangeUrl = `${baseUrl}/auth/api/auth/one-time-token/verify`;
 
-    const exchangeResponse = await axios.post(
-      exchangeUrl,
-      { token },
-      {
-        headers: {
-          'Authorization': `Bearer ${process.env.WALLETTWO_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-      }
-    );
-
-    console.log('✅ Exchange successful');
+    const exchangeResponse = await axios.post(exchangeUrl, { token }, {
+      headers: {
+        'Authorization': `Bearer ${process.env.WALLETTWO_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+    });
 
     const sessionToken = exchangeResponse.data.session?.token;
     const sessionUserId = exchangeResponse.data.session?.id || userId;
     const userProfile = exchangeResponse.data.user || {};
 
     if (!sessionToken) {
-      console.error('❌ Missing sessionToken');
       return res.status(400).json({ error: 'Invalid exchange response' });
     }
 
-    console.log('✅ User profile extracted');
-
-    // Extract exactly the available WalletTwo fields
     const mappedUser = {
       id: userProfile.id || sessionUserId,
       name: userProfile.name || '',
@@ -72,23 +65,33 @@ export default async function handler(req, res) {
       isPublic: userProfile.isPublic || false,
     };
 
-    console.log('📋 Mapped user fields:', Object.keys(mappedUser));
-
     const jwtToken = jwt.sign(
       { userId: sessionUserId, wallet, wallettwoToken: sessionToken },
       process.env.JWT_SECRET || 'fallback-secret',
       { expiresIn: '7d' }
     );
 
+    return res.status(200).json({ success: true, jwtToken, user: mappedUser });
+  } catch (error) {
+    return res.status(500).json({ error: error.message, details: error.response?.data });
+  }
+}
+
+async function handleProfile(req, res) {
+  res.setHeader('Content-Type', 'application/json');
+  const authHeader = req.headers.authorization;
+  if (!authHeader) return res.status(401).json({ error: 'No token provided' });
+
+  try {
+    const decoded = jwt.verify(authHeader.replace('Bearer ', ''), process.env.JWT_SECRET || 'fallback-secret');
+    const { name, givenName, familyName, email, phoneNumber, address, city, country, postalCode, birthdate, isPublic } = req.body;
+
     return res.status(200).json({
       success: true,
-      jwtToken,
-      user: mappedUser,
+      message: 'Profile updated successfully',
+      user: { ...decoded, name, givenName, familyName, email, phoneNumber, address, city, country, postalCode, birthdate, isPublic },
     });
   } catch (error) {
-    console.error('❌ Error:', error.message);
-    console.error('   Status:', error.response?.status);
-    console.error('   Data:', error.response?.data);
-    return res.status(500).json({ error: error.message, details: error.response?.data });
+    return res.status(401).json({ error: 'Invalid token' });
   }
 }
