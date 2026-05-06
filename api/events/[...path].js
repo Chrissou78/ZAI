@@ -14,7 +14,7 @@ function authenticate(req) {
 }
 
 export default async function handler(req, res) {
-  const path = Array.isArray(req.query.path) ? req.query.path.join('/') : req.query.path || '';
+  const path = req.url.split('?')[0].replace('/api/events/', '').replace(/\/$/, '');
 
   // GET /api/events
   if (path === '' && req.method === 'GET') {

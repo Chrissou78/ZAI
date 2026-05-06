@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 export default async function handler(req, res) {
-  const path = Array.isArray(req.query.path) ? req.query.path.join('/') : req.query.path || '';
+  const path = req.url.split('?')[0].replace('/api/wallettwo/', '').replace(/\/$/, '');
 
   if (path === 'profile' && req.method === 'GET') {
     const authHeader = req.headers.authorization;
