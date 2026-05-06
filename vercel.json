@@ -3,7 +3,6 @@
   "buildCommand": "pnpm install --prod=false && cd apps/frontend && pnpm exec vite build",
   "outputDirectory": "apps/frontend/dist",
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/$1" },
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
 }
