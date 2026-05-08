@@ -1,6 +1,6 @@
 {
-  "installCommand": "pnpm install",
-  "buildCommand": "pnpm install --prod=false && cd apps/frontend && pnpm exec vite build",
+  "installCommand": "pnpm install --no-frozen-lockfile",
+  "buildCommand": "pnpm install --prod=false --no-frozen-lockfile && cd apps/frontend && pnpm exec vite build",
   "outputDirectory": "apps/frontend/dist",
   "routes": [
     { "src": "/api/auth/(.*)", "dest": "/api/auth/[...path]" },
