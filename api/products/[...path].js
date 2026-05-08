@@ -1,12 +1,10 @@
 export default async function handler(req, res) {
   const API_KEY = process.env.WALLETTWO_API_KEY;
   const BASE = 'https://api.wallettwo.com/blockchain/v1/api';
-  const CHAIN_ID = process.env.CHAIN_ID || '137'; // Polygon default
+  const CHAIN_ID = process.env.CHAIN_ID || '137';
 
   const path = req.url.replace(/^\/api\/products\/?/, '');
 
-  // GET /api/products/user/:userId
-  // userId here is actually the wallet address or we resolve it from the JWT
   const userMatch = path.match(/^user\/(.+)$/);
   if (userMatch && req.method === 'GET') {
     const authHeader = req.headers.authorization;
@@ -23,7 +21,6 @@ export default async function handler(req, res) {
 
       const walletAddress = decoded.wallet;
 
-      // Fetch NFTs from WalletTwo API
       const response = await fetch(
         `${BASE}/nft?address=${walletAddress}&chainId=${CHAIN_ID}`,
         { headers: { 'x-api-key': API_KEY } }
@@ -39,7 +36,6 @@ export default async function handler(req, res) {
 
       const data = await response.json();
 
-      // Map NFT results to your frontend's expected "products" format
       const products = (data.result || []).map(nft => ({
         id: `${nft.token_address}-${nft.token_id}`,
         name: nft.normalized_metadata?.name || nft.name || 'Unknown Product',
@@ -66,19 +62,24 @@ export default async function handler(req, res) {
           cursor: data.cursor
         }
       });
+
+    // ✅ THIS IS THE ONLY CHANGE — replace the old catch block with this one:
     } catch (err) {
       if (err.name === 'JsonWebTokenError' || err.name === 'TokenExpiredError') {
         return res.status(401).json({ error: 'Invalid or expired token' });
       }
       console.error('Products API error:', err);
-      return res.status(500).json({ success: false, error: 'Internal server error' });
+      return res.status(500).json({
+        success: false,
+        error: 'Internal server error',
+        debug: err.message,
+        hasApiKey: !!process.env.WALLETTWO_API_KEY
+      });
     }
   }
 
-  // GET /api/products/:productId — single product detail
   const productMatch = path.match(/^([^/]+)$/);
   if (productMatch && req.method === 'GET') {
-    // For now, return the ID; later you could query a specific NFT
     return res.json({ success: true, data: { id: productMatch[1] } });
   }
 
