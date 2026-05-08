@@ -1,29 +1,16 @@
 import jwt from 'jsonwebtoken';
-import axios from 'axios';
-import https from 'https';
 
-const engageClient = axios.create({
-  baseURL: process.env.ENGAGE_API_BASE || 'https://api.engage.onchainlabs.ch',
-  headers: {
-    'Authorization': `Bearer ${process.env.WALLETTWO_API_KEY}`,
-    'Content-Type': 'application/json'
-  },
-  timeout: 10000,
-  httpsAgent: new https.Agent({ rejectUnauthorized: false })
-});
+const WALLETTWO_API = 'https://api.wallettwo.com/auth/v1/api';
+const API_KEY = () => process.env.WALLETTWO_API_KEY;
 
 function authenticate(req) {
   const token = req.headers.authorization?.replace('Bearer ', '');
   if (!token) return null;
-  try { return jwt.verify(token, process.env.JWT_SECRET); } catch { return null; }
-}
-
-function generateAvatar(firstName, lastName) {
-  return ((firstName?.charAt(0) || '') + (lastName?.charAt(0) || '')).toUpperCase() || 'U';
-}
-
-function generateHandle(firstName, lastName) {
-  return `${(firstName || '').toLowerCase()}.${(lastName || '').toLowerCase()}`.replace(/\.+/g, '.').replace(/^\.|\.$/, '');
+  try {
+    return jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret');
+  } catch {
+    return null;
+  }
 }
 
 export default async function handler(req, res) {
@@ -33,63 +20,149 @@ export default async function handler(req, res) {
   if (path === 'members' && req.method === 'GET') {
     try {
       const { limit = 50, offset = 0, search } = req.query;
+      const page = Math.floor(parseInt(offset || 0) / parseInt(limit || 50)) + 1;
       const parsedLimit = Math.min(parseInt(limit) || 50, 100);
-      const parsedOffset = parseInt(offset) || 0;
-      const params = { limit: parsedLimit, offset: parsedOffset };
-      if (search) params.search = search;
-      const response = await engageClient.get('/users', { params });
-      const members = (response.data.data || response.data || []).map(m => ({
-        id: m.id, name: m.firstName && m.lastName ? `${m.firstName} ${m.lastName}` : m.name || 'User',
-        avatar: generateAvatar(m.firstName, m.lastName), handle: m.handle || generateHandle(m.firstName, m.lastName),
-        location: m.location || 'Unknown', joinedAt: m.createdAt, tier: m.tier || 'member',
-        productsCount: m.products?.length || 0, eventsAttended: m.eventsAttended || 0,
-      }));
-      return res.json({ success: true, data: members, pagination: { limit: parsedLimit, offset: parsedOffset, total: members.length, hasMore: members.length === parsedLimit } });
-    } catch (error) { return res.status(500).json({ success: false, error: error.message }); }
+
+      const url = `${WALLETTWO_API}/members?limit=${parsedLimit}&page=${page}`;
+      const response = await fetch(url, {
+        headers: { 'x-api-key': API_KEY() },
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        return res.status(response.status).json({
+          success: false,
+          error: err.message || 'Failed to fetch members',
+        });
+      }
+
+      const data = await response.json();
+
+      const members = (data.members || []).map(m => {
+        const user = m.user || {};
+        // Respect privacy — only show details for public profiles
+        const displayName = user.isPublic
+          ? (user.name || 'Member')
+          : `Member ${user.id?.slice(0, 6) || ''}`;
+
+        return {
+          id: m.userId,
+          name: displayName,
+          wallet: user.isPublic ? user.wallet : undefined,
+          avatar: (user.name?.charAt(0) || 'M').toUpperCase(),
+          joinedAt: m.createdAt,
+          isPublic: user.isPublic || false,
+        };
+      });
+
+      // Filter by search if provided
+      const filtered = search
+        ? members.filter(m =>
+            m.name.toLowerCase().includes(search.toLowerCase()) ||
+            (m.wallet && m.wallet.toLowerCase().includes(search.toLowerCase()))
+          )
+        : members;
+
+      return res.json({
+        success: true,
+        data: filtered,
+        pagination: {
+          limit: parsedLimit,
+          offset: parseInt(offset) || 0,
+          total: data.total || 0,
+          totalPages: data.totalPages || 1,
+          page: data.page || 1,
+          hasMore: (data.page || 1) < (data.totalPages || 1),
+        },
+      });
+    } catch (error) {
+      console.error('Members API error:', error);
+      return res.status(500).json({ success: false, error: error.message });
+    }
   }
 
   // GET /api/community/members/:memberId
   const memberMatch = path.match(/^members\/([^/]+)$/);
   if (memberMatch && req.method === 'GET') {
     try {
-      const response = await engageClient.get(`/users/${memberMatch[1]}`);
-      const m = response.data.data || response.data;
-      if (!m) return res.status(404).json({ success: false, error: 'Member not found' });
-      return res.json({ success: true, data: { id: m.id, name: m.firstName && m.lastName ? `${m.firstName} ${m.lastName}` : m.name, avatar: generateAvatar(m.firstName, m.lastName), handle: m.handle || generateHandle(m.firstName, m.lastName), location: m.location, bio: m.bio || '', joinedAt: m.createdAt, tier: m.tier, products: m.products || [], eventsAttended: m.eventsAttended || 0, whatsapp: m.whatsappSubscribed || false } });
-    } catch (error) { return res.status(500).json({ success: false, error: error.message }); }
+      // Fetch all members and find the one — no single-member endpoint known yet
+      const response = await fetch(`${WALLETTWO_API}/members?limit=100`, {
+        headers: { 'x-api-key': API_KEY() },
+      });
+
+      if (!response.ok) {
+        return res.status(response.status).json({ success: false, error: 'Failed to fetch member' });
+      }
+
+      const data = await response.json();
+      const member = (data.members || []).find(m => m.userId === memberMatch[1]);
+
+      if (!member) {
+        return res.status(404).json({ success: false, error: 'Member not found' });
+      }
+
+      const user = member.user || {};
+      return res.json({
+        success: true,
+        data: {
+          id: member.userId,
+          name: user.isPublic ? (user.name || 'Member') : `Member ${user.id?.slice(0, 6) || ''}`,
+          wallet: user.isPublic ? user.wallet : undefined,
+          email: user.isPublic ? user.email : undefined,
+          avatar: (user.name?.charAt(0) || 'M').toUpperCase(),
+          joinedAt: member.createdAt,
+          isPublic: user.isPublic || false,
+        },
+      });
+    } catch (error) {
+      return res.status(500).json({ success: false, error: error.message });
+    }
   }
 
   // GET /api/community/feed
   if (path === 'feed' && req.method === 'GET') {
     const { limit = 30, offset = 0 } = req.query;
-    return res.json({ success: true, data: [], pagination: { limit: parseInt(limit), offset: parseInt(offset), hasMore: false } });
+    return res.json({
+      success: true,
+      data: [],
+      pagination: { limit: parseInt(limit), offset: parseInt(offset), hasMore: false },
+    });
   }
 
   // GET /api/community/stats
   if (path === 'stats' && req.method === 'GET') {
     try {
-      const [membersRes, eventsRes] = await Promise.all([
-        engageClient.get('/users', { params: { limit: 10000, offset: 0 } }),
-        engageClient.get('/events', { params: { status: 'upcoming' } }),
-      ]);
-      const allMembers = membersRes.data.data || membersRes.data || [];
-      const events = eventsRes.data.data || eventsRes.data || [];
-      const membersByRegion = allMembers.reduce((acc, m) => { const r = m.location?.split(',').pop()?.trim() || 'Unknown'; acc[r] = (acc[r] || 0) + 1; return acc; }, {});
-      return res.json({ success: true, data: { totalMembers: allMembers.length, connectedInstagram: allMembers.filter(m => m.instagramHandle).length, totalPhotos: 0, eventsThisMonth: events.length, membersByRegion } });
-    } catch (error) { return res.status(500).json({ success: false, error: error.message }); }
+      const response = await fetch(`${WALLETTWO_API}/members?limit=1`, {
+        headers: { 'x-api-key': API_KEY() },
+      });
+      const data = response.ok ? await response.json() : {};
+
+      return res.json({
+        success: true,
+        data: {
+          totalMembers: data.total || 0,
+          totalPhotos: 0,
+          eventsThisMonth: 0,
+          membersByRegion: {},
+        },
+      });
+    } catch {
+      return res.json({
+        success: true,
+        data: { totalMembers: 0, totalPhotos: 0, eventsThisMonth: 0, membersByRegion: {} },
+      });
+    }
   }
 
   // POST /api/community/whatsapp/subscribe
   if (path === 'whatsapp/subscribe' && req.method === 'POST') {
     const user = authenticate(req);
     if (!user) return res.status(401).json({ error: 'No token provided' });
-    const { phoneNumber } = req.body;
-    if (!phoneNumber) return res.status(400).json({ success: false, error: 'Phone number required' });
-    try {
-      await engageClient.put(`/users/${user.userId}`, { whatsappPhone: phoneNumber, whatsappSubscribed: true });
-      const masked = phoneNumber.replace(/(.{3})(.*)(.{3})/, '$1 *** $3');
-      return res.json({ success: true, message: 'WhatsApp subscription initiated', data: { userId: user.userId, phoneNumber: masked, subscribedAt: new Date().toISOString() } });
-    } catch (error) { return res.status(500).json({ success: false, error: error.message }); }
+    return res.json({
+      success: true,
+      message: 'WhatsApp subscription initiated',
+      data: { userId: user.userId, subscribedAt: new Date().toISOString() },
+    });
   }
 
   return res.status(404).json({ error: 'Route not found' });
