@@ -73,6 +73,8 @@ const Settings: React.FC = () => {
   useEffect(() => {
     if (user?.id) {
       fetchSettings();
+    } else {
+      setIsLoading(false);
     }
   }, [user?.id]);
 
@@ -85,23 +87,18 @@ const Settings: React.FC = () => {
 
       if (response.data?.success) {
         const settings = response.data.data;
-        
-        if (settings.notifications) {
-          setNotifications(settings.notifications);
-        }
-        if (settings.privacy) {
-          setPrivacy(settings.privacy);
-        }
-        if (settings.card) {
-          setCard(settings.card);
-        }
-        if (settings.region) {
-          setRegion(settings.region);
-        }
+        if (settings.notifications) setNotifications(prev => ({ ...prev, ...settings.notifications }));
+        if (settings.privacy) setPrivacy(prev => ({ ...prev, ...settings.privacy }));
+        if (settings.card) setCard(prev => ({ ...prev, ...settings.card }));
+        if (settings.region) setRegion(prev => ({ ...prev, ...settings.region }));
       }
     } catch (err: any) {
       console.error('Error fetching settings:', err);
-      setError(err.response?.data?.error || 'Failed to load settings');
+      // Don't block the page — use defaults silently
+      // Only show error if it's not a 404 (first-time user with no settings yet)
+      if (err.response?.status !== 404) {
+        setError(err.response?.data?.error || 'Failed to load settings');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -123,6 +120,10 @@ const Settings: React.FC = () => {
       });
 
       if (response.data?.success) {
+        // Persist new JWT if returned
+        if (response.data.jwtToken) {
+          localStorage.setItem('zai_token', response.data.jwtToken);
+        }
         setSuccessMessage('Settings saved successfully');
         setTimeout(() => setSuccessMessage(null), 3000);
       }
@@ -214,7 +215,7 @@ const Settings: React.FC = () => {
             Manage notifications, privacy, and account preferences.
           </p>
         </div>
-        {(activePanel !== 'region') && (
+        {activePanel !== 'region' && (
           <Button
             variant="primary"
             onClick={saveSettings}
@@ -463,10 +464,10 @@ const Settings: React.FC = () => {
                     Card ID
                   </div>
                   <div style={{ fontSize: '14px', letterSpacing: '0.2em', color: '#ffffff', fontFamily: 'monospace' }}>
-                    {user.nfcCardId || 'ZAI-2024 ···· XXXX'}
+                    {user?.nfcCardId || 'ZAI-2024 ···· XXXX'}
                   </div>
                   <div style={{ fontSize: '10px', letterSpacing: '0.15em', textTransform: 'uppercase', color: '#4caf7d', marginTop: '3px' }}>
-                    ● {card.nfcActive ? 'Active' : 'Inactive'}
+                    {card.nfcActive ? '● Active' : '○ Inactive'}
                   </div>
                 </div>
               </div>
@@ -688,21 +689,9 @@ const Settings: React.FC = () => {
               </div>
 
               {[
-                {
-                  label: 'Change password',
-                  desc: 'Last updated 3 months ago',
-                  action: 'Update',
-                },
-                {
-                  label: 'Two-factor authentication',
-                  desc: 'Add an extra layer of security',
-                  toggle: true,
-                },
-                {
-                  label: 'Active sessions',
-                  desc: '2 devices logged in',
-                  action: 'Sign out others',
-                },
+                { label: 'Change password', desc: 'Last updated 3 months ago', action: 'Update' },
+                { label: 'Two-factor authentication', desc: 'Add an extra layer of security', toggle: true },
+                { label: 'Active sessions', desc: '2 devices logged in', action: 'Sign out others' },
               ].map((item, i) => (
                 <div
                   key={i}
