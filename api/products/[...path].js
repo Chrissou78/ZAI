@@ -1,12 +1,24 @@
 import jwt from 'jsonwebtoken';
-import { getPool, initDB } from '../db.js';
+
+// Lazy DB import — don't crash if DB is unavailable
+let dbModule = null;
+async function getDB() {
+  if (!dbModule) {
+    try {
+      dbModule = await import('../db.js');
+    } catch (e) {
+      console.error('DB module import failed:', e.message);
+    }
+  }
+  return dbModule;
+}
 
 const API_KEY = () => process.env.WALLETTWO_API_KEY;
 const BASE = 'https://api.wallettwo.com/blockchain/v1/api';
 const CHAIN_ID = () => process.env.CHAIN_ID || '137';
 
 // ── Only show NFTs from the ZAI contract ──
-const ZAI_CONTRACT = '0xEdd1A9446A2C0E50a8287C9527BF2a7498bfbc55'.toLowerCase();
+const ZAI_CONTRACT = '0xedd1a9446a2c0e50a8287c9527bf2a7498bfbc55'; // already lowercase
 
 function authenticate(req) {
   const authHeader = req.headers.authorization;
@@ -22,50 +34,36 @@ function genId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
 }
 
-// Call SAS API to register insurance
 async function callSasApi(payload) {
   const sasUrl = process.env.SAS_API_URL;
   const sasUser = process.env.SAS_USERNAME;
   const sasPass = process.env.SAS_PASSWORD;
-
   if (!sasUrl || !sasUser || !sasPass) {
     throw new Error('SAS API not configured — missing SAS_API_URL, SAS_USERNAME, or SAS_PASSWORD');
   }
-
   const basicAuth = Buffer.from(`${sasUser}:${sasPass}`).toString('base64');
-
   const response = await fetch(`${sasUrl}/postdata`, {
     method: 'POST',
-    headers: {
-      'Authorization': `Basic ${basicAuth}`,
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Authorization': `Basic ${basicAuth}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
-
   const data = await response.json();
-
   if (!response.ok || data.status === 'error') {
     const errorDetail = (data.errors || []).map(e => e.detail || e.description).join('; ');
     throw new Error(errorDetail || `SAS API error (HTTP ${response.status})`);
   }
-
   return data;
 }
 
-// Fetch SAS makes list
 async function fetchSasMakes() {
   const sasUrl = process.env.SAS_API_URL;
   const sasUser = process.env.SAS_USERNAME;
   const sasPass = process.env.SAS_PASSWORD;
-
   if (!sasUrl || !sasUser || !sasPass) return [];
-
   const basicAuth = Buffer.from(`${sasUser}:${sasPass}`).toString('base64');
   const response = await fetch(`${sasUrl}/getMakes`, {
     headers: { 'Authorization': `Basic ${basicAuth}` },
   });
-
   if (!response.ok) return [];
   return response.json();
 }
@@ -80,22 +78,45 @@ export default async function handler(req, res) {
     if (!decoded) return res.status(401).json({ error: 'No token provided' });
 
     try {
-      await initDB();
-      const pool = getPool();
+      // ★ Try DB but don't let it crash the request ★
+      let pool = null;
+      let dbReady = false;
+      try {
+        const db = await getDB();
+        if (db) {
+          await db.initDB();
+          pool = db.getPool();
+          dbReady = true;
+        }
+      } catch (dbErr) {
+        console.error('DB init failed (non-fatal):', dbErr.message);
+      }
 
       // Fetch NFTs from WalletTwo
       let products = [];
+      let rawNftCount = 0;
+      let allAddresses = []; // ★ debug: collect all token_address values
       try {
-        const response = await fetch(
-          `${BASE}/nft?address=${decoded.wallet}&chainId=${CHAIN_ID()}`,
-          { headers: { 'x-api-key': API_KEY() } }
-        );
+        const nftUrl = `${BASE}/nft?address=${decoded.wallet}&chainId=${CHAIN_ID()}`;
+        console.log('Fetching NFTs from:', nftUrl);
+
+        const response = await fetch(nftUrl, {
+          headers: { 'x-api-key': API_KEY() },
+        });
 
         if (response.ok) {
           const data = await response.json();
-          products = (data.result || [])
-            // ★ FILTER: only keep NFTs from the ZAI contract ★
-            .filter(nft => nft.token_address?.toLowerCase() === ZAI_CONTRACT)
+          const allNfts = data.result || [];
+          rawNftCount = allNfts.length;
+
+          // ★ Collect all unique contract addresses for debugging ★
+          allAddresses = [...new Set(allNfts.map(nft => nft.token_address))];
+
+          products = allNfts
+            .filter(nft => {
+              const addr = (nft.token_address || '').toLowerCase();
+              return addr === ZAI_CONTRACT;
+            })
             .map(nft => ({
               id: `${nft.token_address}-${nft.token_id}`,
               name: nft.normalized_metadata?.name || nft.name || 'ZAI Product',
@@ -107,50 +128,58 @@ export default async function handler(req, res) {
               symbol: nft.symbol,
               metadata: nft.normalized_metadata || {},
             }));
+        } else {
+          const errText = await response.text();
+          console.error('WalletTwo NFT API error:', response.status, errText);
         }
       } catch (nftErr) {
         console.error('NFT fetch error (non-fatal):', nftErr.message);
       }
 
-      // Fetch insurance status from DB for all products
-      const productIds = products.map(p => p.id);
+      // Fetch insurance from DB (only if DB is ready)
       let insuranceMap = {};
-      if (productIds.length > 0) {
-        const insResult = await pool.query(
-          `SELECT product_id, sas_status, sas_certificate_id, sas_transaction_id, created_at
-           FROM insurance_registrations WHERE user_id = $1 AND product_id = ANY($2)`,
-          [decoded.userId, productIds]
-        );
-        for (const row of insResult.rows) {
-          insuranceMap[row.product_id] = {
-            active: row.sas_status === 'success',
-            status: row.sas_status,
-            certificateId: row.sas_certificate_id,
-            transactionId: row.sas_transaction_id,
-            activatedAt: row.created_at,
-          };
+      if (dbReady && pool) {
+        try {
+          const productIds = products.map(p => p.id);
+          if (productIds.length > 0) {
+            const insResult = await pool.query(
+              `SELECT product_id, sas_status, sas_certificate_id, sas_transaction_id, created_at
+               FROM insurance_registrations WHERE user_id = $1 AND product_id = ANY($2)`,
+              [decoded.userId, productIds]
+            );
+            for (const row of insResult.rows) {
+              insuranceMap[row.product_id] = {
+                active: row.sas_status === 'success',
+                status: row.sas_status,
+                certificateId: row.sas_certificate_id,
+                transactionId: row.sas_transaction_id,
+                activatedAt: row.created_at,
+              };
+            }
+          }
+
+          const localInsResult = await pool.query(
+            `SELECT product_id, sas_status, sas_certificate_id, sas_transaction_id, device_data, created_at
+             FROM insurance_registrations WHERE user_id = $1`,
+            [decoded.userId]
+          );
+          for (const row of localInsResult.rows) {
+            if (!insuranceMap[row.product_id]) {
+              insuranceMap[row.product_id] = {
+                active: row.sas_status === 'success',
+                status: row.sas_status,
+                certificateId: row.sas_certificate_id,
+                transactionId: row.sas_transaction_id,
+                activatedAt: row.created_at,
+              };
+            }
+          }
+        } catch (insErr) {
+          console.error('Insurance DB query failed (non-fatal):', insErr.message);
         }
       }
 
-      // Also get insurance for products not in NFT list (claimed locally)
-      const localInsResult = await pool.query(
-        `SELECT product_id, sas_status, sas_certificate_id, sas_transaction_id, device_data, created_at
-         FROM insurance_registrations WHERE user_id = $1`,
-        [decoded.userId]
-      );
-      for (const row of localInsResult.rows) {
-        if (!insuranceMap[row.product_id]) {
-          insuranceMap[row.product_id] = {
-            active: row.sas_status === 'success',
-            status: row.sas_status,
-            certificateId: row.sas_certificate_id,
-            transactionId: row.sas_transaction_id,
-            activatedAt: row.created_at,
-          };
-        }
-      }
-
-      // Merge insurance data into products
+      // Merge insurance data
       const enrichedProducts = products.map(p => ({
         ...p,
         insurance: insuranceMap[p.id] || { active: false, status: null, certificateId: null },
@@ -166,6 +195,16 @@ export default async function handler(req, res) {
           totalProducts: enrichedProducts.length,
           activeInsurance,
           pendingClaims: 0,
+        },
+        // ★ Debug info — remove after confirming it works ★
+        _debug: {
+          chainId: CHAIN_ID(),
+          wallet: decoded.wallet,
+          rawNftCount,
+          filteredCount: products.length,
+          zaiContract: ZAI_CONTRACT,
+          allContractAddresses: allAddresses,
+          dbConnected: dbReady,
         },
       });
     } catch (err) {
@@ -184,12 +223,14 @@ export default async function handler(req, res) {
     if (!decoded) return res.status(401).json({ error: 'No token provided' });
 
     try {
-      await initDB();
-      const pool = getPool();
+      const db = await getDB();
+      if (!db) return res.status(503).json({ success: false, error: 'Database unavailable' });
+      await db.initDB();
+      const pool = db.getPool();
+
       const productId = insuranceMatch[1];
       const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
 
-      // Check if already insured
       const existing = await pool.query(
         'SELECT id, sas_status FROM insurance_registrations WHERE user_id = $1 AND product_id = $2',
         [decoded.userId, productId]
@@ -198,7 +239,6 @@ export default async function handler(req, res) {
         return res.status(400).json({ success: false, error: 'Insurance already active for this product' });
       }
 
-      // Get user profile from DB
       const profileResult = await pool.query('SELECT * FROM user_profiles WHERE user_id = $1', [decoded.userId]);
       const profile = profileResult.rows[0];
 
@@ -224,19 +264,14 @@ export default async function handler(req, res) {
       if (!customer.country) missingCustomer.push('country');
       if (missingCustomer.length > 0) {
         return res.status(400).json({
-          success: false,
-          error: 'Missing required profile fields for insurance',
-          missingFields: missingCustomer,
-          message: `Please complete your profile: ${missingCustomer.join(', ')}`,
+          success: false, error: 'Missing required profile fields for insurance',
+          missingFields: missingCustomer, message: `Please complete your profile: ${missingCustomer.join(', ')}`,
         });
       }
 
       const device = {
         type: parseInt(body.deviceType) || 1,
-        make: {
-          ID: parseInt(body.makeId) || 1,
-          name: body.makeName || 'zai',
-        },
+        make: { ID: parseInt(body.makeId) || 1, name: body.makeName || 'zai' },
         model: body.model || '',
         serial: body.serial || '',
         itemnumber: body.itemnumber || '',
@@ -251,25 +286,15 @@ export default async function handler(req, res) {
       if (!device.price) missingDevice.push('price');
       if (missingDevice.length > 0) {
         return res.status(400).json({
-          success: false,
-          error: 'Missing required device fields for insurance',
-          missingFields: missingDevice,
-          message: `Please provide device details: ${missingDevice.join(', ')}`,
+          success: false, error: 'Missing required device fields for insurance',
+          missingFields: missingDevice, message: `Please provide device details: ${missingDevice.join(', ')}`,
         });
       }
 
       const sasProductIds = (process.env.SAS_PRODUCT_IDS || '9').split(',').map(id => ({ ID: parseInt(id.trim()) }));
-
       const sasPayload = {
-        partner: {
-          ID: parseInt(process.env.SAS_PARTNER_ID) || 1,
-          reference: `${customer.firstname} ${customer.lastname}`,
-          storename: 'ZAI Experience Club',
-          storelocation: 'Online',
-        },
-        customer,
-        device,
-        products: sasProductIds,
+        partner: { ID: parseInt(process.env.SAS_PARTNER_ID) || 1, reference: `${customer.firstname} ${customer.lastname}`, storename: 'ZAI Experience Club', storelocation: 'Online' },
+        customer, device, products: sasProductIds,
       };
 
       const regId = existing.rows[0]?.id || genId();
@@ -281,40 +306,21 @@ export default async function handler(req, res) {
         );
       } else {
         await pool.query(
-          `INSERT INTO insurance_registrations (id, user_id, product_id, sas_status, customer_data, device_data, products_data)
-           VALUES ($1,$2,$3,'pending',$4,$5,$6)`,
+          `INSERT INTO insurance_registrations (id, user_id, product_id, sas_status, customer_data, device_data, products_data) VALUES ($1,$2,$3,'pending',$4,$5,$6)`,
           [regId, decoded.userId, productId, JSON.stringify(sasPayload.customer), JSON.stringify(sasPayload.device), JSON.stringify(sasPayload.products)]
         );
       }
 
       try {
         const sasResult = await callSasApi(sasPayload);
-
         await pool.query(
           `UPDATE insurance_registrations SET sas_status='success', sas_transaction_id=$2, sas_certificate_id=$3, updated_at=NOW() WHERE id=$1`,
           [regId, sasResult.transactionid, sasResult.certificateid]
         );
-
-        return res.json({
-          success: true,
-          message: 'Insurance activated successfully',
-          data: {
-            transactionId: sasResult.transactionid,
-            certificateId: sasResult.certificateid,
-            status: 'success',
-          },
-        });
+        return res.json({ success: true, message: 'Insurance activated successfully', data: { transactionId: sasResult.transactionid, certificateId: sasResult.certificateid, status: 'success' } });
       } catch (sasErr) {
-        await pool.query(
-          `UPDATE insurance_registrations SET sas_status='error', error_detail=$2, updated_at=NOW() WHERE id=$1`,
-          [regId, sasErr.message]
-        );
-
-        return res.status(502).json({
-          success: false,
-          error: 'Insurance provider error',
-          detail: sasErr.message,
-        });
+        await pool.query(`UPDATE insurance_registrations SET sas_status='error', error_detail=$2, updated_at=NOW() WHERE id=$1`, [regId, sasErr.message]);
+        return res.status(502).json({ success: false, error: 'Insurance provider error', detail: sasErr.message });
       }
     } catch (err) {
       console.error('Insurance activation error:', err);
@@ -322,38 +328,28 @@ export default async function handler(req, res) {
     }
   }
 
-  // ─── GET /api/products/:productId/insurance — get insurance status ───
+  // ─── GET /api/products/:productId/insurance ───
   const insuranceStatusMatch = fullPath.match(/^([^/]+)\/insurance$/);
   if (insuranceStatusMatch && req.method === 'GET') {
     const decoded = authenticate(req);
     if (!decoded) return res.status(401).json({ error: 'No token provided' });
     try {
-      await initDB();
-      const result = await getPool().query(
+      const db = await getDB();
+      if (!db) return res.json({ success: true, data: { active: false, status: null } });
+      await db.initDB();
+      const result = await db.getPool().query(
         'SELECT * FROM insurance_registrations WHERE user_id = $1 AND product_id = $2 ORDER BY created_at DESC LIMIT 1',
         [decoded.userId, insuranceStatusMatch[1]]
       );
-      if (!result.rows[0]) {
-        return res.json({ success: true, data: { active: false, status: null } });
-      }
+      if (!result.rows[0]) return res.json({ success: true, data: { active: false, status: null } });
       const row = result.rows[0];
-      return res.json({
-        success: true,
-        data: {
-          active: row.sas_status === 'success',
-          status: row.sas_status,
-          certificateId: row.sas_certificate_id,
-          transactionId: row.sas_transaction_id,
-          error: row.error_detail,
-          activatedAt: row.created_at,
-        },
-      });
+      return res.json({ success: true, data: { active: row.sas_status === 'success', status: row.sas_status, certificateId: row.sas_certificate_id, transactionId: row.sas_transaction_id, error: row.error_detail, activatedAt: row.created_at } });
     } catch (err) {
       return res.status(500).json({ success: false, error: err.message });
     }
   }
 
-  // ─── GET /api/products/makes — proxy SAS makes list ───
+  // ─── GET /api/products/makes ───
   if (fullPath === 'makes' && req.method === 'GET') {
     try {
       const makes = await fetchSasMakes();
@@ -363,16 +359,12 @@ export default async function handler(req, res) {
     }
   }
 
-  // ─── POST /api/products/claim — claim by serial ───
+  // ─── POST /api/products/claim ───
   if (fullPath === 'claim' && req.method === 'POST') {
     const decoded = authenticate(req);
     if (!decoded) return res.status(401).json({ error: 'No token provided' });
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-    return res.json({
-      success: true,
-      message: 'Product claim submitted',
-      data: { serialNumber: body.serialNumber, userId: decoded.userId },
-    });
+    return res.json({ success: true, message: 'Product claim submitted', data: { serialNumber: body.serialNumber, userId: decoded.userId } });
   }
 
   // ─── GET /api/products/:productId ───

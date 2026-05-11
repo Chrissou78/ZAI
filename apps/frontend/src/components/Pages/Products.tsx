@@ -130,6 +130,7 @@ const Products: React.FC = () => {
         const response = await apiService.post('/products/claim', { serialNumber: serialInput.trim() });
         if (response.data?.success) {
           setClaimSuccess(true);
+          window.dispatchEvent(new CustomEvent('zai:product-claimed'));
           setTimeout(() => {
             setShowClaimModal(false);
             setSerialInput('');
