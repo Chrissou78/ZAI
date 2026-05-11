@@ -1,84 +1,384 @@
+import jwt from 'jsonwebtoken';
+import { getPool, initDB } from '../db.js';
+
+const API_KEY = () => process.env.WALLETTWO_API_KEY;
+const BASE = 'https://api.wallettwo.com/blockchain/v1/api';
+const CHAIN_ID = () => process.env.CHAIN_ID || '137';
+
+function authenticate(req) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ')) return null;
+  try {
+    return jwt.verify(authHeader.split(' ')[1], process.env.JWT_SECRET || 'fallback-secret');
+  } catch {
+    return null;
+  }
+}
+
+function genId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+}
+
+// Call SAS API to register insurance
+async function callSasApi(payload) {
+  const sasUrl = process.env.SAS_API_URL;
+  const sasUser = process.env.SAS_USERNAME;
+  const sasPass = process.env.SAS_PASSWORD;
+
+  if (!sasUrl || !sasUser || !sasPass) {
+    throw new Error('SAS API not configured — missing SAS_API_URL, SAS_USERNAME, or SAS_PASSWORD');
+  }
+
+  const basicAuth = Buffer.from(`${sasUser}:${sasPass}`).toString('base64');
+
+  const response = await fetch(`${sasUrl}/postdata`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Basic ${basicAuth}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok || data.status === 'error') {
+    const errorDetail = (data.errors || []).map(e => e.detail || e.description).join('; ');
+    throw new Error(errorDetail || `SAS API error (HTTP ${response.status})`);
+  }
+
+  return data;
+}
+
+// Fetch SAS makes list
+async function fetchSasMakes() {
+  const sasUrl = process.env.SAS_API_URL;
+  const sasUser = process.env.SAS_USERNAME;
+  const sasPass = process.env.SAS_PASSWORD;
+
+  if (!sasUrl || !sasUser || !sasPass) return [];
+
+  const basicAuth = Buffer.from(`${sasUser}:${sasPass}`).toString('base64');
+  const response = await fetch(`${sasUrl}/getMakes`, {
+    headers: { 'Authorization': `Basic ${basicAuth}` },
+  });
+
+  if (!response.ok) return [];
+  return response.json();
+}
+
 export default async function handler(req, res) {
-  const API_KEY = process.env.WALLETTWO_API_KEY;
-  const BASE = 'https://api.wallettwo.com/blockchain/v1/api';
-  const CHAIN_ID = process.env.CHAIN_ID || '137';
+  const fullPath = req.url.split('?')[0].replace(/^\/api\/products\/?/, '').replace(/\/$/, '');
 
-  const path = req.url.replace(/^\/api\/products\/?/, '');
-
-  const userMatch = path.match(/^user\/(.+)$/);
+  // ─── GET /api/products/user/:userId — list user's products ───
+  const userMatch = fullPath.match(/^user\/(.+)$/);
   if (userMatch && req.method === 'GET') {
-    const authHeader = req.headers.authorization;
-    if (!authHeader?.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'No token provided' });
-    }
+    const decoded = authenticate(req);
+    if (!decoded) return res.status(401).json({ error: 'No token provided' });
 
     try {
-      const jwt = await import('jsonwebtoken');
-      const decoded = jwt.default.verify(
-        authHeader.split(' ')[1],
-        process.env.JWT_SECRET || 'fallback-secret'
-      );
+      await initDB();
+      const pool = getPool();
 
-      const walletAddress = decoded.wallet;
+      // Fetch NFTs from WalletTwo
+      let products = [];
+      try {
+        const response = await fetch(
+          `${BASE}/nft?address=${decoded.wallet}&chainId=${CHAIN_ID()}`,
+          { headers: { 'x-api-key': API_KEY() } }
+        );
 
-      const response = await fetch(
-        `${BASE}/nft?address=${walletAddress}&chainId=${CHAIN_ID}`,
-        { headers: { 'x-api-key': API_KEY } }
-      );
-
-      if (!response.ok) {
-        const err = await response.json().catch(() => ({}));
-        return res.status(response.status).json({
-          success: false,
-          error: err.message || 'Failed to fetch products'
-        });
+        if (response.ok) {
+          const data = await response.json();
+          products = (data.result || []).map(nft => ({
+            id: `${nft.token_address}-${nft.token_id}`,
+            name: nft.normalized_metadata?.name || nft.name || 'Unknown Product',
+            description: nft.normalized_metadata?.description || '',
+            image: nft.normalized_metadata?.image || '',
+            tokenAddress: nft.token_address,
+            tokenId: nft.token_id,
+            contractType: nft.contract_type,
+            symbol: nft.symbol,
+            metadata: nft.normalized_metadata || {},
+          }));
+        }
+      } catch (nftErr) {
+        console.error('NFT fetch error (non-fatal):', nftErr.message);
       }
 
-      const data = await response.json();
+      // Fetch insurance status from DB for all products
+      const productIds = products.map(p => p.id);
+      let insuranceMap = {};
+      if (productIds.length > 0) {
+        const insResult = await pool.query(
+          `SELECT product_id, sas_status, sas_certificate_id, sas_transaction_id, created_at
+           FROM insurance_registrations WHERE user_id = $1 AND product_id = ANY($2)`,
+          [decoded.userId, productIds]
+        );
+        for (const row of insResult.rows) {
+          insuranceMap[row.product_id] = {
+            active: row.sas_status === 'success',
+            status: row.sas_status,
+            certificateId: row.sas_certificate_id,
+            transactionId: row.sas_transaction_id,
+            activatedAt: row.created_at,
+          };
+        }
+      }
 
-      const products = (data.result || []).map(nft => ({
-        id: `${nft.token_address}-${nft.token_id}`,
-        name: nft.normalized_metadata?.name || nft.name || 'Unknown Product',
-        description: nft.normalized_metadata?.description || '',
-        image: nft.normalized_metadata?.image || '',
-        tokenAddress: nft.token_address,
-        tokenId: nft.token_id,
-        contractType: nft.contract_type,
-        symbol: nft.symbol,
-        metadata: nft.normalized_metadata || {}
+      // Also get insurance for products not in NFT list (claimed locally)
+      const localInsResult = await pool.query(
+        `SELECT product_id, sas_status, sas_certificate_id, sas_transaction_id, device_data, created_at
+         FROM insurance_registrations WHERE user_id = $1`,
+        [decoded.userId]
+      );
+      for (const row of localInsResult.rows) {
+        if (!insuranceMap[row.product_id]) {
+          insuranceMap[row.product_id] = {
+            active: row.sas_status === 'success',
+            status: row.sas_status,
+            certificateId: row.sas_certificate_id,
+            transactionId: row.sas_transaction_id,
+            activatedAt: row.created_at,
+          };
+        }
+      }
+
+      // Merge insurance data into products
+      const enrichedProducts = products.map(p => ({
+        ...p,
+        insurance: insuranceMap[p.id] || { active: false, status: null, certificateId: null },
+        warranty: { active: true, expiresAt: null, years: 2 },
       }));
+
+      const activeInsurance = Object.values(insuranceMap).filter(i => i.active).length;
 
       return res.json({
         success: true,
-        data: products,
+        data: enrichedProducts,
         stats: {
-          totalProducts: products.length,
-          activeInsurance: 0,
-          pendingClaims: 0
+          totalProducts: enrichedProducts.length,
+          activeInsurance,
+          pendingClaims: 0,
         },
-        pagination: {
-          page: data.page,
-          pageSize: data.page_size,
-          cursor: data.cursor
-        }
       });
-
-    // ✅ THIS IS THE ONLY CHANGE — replace the old catch block with this one:
     } catch (err) {
       if (err.name === 'JsonWebTokenError' || err.name === 'TokenExpiredError') {
         return res.status(401).json({ error: 'Invalid or expired token' });
       }
       console.error('Products API error:', err);
-      return res.status(500).json({
-        success: false,
-        error: 'Internal server error',
-        debug: err.message,
-        hasApiKey: !!process.env.WALLETTWO_API_KEY
-      });
+      return res.status(500).json({ success: false, error: err.message });
     }
   }
 
-  const productMatch = path.match(/^([^/]+)$/);
+  // ─── POST /api/products/:productId/activate-insurance ───
+  const insuranceMatch = fullPath.match(/^([^/]+)\/activate-insurance$/);
+  if (insuranceMatch && req.method === 'POST') {
+    const decoded = authenticate(req);
+    if (!decoded) return res.status(401).json({ error: 'No token provided' });
+
+    try {
+      await initDB();
+      const pool = getPool();
+      const productId = insuranceMatch[1];
+      const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+
+      // Check if already insured
+      const existing = await pool.query(
+        'SELECT id, sas_status FROM insurance_registrations WHERE user_id = $1 AND product_id = $2',
+        [decoded.userId, productId]
+      );
+      if (existing.rows[0]?.sas_status === 'success') {
+        return res.status(400).json({ success: false, error: 'Insurance already active for this product' });
+      }
+
+      // Get user profile from DB
+      const profileResult = await pool.query('SELECT * FROM user_profiles WHERE user_id = $1', [decoded.userId]);
+      const profile = profileResult.rows[0];
+
+      // Merge profile with body overrides (user can provide missing fields in the request)
+      const customer = {
+        salutation: body.salutation || profile?.salutation || 1,
+        firstname: body.firstname || profile?.given_name || '',
+        lastname: body.lastname || profile?.family_name || '',
+        address1: body.address1 || profile?.address || '',
+        zip: parseInt(body.zip || profile?.postal_code) || 0,
+        city: body.city || profile?.city || '',
+        country: body.country || profile?.country || 'CH',
+        language: body.language || profile?.language || 'en',
+        email: body.email || profile?.email || '',
+        phone: body.phone || profile?.phone_number || '',
+      };
+
+      // Validate required customer fields
+      const missingCustomer = [];
+      if (!customer.firstname) missingCustomer.push('firstname');
+      if (!customer.lastname) missingCustomer.push('lastname');
+      if (!customer.address1) missingCustomer.push('address');
+      if (!customer.zip) missingCustomer.push('zip');
+      if (!customer.city) missingCustomer.push('city');
+      if (!customer.country) missingCustomer.push('country');
+      if (missingCustomer.length > 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'Missing required profile fields for insurance',
+          missingFields: missingCustomer,
+          message: `Please complete your profile: ${missingCustomer.join(', ')}`,
+        });
+      }
+
+      // Device data from body (frontend collects this in the insurance form)
+      const device = {
+        type: parseInt(body.deviceType) || 1,
+        make: {
+          ID: parseInt(body.makeId) || 1,
+          name: body.makeName || 'zai',
+        },
+        model: body.model || '',
+        serial: body.serial || '',
+        itemnumber: body.itemnumber || '',
+        price: parseFloat(body.price) || 0,
+        length: parseInt(body.length) || 0,
+        purchasingdate: body.purchasingdate || new Date().toISOString().split('T')[0],
+      };
+
+      // Validate required device fields
+      const missingDevice = [];
+      if (!device.model) missingDevice.push('model');
+      if (!device.serial) missingDevice.push('serial');
+      if (!device.price) missingDevice.push('price');
+      if (missingDevice.length > 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'Missing required device fields for insurance',
+          missingFields: missingDevice,
+          message: `Please provide device details: ${missingDevice.join(', ')}`,
+        });
+      }
+
+      // Parse SAS product IDs from env
+      const sasProductIds = (process.env.SAS_PRODUCT_IDS || '9').split(',').map(id => ({ ID: parseInt(id.trim()) }));
+
+      const sasPayload = {
+        partner: {
+          ID: parseInt(process.env.SAS_PARTNER_ID) || 1,
+          reference: `${customer.firstname} ${customer.lastname}`,
+          storename: 'ZAI Experience Club',
+          storelocation: 'Online',
+        },
+        customer,
+        device,
+        products: sasProductIds,
+      };
+
+      const regId = existing.rows[0]?.id || genId();
+
+      // Insert or update registration as pending
+      if (existing.rows[0]) {
+        await pool.query(
+          `UPDATE insurance_registrations SET sas_status='pending', customer_data=$2, device_data=$3, products_data=$4, error_detail=NULL, updated_at=NOW() WHERE id=$1`,
+          [regId, JSON.stringify(sasPayload.customer), JSON.stringify(sasPayload.device), JSON.stringify(sasPayload.products)]
+        );
+      } else {
+        await pool.query(
+          `INSERT INTO insurance_registrations (id, user_id, product_id, sas_status, customer_data, device_data, products_data)
+           VALUES ($1,$2,$3,'pending',$4,$5,$6)`,
+          [regId, decoded.userId, productId, JSON.stringify(sasPayload.customer), JSON.stringify(sasPayload.device), JSON.stringify(sasPayload.products)]
+        );
+      }
+
+      // Call SAS API
+      try {
+        const sasResult = await callSasApi(sasPayload);
+
+        await pool.query(
+          `UPDATE insurance_registrations SET sas_status='success', sas_transaction_id=$2, sas_certificate_id=$3, updated_at=NOW() WHERE id=$1`,
+          [regId, sasResult.transactionid, sasResult.certificateid]
+        );
+
+        return res.json({
+          success: true,
+          message: 'Insurance activated successfully',
+          data: {
+            transactionId: sasResult.transactionid,
+            certificateId: sasResult.certificateid,
+            status: 'success',
+          },
+        });
+      } catch (sasErr) {
+        await pool.query(
+          `UPDATE insurance_registrations SET sas_status='error', error_detail=$2, updated_at=NOW() WHERE id=$1`,
+          [regId, sasErr.message]
+        );
+
+        return res.status(502).json({
+          success: false,
+          error: 'Insurance provider error',
+          detail: sasErr.message,
+        });
+      }
+    } catch (err) {
+      console.error('Insurance activation error:', err);
+      return res.status(500).json({ success: false, error: err.message });
+    }
+  }
+
+  // ─── GET /api/products/:productId/insurance — get insurance status ───
+  const insuranceStatusMatch = fullPath.match(/^([^/]+)\/insurance$/);
+  if (insuranceStatusMatch && req.method === 'GET') {
+    const decoded = authenticate(req);
+    if (!decoded) return res.status(401).json({ error: 'No token provided' });
+    try {
+      await initDB();
+      const result = await getPool().query(
+        'SELECT * FROM insurance_registrations WHERE user_id = $1 AND product_id = $2 ORDER BY created_at DESC LIMIT 1',
+        [decoded.userId, insuranceStatusMatch[1]]
+      );
+      if (!result.rows[0]) {
+        return res.json({ success: true, data: { active: false, status: null } });
+      }
+      const row = result.rows[0];
+      return res.json({
+        success: true,
+        data: {
+          active: row.sas_status === 'success',
+          status: row.sas_status,
+          certificateId: row.sas_certificate_id,
+          transactionId: row.sas_transaction_id,
+          error: row.error_detail,
+          activatedAt: row.created_at,
+        },
+      });
+    } catch (err) {
+      return res.status(500).json({ success: false, error: err.message });
+    }
+  }
+
+  // ─── GET /api/products/makes — proxy SAS makes list ───
+  if (fullPath === 'makes' && req.method === 'GET') {
+    try {
+      const makes = await fetchSasMakes();
+      return res.json({ success: true, data: makes });
+    } catch (err) {
+      return res.status(500).json({ success: false, error: err.message });
+    }
+  }
+
+  // ─── POST /api/products/claim — claim by serial ───
+  if (fullPath === 'claim' && req.method === 'POST') {
+    const decoded = authenticate(req);
+    if (!decoded) return res.status(401).json({ error: 'No token provided' });
+    // Placeholder — in production this would verify serial against a product registry
+    const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+    return res.json({
+      success: true,
+      message: 'Product claim submitted',
+      data: { serialNumber: body.serialNumber, userId: decoded.userId },
+    });
+  }
+
+  // ─── GET /api/products/:productId ───
+  const productMatch = fullPath.match(/^([^/]+)$/);
   if (productMatch && req.method === 'GET') {
     return res.json({ success: true, data: { id: productMatch[1] } });
   }

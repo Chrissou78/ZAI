@@ -37,26 +37,25 @@ function authenticate(req) {
   }
 }
 
-// Ensure user_profiles row exists (upsert from JWT data on first access)
 async function ensureProfile(decoded) {
   const pool = getPool();
   const existing = await pool.query('SELECT user_id FROM user_profiles WHERE user_id = $1', [decoded.userId]);
   if (existing.rows.length === 0) {
     await pool.query(
-      `INSERT INTO user_profiles (user_id, wallet, name, given_name, family_name, email, phone_number, address, city, country, postal_code, birthdate, is_public)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
+      `INSERT INTO user_profiles (user_id, wallet, name, given_name, family_name, email, phone_number, address, city, country, postal_code, birthdate, is_public, salutation, language)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)`,
       [
         decoded.userId, decoded.wallet || '',
         decoded.name || '', decoded.givenName || '', decoded.familyName || '',
         decoded.email || '', decoded.phoneNumber || '',
         decoded.address || '', decoded.city || '', decoded.country || '',
         decoded.postalCode || '', decoded.birthdate || null, decoded.isPublic || false,
+        decoded.salutation || 0, decoded.language || 'en',
       ]
     );
   }
 }
 
-// Ensure user_settings row exists
 async function ensureSettings(userId) {
   const pool = getPool();
   const existing = await pool.query('SELECT user_id FROM user_settings WHERE user_id = $1', [userId]);
@@ -77,12 +76,8 @@ export default async function handler(req, res) {
       await ensureProfile(decoded);
       const result = await getPool().query('SELECT * FROM user_profiles WHERE user_id = $1', [decoded.userId]);
       const row = result.rows[0];
-      return res.json({
-        success: true,
-        data: { userId: row.user_id, wallet: row.wallet },
-      });
+      return res.json({ success: true, data: { userId: row.user_id, wallet: row.wallet } });
     } catch (err) {
-      // Fallback to JWT data if DB not available
       return res.json({ success: true, data: { userId: decoded.userId, wallet: decoded.wallet } });
     }
   }
@@ -99,24 +94,15 @@ export default async function handler(req, res) {
       return res.json({
         success: true,
         data: {
-          id: row.user_id,
-          userId: row.user_id,
-          wallet: row.wallet,
-          name: row.name,
-          givenName: row.given_name,
-          familyName: row.family_name,
-          email: row.email,
-          phoneNumber: row.phone_number,
-          address: row.address,
-          city: row.city,
-          country: row.country,
-          postalCode: row.postal_code,
-          birthdate: row.birthdate,
-          isPublic: row.is_public,
+          id: row.user_id, userId: row.user_id, wallet: row.wallet,
+          name: row.name, givenName: row.given_name, familyName: row.family_name,
+          email: row.email, phoneNumber: row.phone_number,
+          address: row.address, city: row.city, country: row.country,
+          postalCode: row.postal_code, birthdate: row.birthdate, isPublic: row.is_public,
+          salutation: row.salutation, language: row.language,
         },
       });
     } catch (err) {
-      // Fallback to JWT
       return res.json({
         success: true,
         data: {
@@ -126,7 +112,7 @@ export default async function handler(req, res) {
           phoneNumber: decoded.phoneNumber || '', address: decoded.address || '',
           city: decoded.city || '', country: decoded.country || '',
           postalCode: decoded.postalCode || '', birthdate: decoded.birthdate || null,
-          isPublic: decoded.isPublic || false,
+          isPublic: decoded.isPublic || false, salutation: 0, language: 'en',
         },
       });
     }
@@ -138,7 +124,7 @@ export default async function handler(req, res) {
     if (!decoded) return res.status(401).json({ error: 'No token provided' });
     try {
       const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-      const updatableFields = ['name','givenName','familyName','email','phoneNumber','address','city','country','postalCode','birthdate','isPublic'];
+      const updatableFields = ['name','givenName','familyName','email','phoneNumber','address','city','country','postalCode','birthdate','isPublic','salutation','language'];
       const updatedUser = { id: decoded.userId, userId: decoded.userId, wallet: decoded.wallet };
       for (const field of updatableFields) {
         updatedUser[field] = body[field] !== undefined ? body[field] : (decoded[field] || '');
@@ -150,7 +136,7 @@ export default async function handler(req, res) {
         `UPDATE user_profiles SET
            name=$2, given_name=$3, family_name=$4, email=$5, phone_number=$6,
            address=$7, city=$8, country=$9, postal_code=$10, birthdate=$11,
-           is_public=$12, updated_at=NOW()
+           is_public=$12, salutation=$13, language=$14, updated_at=NOW()
          WHERE user_id=$1`,
         [
           decoded.userId,
@@ -158,7 +144,8 @@ export default async function handler(req, res) {
           updatedUser.email, updatedUser.phoneNumber,
           updatedUser.address, updatedUser.city, updatedUser.country,
           updatedUser.postalCode, updatedUser.birthdate || null,
-          updatedUser.isPublic || false,
+          updatedUser.isPublic || false, parseInt(updatedUser.salutation) || 0,
+          updatedUser.language || 'en',
         ]
       );
 
@@ -169,6 +156,7 @@ export default async function handler(req, res) {
           email: updatedUser.email, phoneNumber: updatedUser.phoneNumber, address: updatedUser.address,
           city: updatedUser.city, country: updatedUser.country, postalCode: updatedUser.postalCode,
           birthdate: updatedUser.birthdate, isPublic: updatedUser.isPublic,
+          salutation: updatedUser.salutation, language: updatedUser.language,
         },
         process.env.JWT_SECRET || 'fallback-secret',
         { expiresIn: '7d' }
@@ -192,15 +180,9 @@ export default async function handler(req, res) {
       const row = result.rows[0];
       return res.json({
         success: true,
-        data: {
-          notifications: row.notifications,
-          privacy: row.privacy,
-          card: row.card,
-          region: row.region,
-        },
+        data: { notifications: row.notifications, privacy: row.privacy, card: row.card, region: row.region },
       });
     } catch (err) {
-      // Fallback: return defaults
       return res.json({ success: true, data: DEFAULT_SETTINGS });
     }
   }
@@ -211,12 +193,9 @@ export default async function handler(req, res) {
     if (!decoded) return res.status(401).json({ error: 'No token provided' });
     try {
       const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-
       await initDB();
       await ensureProfile(decoded);
       await ensureSettings(decoded.userId);
-
-      // Merge with existing settings
       const existing = await getPool().query('SELECT * FROM user_settings WHERE user_id = $1', [decoded.userId]);
       const current = existing.rows[0] || {};
       const updated = {
@@ -225,12 +204,10 @@ export default async function handler(req, res) {
         card: { ...(current.card || DEFAULT_SETTINGS.card), ...(body.card || {}) },
         region: { ...(current.region || DEFAULT_SETTINGS.region), ...(body.region || {}) },
       };
-
       await getPool().query(
         `UPDATE user_settings SET notifications=$2, privacy=$3, card=$4, region=$5, updated_at=NOW() WHERE user_id=$1`,
         [decoded.userId, JSON.stringify(updated.notifications), JSON.stringify(updated.privacy), JSON.stringify(updated.card), JSON.stringify(updated.region)]
       );
-
       return res.json({ success: true, message: 'Settings saved', data: updated });
     } catch (err) {
       return res.status(500).json({ success: false, error: err.message });

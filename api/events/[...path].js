@@ -1,70 +1,296 @@
+import jwt from 'jsonwebtoken';
+import { getPool, initDB } from '../db.js';
+
+function authenticate(req) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ')) return null;
+  try {
+    return jwt.verify(authHeader.split(' ')[1], process.env.JWT_SECRET || 'fallback-secret');
+  } catch {
+    return null;
+  }
+}
+
+function genId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+}
+
 export default async function handler(req, res) {
-  const API_KEY = process.env.WALLETTWO_API_KEY;
-  const BASE = 'https://api.wallettwo.com/blockchain/v1/api';
-  const CHAIN_ID = process.env.CHAIN_ID || '137';
+  // Parse path — handle both "/api/events" and "/api/events/something"
+  const rawPath = req.url.split('?')[0];
+  const path = rawPath.replace(/^\/api\/events\/?/, '').replace(/\/$/, '');
 
-  const path = req.url.replace(/^\/api\/events\/?/, '');
+  try {
+    await initDB();
+  } catch (dbErr) {
+    console.error('DB init error:', dbErr);
+    return res.status(500).json({ success: false, error: 'Database unavailable' });
+  }
 
-  // GET /api/events — fetch wallet transaction history
+  const pool = getPool();
+
+  // ─── GET /api/events — list events ───
   if ((!path || path === '') && req.method === 'GET') {
-    const authHeader = req.headers.authorization;
-    if (!authHeader?.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'No token provided' });
-    }
-
+    const decoded = authenticate(req);
     try {
-      const jwt = await import('jsonwebtoken');
-      const decoded = jwt.default.verify(
-        authHeader.split(' ')[1],
-        process.env.JWT_SECRET || 'fallback-secret'
-      );
+      const { status, type, limit = 50, offset = 0 } = req.query;
+      const now = new Date().toISOString();
+      const l = Math.min(parseInt(limit) || 50, 100);
+      const o = parseInt(offset) || 0;
 
-      const limit = req.query?.limit || 100;
-      const cursor = req.query?.cursor || '';
+      let query = 'SELECT * FROM events';
+      let countQuery = 'SELECT COUNT(*)::int AS total FROM events';
+      const conditions = [];
+      const params = [];
+      let paramIdx = 1;
 
-      let url = `${BASE}/wallet/history?address=${decoded.wallet}&chainId=${CHAIN_ID}&limit=${limit}`;
-      if (cursor) url += `&cursor=${cursor}`;
-
-      const response = await fetch(url, {
-        headers: { 'x-api-key': API_KEY }
-      });
-
-      if (!response.ok) {
-        const err = await response.json().catch(() => ({}));
-        return res.status(response.status).json({
-          success: false,
-          error: err.message || 'Failed to fetch events'
-        });
+      if (status === 'upcoming') {
+        conditions.push(`date >= $${paramIdx++}`);
+        params.push(now);
+      } else if (status === 'past') {
+        conditions.push(`date < $${paramIdx++}`);
+        params.push(now);
       }
 
-      const data = await response.json();
+      if (type && type !== 'all') {
+        conditions.push(`LOWER(tag) LIKE $${paramIdx++}`);
+        params.push(`%${type.toLowerCase()}%`);
+      }
 
-      // Map transaction history to your frontend's "events" format
-      const events = (data.result || []).map(tx => ({
-        id: tx.hash,
-        type: tx.from_address?.toLowerCase() === decoded.wallet?.toLowerCase()
-          ? 'sent' : 'received',
-        from: tx.from_address,
-        to: tx.to_address,
-        value: tx.value,
-        timestamp: tx.block_timestamp,
-        hash: tx.hash
+      if (conditions.length > 0) {
+        const where = ' WHERE ' + conditions.join(' AND ');
+        query += where;
+        countQuery += where;
+      }
+
+      query += ' ORDER BY date ' + (status === 'past' ? 'DESC' : 'ASC');
+      query += ` LIMIT $${paramIdx++} OFFSET $${paramIdx++}`;
+      params.push(l, o);
+
+      const countParams = params.slice(0, params.length - 2);
+
+      const [result, countResult] = await Promise.all([
+        pool.query(query, params),
+        pool.query(countQuery, countParams),
+      ]);
+
+      // If user is authenticated, check their registrations
+      let userRegistrations = new Set();
+      if (decoded) {
+        const regs = await pool.query(
+          'SELECT event_id FROM event_registrations WHERE user_id = $1',
+          [decoded.userId]
+        );
+        userRegistrations = new Set(regs.rows.map(r => r.event_id));
+      }
+
+      // Get registration counts
+      const eventIds = result.rows.map(r => r.id);
+      let regCounts = {};
+      if (eventIds.length > 0) {
+        const countRes = await pool.query(
+          `SELECT event_id, COUNT(*)::int AS count FROM event_registrations WHERE event_id = ANY($1) GROUP BY event_id`,
+          [eventIds]
+        );
+        for (const row of countRes.rows) {
+          regCounts[row.event_id] = row.count;
+        }
+      }
+
+      const events = result.rows.map(e => ({
+        id: e.id,
+        title: e.title,
+        tag: e.tag,
+        location: e.location,
+        date: e.date,
+        description: e.description,
+        imageUrl: e.image_url,
+        tier: e.tier,
+        maxAttendees: e.max_attendees,
+        attendeeCount: regCounts[e.id] || 0,
+        status: new Date(e.date) >= new Date() ? 'upcoming' : 'past',
+        registered: userRegistrations.has(e.id),
       }));
 
       return res.json({
         success: true,
         data: events,
         pagination: {
-          page: data.page,
-          pageSize: data.page_size,
-          cursor: data.cursor
-        }
+          limit: l,
+          offset: o,
+          total: countResult.rows[0].total,
+          hasMore: o + l < countResult.rows[0].total,
+        },
       });
     } catch (err) {
-      if (err.name === 'JsonWebTokenError' || err.name === 'TokenExpiredError') {
-        return res.status(401).json({ error: 'Invalid or expired token' });
+      console.error('Events list error:', err);
+      return res.status(500).json({ success: false, error: err.message });
+    }
+  }
+
+  // ─── POST /api/events — create event (admin) ───
+  if ((!path || path === '') && req.method === 'POST') {
+    const decoded = authenticate(req);
+    if (!decoded) return res.status(401).json({ error: 'No token provided' });
+    try {
+      const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+      const { title, tag, location, date, description, imageUrl, tier, maxAttendees } = body;
+      if (!title || !date) return res.status(400).json({ success: false, error: 'Title and date are required' });
+
+      const id = genId();
+      await pool.query(
+        `INSERT INTO events (id, title, tag, location, date, description, image_url, tier, max_attendees)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+        [id, title, tag || 'community', location || '', date, description || '', imageUrl || null, tier || 'all', maxAttendees || 0]
+      );
+
+      return res.json({
+        success: true,
+        data: { id, title, tag: tag || 'community', location: location || '', date, description: description || '', imageUrl: imageUrl || null, tier: tier || 'all', maxAttendees: maxAttendees || 0, attendeeCount: 0, status: 'upcoming', registered: false },
+      });
+    } catch (err) {
+      return res.status(500).json({ success: false, error: err.message });
+    }
+  }
+
+  // ─── GET /api/events/:eventId ───
+  const eventMatch = path.match(/^([^/]+)$/);
+  if (eventMatch && req.method === 'GET' && eventMatch[1] !== 'seed') {
+    const decoded = authenticate(req);
+    try {
+      const result = await pool.query('SELECT * FROM events WHERE id = $1', [eventMatch[1]]);
+      if (!result.rows[0]) return res.status(404).json({ success: false, error: 'Event not found' });
+      const e = result.rows[0];
+
+      const regCount = await pool.query('SELECT COUNT(*)::int AS count FROM event_registrations WHERE event_id = $1', [e.id]);
+      let registered = false;
+      if (decoded) {
+        const userReg = await pool.query('SELECT id FROM event_registrations WHERE event_id = $1 AND user_id = $2', [e.id, decoded.userId]);
+        registered = userReg.rows.length > 0;
       }
-      return res.status(500).json({ success: false, error: 'Internal server error' });
+
+      return res.json({
+        success: true,
+        data: {
+          id: e.id, title: e.title, tag: e.tag, location: e.location, date: e.date,
+          description: e.description, imageUrl: e.image_url, tier: e.tier,
+          maxAttendees: e.max_attendees, attendeeCount: regCount.rows[0].count,
+          status: new Date(e.date) >= new Date() ? 'upcoming' : 'past',
+          registered,
+        },
+      });
+    } catch (err) {
+      return res.status(500).json({ success: false, error: err.message });
+    }
+  }
+
+  // ─── POST /api/events/:eventId/register ───
+  const registerMatch = path.match(/^([^/]+)\/register$/);
+  if (registerMatch && req.method === 'POST') {
+    const decoded = authenticate(req);
+    if (!decoded) return res.status(401).json({ error: 'No token provided' });
+    try {
+      const eventId = registerMatch[1];
+      const event = await pool.query('SELECT * FROM events WHERE id = $1', [eventId]);
+      if (!event.rows[0]) return res.status(404).json({ success: false, error: 'Event not found' });
+
+      // Check if already registered
+      const existing = await pool.query('SELECT id FROM event_registrations WHERE event_id = $1 AND user_id = $2', [eventId, decoded.userId]);
+      if (existing.rows.length > 0) return res.json({ success: true, message: 'Already registered' });
+
+      // Check capacity
+      if (event.rows[0].max_attendees > 0) {
+        const count = await pool.query('SELECT COUNT(*)::int AS count FROM event_registrations WHERE event_id = $1', [eventId]);
+        if (count.rows[0].count >= event.rows[0].max_attendees) {
+          return res.status(400).json({ success: false, error: 'Event is full' });
+        }
+      }
+
+      const id = genId();
+      await pool.query(
+        'INSERT INTO event_registrations (id, event_id, user_id) VALUES ($1, $2, $3)',
+        [id, eventId, decoded.userId]
+      );
+
+      return res.json({ success: true, message: 'Successfully registered' });
+    } catch (err) {
+      return res.status(500).json({ success: false, error: err.message });
+    }
+  }
+
+  // ─── DELETE /api/events/:eventId/register — unregister ───
+  if (registerMatch && req.method === 'DELETE') {
+    const decoded = authenticate(req);
+    if (!decoded) return res.status(401).json({ error: 'No token provided' });
+    try {
+      await pool.query('DELETE FROM event_registrations WHERE event_id = $1 AND user_id = $2', [registerMatch[1], decoded.userId]);
+      return res.json({ success: true, message: 'Registration cancelled' });
+    } catch (err) {
+      return res.status(500).json({ success: false, error: err.message });
+    }
+  }
+
+  // ─── POST /api/events/seed — seed sample events for testing ───
+  if (path === 'seed' && req.method === 'POST') {
+    const decoded = authenticate(req);
+    if (!decoded) return res.status(401).json({ error: 'No token provided' });
+    try {
+      const sampleEvents = [
+        {
+          id: genId(), title: 'Zai Ski Demo Day — Zermatt',
+          tag: 'demo day', location: 'Zermatt, Switzerland',
+          date: new Date(Date.now() + 14 * 86400000).toISOString(),
+          description: 'Experience the latest zai ski collection on the slopes of Zermatt. Expert fitters will be on-hand to help you find the perfect setup.',
+          tier: 'all', max_attendees: 50,
+        },
+        {
+          id: genId(), title: 'Factory Tour — Disentis Atelier',
+          tag: 'factory visit', location: 'Disentis, Switzerland',
+          date: new Date(Date.now() + 30 * 86400000).toISOString(),
+          description: 'A rare look inside the zai atelier. See master craftsmen shape each ski by hand from locally sourced wood and carbon.',
+          tier: 'gold', max_attendees: 12,
+        },
+        {
+          id: genId(), title: 'Partner Evening — The Chedi Andermatt',
+          tag: 'partner event', location: 'Andermatt, Switzerland',
+          date: new Date(Date.now() + 45 * 86400000).toISOString(),
+          description: 'An evening of fine dining and networking with zai partners and fellow enthusiasts at The Chedi Andermatt.',
+          tier: 'silver', max_attendees: 30,
+        },
+        {
+          id: genId(), title: 'Community Meetup — Laax',
+          tag: 'community', location: 'Laax, Switzerland',
+          date: new Date(Date.now() + 60 * 86400000).toISOString(),
+          description: 'Casual gathering of zai community members. Ski together, share stories, and connect with fellow owners.',
+          tier: 'all', max_attendees: 0,
+        },
+        {
+          id: genId(), title: 'Season Opening — St. Moritz',
+          tag: 'demo day', location: 'St. Moritz, Switzerland',
+          date: new Date(Date.now() - 90 * 86400000).toISOString(),
+          description: 'The 2025/26 season opener featuring the new zai collection reveal and on-snow demos.',
+          tier: 'all', max_attendees: 100,
+        },
+        {
+          id: genId(), title: 'Private Atelier Session',
+          tag: 'factory visit', location: 'Disentis, Switzerland',
+          date: new Date(Date.now() - 60 * 86400000).toISOString(),
+          description: 'An intimate session with the zai master builder — design your own custom ski.',
+          tier: 'platinum', max_attendees: 6,
+        },
+      ];
+
+      for (const e of sampleEvents) {
+        await pool.query(
+          `INSERT INTO events (id, title, tag, location, date, description, tier, max_attendees)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT (id) DO NOTHING`,
+          [e.id, e.title, e.tag, e.location, e.date, e.description, e.tier, e.max_attendees]
+        );
+      }
+
+      return res.json({ success: true, message: `Seeded ${sampleEvents.length} events` });
+    } catch (err) {
+      return res.status(500).json({ success: false, error: err.message });
     }
   }
 
