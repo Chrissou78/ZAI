@@ -24,7 +24,6 @@ const Modal = React.forwardRef<HTMLDivElement, ModalProps>(
     },
     ref
   ) => {
-    // Close on escape key
     useEffect(() => {
       const handleEscape = (e: KeyboardEvent) => {
         if (e.key === 'Escape' && isOpen) {
@@ -46,21 +45,27 @@ const Modal = React.forwardRef<HTMLDivElement, ModalProps>(
     if (!isOpen) return null;
 
     return (
-      <div className="zai-modal-overlay" onClick={(e) => {
-        if (closeOnClickOutside && e.target === e.currentTarget) {
-          onClose();
-        }
-      }}>
-        <div ref={ref} className={`zai-modal zai-modal--${size}`}>
+      <div
+        className={styles.overlay}
+        onClick={(e) => {
+          if (closeOnClickOutside && e.target === e.currentTarget) {
+            onClose();
+          }
+        }}
+      >
+        <div
+          ref={ref}
+          className={`${styles.modal} ${styles[size] || styles.md}`}
+        >
           {/* Header */}
           {(title || subtitle) && (
-            <div className="zai-modal-header">
+            <div className={styles.header}>
               <div>
-                {title && <h2 className="zai-modal-title">{title}</h2>}
-                {subtitle && <p className="zai-modal-subtitle">{subtitle}</p>}
+                {title && <h2 className={styles.title}>{title}</h2>}
+                {subtitle && <p className={styles.subtitle}>{subtitle}</p>}
               </div>
               <button
-                className="zai-modal-close"
+                className={styles.close}
                 onClick={onClose}
                 aria-label="Close modal"
               >
@@ -69,8 +74,8 @@ const Modal = React.forwardRef<HTMLDivElement, ModalProps>(
             </div>
           )}
 
-          {/* Body */}
-          <div className="zai-modal-body">
+          {/* Body — scrollable */}
+          <div className={styles.body}>
             {children}
           </div>
         </div>
