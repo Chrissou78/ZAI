@@ -5,6 +5,9 @@ const API_KEY = () => process.env.WALLETTWO_API_KEY;
 const BASE = 'https://api.wallettwo.com/blockchain/v1/api';
 const CHAIN_ID = () => process.env.CHAIN_ID || '137';
 
+// ── Only show NFTs from the ZAI contract ──
+const ZAI_CONTRACT = '0xEdd1A9446A2C0E50a8287C9527BF2a7498bfbc55'.toLowerCase();
+
 function authenticate(req) {
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith('Bearer ')) return null;
@@ -70,7 +73,7 @@ async function fetchSasMakes() {
 export default async function handler(req, res) {
   const fullPath = req.url.split('?')[0].replace(/^\/api\/products\/?/, '').replace(/\/$/, '');
 
-  // ─── GET /api/products/user/:userId — list user's products ───
+  // ─── GET /api/products/user/:userId — list user's ZAI products ───
   const userMatch = fullPath.match(/^user\/(.+)$/);
   if (userMatch && req.method === 'GET') {
     const decoded = authenticate(req);
@@ -90,17 +93,20 @@ export default async function handler(req, res) {
 
         if (response.ok) {
           const data = await response.json();
-          products = (data.result || []).map(nft => ({
-            id: `${nft.token_address}-${nft.token_id}`,
-            name: nft.normalized_metadata?.name || nft.name || 'Unknown Product',
-            description: nft.normalized_metadata?.description || '',
-            image: nft.normalized_metadata?.image || '',
-            tokenAddress: nft.token_address,
-            tokenId: nft.token_id,
-            contractType: nft.contract_type,
-            symbol: nft.symbol,
-            metadata: nft.normalized_metadata || {},
-          }));
+          products = (data.result || [])
+            // ★ FILTER: only keep NFTs from the ZAI contract ★
+            .filter(nft => nft.token_address?.toLowerCase() === ZAI_CONTRACT)
+            .map(nft => ({
+              id: `${nft.token_address}-${nft.token_id}`,
+              name: nft.normalized_metadata?.name || nft.name || 'ZAI Product',
+              description: nft.normalized_metadata?.description || '',
+              image: nft.normalized_metadata?.image || '',
+              tokenAddress: nft.token_address,
+              tokenId: nft.token_id,
+              contractType: nft.contract_type,
+              symbol: nft.symbol,
+              metadata: nft.normalized_metadata || {},
+            }));
         }
       } catch (nftErr) {
         console.error('NFT fetch error (non-fatal):', nftErr.message);
@@ -196,7 +202,6 @@ export default async function handler(req, res) {
       const profileResult = await pool.query('SELECT * FROM user_profiles WHERE user_id = $1', [decoded.userId]);
       const profile = profileResult.rows[0];
 
-      // Merge profile with body overrides (user can provide missing fields in the request)
       const customer = {
         salutation: body.salutation || profile?.salutation || 1,
         firstname: body.firstname || profile?.given_name || '',
@@ -210,7 +215,6 @@ export default async function handler(req, res) {
         phone: body.phone || profile?.phone_number || '',
       };
 
-      // Validate required customer fields
       const missingCustomer = [];
       if (!customer.firstname) missingCustomer.push('firstname');
       if (!customer.lastname) missingCustomer.push('lastname');
@@ -227,7 +231,6 @@ export default async function handler(req, res) {
         });
       }
 
-      // Device data from body (frontend collects this in the insurance form)
       const device = {
         type: parseInt(body.deviceType) || 1,
         make: {
@@ -242,7 +245,6 @@ export default async function handler(req, res) {
         purchasingdate: body.purchasingdate || new Date().toISOString().split('T')[0],
       };
 
-      // Validate required device fields
       const missingDevice = [];
       if (!device.model) missingDevice.push('model');
       if (!device.serial) missingDevice.push('serial');
@@ -256,7 +258,6 @@ export default async function handler(req, res) {
         });
       }
 
-      // Parse SAS product IDs from env
       const sasProductIds = (process.env.SAS_PRODUCT_IDS || '9').split(',').map(id => ({ ID: parseInt(id.trim()) }));
 
       const sasPayload = {
@@ -273,7 +274,6 @@ export default async function handler(req, res) {
 
       const regId = existing.rows[0]?.id || genId();
 
-      // Insert or update registration as pending
       if (existing.rows[0]) {
         await pool.query(
           `UPDATE insurance_registrations SET sas_status='pending', customer_data=$2, device_data=$3, products_data=$4, error_detail=NULL, updated_at=NOW() WHERE id=$1`,
@@ -287,7 +287,6 @@ export default async function handler(req, res) {
         );
       }
 
-      // Call SAS API
       try {
         const sasResult = await callSasApi(sasPayload);
 
@@ -368,7 +367,6 @@ export default async function handler(req, res) {
   if (fullPath === 'claim' && req.method === 'POST') {
     const decoded = authenticate(req);
     if (!decoded) return res.status(401).json({ error: 'No token provided' });
-    // Placeholder — in production this would verify serial against a product registry
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
     return res.json({
       success: true,
