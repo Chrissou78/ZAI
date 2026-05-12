@@ -3,9 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { StarIcon, CalendarIcon, LocationIcon, MountainIcon } from '../Icons/BenefitIcons';
 import { ZaiLogo, InstagramIcon, FacebookIcon, LinkedInIcon, YouTubeIcon, WhatsAppIcon } from '../Icons/LogoIcons';
 import { WalletConnectButton } from '../Auth/WalletConnectButton';
+import { useAppContext } from '../../context/AppContext';
 
 const Home: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAppContext();
 
   return (
     <div style={{ background: '#f5f4f0', minHeight: '100vh' }}>
@@ -61,48 +63,49 @@ const Home: React.FC = () => {
           <p style={{ color: '#999', fontSize: '17px', maxWidth: '480px', lineHeight: 1.8, marginBottom: '2rem' }}>
             More than ownership — a living connection to zai. Claim your products, earn your place, and unlock a world of events, rewards, and access built for those who live for the run.
           </p>
-          <div style={{ display: 'flex', gap: '0.75rem' }}>
-            <button
-              onClick={() => navigate('/products')}
-              style={{
-                background: '#7D1E2C',
-                color: '#fff',
-                border: 'none',
-                padding: '13px 28px',
-                fontSize: '11px',
-                letterSpacing: '0.15em',
-                textTransform: 'uppercase',
-                cursor: 'pointer',
-                fontFamily: 'Inter, sans-serif',
-                transition: 'all 0.2s',
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = '#9a2535')}
-              onMouseLeave={(e) => (e.currentTarget.style.background = '#7D1E2C')}
-            >
-              Claim Your Product
-            </button>
-            <button
-              onClick={() => navigate('/events')}
-              style={{
-                background: 'transparent',
-                color: '#fff',
-                border: '1px solid #444',
-                padding: '12px 28px',
-                fontSize: '11px',
-                letterSpacing: '0.15em',
-                textTransform: 'uppercase',
-                cursor: 'pointer',
-                fontFamily: 'Inter, sans-serif',
-                transition: 'all 0.2s',
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#fff')}
-              onMouseLeave={(e) => (e.currentTarget.style.borderColor = '#444')}
-            >
-              See Events
-            </button>
-          </div>
+          {user && (
+            <div style={{ display: 'flex', gap: '0.75rem' }}>
+              <button
+                onClick={() => navigate('/products')}
+                style={{
+                  background: '#7D1E2C',
+                  color: '#fff',
+                  border: 'none',
+                  padding: '13px 28px',
+                  fontSize: '11px',
+                  letterSpacing: '0.15em',
+                  textTransform: 'uppercase',
+                  cursor: 'pointer',
+                  fontFamily: 'Inter, sans-serif',
+                  transition: 'all 0.2s',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = '#9a2535')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = '#7D1E2C')}
+              >
+                Claim Your Product
+              </button>
+              <button
+                onClick={() => navigate('/events')}
+                style={{
+                  background: 'transparent',
+                  color: '#fff',
+                  border: '1px solid #444',
+                  padding: '12px 28px',
+                  fontSize: '11px',
+                  letterSpacing: '0.15em',
+                  textTransform: 'uppercase',
+                  cursor: 'pointer',
+                  fontFamily: 'Inter, sans-serif',
+                  transition: 'all 0.2s',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#fff')}
+                onMouseLeave={(e) => (e.currentTarget.style.borderColor = '#444')}
+              >
+                See Events
+              </button>
+            </div>
+          )}
         </div>
-
         {/* Hero Stats */}
         <div
           style={{
