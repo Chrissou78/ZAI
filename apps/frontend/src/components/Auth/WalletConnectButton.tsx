@@ -164,9 +164,10 @@ export function WalletConnectButton() {
             onClick={(e) => e.stopPropagation()}
             style={{
               position: 'relative',
-              width: '90vw',
-              maxWidth: '900px',
-              height: '90vh',
+              width: '420px',
+              maxWidth: '92vw',
+              height: '650px',
+              maxHeight :'80vh',
               background: '#fff',
               borderRadius: '8px',
               overflow: 'hidden',
