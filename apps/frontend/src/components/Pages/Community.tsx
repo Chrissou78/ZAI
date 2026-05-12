@@ -12,6 +12,7 @@ interface Member {
   wallet?: string;
   joinedAt: string;
   isPublic: boolean;
+  isBlocked?: boolean;
 }
 
 interface Photo {
@@ -65,12 +66,25 @@ const bgMuted = '#f0ede6';
 const textMuted = '#6a6a6a';
 const textDark = '#1a1a1a';
 const accent = '#c8102e';
+const gold = '#b8a06a';
 
 const labelStyle: React.CSSProperties = {
   fontSize: '10px', letterSpacing: '0.2em', textTransform: 'uppercase', color: textMuted,
 };
 const sectionTitle: React.CSSProperties = {
   fontSize: '11px', letterSpacing: '0.25em', textTransform: 'uppercase', color: textDark,
+};
+
+const adminBadgeStyle: React.CSSProperties = {
+  display: 'inline-flex', alignItems: 'center', gap: '4px',
+  padding: '2px 8px', borderRadius: '10px', fontSize: '9px',
+  letterSpacing: '0.15em', textTransform: 'uppercase', fontWeight: 600,
+  background: 'rgba(200,16,46,0.08)', color: accent, border: `1px solid rgba(200,16,46,0.2)`,
+};
+
+const adminBtnStyle: React.CSSProperties = {
+  background: 'none', border: 'none', fontSize: '11px', cursor: 'pointer',
+  color: accent, padding: '2px 6px', borderRadius: '3px', transition: 'background 0.15s',
 };
 
 // ─── Helpers ───
@@ -96,6 +110,9 @@ function fmtDate(d: string) {
 const Community: React.FC = () => {
   const { user } = useAppContext();
   const [activeTab, setActiveTab] = useState<Tab>('feed');
+
+  // ★ Admin state — set from API responses ★
+  const [isAdmin, setIsAdmin] = useState(false);
 
   // Members state
   const [members, setMembers] = useState<Member[]>([]);
@@ -127,7 +144,10 @@ const Community: React.FC = () => {
   const fetchMembers = useCallback(async () => {
     try {
       const res = await apiService.get('/community/members', { params: { limit: 100, offset: 0 } });
-      if (res.data?.success) setMembers(res.data.data || []);
+      if (res.data?.success) {
+        setMembers(res.data.data || []);
+        if (res.data.isAdmin !== undefined) setIsAdmin(res.data.isAdmin);
+      }
     } catch (err) { console.error('Error fetching members:', err); }
   }, []);
 
@@ -141,7 +161,10 @@ const Community: React.FC = () => {
   const fetchPhotos = useCallback(async () => {
     try {
       const res = await apiService.get('/community/gallery', { params: { limit: 50, offset: 0 } });
-      if (res.data?.success) setPhotos(res.data.data || []);
+      if (res.data?.success) {
+        setPhotos(res.data.data || []);
+        if (res.data.isAdmin !== undefined) setIsAdmin(res.data.isAdmin);
+      }
     } catch (err) { console.error('Error fetching gallery:', err); }
   }, []);
 
@@ -150,7 +173,10 @@ const Community: React.FC = () => {
       const params: any = { limit: 100, offset: 0 };
       if (recipientId) params.with = recipientId;
       const res = await apiService.get('/community/chat', { params });
-      if (res.data?.success) setChatMessages(res.data.data || []);
+      if (res.data?.success) {
+        setChatMessages(res.data.data || []);
+        if (res.data.isAdmin !== undefined) setIsAdmin(res.data.isAdmin);
+      }
     } catch (err) { console.error('Error fetching chat:', err); }
   }, []);
 
@@ -169,7 +195,6 @@ const Community: React.FC = () => {
     })();
   }, [fetchMembers, fetchStats, fetchPhotos]);
 
-  // Poll chat every 5s when on the chat tab
   useEffect(() => {
     if (activeTab !== 'chat') return;
     fetchChat(dmPartner?.id);
@@ -178,7 +203,6 @@ const Community: React.FC = () => {
     return () => clearInterval(iv);
   }, [activeTab, dmPartner, fetchChat, fetchConversations]);
 
-  // Scroll to bottom when chat updates
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatMessages]);
@@ -199,31 +223,23 @@ const Community: React.FC = () => {
     if (!uploadFile || !uploadPreview) return;
     setUploading(true);
     try {
-      const res = await apiService.post('/community/gallery', {
-        image: uploadPreview,
-        caption: uploadCaption,
-        taggedMembers,
-      });
+      const res = await apiService.post('/community/gallery', { image: uploadPreview, caption: uploadCaption, taggedMembers });
       if (res.data?.success) {
         setPhotos(prev => [res.data.data, ...prev]);
-        setShowUpload(false);
-        setUploadCaption('');
-        setUploadFile(null);
-        setUploadPreview(null);
-        setTaggedMembers([]);
+        setShowUpload(false); setUploadCaption(''); setUploadFile(null); setUploadPreview(null); setTaggedMembers([]);
         fetchStats();
       }
-    } catch (err: any) {
-      alert(err.response?.data?.error || 'Upload failed');
-    } finally {
-      setUploading(false);
-    }
+    } catch (err: any) { alert(err.response?.data?.error || 'Upload failed'); }
+    finally { setUploading(false); }
   };
 
   const openPhoto = async (photoId: string) => {
     try {
       const res = await apiService.get(`/community/gallery/${photoId}`);
-      if (res.data?.success) setSelectedPhoto(res.data.data);
+      if (res.data?.success) {
+        setSelectedPhoto(res.data.data);
+        if (res.data.isAdmin !== undefined) setIsAdmin(res.data.isAdmin);
+      }
     } catch (err) { console.error('Error opening photo:', err); }
   };
 
@@ -233,8 +249,7 @@ const Community: React.FC = () => {
       const res = await apiService.post(`/community/gallery/${selectedPhoto.id}/comments`, { text: newComment });
       if (res.data?.success) {
         setSelectedPhoto(prev => prev ? {
-          ...prev,
-          commentCount: prev.commentCount + 1,
+          ...prev, commentCount: prev.commentCount + 1,
           comments: [...(prev.comments || []), res.data.data],
         } : null);
         setNewComment('');
@@ -253,11 +268,11 @@ const Community: React.FC = () => {
   };
 
   const deleteComment = async (photoId: string, commentId: string) => {
+    if (!confirm('Delete this comment?')) return;
     try {
       await apiService.delete(`/community/gallery/${photoId}/comments/${commentId}`);
       setSelectedPhoto(prev => prev ? {
-        ...prev,
-        commentCount: Math.max(prev.commentCount - 1, 0),
+        ...prev, commentCount: Math.max(prev.commentCount - 1, 0),
         comments: (prev.comments || []).filter(c => c.id !== commentId),
       } : null);
     } catch (err: any) { alert(err.response?.data?.error || 'Failed to delete comment'); }
@@ -272,12 +287,17 @@ const Community: React.FC = () => {
       const payload: any = { text: chatInput };
       if (dmPartner) payload.recipientId = dmPartner.id;
       const res = await apiService.post('/community/chat', payload);
-      if (res.data?.success) {
-        setChatMessages(prev => [...prev, res.data.data]);
-        setChatInput('');
-      }
+      if (res.data?.success) { setChatMessages(prev => [...prev, res.data.data]); setChatInput(''); }
     } catch (err: any) { alert(err.response?.data?.error || 'Failed to send'); }
     finally { setChatSending(false); }
+  };
+
+  const deleteMessage = async (messageId: string) => {
+    if (!confirm('Delete this message?')) return;
+    try {
+      await apiService.delete(`/community/chat/${messageId}`);
+      setChatMessages(prev => prev.filter(m => m.id !== messageId));
+    } catch (err: any) { alert(err.response?.data?.error || 'Failed to delete message'); }
   };
 
   const openDM = (member: Member) => {
@@ -285,8 +305,25 @@ const Community: React.FC = () => {
     setActiveTab('chat');
   };
 
-  const backToGeneral = () => {
-    setDmPartner(null);
+  const backToGeneral = () => { setDmPartner(null); };
+
+  // ─── Admin: block / unblock member ───
+
+  const blockMember = async (memberId: string, memberName: string) => {
+    const reason = prompt(`Block "${memberName}"? Enter a reason (optional):`);
+    if (reason === null) return; // cancelled
+    try {
+      await apiService.post(`/community/members/${memberId}/block`, { reason });
+      setMembers(prev => prev.map(m => m.id === memberId ? { ...m, isBlocked: true } : m));
+    } catch (err: any) { alert(err.response?.data?.error || 'Failed to block member'); }
+  };
+
+  const unblockMember = async (memberId: string) => {
+    if (!confirm('Unblock this member?')) return;
+    try {
+      await apiService.delete(`/community/members/${memberId}/block`);
+      setMembers(prev => prev.map(m => m.id === memberId ? { ...m, isBlocked: false } : m));
+    } catch (err: any) { alert(err.response?.data?.error || 'Failed to unblock member'); }
   };
 
   // ─── Render ───
@@ -303,8 +340,11 @@ const Community: React.FC = () => {
     <div style={{ padding: '3rem 4rem 5rem' }}>
       {/* Header */}
       <div style={{ marginBottom: '2rem', paddingBottom: '1.5rem', borderBottom: sectionBorder }}>
-        <div style={{ fontSize: '11px', letterSpacing: '0.3em', textTransform: 'uppercase', color: accent, marginBottom: '0.4rem' }}>
-          zai ecosystem
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '0.4rem' }}>
+          <div style={{ fontSize: '11px', letterSpacing: '0.3em', textTransform: 'uppercase', color: accent }}>
+            zai ecosystem
+          </div>
+          {isAdmin && <span style={adminBadgeStyle}>Moderator</span>}
         </div>
         <h1 style={{ fontSize: 'clamp(24px, 3.5vw, 40px)', fontWeight: 300, lineHeight: 1.15, margin: '0 0 0.3rem' }}>
           Community
@@ -328,17 +368,11 @@ const Community: React.FC = () => {
             key={tab}
             onClick={() => setActiveTab(tab)}
             style={{
-              padding: '10px 20px',
-              fontSize: '11px',
-              letterSpacing: '0.2em',
-              textTransform: 'uppercase',
-              background: 'transparent',
-              border: 'none',
+              padding: '10px 20px', fontSize: '11px', letterSpacing: '0.2em', textTransform: 'uppercase',
+              background: 'transparent', border: 'none',
               borderBottom: activeTab === tab ? `2px solid ${accent}` : '2px solid transparent',
               color: activeTab === tab ? textDark : textMuted,
-              cursor: 'pointer',
-              fontWeight: activeTab === tab ? 600 : 400,
-              transition: 'all 0.2s',
+              cursor: 'pointer', fontWeight: activeTab === tab ? 600 : 400, transition: 'all 0.2s',
             }}
           >
             {tab === 'feed' ? 'Feed' : tab === 'members' ? 'Members' : 'Chat'}
@@ -349,23 +383,19 @@ const Community: React.FC = () => {
       {/* ═══════════ FEED TAB ═══════════ */}
       {activeTab === 'feed' && (
         <div>
-          {/* Upload button */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
             <div style={sectionTitle}>Community Feed</div>
-            <Button variant="primary" size="sm" onClick={() => setShowUpload(true)}>
-              Share a moment
-            </Button>
+            <Button variant="primary" size="sm" onClick={() => setShowUpload(true)}>Share a moment</Button>
           </div>
 
           {/* Upload form */}
           {showUpload && (
             <div style={{ border: sectionBorder, padding: '1.5rem', marginBottom: '1.5rem', background: '#fff' }}>
               <div style={{ ...sectionTitle, marginBottom: '1rem' }}>Share a photo</div>
-
               {!uploadPreview ? (
                 <label style={{
                   display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                  padding: '2rem', border: `2px dashed #d0cdc5`, borderRadius: '4px', cursor: 'pointer',
+                  padding: '2rem', border: '2px dashed #d0cdc5', borderRadius: '4px', cursor: 'pointer',
                   color: textMuted, fontSize: '13px', marginBottom: '1rem',
                 }}>
                   Click to select an image (max 4 MB)
@@ -377,56 +407,35 @@ const Community: React.FC = () => {
                   <button onClick={() => { setUploadFile(null); setUploadPreview(null); }} style={{
                     position: 'absolute', top: 8, right: 8, background: 'rgba(0,0,0,0.6)', color: '#fff',
                     border: 'none', borderRadius: '50%', width: 28, height: 28, cursor: 'pointer', fontSize: '14px',
-                  }}>
-                    ×
-                  </button>
+                  }}>×</button>
                 </div>
               )}
-
-              <input
-                type="text"
-                placeholder="Add a caption..."
-                value={uploadCaption}
-                onChange={e => setUploadCaption(e.target.value)}
-                style={{
-                  width: '100%', padding: '10px 12px', border: sectionBorder, fontSize: '13px',
-                  marginBottom: '0.75rem', boxSizing: 'border-box',
-                }}
-              />
-
-              {/* Tag members */}
+              <input type="text" placeholder="Add a caption..." value={uploadCaption} onChange={e => setUploadCaption(e.target.value)}
+                style={{ width: '100%', padding: '10px 12px', border: sectionBorder, fontSize: '13px', marginBottom: '0.75rem', boxSizing: 'border-box' }} />
               <div style={{ marginBottom: '1rem' }}>
                 <div style={{ ...labelStyle, marginBottom: '0.5rem' }}>Tag members (optional)</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                  {members.slice(0, 20).map(m => (
-                    <button
-                      key={m.id}
-                      onClick={() => setTaggedMembers(prev =>
-                        prev.includes(m.id) ? prev.filter(id => id !== m.id) : [...prev, m.id]
-                      )}
+                  {members.filter(m => !m.isBlocked).slice(0, 20).map(m => (
+                    <button key={m.id}
+                      onClick={() => setTaggedMembers(prev => prev.includes(m.id) ? prev.filter(id => id !== m.id) : [...prev, m.id])}
                       style={{
                         padding: '4px 10px', fontSize: '11px', borderRadius: '12px', cursor: 'pointer',
                         border: taggedMembers.includes(m.id) ? `1px solid ${accent}` : sectionBorder,
                         background: taggedMembers.includes(m.id) ? '#fef2f2' : '#fff',
                         color: taggedMembers.includes(m.id) ? accent : textMuted,
-                      }}
-                    >
+                      }}>
                       {m.name}
                     </button>
                   ))}
                 </div>
               </div>
-
               <div style={{ display: 'flex', gap: '0.75rem' }}>
                 <Button variant="primary" size="sm" onClick={handleUpload} disabled={!uploadFile || uploading}>
                   {uploading ? 'Uploading to IPFS...' : 'Share'}
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => {
-                  setShowUpload(false); setUploadFile(null); setUploadPreview(null);
-                  setUploadCaption(''); setTaggedMembers([]);
-                }}>
-                  Cancel
-                </Button>
+                <Button variant="secondary" size="sm" onClick={() => {
+                  setShowUpload(false); setUploadFile(null); setUploadPreview(null); setUploadCaption(''); setTaggedMembers([]);
+                }}>Cancel</Button>
               </div>
             </div>
           )}
@@ -439,23 +448,30 @@ const Community: React.FC = () => {
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '12px' }}>
               {photos.map(photo => (
-                <div
-                  key={photo.id}
-                  onClick={() => openPhoto(photo.id)}
-                  style={{
-                    border: sectionBorder, borderRadius: '4px', overflow: 'hidden', cursor: 'pointer',
-                    background: '#fff', transition: 'box-shadow 0.2s',
-                  }}
+                <div key={photo.id} style={{ border: sectionBorder, borderRadius: '4px', overflow: 'hidden', cursor: 'pointer', background: '#fff', transition: 'box-shadow 0.2s', position: 'relative' }}
                   onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.08)')}
-                  onMouseLeave={e => (e.currentTarget.style.boxShadow = 'none')}
-                >
-                  <div style={{ aspectRatio: '1', overflow: 'hidden', background: '#1a1a1a' }}>
+                  onMouseLeave={e => (e.currentTarget.style.boxShadow = 'none')}>
+                  {/* ★ Admin delete overlay on photo card ★ */}
+                  {isAdmin && (
+                    <button onClick={(e) => { e.stopPropagation(); deletePhoto(photo.id); }}
+                      title="Delete photo (admin)"
+                      style={{
+                        position: 'absolute', top: 6, right: 6, zIndex: 5,
+                        width: 26, height: 26, borderRadius: '50%', border: 'none',
+                        background: 'rgba(200,16,46,0.85)', color: '#fff', fontSize: '14px',
+                        cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        opacity: 0.7, transition: 'opacity 0.2s',
+                      }}
+                      onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
+                      onMouseLeave={e => (e.currentTarget.style.opacity = '0.7')}>
+                      ×
+                    </button>
+                  )}
+                  <div onClick={() => openPhoto(photo.id)} style={{ aspectRatio: '1', overflow: 'hidden', background: '#1a1a1a' }}>
                     <img src={photo.url} alt={photo.caption} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                   </div>
-                  <div style={{ padding: '10px 12px' }}>
-                    <div style={{ fontSize: '12px', color: textDark, fontWeight: 500, marginBottom: '4px' }}>
-                      {photo.authorName}
-                    </div>
+                  <div onClick={() => openPhoto(photo.id)} style={{ padding: '10px 12px' }}>
+                    <div style={{ fontSize: '12px', color: textDark, fontWeight: 500, marginBottom: '4px' }}>{photo.authorName}</div>
                     {photo.caption && (
                       <div style={{ fontSize: '12px', color: textMuted, marginBottom: '6px' }}>
                         {photo.caption.length > 60 ? photo.caption.slice(0, 60) + '...' : photo.caption}
@@ -471,28 +487,16 @@ const Community: React.FC = () => {
             </div>
           )}
 
-          {/* Photo modal */}
+          {/* ── Photo detail modal ── */}
           {selectedPhoto && (
-            <div
-              style={{
-                position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex',
-                alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '2rem',
-              }}
-              onClick={() => setSelectedPhoto(null)}
-            >
-              <div
-                onClick={e => e.stopPropagation()}
-                style={{
-                  background: '#fff', borderRadius: '4px', maxWidth: '800px', width: '100%',
-                  maxHeight: '90vh', overflow: 'auto', display: 'grid',
-                  gridTemplateColumns: '1fr 320px',
-                }}
-              >
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '2rem' }}
+              onClick={() => setSelectedPhoto(null)}>
+              <div onClick={e => e.stopPropagation()}
+                style={{ background: '#fff', borderRadius: '4px', maxWidth: '800px', width: '100%', maxHeight: '90vh', overflow: 'auto', display: 'grid', gridTemplateColumns: '1fr 320px' }}>
                 {/* Image */}
                 <div style={{ background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '400px' }}>
                   <img src={selectedPhoto.url} alt={selectedPhoto.caption} style={{ maxWidth: '100%', maxHeight: '80vh', objectFit: 'contain' }} />
                 </div>
-
                 {/* Details + comments */}
                 <div style={{ display: 'flex', flexDirection: 'column', borderLeft: sectionBorder }}>
                   {/* Author */}
@@ -502,10 +506,13 @@ const Community: React.FC = () => {
                         <div style={{ fontSize: '13px', fontWeight: 600, color: textDark }}>{selectedPhoto.authorName}</div>
                         <div style={{ fontSize: '10px', color: textMuted }}>{fmtDate(selectedPhoto.createdAt)}</div>
                       </div>
-                      {selectedPhoto.authorId === user?.id && (
+                      {/* ★ Delete: owner OR admin ★ */}
+                      {(selectedPhoto.authorId === user?.id || isAdmin) && (
                         <button onClick={() => deletePhoto(selectedPhoto.id)} style={{
-                          background: 'none', border: 'none', color: accent, fontSize: '11px', cursor: 'pointer',
-                        }}>Delete</button>
+                          ...adminBtnStyle, color: accent, fontSize: '11px',
+                        }}>
+                          {isAdmin && selectedPhoto.authorId !== user?.id ? 'Remove (mod)' : 'Delete'}
+                        </button>
                       )}
                     </div>
                     {selectedPhoto.caption && (
@@ -529,10 +536,13 @@ const Community: React.FC = () => {
                             <span style={{ fontSize: '12px', fontWeight: 600, color: textDark }}>{c.authorName}</span>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                               <span style={{ fontSize: '10px', color: textMuted }}>{timeAgo(c.createdAt)}</span>
-                              {c.authorId === user?.id && (
-                                <button onClick={() => deleteComment(selectedPhoto.id, c.id)} style={{
-                                  background: 'none', border: 'none', color: accent, fontSize: '10px', cursor: 'pointer',
-                                }}>×</button>
+                              {/* ★ Delete comment: owner OR admin ★ */}
+                              {(c.authorId === user?.id || isAdmin) && (
+                                <button onClick={() => deleteComment(selectedPhoto.id, c.id)}
+                                  title={isAdmin && c.authorId !== user?.id ? 'Remove comment (mod)' : 'Delete comment'}
+                                  style={{ ...adminBtnStyle, fontSize: '12px', padding: '0 4px' }}>
+                                  ×
+                                </button>
                               )}
                             </div>
                           </div>
@@ -544,17 +554,11 @@ const Community: React.FC = () => {
 
                   {/* Comment input */}
                   <div style={{ padding: '14px', borderTop: sectionBorder, display: 'flex', gap: '8px' }}>
-                    <input
-                      type="text"
-                      placeholder="Add a comment..."
-                      value={newComment}
+                    <input type="text" placeholder="Add a comment..." value={newComment}
                       onChange={e => setNewComment(e.target.value)}
                       onKeyDown={e => e.key === 'Enter' && addComment()}
-                      style={{ flex: 1, padding: '8px 10px', border: sectionBorder, fontSize: '12px' }}
-                    />
-                    <Button variant="primary" size="sm" onClick={addComment} disabled={!newComment.trim()}>
-                      Post
-                    </Button>
+                      style={{ flex: 1, padding: '8px 10px', border: sectionBorder, fontSize: '12px' }} />
+                    <Button variant="primary" size="sm" onClick={addComment} disabled={!newComment.trim()}>Post</Button>
                   </div>
                 </div>
               </div>
@@ -567,15 +571,22 @@ const Community: React.FC = () => {
       {activeTab === 'members' && (
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <div style={sectionTitle}>zai Members</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={sectionTitle}>zai Members</div>
+              {isAdmin && <span style={{ ...adminBadgeStyle, fontSize: '8px' }}>Admin view</span>}
+            </div>
             <div style={{ fontSize: '11px', color: textMuted }}>{members.length} of {stats.totalMembers} registered</div>
           </div>
 
           <div style={{ border: sectionBorder, borderRadius: '4px', overflow: 'hidden' }}>
             {/* Table header */}
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 80px', borderBottom: sectionBorder, background: bgMuted }}>
-              {['Member', 'Since', ''].map(h => (
-                <div key={h} style={{ padding: '10px 14px', ...labelStyle }}>{h}</div>
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: isAdmin ? '2fr 1fr 80px 100px' : '2fr 1fr 80px',
+              borderBottom: sectionBorder, background: bgMuted,
+            }}>
+              {['Member', 'Since', '', ...(isAdmin ? ['Admin'] : [])].map(h => (
+                <div key={h || 'action'} style={{ padding: '10px 14px', ...labelStyle }}>{h}</div>
               ))}
             </div>
 
@@ -585,42 +596,76 @@ const Community: React.FC = () => {
                 <div style={{ padding: '2rem', textAlign: 'center', color: textMuted }}>No members found</div>
               ) : (
                 members.map((m, i) => (
-                  <div
-                    key={m.id}
-                    style={{
-                      display: 'grid', gridTemplateColumns: '2fr 1fr 80px', alignItems: 'center',
-                      borderBottom: i < members.length - 1 ? sectionBorder : 'none',
-                      background: i % 2 === 0 ? '#fff' : '#f9f8f6',
-                      transition: 'background 0.15s',
-                    }}
-                    onMouseEnter={e => (e.currentTarget.style.background = bgMuted)}
-                    onMouseLeave={e => (e.currentTarget.style.background = i % 2 === 0 ? '#fff' : '#f9f8f6')}
+                  <div key={m.id} style={{
+                    display: 'grid',
+                    gridTemplateColumns: isAdmin ? '2fr 1fr 80px 100px' : '2fr 1fr 80px',
+                    alignItems: 'center',
+                    borderBottom: i < members.length - 1 ? sectionBorder : 'none',
+                    background: m.isBlocked ? 'rgba(200,16,46,0.04)' : (i % 2 === 0 ? '#fff' : '#f9f8f6'),
+                    transition: 'background 0.15s',
+                    opacity: m.isBlocked ? 0.6 : 1,
+                  }}
+                    onMouseEnter={e => { if (!m.isBlocked) e.currentTarget.style.background = bgMuted; }}
+                    onMouseLeave={e => { if (!m.isBlocked) e.currentTarget.style.background = i % 2 === 0 ? '#fff' : '#f9f8f6'; }}
                   >
                     <div style={{ padding: '11px 14px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '10px' }}>
                       <div style={{
-                        width: 28, height: 28, borderRadius: '50%', background: textDark,
+                        width: 28, height: 28, borderRadius: '50%', background: m.isBlocked ? '#999' : textDark,
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: '10px', color: '#b8a06a', flexShrink: 0, fontWeight: 500,
+                        fontSize: '10px', color: gold, flexShrink: 0, fontWeight: 500,
                       }}>
                         {m.avatar}
                       </div>
-                      {m.name}
+                      <span>{m.name}</span>
+                      {m.isBlocked && (
+                        <span style={{
+                          fontSize: '9px', padding: '1px 6px', borderRadius: '8px',
+                          background: 'rgba(200,16,46,0.1)', color: accent, fontWeight: 600,
+                          letterSpacing: '0.1em', textTransform: 'uppercase',
+                        }}>blocked</span>
+                      )}
                     </div>
                     <div style={{ padding: '11px 14px', fontSize: '11px', color: textMuted }}>
                       {fmtDate(m.joinedAt)}
                     </div>
                     <div style={{ padding: '11px 14px' }}>
-                      <button
-                        onClick={() => openDM(m)}
-                        style={{
-                          background: 'none', border: sectionBorder, borderRadius: '3px',
-                          padding: '4px 10px', fontSize: '10px', color: textMuted, cursor: 'pointer',
-                          letterSpacing: '0.1em', textTransform: 'uppercase',
-                        }}
-                      >
-                        Msg
-                      </button>
+                      {!m.isBlocked && (
+                        <button onClick={() => openDM(m)}
+                          style={{
+                            background: 'none', border: sectionBorder, borderRadius: '3px',
+                            padding: '4px 10px', fontSize: '10px', color: textMuted, cursor: 'pointer',
+                            letterSpacing: '0.1em', textTransform: 'uppercase',
+                          }}>Msg</button>
+                      )}
                     </div>
+                    {/* ★ Admin column: block / unblock ★ */}
+                    {isAdmin && (
+                      <div style={{ padding: '11px 14px' }}>
+                        {m.isBlocked ? (
+                          <button onClick={() => unblockMember(m.id)}
+                            style={{
+                              background: 'none', border: `1px solid ${accent}`, borderRadius: '3px',
+                              padding: '4px 10px', fontSize: '10px', color: accent, cursor: 'pointer',
+                              letterSpacing: '0.1em', textTransform: 'uppercase', transition: 'all 0.2s',
+                            }}
+                            onMouseEnter={e => { e.currentTarget.style.background = accent; e.currentTarget.style.color = '#fff'; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = accent; }}>
+                            Unblock
+                          </button>
+                        ) : (
+                          <button onClick={() => blockMember(m.id, m.name)}
+                            style={{
+                              background: 'none', border: sectionBorder, borderRadius: '3px',
+                              padding: '4px 10px', fontSize: '10px', color: textMuted, cursor: 'pointer',
+                              letterSpacing: '0.1em', textTransform: 'uppercase', transition: 'all 0.2s',
+                            }}
+                            onMouseEnter={e => { e.currentTarget.style.borderColor = accent; e.currentTarget.style.color = accent; }}
+                            onMouseLeave={e => { e.currentTarget.style.borderColor = '#e0ddd6'; e.currentTarget.style.color = textMuted; }}>
+                            Block
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ))
               )}
@@ -632,29 +677,20 @@ const Community: React.FC = () => {
       {/* ═══════════ CHAT TAB ═══════════ */}
       {activeTab === 'chat' && (
         <div style={{ display: 'grid', gridTemplateColumns: '240px 1fr', gap: '1.5rem', minHeight: '500px' }}>
-          {/* Sidebar: General + DM list */}
+          {/* Sidebar */}
           <div style={{ border: sectionBorder, borderRadius: '4px', overflow: 'hidden' }}>
             <div style={{ padding: '12px 14px', background: bgMuted, borderBottom: sectionBorder, ...sectionTitle }}>
               Conversations
             </div>
-
-            {/* General chat */}
-            <div
-              onClick={backToGeneral}
-              style={{
-                padding: '12px 14px', cursor: 'pointer', borderBottom: sectionBorder,
-                background: !dmPartner ? '#f0ede6' : '#fff',
-                transition: 'background 0.15s',
-              }}
-            >
+            <div onClick={backToGeneral} style={{
+              padding: '12px 14px', cursor: 'pointer', borderBottom: sectionBorder,
+              background: !dmPartner ? '#f0ede6' : '#fff', transition: 'background 0.15s',
+            }}>
               <div style={{ fontSize: '12px', fontWeight: !dmPartner ? 600 : 400, color: textDark }}>General Chat</div>
               <div style={{ fontSize: '10px', color: textMuted }}>Open to everyone</div>
             </div>
-
-            {/* DM conversations */}
             {dmConversations.map(conv => (
-              <div
-                key={conv.partnerId}
+              <div key={conv.partnerId}
                 onClick={() => {
                   const m = members.find(m => m.id === conv.partnerId);
                   if (m) setDmPartner(m);
@@ -662,27 +698,26 @@ const Community: React.FC = () => {
                 }}
                 style={{
                   padding: '12px 14px', cursor: 'pointer', borderBottom: sectionBorder,
-                  background: dmPartner?.id === conv.partnerId ? '#f0ede6' : '#fff',
-                  transition: 'background 0.15s',
-                }}
-              >
+                  background: dmPartner?.id === conv.partnerId ? '#f0ede6' : '#fff', transition: 'background 0.15s',
+                }}>
                 <div style={{ fontSize: '12px', fontWeight: dmPartner?.id === conv.partnerId ? 600 : 400, color: textDark }}>{conv.partnerName}</div>
                 <div style={{ fontSize: '10px', color: textMuted }}>{timeAgo(conv.lastMessageAt)}</div>
               </div>
             ))}
           </div>
 
-          {/* Chat messages area */}
+          {/* Chat area */}
           <div style={{ border: sectionBorder, borderRadius: '4px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-            {/* Chat header */}
+            {/* Header */}
             <div style={{ padding: '12px 14px', background: bgMuted, borderBottom: sectionBorder, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={sectionTitle}>
-                {dmPartner ? `Chat with ${dmPartner.name}` : 'General Chat'}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={sectionTitle}>{dmPartner ? `Chat with ${dmPartner.name}` : 'General Chat'}</div>
+                {isAdmin && <span style={{ ...adminBadgeStyle, fontSize: '8px' }}>Mod</span>}
               </div>
               {dmPartner && (
-                <button onClick={backToGeneral} style={{
-                  background: 'none', border: 'none', fontSize: '11px', color: accent, cursor: 'pointer',
-                }}>Back to General</button>
+                <button onClick={backToGeneral} style={{ background: 'none', border: 'none', fontSize: '11px', color: accent, cursor: 'pointer' }}>
+                  Back to General
+                </button>
               )}
             </div>
 
@@ -695,16 +730,30 @@ const Community: React.FC = () => {
               ) : (
                 chatMessages.map(msg => {
                   const isMe = msg.authorId === user?.id;
+                  const canDelete = isMe || isAdmin;
                   return (
                     <div key={msg.id} style={{ marginBottom: '12px', display: 'flex', flexDirection: 'column', alignItems: isMe ? 'flex-end' : 'flex-start' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>
                         <span style={{ fontSize: '11px', fontWeight: 600, color: textDark }}>{isMe ? 'You' : msg.authorName}</span>
                         <span style={{ fontSize: '10px', color: textMuted }}>{timeAgo(msg.createdAt)}</span>
+                        {/* ★ Delete message: owner OR admin ★ */}
+                        {canDelete && (
+                          <button onClick={() => deleteMessage(msg.id)}
+                            title={isAdmin && !isMe ? 'Remove (mod)' : 'Delete'}
+                            style={{
+                              ...adminBtnStyle, fontSize: '11px', padding: '0 4px',
+                              color: isAdmin && !isMe ? accent : textMuted,
+                              opacity: 0.5, transition: 'opacity 0.2s',
+                            }}
+                            onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
+                            onMouseLeave={e => (e.currentTarget.style.opacity = '0.5')}>
+                            ×
+                          </button>
+                        )}
                       </div>
                       <div style={{
                         padding: '8px 12px', borderRadius: '12px', maxWidth: '70%', fontSize: '13px', lineHeight: 1.5,
-                        background: isMe ? textDark : bgMuted,
-                        color: isMe ? '#fff' : textDark,
+                        background: isMe ? textDark : bgMuted, color: isMe ? '#fff' : textDark,
                       }}>
                         {msg.text}
                       </div>
@@ -717,14 +766,11 @@ const Community: React.FC = () => {
 
             {/* Input */}
             <div style={{ padding: '14px', borderTop: sectionBorder, display: 'flex', gap: '8px' }}>
-              <input
-                type="text"
+              <input type="text"
                 placeholder={dmPartner ? `Message ${dmPartner.name}...` : 'Message the community...'}
-                value={chatInput}
-                onChange={e => setChatInput(e.target.value)}
+                value={chatInput} onChange={e => setChatInput(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && !chatSending && sendMessage()}
-                style={{ flex: 1, padding: '10px 12px', border: sectionBorder, fontSize: '13px' }}
-              />
+                style={{ flex: 1, padding: '10px 12px', border: sectionBorder, fontSize: '13px' }} />
               <Button variant="primary" size="sm" onClick={sendMessage} disabled={!chatInput.trim() || chatSending}>
                 {chatSending ? '...' : 'Send'}
               </Button>

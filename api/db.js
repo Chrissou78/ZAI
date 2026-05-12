@@ -5,6 +5,18 @@ const { Pool } = pg;
 let pool;
 let dbReady = false;
 
+// ── Admin wallet address (lowercase for comparison) ──
+export const ADMIN_WALLET = '0xff0f56711f61c52662d60be95f954649441107ec';
+
+// ── Contract addresses ──
+export const ZAI_PRODUCTS_CONTRACT = '0xedd1a9446a2c0e50a8287c9527bf2a7498bfbc55';
+export const ZAI_EXPERIENCE_CARD_CONTRACT = '0x3ec471e2a682381ee75b395eff068e04b6b5da5d';
+
+export function isAdmin(decoded) {
+  if (!decoded?.wallet) return false;
+  return decoded.wallet.toLowerCase() === ADMIN_WALLET;
+}
+
 export function getPool() {
   if (!pool) {
     pool = new Pool({
@@ -13,6 +25,8 @@ export function getPool() {
         ? false
         : { rejectUnauthorized: false },
       max: 5,
+      connectionTimeoutMillis: 5000,
+      idleTimeoutMillis: 30000,
     });
   }
   return pool;
@@ -23,7 +37,6 @@ export async function initDB() {
   const client = await getPool().connect();
   try {
     await client.query(`
-      -- User profiles
       CREATE TABLE IF NOT EXISTS user_profiles (
         user_id TEXT PRIMARY KEY,
         wallet TEXT,
@@ -45,7 +58,6 @@ export async function initDB() {
         updated_at TIMESTAMPTZ DEFAULT NOW()
       );
 
-      -- User settings
       CREATE TABLE IF NOT EXISTS user_settings (
         user_id TEXT PRIMARY KEY REFERENCES user_profiles(user_id) ON DELETE CASCADE,
         notifications JSONB DEFAULT '{"eventInvitations":true,"membershipUpdates":true,"productLaunches":false,"partnerOffers":false,"productUpdates":true,"eventReminders":true}',
@@ -55,7 +67,6 @@ export async function initDB() {
         updated_at TIMESTAMPTZ DEFAULT NOW()
       );
 
-      -- Photos
       CREATE TABLE IF NOT EXISTS photos (
         id TEXT PRIMARY KEY,
         cid TEXT NOT NULL,
@@ -68,7 +79,6 @@ export async function initDB() {
         created_at TIMESTAMPTZ DEFAULT NOW()
       );
 
-      -- Photo comments
       CREATE TABLE IF NOT EXISTS photo_comments (
         id TEXT PRIMARY KEY,
         photo_id TEXT NOT NULL REFERENCES photos(id) ON DELETE CASCADE,
@@ -78,7 +88,6 @@ export async function initDB() {
         created_at TIMESTAMPTZ DEFAULT NOW()
       );
 
-      -- Chat messages
       CREATE TABLE IF NOT EXISTS chat_messages (
         id TEXT PRIMARY KEY,
         text TEXT NOT NULL,
@@ -88,7 +97,6 @@ export async function initDB() {
         created_at TIMESTAMPTZ DEFAULT NOW()
       );
 
-      -- Events
       CREATE TABLE IF NOT EXISTS events (
         id TEXT PRIMARY KEY,
         title TEXT NOT NULL,
@@ -102,7 +110,6 @@ export async function initDB() {
         created_at TIMESTAMPTZ DEFAULT NOW()
       );
 
-      -- Event registrations
       CREATE TABLE IF NOT EXISTS event_registrations (
         id TEXT PRIMARY KEY,
         event_id TEXT NOT NULL REFERENCES events(id) ON DELETE CASCADE,
@@ -111,7 +118,6 @@ export async function initDB() {
         UNIQUE(event_id, user_id)
       );
 
-      -- Insurance registrations (SAS API)
       CREATE TABLE IF NOT EXISTS insurance_registrations (
         id TEXT PRIMARY KEY,
         user_id TEXT NOT NULL,
@@ -127,7 +133,14 @@ export async function initDB() {
         updated_at TIMESTAMPTZ DEFAULT NOW()
       );
 
-      -- Indexes
+      -- Blocked / removed community members
+      CREATE TABLE IF NOT EXISTS blocked_members (
+        user_id TEXT PRIMARY KEY,
+        blocked_by TEXT NOT NULL,
+        reason TEXT DEFAULT '',
+        blocked_at TIMESTAMPTZ DEFAULT NOW()
+      );
+
       CREATE INDEX IF NOT EXISTS idx_photo_comments_photo ON photo_comments(photo_id);
       CREATE INDEX IF NOT EXISTS idx_photos_created ON photos(created_at DESC);
       CREATE INDEX IF NOT EXISTS idx_chat_created ON chat_messages(created_at DESC);
@@ -139,7 +152,7 @@ export async function initDB() {
       CREATE INDEX IF NOT EXISTS idx_insurance_product ON insurance_registrations(product_id);
     `);
 
-    // Add columns if they don't exist (for existing DBs)
+    // Safe ALTER for existing DBs
     await client.query(`
       ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS salutation INT DEFAULT 0;
       ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS language TEXT DEFAULT 'en';
@@ -148,5 +161,16 @@ export async function initDB() {
     dbReady = true;
   } finally {
     client.release();
+  }
+}
+
+// ── Graceful DB init — returns true/false instead of throwing ──
+export async function tryInitDB() {
+  try {
+    await initDB();
+    return true;
+  } catch (err) {
+    console.error('DB init failed (non-fatal):', err.message);
+    return false;
   }
 }

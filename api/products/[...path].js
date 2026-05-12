@@ -18,7 +18,8 @@ const BASE = 'https://api.wallettwo.com/blockchain/v1/api';
 const CHAIN_ID = () => process.env.CHAIN_ID || '137';
 
 // ── Only show NFTs from the ZAI contract ──
-const ZAI_CONTRACT = '0xedd1a9446a2c0e50a8287c9527bf2a7498bfbc55'; // already lowercase
+const ZAI_CONTRACT = '0xedd1a9446a2c0e50a8287c9527bf2a7498bfbc55';
+const ZAI_EXPERIENCE_CARD_CONTRACT = '0x3ec471e2a682381ee75b395eff068e04b6b5da5d';
 
 function authenticate(req) {
   const authHeader = req.headers.authorization;

@@ -95,4 +95,14 @@ export interface ApiResponse<T = any> {
   message?: string;
   jwtToken?: string;
   user?: User;
+  isAdmin?: boolean;
+  pagination?: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+  stats?: Record<string, any>;
+  _debug?: Record<string, any>;
+  _dbOffline?: boolean;
 }
