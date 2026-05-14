@@ -1,4 +1,4 @@
-const jwt = require('jsonwebtoken');
+import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'zai-secret-key-change-in-production';
 const API_KEY = process.env.WALLETTWO_API_KEY;
@@ -47,7 +47,6 @@ function mapEvent(evt, userId, attendees) {
   const start = new Date(evt.startDate);
   const status = start > now ? 'upcoming' : 'past';
 
-  // Determine if user is registered (if attendees list provided)
   let registered = false;
   if (attendees && userId) {
     registered = attendees.some((a) => a.attendeeId === userId);
@@ -64,7 +63,7 @@ function mapEvent(evt, userId, attendees) {
     startDate: evt.startDate,
     endDate: evt.endDate,
     status,
-    tag: 'community', // default tag; could be enriched later
+    tag: 'community',
     coverImage: evt.coverImage || null,
     galleryImages: evt.galleryImages || [],
     maxAttendees: evt.maxAttendees || null,
@@ -82,7 +81,7 @@ function mapEvent(evt, userId, attendees) {
 
 /* ── main handler ────────────────────────────────────────── */
 
-module.exports = async (req, res) => {
+export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,DELETE,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
@@ -122,17 +121,14 @@ module.exports = async (req, res) => {
         events = withRegistration;
       }
 
-      // Filter by status if requested
       if (query.status && query.status !== 'all') {
         events = events.filter((e) => e.status === query.status);
       }
 
-      // Filter by type/tag if requested
       if (query.type && query.type !== 'all') {
         events = events.filter((e) => e.tag === query.type);
       }
 
-      // Sort: upcoming first by date asc, past by date desc
       events.sort((a, b) => {
         if (a.status === 'upcoming' && b.status === 'upcoming') return new Date(a.date) - new Date(b.date);
         if (a.status === 'past' && b.status === 'past') return new Date(b.date) - new Date(a.date);
@@ -151,7 +147,7 @@ module.exports = async (req, res) => {
     }
 
     /* ─── GET /api/events/:eventId ─── single event ─── */
-    if (req.method === 'GET' && segments.length === 1 && segments[0] !== 'seed') {
+    if (req.method === 'GET' && segments.length === 1) {
       const eventId = segments[0];
       const decoded = authenticate(req);
       const userId = decoded?.userId || decoded?.id || null;
@@ -161,7 +157,6 @@ module.exports = async (req, res) => {
         return res.status(404).json({ success: false, error: 'Event not found' });
       }
 
-      // Fetch attendees
       let attendees = [];
       try {
         const { data: attData } = await w2Fetch(`/event/${eventId}/attendees`);
@@ -177,7 +172,7 @@ module.exports = async (req, res) => {
       return res.status(200).json({ success: true, data: event });
     }
 
-    /* ─── POST /api/events/:eventId/register ─── register attendee ─── */
+    /* ─── POST /api/events/:eventId/register ─── */
     if (req.method === 'POST' && segments.length === 2 && segments[1] === 'register') {
       const decoded = authenticate(req);
       if (!decoded) return res.status(401).json({ success: false, error: 'Authentication required' });
@@ -198,7 +193,7 @@ module.exports = async (req, res) => {
       return res.status(200).json({ success: true, message: 'Registered successfully', data });
     }
 
-    /* ─── DELETE /api/events/:eventId/register ─── unregister attendee ─── */
+    /* ─── DELETE /api/events/:eventId/register ─── */
     if (req.method === 'DELETE' && segments.length === 2 && segments[1] === 'register') {
       const decoded = authenticate(req);
       if (!decoded) return res.status(401).json({ success: false, error: 'Authentication required' });
@@ -219,11 +214,10 @@ module.exports = async (req, res) => {
       return res.status(200).json({ success: true, message: 'Unregistered successfully', data });
     }
 
-    /* ─── 404 fallback ─── */
     return res.status(404).json({ success: false, error: 'Endpoint not found' });
 
   } catch (err) {
     console.error('Events API error:', err);
     return res.status(500).json({ success: false, error: 'Internal server error', details: err.message });
   }
-};
+}
