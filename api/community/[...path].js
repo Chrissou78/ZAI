@@ -313,6 +313,7 @@ export default async function handler(req, res) {
     }
   }
 
+
   // GET /api/community/gallery/:photoId
   const photoMatch = fullPath.match(/^gallery\/([^/]+)$/);
   if (photoMatch && req.method === 'GET') {
