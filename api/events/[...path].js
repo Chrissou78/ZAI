@@ -28,16 +28,27 @@ function parseQuery(url) {
 }
 
 async function w2Fetch(path, opts = {}) {
-  const res = await fetch(`${EVENTS_BASE}${path}`, {
-    ...opts,
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': API_KEY,
-      ...(opts.headers || {}),
-    },
-  });
-  const data = await res.json().catch(() => null);
-  return { status: res.status, data };
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000); // 5s timeout
+
+  try {
+    const res = await fetch(`${EVENTS_BASE}${path}`, {
+      ...opts,
+      signal: controller.signal,
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': API_KEY,
+        ...(opts.headers || {}),
+      },
+    });
+    clearTimeout(timeout);
+    const data = await res.json().catch(() => null);
+    return { status: res.status, data };
+  } catch (err) {
+    clearTimeout(timeout);
+    console.error(`w2Fetch ${path} failed:`, err.message);
+    return { status: 503, data: null };
+  }
 }
 
 /* ── map WalletTwo event → frontend shape ────────────────── */
@@ -99,7 +110,13 @@ export default async function handler(req, res) {
       const { data } = await w2Fetch('/event');
 
       if (!data || !data.events) {
-        return res.status(502).json({ success: false, error: 'Failed to fetch events from provider' });
+        // API unreachable — return empty list so the app doesn't break
+        return res.status(200).json({
+          success: true,
+          data: [],
+          stats: { total: 0, upcoming: 0, past: 0 },
+          _providerOffline: true,
+        });
       }
 
       let events = data.events.map((evt) => mapEvent(evt, userId, null));
