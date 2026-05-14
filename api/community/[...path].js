@@ -239,16 +239,21 @@ export default async function handler(req, res) {
       const blob = new Blob([buffer], { type: 'image/jpeg' });
       formData.append('file', blob, `photo-${Date.now()}.jpg`);
 
-      const pinataRes = await fetch('https://uploads.pinata.cloud/v3/files', {
+      const pinataRes = await fetch('https://api.pinata.cloud/pinning/pinFileToIPFS', {
         method: 'POST',
-        headers: { Authorization: `Bearer ${process.env.PINATA_JWT}` },
+        headers: {
+          Authorization: `Bearer ${process.env.PINATA_JWT}`,
+        },
         body: formData,
       });
-      if (!pinataRes.ok) { const err = await pinataRes.text(); return res.status(500).json({ success: false, error: 'IPFS upload failed', detail: err }); }
+      if (!pinataRes.ok) {
+        const err = await pinataRes.text();
+        return res.status(500).json({ success: false, error: 'IPFS upload failed', detail: err });
+      }
 
       const pinataData = await pinataRes.json();
-      const cid = pinataData.data?.cid || pinataData.IpfsHash;
-      const photoUrl = `https://${process.env.PINATA_GATEWAY}/ipfs/${cid}`;
+      const cid = pinataData.IpfsHash;
+      const photoUrl = `https://gateway.pinata.cloud/ipfs/${cid}`;
       const id = genId();
       const authorName = user.name || user.givenName || 'Member';
       await getPool().query('INSERT INTO photos (id, cid, url, caption, author_id, author_name, tagged_members) VALUES ($1,$2,$3,$4,$5,$6,$7)', [id, cid, photoUrl, caption || '', user.userId, authorName, taggedMembers || []]);
