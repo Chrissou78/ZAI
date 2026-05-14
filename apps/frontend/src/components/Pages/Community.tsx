@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAppContext } from '../../context/AppContext';
 import { apiService } from '../../services/api';
 import Button from '../Common/Button';
@@ -36,28 +36,12 @@ interface Comment {
   createdAt: string;
 }
 
-interface ChatMessage {
-  id: string;
-  text: string;
-  authorId: string;
-  authorName: string;
-  recipientId?: string | null;
-  createdAt: string;
-}
-
 interface CommunityStats {
   totalMembers: number;
   totalPhotos: number;
-  totalMessages: number;
 }
 
-interface DMConversation {
-  partnerId: string;
-  partnerName: string;
-  lastMessageAt: string;
-}
-
-type Tab = 'members' | 'feed' | 'chat';
+type Tab = 'feed' | 'members';
 
 // ─── Styles ───
 
@@ -111,12 +95,11 @@ const Community: React.FC = () => {
   const { user } = useAppContext();
   const [activeTab, setActiveTab] = useState<Tab>('feed');
 
-  // ★ Admin state — set from API responses ★
   const [isAdmin, setIsAdmin] = useState(false);
 
   // Members state
   const [members, setMembers] = useState<Member[]>([]);
-  const [stats, setStats] = useState<CommunityStats>({ totalMembers: 0, totalPhotos: 0, totalMessages: 0 });
+  const [stats, setStats] = useState<CommunityStats>({ totalMembers: 0, totalPhotos: 0 });
 
   // Gallery state
   const [photos, setPhotos] = useState<Photo[]>([]);
@@ -128,14 +111,6 @@ const Community: React.FC = () => {
   const [uploadPreview, setUploadPreview] = useState<string | null>(null);
   const [taggedMembers, setTaggedMembers] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
-
-  // Chat state
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
-  const [chatInput, setChatInput] = useState('');
-  const [chatSending, setChatSending] = useState(false);
-  const [dmPartner, setDmPartner] = useState<Member | null>(null);
-  const [dmConversations, setDmConversations] = useState<DMConversation[]>([]);
-  const chatEndRef = useRef<HTMLDivElement>(null);
 
   const [isLoading, setIsLoading] = useState(true);
 
@@ -168,25 +143,6 @@ const Community: React.FC = () => {
     } catch (err) { console.error('Error fetching gallery:', err); }
   }, []);
 
-  const fetchChat = useCallback(async (recipientId?: string) => {
-    try {
-      const params: any = { limit: 100, offset: 0 };
-      if (recipientId) params.with = recipientId;
-      const res = await apiService.get('/community/chat', { params });
-      if (res.data?.success) {
-        setChatMessages(res.data.data || []);
-        if (res.data.isAdmin !== undefined) setIsAdmin(res.data.isAdmin);
-      }
-    } catch (err) { console.error('Error fetching chat:', err); }
-  }, []);
-
-  const fetchConversations = useCallback(async () => {
-    try {
-      const res = await apiService.get('/community/chat/conversations');
-      if (res.data?.success) setDmConversations(res.data.data || []);
-    } catch (err) { console.error('Error fetching conversations:', err); }
-  }, []);
-
   useEffect(() => {
     (async () => {
       setIsLoading(true);
@@ -194,18 +150,6 @@ const Community: React.FC = () => {
       setIsLoading(false);
     })();
   }, [fetchMembers, fetchStats, fetchPhotos]);
-
-  useEffect(() => {
-    if (activeTab !== 'chat') return;
-    fetchChat(dmPartner?.id);
-    fetchConversations();
-    const iv = setInterval(() => fetchChat(dmPartner?.id), 5000);
-    return () => clearInterval(iv);
-  }, [activeTab, dmPartner, fetchChat, fetchConversations]);
-
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [chatMessages]);
 
   // ─── Gallery actions ───
 
@@ -278,40 +222,11 @@ const Community: React.FC = () => {
     } catch (err: any) { alert(err.response?.data?.error || 'Failed to delete comment'); }
   };
 
-  // ─── Chat actions ───
-
-  const sendMessage = async () => {
-    if (!chatInput.trim()) return;
-    setChatSending(true);
-    try {
-      const payload: any = { text: chatInput };
-      if (dmPartner) payload.recipientId = dmPartner.id;
-      const res = await apiService.post('/community/chat', payload);
-      if (res.data?.success) { setChatMessages(prev => [...prev, res.data.data]); setChatInput(''); }
-    } catch (err: any) { alert(err.response?.data?.error || 'Failed to send'); }
-    finally { setChatSending(false); }
-  };
-
-  const deleteMessage = async (messageId: string) => {
-    if (!confirm('Delete this message?')) return;
-    try {
-      await apiService.delete(`/community/chat/${messageId}`);
-      setChatMessages(prev => prev.filter(m => m.id !== messageId));
-    } catch (err: any) { alert(err.response?.data?.error || 'Failed to delete message'); }
-  };
-
-  const openDM = (member: Member) => {
-    setDmPartner(member);
-    setActiveTab('chat');
-  };
-
-  const backToGeneral = () => { setDmPartner(null); };
-
   // ─── Admin: block / unblock member ───
 
   const blockMember = async (memberId: string, memberName: string) => {
     const reason = prompt(`Block "${memberName}"? Enter a reason (optional):`);
-    if (reason === null) return; // cancelled
+    if (reason === null) return;
     try {
       await apiService.post(`/community/members/${memberId}/block`, { reason });
       setMembers(prev => prev.map(m => m.id === memberId ? { ...m, isBlocked: true } : m));
@@ -356,14 +271,12 @@ const Community: React.FC = () => {
           <span>{stats.totalMembers} members</span>
           <span>·</span>
           <span>{stats.totalPhotos} photos</span>
-          <span>·</span>
-          <span>{stats.totalMessages || 0} messages</span>
         </div>
       </div>
 
       {/* Tabs */}
       <div style={{ display: 'flex', gap: 0, marginBottom: '2rem', borderBottom: sectionBorder }}>
-        {(['feed', 'members', 'chat'] as Tab[]).map(tab => (
+        {(['feed', 'members'] as Tab[]).map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -375,7 +288,7 @@ const Community: React.FC = () => {
               cursor: 'pointer', fontWeight: activeTab === tab ? 600 : 400, transition: 'all 0.2s',
             }}
           >
-            {tab === 'feed' ? 'Feed' : tab === 'members' ? 'Members' : 'Chat'}
+            {tab === 'feed' ? 'Feed' : 'Members'}
           </button>
         ))}
       </div>
@@ -451,7 +364,6 @@ const Community: React.FC = () => {
                 <div key={photo.id} style={{ border: sectionBorder, borderRadius: '4px', overflow: 'hidden', cursor: 'pointer', background: '#fff', transition: 'box-shadow 0.2s', position: 'relative' }}
                   onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.08)')}
                   onMouseLeave={e => (e.currentTarget.style.boxShadow = 'none')}>
-                  {/* ★ Admin delete overlay on photo card ★ */}
                   {isAdmin && (
                     <button onClick={(e) => { e.stopPropagation(); deletePhoto(photo.id); }}
                       title="Delete photo (admin)"
@@ -493,20 +405,16 @@ const Community: React.FC = () => {
               onClick={() => setSelectedPhoto(null)}>
               <div onClick={e => e.stopPropagation()}
                 style={{ background: '#fff', borderRadius: '4px', maxWidth: '800px', width: '100%', maxHeight: '90vh', overflow: 'auto', display: 'grid', gridTemplateColumns: '1fr 320px' }}>
-                {/* Image */}
                 <div style={{ background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '400px' }}>
                   <img src={selectedPhoto.url} alt={selectedPhoto.caption} style={{ maxWidth: '100%', maxHeight: '80vh', objectFit: 'contain' }} />
                 </div>
-                {/* Details + comments */}
                 <div style={{ display: 'flex', flexDirection: 'column', borderLeft: sectionBorder }}>
-                  {/* Author */}
                   <div style={{ padding: '14px', borderBottom: sectionBorder }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div>
                         <div style={{ fontSize: '13px', fontWeight: 600, color: textDark }}>{selectedPhoto.authorName}</div>
                         <div style={{ fontSize: '10px', color: textMuted }}>{fmtDate(selectedPhoto.createdAt)}</div>
                       </div>
-                      {/* ★ Delete: owner OR admin ★ */}
                       {(selectedPhoto.authorId === user?.id || isAdmin) && (
                         <button onClick={() => deletePhoto(selectedPhoto.id)} style={{
                           ...adminBtnStyle, color: accent, fontSize: '11px',
@@ -525,7 +433,6 @@ const Community: React.FC = () => {
                     )}
                   </div>
 
-                  {/* Comments */}
                   <div style={{ flex: 1, overflowY: 'auto', padding: '14px' }}>
                     {(!selectedPhoto.comments || selectedPhoto.comments.length === 0) ? (
                       <p style={{ fontSize: '12px', color: textMuted, textAlign: 'center' }}>No comments yet</p>
@@ -536,7 +443,6 @@ const Community: React.FC = () => {
                             <span style={{ fontSize: '12px', fontWeight: 600, color: textDark }}>{c.authorName}</span>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                               <span style={{ fontSize: '10px', color: textMuted }}>{timeAgo(c.createdAt)}</span>
-                              {/* ★ Delete comment: owner OR admin ★ */}
                               {(c.authorId === user?.id || isAdmin) && (
                                 <button onClick={() => deleteComment(selectedPhoto.id, c.id)}
                                   title={isAdmin && c.authorId !== user?.id ? 'Remove comment (mod)' : 'Delete comment'}
@@ -552,7 +458,6 @@ const Community: React.FC = () => {
                     )}
                   </div>
 
-                  {/* Comment input */}
                   <div style={{ padding: '14px', borderTop: sectionBorder, display: 'flex', gap: '8px' }}>
                     <input type="text" placeholder="Add a comment..." value={newComment}
                       onChange={e => setNewComment(e.target.value)}
@@ -579,18 +484,16 @@ const Community: React.FC = () => {
           </div>
 
           <div style={{ border: sectionBorder, borderRadius: '4px', overflow: 'hidden' }}>
-            {/* Table header */}
             <div style={{
               display: 'grid',
-              gridTemplateColumns: isAdmin ? '2fr 1fr 80px 100px' : '2fr 1fr 80px',
+              gridTemplateColumns: isAdmin ? '2fr 1fr 100px' : '2fr 1fr',
               borderBottom: sectionBorder, background: bgMuted,
             }}>
-              {['Member', 'Since', '', ...(isAdmin ? ['Admin'] : [])].map(h => (
-                <div key={h || 'action'} style={{ padding: '10px 14px', ...labelStyle }}>{h}</div>
+              {['Member', 'Since', ...(isAdmin ? ['Admin'] : [])].map(h => (
+                <div key={h} style={{ padding: '10px 14px', ...labelStyle }}>{h}</div>
               ))}
             </div>
 
-            {/* Rows */}
             <div style={{ maxHeight: '500px', overflowY: 'auto' }}>
               {members.length === 0 ? (
                 <div style={{ padding: '2rem', textAlign: 'center', color: textMuted }}>No members found</div>
@@ -598,7 +501,7 @@ const Community: React.FC = () => {
                 members.map((m, i) => (
                   <div key={m.id} style={{
                     display: 'grid',
-                    gridTemplateColumns: isAdmin ? '2fr 1fr 80px 100px' : '2fr 1fr 80px',
+                    gridTemplateColumns: isAdmin ? '2fr 1fr 100px' : '2fr 1fr',
                     alignItems: 'center',
                     borderBottom: i < members.length - 1 ? sectionBorder : 'none',
                     background: m.isBlocked ? 'rgba(200,16,46,0.04)' : (i % 2 === 0 ? '#fff' : '#f9f8f6'),
@@ -628,17 +531,6 @@ const Community: React.FC = () => {
                     <div style={{ padding: '11px 14px', fontSize: '11px', color: textMuted }}>
                       {fmtDate(m.joinedAt)}
                     </div>
-                    <div style={{ padding: '11px 14px' }}>
-                      {!m.isBlocked && (
-                        <button onClick={() => openDM(m)}
-                          style={{
-                            background: 'none', border: sectionBorder, borderRadius: '3px',
-                            padding: '4px 10px', fontSize: '10px', color: textMuted, cursor: 'pointer',
-                            letterSpacing: '0.1em', textTransform: 'uppercase',
-                          }}>Msg</button>
-                      )}
-                    </div>
-                    {/* ★ Admin column: block / unblock ★ */}
                     {isAdmin && (
                       <div style={{ padding: '11px 14px' }}>
                         {m.isBlocked ? (
@@ -669,111 +561,6 @@ const Community: React.FC = () => {
                   </div>
                 ))
               )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ═══════════ CHAT TAB ═══════════ */}
-      {activeTab === 'chat' && (
-        <div style={{ display: 'grid', gridTemplateColumns: '240px 1fr', gap: '1.5rem', minHeight: '500px' }}>
-          {/* Sidebar */}
-          <div style={{ border: sectionBorder, borderRadius: '4px', overflow: 'hidden' }}>
-            <div style={{ padding: '12px 14px', background: bgMuted, borderBottom: sectionBorder, ...sectionTitle }}>
-              Conversations
-            </div>
-            <div onClick={backToGeneral} style={{
-              padding: '12px 14px', cursor: 'pointer', borderBottom: sectionBorder,
-              background: !dmPartner ? '#f0ede6' : '#fff', transition: 'background 0.15s',
-            }}>
-              <div style={{ fontSize: '12px', fontWeight: !dmPartner ? 600 : 400, color: textDark }}>General Chat</div>
-              <div style={{ fontSize: '10px', color: textMuted }}>Open to everyone</div>
-            </div>
-            {dmConversations.map(conv => (
-              <div key={conv.partnerId}
-                onClick={() => {
-                  const m = members.find(m => m.id === conv.partnerId);
-                  if (m) setDmPartner(m);
-                  else setDmPartner({ id: conv.partnerId, name: conv.partnerName, avatar: conv.partnerName.charAt(0).toUpperCase(), joinedAt: '', isPublic: false });
-                }}
-                style={{
-                  padding: '12px 14px', cursor: 'pointer', borderBottom: sectionBorder,
-                  background: dmPartner?.id === conv.partnerId ? '#f0ede6' : '#fff', transition: 'background 0.15s',
-                }}>
-                <div style={{ fontSize: '12px', fontWeight: dmPartner?.id === conv.partnerId ? 600 : 400, color: textDark }}>{conv.partnerName}</div>
-                <div style={{ fontSize: '10px', color: textMuted }}>{timeAgo(conv.lastMessageAt)}</div>
-              </div>
-            ))}
-          </div>
-
-          {/* Chat area */}
-          <div style={{ border: sectionBorder, borderRadius: '4px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-            {/* Header */}
-            <div style={{ padding: '12px 14px', background: bgMuted, borderBottom: sectionBorder, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <div style={sectionTitle}>{dmPartner ? `Chat with ${dmPartner.name}` : 'General Chat'}</div>
-                {isAdmin && <span style={{ ...adminBadgeStyle, fontSize: '8px' }}>Mod</span>}
-              </div>
-              {dmPartner && (
-                <button onClick={backToGeneral} style={{ background: 'none', border: 'none', fontSize: '11px', color: accent, cursor: 'pointer' }}>
-                  Back to General
-                </button>
-              )}
-            </div>
-
-            {/* Messages */}
-            <div style={{ flex: 1, overflowY: 'auto', padding: '14px', maxHeight: '400px' }}>
-              {chatMessages.length === 0 ? (
-                <p style={{ fontSize: '12px', color: textMuted, textAlign: 'center', marginTop: '2rem' }}>
-                  {dmPartner ? `Start a conversation with ${dmPartner.name}` : 'No messages yet. Say hello!'}
-                </p>
-              ) : (
-                chatMessages.map(msg => {
-                  const isMe = msg.authorId === user?.id;
-                  const canDelete = isMe || isAdmin;
-                  return (
-                    <div key={msg.id} style={{ marginBottom: '12px', display: 'flex', flexDirection: 'column', alignItems: isMe ? 'flex-end' : 'flex-start' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '2px' }}>
-                        <span style={{ fontSize: '11px', fontWeight: 600, color: textDark }}>{isMe ? 'You' : msg.authorName}</span>
-                        <span style={{ fontSize: '10px', color: textMuted }}>{timeAgo(msg.createdAt)}</span>
-                        {/* ★ Delete message: owner OR admin ★ */}
-                        {canDelete && (
-                          <button onClick={() => deleteMessage(msg.id)}
-                            title={isAdmin && !isMe ? 'Remove (mod)' : 'Delete'}
-                            style={{
-                              ...adminBtnStyle, fontSize: '11px', padding: '0 4px',
-                              color: isAdmin && !isMe ? accent : textMuted,
-                              opacity: 0.5, transition: 'opacity 0.2s',
-                            }}
-                            onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
-                            onMouseLeave={e => (e.currentTarget.style.opacity = '0.5')}>
-                            ×
-                          </button>
-                        )}
-                      </div>
-                      <div style={{
-                        padding: '8px 12px', borderRadius: '12px', maxWidth: '70%', fontSize: '13px', lineHeight: 1.5,
-                        background: isMe ? textDark : bgMuted, color: isMe ? '#fff' : textDark,
-                      }}>
-                        {msg.text}
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-              <div ref={chatEndRef} />
-            </div>
-
-            {/* Input */}
-            <div style={{ padding: '14px', borderTop: sectionBorder, display: 'flex', gap: '8px' }}>
-              <input type="text"
-                placeholder={dmPartner ? `Message ${dmPartner.name}...` : 'Message the community...'}
-                value={chatInput} onChange={e => setChatInput(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && !chatSending && sendMessage()}
-                style={{ flex: 1, padding: '10px 12px', border: sectionBorder, fontSize: '13px' }} />
-              <Button variant="primary" size="sm" onClick={sendMessage} disabled={!chatInput.trim() || chatSending}>
-                {chatSending ? '...' : 'Send'}
-              </Button>
             </div>
           </div>
         </div>
