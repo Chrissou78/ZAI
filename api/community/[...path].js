@@ -231,34 +231,86 @@ export default async function handler(req, res) {
     try {
       const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
       const { image, caption, taggedMembers } = body;
+
       if (!image) return res.status(400).json({ success: false, error: 'Image is required (base64)' });
-      const buffer = Buffer.from(image.replace(/^data:image\/\w+;base64,/, ''), 'base64');
+
+      const base64Data = image.replace(/^data:image\/\w+;base64,/, '');
+      const buffer = Buffer.from(base64Data, 'base64');
+
       if (buffer.length > 4 * 1024 * 1024) return res.status(400).json({ success: false, error: 'Image must be under 4 MB' });
 
-      const formData = new FormData();
-      const blob = new Blob([buffer], { type: 'image/jpeg' });
-      formData.append('file', blob, `photo-${Date.now()}.jpg`);
-
-      const pinataRes = await fetch('https://api.pinata.cloud/pinning/pinFileToIPFS', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${process.env.PINATA_JWT}`,
-        },
-        body: formData,
-      });
-      if (!pinataRes.ok) {
-        const err = await pinataRes.text();
-        return res.status(500).json({ success: false, error: 'IPFS upload failed', detail: err });
+      // Debug: check env
+      if (!process.env.PINATA_JWT) {
+        return res.status(500).json({ success: false, error: 'PINATA_JWT env variable is not set' });
       }
 
-      const pinataData = await pinataRes.json();
+      const boundary = '----PinataFormBoundary' + Date.now().toString(36);
+      const fileName = `photo-${Date.now()}.jpg`;
+      const header = `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${fileName}"\r\nContent-Type: image/jpeg\r\n\r\n`;
+      const footer = `\r\n--${boundary}--\r\n`;
+
+      const multipartBody = Buffer.concat([
+        Buffer.from(header, 'utf-8'),
+        buffer,
+        Buffer.from(footer, 'utf-8'),
+      ]);
+
+      let pinataRes;
+      try {
+        pinataRes = await fetch('https://api.pinata.cloud/pinning/pinFileToIPFS', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${process.env.PINATA_JWT}`,
+            'Content-Type': `multipart/form-data; boundary=${boundary}`,
+          },
+          body: multipartBody,
+        });
+      } catch (fetchErr) {
+        return res.status(500).json({ success: false, error: 'Pinata fetch failed', detail: fetchErr.message });
+      }
+
+      if (!pinataRes.ok) {
+        const errText = await pinataRes.text().catch(() => 'could not read response');
+        return res.status(500).json({
+          success: false,
+          error: 'Pinata rejected upload',
+          pinataStatus: pinataRes.status,
+          detail: errText,
+        });
+      }
+
+      let pinataData;
+      try {
+        pinataData = await pinataRes.json();
+      } catch (jsonErr) {
+        return res.status(500).json({ success: false, error: 'Pinata response not JSON', detail: jsonErr.message });
+      }
+
       const cid = pinataData.IpfsHash;
+      if (!cid) {
+        return res.status(500).json({ success: false, error: 'No CID returned', detail: JSON.stringify(pinataData) });
+      }
+
       const photoUrl = `https://gateway.pinata.cloud/ipfs/${cid}`;
       const id = genId();
       const authorName = user.name || user.givenName || 'Member';
-      await getPool().query('INSERT INTO photos (id, cid, url, caption, author_id, author_name, tagged_members) VALUES ($1,$2,$3,$4,$5,$6,$7)', [id, cid, photoUrl, caption || '', user.userId, authorName, taggedMembers || []]);
-      return res.json({ success: true, data: { id, cid, url: photoUrl, caption: caption || '', authorId: user.userId, authorName, taggedMembers: taggedMembers || [], commentCount: 0, createdAt: new Date().toISOString() } });
-    } catch (error) { return res.status(500).json({ success: false, error: error.message }); }
+
+      try {
+        await getPool().query(
+          'INSERT INTO photos (id, cid, url, caption, author_id, author_name, tagged_members) VALUES ($1,$2,$3,$4,$5,$6,$7)',
+          [id, cid, photoUrl, caption || '', user.userId, authorName, taggedMembers || []]
+        );
+      } catch (dbErr) {
+        return res.status(500).json({ success: false, error: 'DB insert failed', detail: dbErr.message, cid });
+      }
+
+      return res.json({
+        success: true,
+        data: { id, cid, url: photoUrl, caption: caption || '', authorId: user.userId, authorName, taggedMembers: taggedMembers || [], commentCount: 0, createdAt: new Date().toISOString() },
+      });
+    } catch (error) {
+      return res.status(500).json({ success: false, error: 'Unexpected error', detail: error.message, stack: error.stack?.split('\n').slice(0, 3) });
+    }
   }
 
   // GET /api/community/gallery/:photoId
