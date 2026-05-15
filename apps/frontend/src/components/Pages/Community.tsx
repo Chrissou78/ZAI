@@ -337,7 +337,7 @@ const Community: React.FC = () => {
               <span style={{ fontSize: '10px', fontWeight: 600, color: info.reacted ? accent : textMuted }}>{info.count}</span>
             </button>
           ))}
-          <div style={{ position: 'relative' }}>
+          <div style={{ position: 'relative', marginLeft: 'auto' }}>
             <button
               onClick={(e) => { e.stopPropagation(); setShowEmojiPicker(pickerOpen ? null : photo.id); }}
               style={{
