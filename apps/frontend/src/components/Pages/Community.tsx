@@ -344,21 +344,22 @@ const Community: React.FC = () => {
                 width: 28, height: 28, borderRadius: '50%', border: '1px solid #e0ddd6',
                 background: pickerOpen ? bgMuted : '#fff', cursor: 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: '14px', color: textMuted, transition: 'all 0.15s',
+                fontSize: '16px', transition: 'all 0.15s',
               }}
               title="Add reaction"
-            >+</button>
+            >{pickerOpen ? '×' : '😊'}</button>
             {pickerOpen && (
               <div onClick={(e) => e.stopPropagation()} style={{
-                position: 'absolute', bottom: '110%', right: 0,
+                position: 'absolute', bottom: '110%', right: '-8px',
                 background: 'rgba(255,255,255,0.97)', borderRadius: '16px',
-                padding: '10px', display: 'grid', gridTemplateColumns: 'repeat(6, 38px)', gap: '2px',
+                padding: '10px', display: 'grid', gridTemplateColumns: 'repeat(4, 42px)', gap: '4px',
                 boxShadow: '0 4px 20px rgba(0,0,0,0.25)', zIndex: 10,
                 backdropFilter: 'blur(12px)',
+                maxHeight: '260px', overflowY: 'auto',
               }}>
                 {REACTION_EMOJIS.map(em => (
                   <button key={em} onClick={(e) => { e.stopPropagation(); toggleReaction(photo.id, em); }}
-                    style={{ width: 32, height: 32, border: 'none', background: 'transparent', borderRadius: '6px', cursor: 'pointer', fontSize: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.15s' }}
+                    style={{ width: 42, height: 42, border: 'none', background: 'transparent', borderRadius: '6px', cursor: 'pointer', fontSize: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.15s' }}
                     onMouseEnter={e => (e.currentTarget.style.background = bgMuted)}
                     onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                   >{em}</button>
