@@ -15,6 +15,12 @@ interface Member {
   isBlocked?: boolean;
 }
 
+interface Reaction {
+  emoji: string;
+  userId: string;
+  userName: string;
+}
+
 interface Photo {
   id: string;
   cid: string;
@@ -26,6 +32,7 @@ interface Photo {
   commentCount: number;
   createdAt: string;
   comments?: Comment[];
+  reactions?: Reaction[];
 }
 
 interface Comment {
@@ -42,6 +49,10 @@ interface CommunityStats {
 }
 
 type Tab = 'feed' | 'members';
+
+// ─── Constants ───
+
+const REACTION_EMOJIS = ['❤️', '🔥', '⛷️', '🏔️', '👏', '🤩'];
 
 // ─── Styles ───
 
@@ -89,6 +100,17 @@ function fmtDate(d: string) {
   return new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
+function groupReactions(reactions: Reaction[], userId?: string) {
+  const map: Record<string, { count: number; users: string[]; reacted: boolean }> = {};
+  for (const r of reactions) {
+    if (!map[r.emoji]) map[r.emoji] = { count: 0, users: [], reacted: false };
+    map[r.emoji].count++;
+    map[r.emoji].users.push(r.userName);
+    if (r.userId === userId) map[r.emoji].reacted = true;
+  }
+  return map;
+}
+
 // ─── Component ───
 
 const Community: React.FC = () => {
@@ -111,6 +133,7 @@ const Community: React.FC = () => {
   const [uploadPreview, setUploadPreview] = useState<string | null>(null);
   const [taggedMembers, setTaggedMembers] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState<string | null>(null);
 
   const [isLoading, setIsLoading] = useState(true);
 
@@ -222,6 +245,46 @@ const Community: React.FC = () => {
     } catch (err: any) { alert(err.response?.data?.error || 'Failed to delete comment'); }
   };
 
+  // ─── Reactions ───
+
+  const toggleReaction = async (photoId: string, emoji: string) => {
+    try {
+      const res = await apiService.post(`/community/gallery/${photoId}/reactions`, { emoji });
+      if (res.data?.success) {
+        const action = res.data.action as string;
+        const userName = user?.givenName || user?.name || 'Member';
+
+        setPhotos(prev => prev.map(p => {
+          if (p.id !== photoId) return p;
+          const reactions = [...(p.reactions || [])];
+          if (action === 'added') {
+            reactions.push({ emoji, userId: user?.id || '', userName });
+          } else {
+            const idx = reactions.findIndex(r => r.emoji === emoji && r.userId === user?.id);
+            if (idx >= 0) reactions.splice(idx, 1);
+          }
+          return { ...p, reactions };
+        }));
+
+        if (selectedPhoto?.id === photoId) {
+          setSelectedPhoto(prev => {
+            if (!prev) return null;
+            const reactions = [...(prev.reactions || [])];
+            if (action === 'added') {
+              reactions.push({ emoji, userId: user?.id || '', userName });
+            } else {
+              const idx = reactions.findIndex(r => r.emoji === emoji && r.userId === user?.id);
+              if (idx >= 0) reactions.splice(idx, 1);
+            }
+            return { ...prev, reactions };
+          });
+        }
+
+        setShowEmojiPicker(null);
+      }
+    } catch (err: any) { alert(err.response?.data?.error || 'Failed to react'); }
+  };
+
   // ─── Admin: block / unblock member ───
 
   const blockMember = async (memberId: string, memberName: string) => {
@@ -239,6 +302,78 @@ const Community: React.FC = () => {
       await apiService.delete(`/community/members/${memberId}/block`);
       setMembers(prev => prev.map(m => m.id === memberId ? { ...m, isBlocked: false } : m));
     } catch (err: any) { alert(err.response?.data?.error || 'Failed to unblock member'); }
+  };
+
+  // ─── ReactionBar sub-component ───
+
+  const ReactionBar = ({ photo }: { photo: Photo }) => {
+    const grouped = groupReactions(photo.reactions || [], user?.id);
+    const hasReactions = Object.keys(grouped).length > 0;
+    const pickerOpen = showEmojiPicker === photo.id;
+
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', minHeight: '28px' }}>
+        {hasReactions && Object.entries(grouped).map(([emoji, info]) => (
+          <button
+            key={emoji}
+            onClick={(e) => { e.stopPropagation(); toggleReaction(photo.id, emoji); }}
+            title={info.users.join(', ')}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: '4px',
+              padding: '3px 8px', borderRadius: '12px', fontSize: '13px',
+              border: info.reacted ? `1px solid ${accent}` : '1px solid #e0ddd6',
+              background: info.reacted ? 'rgba(200,16,46,0.06)' : '#fff',
+              cursor: 'pointer', transition: 'all 0.15s', lineHeight: 1,
+            }}
+          >
+            <span>{emoji}</span>
+            <span style={{ fontSize: '10px', fontWeight: 600, color: info.reacted ? accent : textMuted }}>{info.count}</span>
+          </button>
+        ))}
+        <div style={{ position: 'relative' }}>
+          <button
+            onClick={(e) => { e.stopPropagation(); setShowEmojiPicker(pickerOpen ? null : photo.id); }}
+            style={{
+              width: 28, height: 28, borderRadius: '50%', border: '1px solid #e0ddd6',
+              background: pickerOpen ? bgMuted : '#fff', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: '14px', color: textMuted, transition: 'all 0.15s',
+            }}
+            title="Add reaction"
+          >
+            +
+          </button>
+          {pickerOpen && (
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                position: 'absolute', bottom: '110%', left: '50%', transform: 'translateX(-50%)',
+                background: '#fff', border: '1px solid #e0ddd6', borderRadius: '8px',
+                padding: '6px 8px', display: 'flex', gap: '4px',
+                boxShadow: '0 4px 16px rgba(0,0,0,0.12)', zIndex: 10, whiteSpace: 'nowrap',
+              }}
+            >
+              {REACTION_EMOJIS.map(emoji => (
+                <button
+                  key={emoji}
+                  onClick={(e) => { e.stopPropagation(); toggleReaction(photo.id, emoji); }}
+                  style={{
+                    width: 32, height: 32, border: 'none', background: 'transparent',
+                    borderRadius: '6px', cursor: 'pointer', fontSize: '18px',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    transition: 'background 0.15s',
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.background = bgMuted)}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
   };
 
   // ─── Render ───
@@ -298,7 +433,30 @@ const Community: React.FC = () => {
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
             <div style={sectionTitle}>Community Feed</div>
-            <Button variant="primary" size="sm" onClick={() => setShowUpload(true)}>Share a moment</Button>
+            <button
+              onClick={() => setShowUpload(true)}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: '8px',
+                background: accent, color: '#fff', border: 'none',
+                padding: '11px 24px', borderRadius: '4px',
+                fontSize: '12px', fontWeight: 600, letterSpacing: '0.08em',
+                cursor: 'pointer', transition: 'all 0.2s',
+                boxShadow: '0 2px 8px rgba(200,16,46,0.25)',
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.background = '#e01232';
+                e.currentTarget.style.boxShadow = '0 4px 14px rgba(200,16,46,0.35)';
+                e.currentTarget.style.transform = 'translateY(-1px)';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = accent;
+                e.currentTarget.style.boxShadow = '0 2px 8px rgba(200,16,46,0.25)';
+                e.currentTarget.style.transform = 'translateY(0)';
+              }}
+            >
+              <span style={{ fontSize: '16px', lineHeight: 1 }}>+</span>
+              Share a moment
+            </button>
           </div>
 
           {/* Upload form */}
@@ -359,9 +517,9 @@ const Community: React.FC = () => {
               <p style={{ color: textMuted, margin: 0 }}>No posts yet. Be the first to share your zai moment!</p>
             </div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '12px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '16px' }}>
               {photos.map(photo => (
-                <div key={photo.id} style={{ border: sectionBorder, borderRadius: '4px', overflow: 'hidden', cursor: 'pointer', background: '#fff', transition: 'box-shadow 0.2s', position: 'relative' }}
+                <div key={photo.id} style={{ border: sectionBorder, borderRadius: '6px', overflow: 'hidden', background: '#fff', transition: 'box-shadow 0.2s', position: 'relative' }}
                   onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.08)')}
                   onMouseLeave={e => (e.currentTarget.style.boxShadow = 'none')}>
                   {isAdmin && (
@@ -379,17 +537,22 @@ const Community: React.FC = () => {
                       ×
                     </button>
                   )}
-                  <div onClick={() => openPhoto(photo.id)} style={{ aspectRatio: '1', overflow: 'hidden', background: '#1a1a1a' }}>
+                  <div onClick={() => openPhoto(photo.id)} style={{ aspectRatio: '1', overflow: 'hidden', background: '#1a1a1a', cursor: 'pointer' }}>
                     <img src={photo.url} alt={photo.caption} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                   </div>
-                  <div onClick={() => openPhoto(photo.id)} style={{ padding: '10px 12px' }}>
-                    <div style={{ fontSize: '12px', color: textDark, fontWeight: 500, marginBottom: '4px' }}>{photo.authorName}</div>
-                    {photo.caption && (
-                      <div style={{ fontSize: '12px', color: textMuted, marginBottom: '6px' }}>
-                        {photo.caption.length > 60 ? photo.caption.slice(0, 60) + '...' : photo.caption}
-                      </div>
-                    )}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: textMuted }}>
+                  <div style={{ padding: '10px 12px' }}>
+                    <div onClick={() => openPhoto(photo.id)} style={{ cursor: 'pointer' }}>
+                      <div style={{ fontSize: '12px', color: textDark, fontWeight: 500, marginBottom: '4px' }}>{photo.authorName}</div>
+                      {photo.caption && (
+                        <div style={{ fontSize: '12px', color: textMuted, marginBottom: '6px' }}>
+                          {photo.caption.length > 60 ? photo.caption.slice(0, 60) + '...' : photo.caption}
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ marginTop: '6px', marginBottom: '6px' }}>
+                      <ReactionBar photo={photo} />
+                    </div>
+                    <div onClick={() => openPhoto(photo.id)} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: textMuted, cursor: 'pointer' }}>
                       <span>{photo.commentCount} comment{photo.commentCount !== 1 ? 's' : ''}</span>
                       <span>{timeAgo(photo.createdAt)}</span>
                     </div>
@@ -402,7 +565,7 @@ const Community: React.FC = () => {
           {/* ── Photo detail modal ── */}
           {selectedPhoto && (
             <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '2rem' }}
-              onClick={() => setSelectedPhoto(null)}>
+              onClick={() => { setSelectedPhoto(null); setShowEmojiPicker(null); }}>
               <div onClick={e => e.stopPropagation()}
                 style={{ background: '#fff', borderRadius: '4px', maxWidth: '800px', width: '100%', maxHeight: '90vh', overflow: 'auto', display: 'grid', gridTemplateColumns: '1fr 320px' }}>
                 <div style={{ background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '400px' }}>
@@ -431,6 +594,9 @@ const Community: React.FC = () => {
                         Tagged: {selectedPhoto.taggedMembers.map(id => members.find(m => m.id === id)?.name || id.slice(0, 6)).join(', ')}
                       </div>
                     )}
+                    <div style={{ marginTop: '10px' }}>
+                      <ReactionBar photo={selectedPhoto} />
+                    </div>
                   </div>
 
                   <div style={{ flex: 1, overflowY: 'auto', padding: '14px' }}>

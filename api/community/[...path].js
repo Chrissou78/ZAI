@@ -323,6 +323,7 @@ export default async function handler(req, res) {
       const photo = await getPool().query('SELECT * FROM photos WHERE id=$1', [photoMatch[1]]);
       if (!photo.rows[0]) return res.status(404).json({ success: false, error: 'Photo not found' });
       const comments = await getPool().query('SELECT * FROM photo_comments WHERE photo_id=$1 ORDER BY created_at ASC', [photoMatch[1]]);
+      const reactions = await getPool().query('SELECT emoji, user_id, user_name FROM photo_reactions WHERE photo_id=$1', [photoMatch[1]]);
       const p = photo.rows[0];
       const decoded = authenticate(req);
       return res.json({
@@ -332,6 +333,7 @@ export default async function handler(req, res) {
           authorId: p.author_id, authorName: p.author_name,
           taggedMembers: p.tagged_members || [], commentCount: p.comment_count, createdAt: p.created_at,
           comments: comments.rows.map(c => ({ id: c.id, text: c.text, authorId: c.author_id, authorName: c.author_name, createdAt: c.created_at })),
+          reactions: reactions.rows.map(r => ({ emoji: r.emoji, userId: r.user_id, userName: r.user_name })),
         },
       });
     } catch (error) { return res.status(500).json({ success: false, error: error.message }); }
@@ -352,6 +354,55 @@ export default async function handler(req, res) {
       }
       await getPool().query('DELETE FROM photos WHERE id=$1', [photoMatch[1]]);
       return res.json({ success: true });
+    } catch (error) { return res.status(500).json({ success: false, error: error.message }); }
+  }
+
+   // GET /api/community/gallery/:photoId/reactions
+  const reactionsGetMatch = fullPath.match(/^gallery\/([^/]+)\/reactions$/);
+  if (reactionsGetMatch && req.method === 'GET') {
+    const dbOk = await initDB();
+    if (!dbOk) return res.json({ success: true, data: [] });
+    try {
+      const result = await getPool().query(
+        'SELECT emoji, user_id, user_name FROM photo_reactions WHERE photo_id=$1 ORDER BY created_at ASC',
+        [reactionsGetMatch[1]]
+      );
+      return res.json({ success: true, data: result.rows.map(r => ({ emoji: r.emoji, userId: r.user_id, userName: r.user_name })) });
+    } catch (error) { return res.status(500).json({ success: false, error: error.message }); }
+  }
+
+  // POST /api/community/gallery/:photoId/reactions — toggle reaction
+  const reactionsPostMatch = fullPath.match(/^gallery\/([^/]+)\/reactions$/);
+  if (reactionsPostMatch && req.method === 'POST') {
+    const user = authenticate(req);
+    if (!user) return res.status(401).json({ error: 'No token provided' });
+    const dbOk = await initDB();
+    if (!dbOk) return res.status(503).json({ success: false, error: 'Database unavailable' });
+    try {
+      const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+      const { emoji } = body;
+      if (!emoji) return res.status(400).json({ success: false, error: 'Emoji is required' });
+
+      const photoId = reactionsPostMatch[1];
+      const userName = user.name || user.givenName || 'Member';
+
+      // Toggle: if already reacted with this emoji, remove it; otherwise add it
+      const existing = await getPool().query(
+        'SELECT id FROM photo_reactions WHERE photo_id=$1 AND user_id=$2 AND emoji=$3',
+        [photoId, user.userId, emoji]
+      );
+
+      if (existing.rows.length > 0) {
+        await getPool().query('DELETE FROM photo_reactions WHERE id=$1', [existing.rows[0].id]);
+        return res.json({ success: true, action: 'removed', emoji });
+      } else {
+        const id = genId();
+        await getPool().query(
+          'INSERT INTO photo_reactions (id, photo_id, emoji, user_id, user_name) VALUES ($1,$2,$3,$4,$5)',
+          [id, photoId, emoji, user.userId, userName]
+        );
+        return res.json({ success: true, action: 'added', emoji, data: { id, emoji, userId: user.userId, userName } });
+      }
     } catch (error) { return res.status(500).json({ success: false, error: error.message }); }
   }
 
