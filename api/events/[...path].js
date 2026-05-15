@@ -2,7 +2,7 @@ import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'zai-secret-key-change-in-production';
 const API_KEY = process.env.WALLETTWO_API_KEY;
-const EVENTS_BASE = 'https://api.wallettwo.com/events/v1/api';
+const EVENTS_BASE = 'https://api.wallettwo.com/v1/api';
 
 /* ── helpers ─────────────────────────────────────────────── */
 
