@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAppContext } from '../../context/AppContext';
+import { apiService } from '../../services/api';
 import UserAvatar from '../Common/UserAvatar';
 import { ZaiLogo } from '../Icons/LogoIcons';
 import {
@@ -17,8 +18,37 @@ import { LogoutButton } from '../Auth/LogoutButton';
 const Sidebar: React.FC = () => {
   const { user } = useAppContext();
   const location = useLocation();
+  const [communityNewCount, setCommunityNewCount] = useState(0);
 
   const isActive = (path: string) => location.pathname === path;
+
+  // Check for new community photos from DB
+  const checkCommunityUpdates = useCallback(async () => {
+    if (!user) { setCommunityNewCount(0); return; }
+    try {
+      const res = await apiService.get('/community/notifications');
+      if (res.data?.success) {
+        setCommunityNewCount(res.data.data?.newCount || 0);
+      }
+    } catch {
+      // silently fail
+    }
+  }, [user]);
+
+  // Poll every 60s
+  useEffect(() => {
+    checkCommunityUpdates();
+    const interval = setInterval(checkCommunityUpdates, 60000);
+    return () => clearInterval(interval);
+  }, [checkCommunityUpdates]);
+
+  // When user visits /community, mark as seen in DB
+  useEffect(() => {
+    if (location.pathname === '/community' && user) {
+      apiService.post('/community/notifications/seen').catch(() => {});
+      setCommunityNewCount(0);
+    }
+  }, [location.pathname, user]);
 
   const navSections = [
     {
@@ -33,7 +63,7 @@ const Sidebar: React.FC = () => {
       items: [
         { path: '/products', label: 'My Products', icon: <ProductsIcon /> },
         { path: '/events', label: 'Events', icon: <EventsIcon /> },
-        { path: '/community', label: 'Community', icon: <CommunityIcon /> },
+        { path: '/community', label: 'Community', icon: <CommunityIcon />, badge: communityNewCount },
       ],
     },
     {
@@ -115,6 +145,7 @@ const Sidebar: React.FC = () => {
                   letterSpacing: '0.05em',
                   borderLeft: isActive(item.path) ? '2px solid #c8102e' : '2px solid transparent',
                   background: isActive(item.path) ? 'rgba(255,255,255,0.05)' : 'transparent',
+                  position: 'relative',
                 }}
                 onMouseEnter={(e) => {
                   if (!isActive(item.path)) {
@@ -131,6 +162,28 @@ const Sidebar: React.FC = () => {
               >
                 <span style={{ display: 'flex', opacity: 0.7, width: '16px', height: '16px' }}>{item.icon}</span>
                 <span>{item.label}</span>
+                {'badge' in item && (item as any).badge > 0 && (
+                  <span
+                    style={{
+                      marginLeft: 'auto',
+                      minWidth: '18px',
+                      height: '18px',
+                      borderRadius: '9px',
+                      background: '#c8102e',
+                      color: '#fff',
+                      fontSize: '10px',
+                      fontWeight: 700,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: '0 5px',
+                      lineHeight: 1,
+                      animation: 'pulse 2s ease-in-out infinite',
+                    }}
+                  >
+                    {(item as any).badge > 9 ? '9+' : (item as any).badge}
+                  </span>
+                )}
               </Link>
             ))}
           </div>
@@ -142,7 +195,7 @@ const Sidebar: React.FC = () => {
         <LogoutButton />
       </div>
 
-      {/* Footer with Logo and Text */}
+      {/* Footer */}
       <div style={{ padding: '1rem 1rem', borderTop: '1px solid #2a2a2a', textAlign: 'center', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', marginBottom: '0.5rem' }}>
           <svg width="11" height="9" viewBox="0 0 24 20" fill="none" style={{ flexShrink: 0 }}>
@@ -151,6 +204,14 @@ const Sidebar: React.FC = () => {
           <span style={{ fontSize: '9px', color: '#555', letterSpacing: '0.05em' }}>Crafted in the Alps</span>
         </div>
       </div>
+
+      {/* Pulse animation */}
+      <style>{`
+        @keyframes pulse {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.85; transform: scale(1.1); }
+        }
+      `}</style>
     </nav>
   );
 };

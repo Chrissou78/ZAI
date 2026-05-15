@@ -544,6 +544,52 @@ export default async function handler(req, res) {
     } catch (error) { return res.status(500).json({ success: false, error: error.message }); }
   }
 
+  // ─── GET /api/community/notifications ───
+  if (fullPath === 'notifications' && req.method === 'GET') {
+    const decoded = authenticate(req);
+    if (!decoded) return res.json({ success: true, data: { newCount: 0 } });
+    const dbOk = await initDB();
+    if (!dbOk) return res.json({ success: true, data: { newCount: 0 } });
+    try {
+      // Get user's last seen timestamp
+      const profile = await getPool().query(
+        'SELECT community_last_seen FROM user_profiles WHERE user_id = $1',
+        [decoded.userId]
+      );
+      const lastSeen = profile.rows[0]?.community_last_seen || new Date(0);
+
+      // Count photos newer than last seen
+      const result = await getPool().query(
+        'SELECT COUNT(*)::int AS count FROM photos WHERE created_at > $1',
+        [lastSeen]
+      );
+
+      return res.json({
+        success: true,
+        data: { newCount: result.rows[0].count, lastSeen },
+      });
+    } catch (error) {
+      return res.json({ success: true, data: { newCount: 0 } });
+    }
+  }
+
+  // ─── POST /api/community/notifications/seen ───
+  if (fullPath === 'notifications/seen' && req.method === 'POST') {
+    const decoded = authenticate(req);
+    if (!decoded) return res.status(401).json({ error: 'No token provided' });
+    const dbOk = await initDB();
+    if (!dbOk) return res.status(503).json({ success: false, error: 'Database unavailable' });
+    try {
+      await getPool().query(
+        `UPDATE user_profiles SET community_last_seen = NOW() WHERE user_id = $1`,
+        [decoded.userId]
+      );
+      return res.json({ success: true, message: 'Marked as seen' });
+    } catch (error) {
+      return res.status(500).json({ success: false, error: error.message });
+    }
+  }
+
   // ─── STATS ───
   if (fullPath === 'stats' && req.method === 'GET') {
     const dbOk = await initDB();
