@@ -350,10 +350,11 @@ const Community: React.FC = () => {
             >+</button>
             {pickerOpen && (
               <div onClick={(e) => e.stopPropagation()} style={{
-                position: 'absolute', bottom: '110%', left: '50%', transform: 'translateX(-50%)',
-                background: '#fff', border: '1px solid #e0ddd6', borderRadius: '8px',
-                padding: '6px 8px', display: 'flex', gap: '4px',
-                boxShadow: '0 4px 16px rgba(0,0,0,0.12)', zIndex: 10, whiteSpace: 'nowrap',
+                position: 'absolute', bottom: '110%', right: 0,
+                background: 'rgba(255,255,255,0.97)', borderRadius: '16px',
+                padding: '10px', display: 'grid', gridTemplateColumns: 'repeat(6, 38px)', gap: '2px',
+                boxShadow: '0 4px 20px rgba(0,0,0,0.25)', zIndex: 10,
+                backdropFilter: 'blur(12px)',
               }}>
                 {REACTION_EMOJIS.map(em => (
                   <button key={em} onClick={(e) => { e.stopPropagation(); toggleReaction(photo.id, em); }}
@@ -423,7 +424,7 @@ const Community: React.FC = () => {
               style={{
                 position: 'absolute', bottom: '110%', left: '50%', transform: 'translateX(-50%)',
                 background: '#fff', border: '1px solid #e0ddd6', borderRadius: '12px',
-                padding: '8px', display: 'grid', gridTemplateColumns: 'repeat(6, 32px)', gap: '2px',
+                padding: '8px', display: 'grid', gridTemplateColumns: 'repeat(6, 38px)', gap: '2px',
                 boxShadow: '0 4px 16px rgba(0,0,0,0.12)', zIndex: 10,
               }}
             >
