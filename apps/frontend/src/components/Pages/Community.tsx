@@ -306,13 +306,75 @@ const Community: React.FC = () => {
 
   // ─── ReactionBar sub-component ───
 
-  const ReactionBar = ({ photo }: { photo: Photo }) => {
+  const ReactionBar = ({ photo, overlay = false }: { photo: Photo; overlay?: boolean }) => {
     const grouped = groupReactions(photo.reactions || [], user?.id);
     const hasReactions = Object.keys(grouped).length > 0;
     const pickerOpen = showEmojiPicker === photo.id;
 
+    // Non-overlay version (used under photo cards in grid)
+    if (!overlay) {
+      return (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', minHeight: '28px' }}>
+          {hasReactions && Object.entries(grouped).map(([emoji, info]) => (
+            <button
+              key={emoji}
+              onClick={(e) => { e.stopPropagation(); toggleReaction(photo.id, emoji); }}
+              title={info.users.join(', ')}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: '4px',
+                padding: '3px 8px', borderRadius: '12px', fontSize: '13px',
+                border: info.reacted ? `1px solid ${accent}` : '1px solid #e0ddd6',
+                background: info.reacted ? 'rgba(200,16,46,0.06)' : '#fff',
+                cursor: 'pointer', transition: 'all 0.15s', lineHeight: 1,
+              }}
+            >
+              <span>{emoji}</span>
+              <span style={{ fontSize: '10px', fontWeight: 600, color: info.reacted ? accent : textMuted }}>{info.count}</span>
+            </button>
+          ))}
+          <div style={{ position: 'relative' }}>
+            <button
+              onClick={(e) => { e.stopPropagation(); setShowEmojiPicker(pickerOpen ? null : photo.id); }}
+              style={{
+                width: 28, height: 28, borderRadius: '50%', border: '1px solid #e0ddd6',
+                background: pickerOpen ? bgMuted : '#fff', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: '14px', color: textMuted, transition: 'all 0.15s',
+              }}
+              title="Add reaction"
+            >+</button>
+            {pickerOpen && (
+              <div onClick={(e) => e.stopPropagation()} style={{
+                position: 'absolute', bottom: '110%', left: '50%', transform: 'translateX(-50%)',
+                background: '#fff', border: '1px solid #e0ddd6', borderRadius: '8px',
+                padding: '6px 8px', display: 'flex', gap: '4px',
+                boxShadow: '0 4px 16px rgba(0,0,0,0.12)', zIndex: 10, whiteSpace: 'nowrap',
+              }}>
+                {REACTION_EMOJIS.map(em => (
+                  <button key={em} onClick={(e) => { e.stopPropagation(); toggleReaction(photo.id, em); }}
+                    style={{ width: 32, height: 32, border: 'none', background: 'transparent', borderRadius: '6px', cursor: 'pointer', fontSize: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.15s' }}
+                    onMouseEnter={e => (e.currentTarget.style.background = bgMuted)}
+                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                  >{em}</button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    // ── Overlay version (floating widget on the photo) ──
     return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', minHeight: '28px' }}>
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          position: 'absolute', bottom: '12px', left: '12px', right: '12px',
+          display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap',
+          zIndex: 5,
+        }}
+      >
+        {/* Existing reaction pills */}
         {hasReactions && Object.entries(grouped).map(([emoji, info]) => (
           <button
             key={emoji}
@@ -320,54 +382,66 @@ const Community: React.FC = () => {
             title={info.users.join(', ')}
             style={{
               display: 'inline-flex', alignItems: 'center', gap: '4px',
-              padding: '3px 8px', borderRadius: '12px', fontSize: '13px',
-              border: info.reacted ? `1px solid ${accent}` : '1px solid #e0ddd6',
-              background: info.reacted ? 'rgba(200,16,46,0.06)' : '#fff',
-              cursor: 'pointer', transition: 'all 0.15s', lineHeight: 1,
+              padding: '4px 10px', borderRadius: '14px', fontSize: '14px',
+              border: 'none',
+              background: info.reacted ? 'rgba(200,16,46,0.85)' : 'rgba(0,0,0,0.55)',
+              color: '#fff',
+              cursor: 'pointer', transition: 'all 0.2s', lineHeight: 1,
+              backdropFilter: 'blur(8px)',
             }}
           >
             <span>{emoji}</span>
-            <span style={{ fontSize: '10px', fontWeight: 600, color: info.reacted ? accent : textMuted }}>{info.count}</span>
+            <span style={{ fontSize: '11px', fontWeight: 600 }}>{info.count}</span>
           </button>
         ))}
-        <div style={{ position: 'relative' }}>
+
+        {/* Emoji quick-pick widget */}
+        <div style={{ position: 'relative', marginLeft: 'auto' }}>
           <button
             onClick={(e) => { e.stopPropagation(); setShowEmojiPicker(pickerOpen ? null : photo.id); }}
             style={{
-              width: 28, height: 28, borderRadius: '50%', border: '1px solid #e0ddd6',
-              background: pickerOpen ? bgMuted : '#fff', cursor: 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: '14px', color: textMuted, transition: 'all 0.15s',
+              width: 36, height: 36, borderRadius: '50%', border: 'none',
+              background: pickerOpen ? 'rgba(255,255,255,0.95)' : 'rgba(0,0,0,0.5)',
+              color: pickerOpen ? textDark : '#fff',
+              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: '18px', transition: 'all 0.2s',
+              backdropFilter: 'blur(8px)',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
             }}
-            title="Add reaction"
+            title="React"
           >
-            +
+            {pickerOpen ? '×' : '😊'}
           </button>
           {pickerOpen && (
             <div
               onClick={(e) => e.stopPropagation()}
               style={{
-                position: 'absolute', bottom: '110%', left: '50%', transform: 'translateX(-50%)',
-                background: '#fff', border: '1px solid #e0ddd6', borderRadius: '8px',
-                padding: '6px 8px', display: 'flex', gap: '4px',
-                boxShadow: '0 4px 16px rgba(0,0,0,0.12)', zIndex: 10, whiteSpace: 'nowrap',
+                position: 'absolute', bottom: '110%', right: 0,
+                background: 'rgba(255,255,255,0.97)', borderRadius: '20px',
+                padding: '8px 10px', display: 'flex', gap: '2px',
+                boxShadow: '0 4px 20px rgba(0,0,0,0.25)', zIndex: 10, whiteSpace: 'nowrap',
+                backdropFilter: 'blur(12px)',
               }}
             >
-              {REACTION_EMOJIS.map(emoji => (
+              {REACTION_EMOJIS.map(em => (
                 <button
-                  key={emoji}
-                  onClick={(e) => { e.stopPropagation(); toggleReaction(photo.id, emoji); }}
+                  key={em}
+                  onClick={(e) => { e.stopPropagation(); toggleReaction(photo.id, em); }}
                   style={{
-                    width: 32, height: 32, border: 'none', background: 'transparent',
-                    borderRadius: '6px', cursor: 'pointer', fontSize: '18px',
+                    width: 38, height: 38, border: 'none', background: 'transparent',
+                    borderRadius: '50%', cursor: 'pointer', fontSize: '22px',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    transition: 'background 0.15s',
+                    transition: 'all 0.15s',
                   }}
-                  onMouseEnter={e => (e.currentTarget.style.background = bgMuted)}
-                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                >
-                  {emoji}
-                </button>
+                  onMouseEnter={e => {
+                    e.currentTarget.style.background = 'rgba(200,16,46,0.1)';
+                    e.currentTarget.style.transform = 'scale(1.25)';
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.background = 'transparent';
+                    e.currentTarget.style.transform = 'scale(1)';
+                  }}
+                >{em}</button>
               ))}
             </div>
           )}

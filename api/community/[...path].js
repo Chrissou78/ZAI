@@ -207,7 +207,24 @@ export default async function handler(req, res) {
       const result = await getPool().query('SELECT * FROM photos ORDER BY created_at DESC LIMIT $1 OFFSET $2', [l, o]);
       const countResult = await getPool().query('SELECT COUNT(*)::int AS total FROM photos');
 
-      // Check if caller is admin
+      // Fetch reactions for all photos in one query
+      const photoIds = result.rows.map(r => r.id);
+      let reactionsMap = {};
+      if (photoIds.length > 0) {
+        try {
+          const reactionsResult = await getPool().query(
+            'SELECT photo_id, emoji, user_id, user_name FROM photo_reactions WHERE photo_id = ANY($1)',
+            [photoIds]
+          );
+          for (const r of reactionsResult.rows) {
+            if (!reactionsMap[r.photo_id]) reactionsMap[r.photo_id] = [];
+            reactionsMap[r.photo_id].push({ emoji: r.emoji, userId: r.user_id, userName: r.user_name });
+          }
+        } catch (rxErr) {
+          console.error('Reactions query failed:', rxErr.message);
+        }
+      }
+
       const decoded = authenticate(req);
 
       return res.json({
@@ -217,6 +234,7 @@ export default async function handler(req, res) {
           id: r.id, cid: r.cid, url: r.url, caption: r.caption,
           authorId: r.author_id, authorName: r.author_name,
           taggedMembers: r.tagged_members || [], commentCount: r.comment_count, createdAt: r.created_at,
+          reactions: reactionsMap[r.id] || [],
         })),
         pagination: { limit: l, offset: o, total: countResult.rows[0].total, hasMore: o + l < countResult.rows[0].total },
       });
