@@ -52,7 +52,12 @@ type Tab = 'feed' | 'members';
 
 // ─── Constants ───
 
-const REACTION_EMOJIS = ['❤️', '🔥', '⛷️', '🏔️', '👏', '🤩'];
+const REACTION_EMOJIS = [
+  '❤️', '🔥', '👏', '🤩', '😍', '🙌',
+  '⛷️', '🏔️', '🎿', '🏂', '❄️', '🌨️',
+  '💪', '🥇', '🏆', '⭐', '💎', '👌',
+  '😂', '🫶', '🙏', '🎉', '💯', '🚀',
+];
 
 // ─── Styles ───
 
@@ -416,11 +421,10 @@ const Community: React.FC = () => {
             <div
               onClick={(e) => e.stopPropagation()}
               style={{
-                position: 'absolute', bottom: '110%', right: 0,
-                background: 'rgba(255,255,255,0.97)', borderRadius: '20px',
-                padding: '8px 10px', display: 'flex', gap: '2px',
-                boxShadow: '0 4px 20px rgba(0,0,0,0.25)', zIndex: 10, whiteSpace: 'nowrap',
-                backdropFilter: 'blur(12px)',
+                position: 'absolute', bottom: '110%', left: '50%', transform: 'translateX(-50%)',
+                background: '#fff', border: '1px solid #e0ddd6', borderRadius: '12px',
+                padding: '8px', display: 'grid', gridTemplateColumns: 'repeat(6, 32px)', gap: '2px',
+                boxShadow: '0 4px 16px rgba(0,0,0,0.12)', zIndex: 10,
               }}
             >
               {REACTION_EMOJIS.map(em => (
