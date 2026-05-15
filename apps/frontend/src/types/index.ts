@@ -96,6 +96,7 @@ export interface ApiResponse<T = any> {
   jwtToken?: string;
   user?: User;
   isAdmin?: boolean;
+  action?: string;  
   pagination?: {
     page: number;
     limit: number;
