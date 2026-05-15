@@ -642,8 +642,9 @@ const Community: React.FC = () => {
               onClick={() => { setSelectedPhoto(null); setShowEmojiPicker(null); }}>
               <div onClick={e => e.stopPropagation()}
                 style={{ background: '#fff', borderRadius: '4px', maxWidth: '800px', width: '100%', maxHeight: '90vh', overflow: 'auto', display: 'grid', gridTemplateColumns: '1fr 320px' }}>
-                <div style={{ background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '400px' }}>
+                <div style={{ background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '400px', position: 'relative' }}>
                   <img src={selectedPhoto.url} alt={selectedPhoto.caption} style={{ maxWidth: '100%', maxHeight: '80vh', objectFit: 'contain' }} />
+                  <ReactionBar photo={selectedPhoto} overlay />
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', borderLeft: sectionBorder }}>
                   <div style={{ padding: '14px', borderBottom: sectionBorder }}>
@@ -668,9 +669,6 @@ const Community: React.FC = () => {
                         Tagged: {selectedPhoto.taggedMembers.map(id => members.find(m => m.id === id)?.name || id.slice(0, 6)).join(', ')}
                       </div>
                     )}
-                    <div style={{ marginTop: '10px' }}>
-                      <ReactionBar photo={selectedPhoto} />
-                    </div>
                   </div>
 
                   <div style={{ flex: 1, overflowY: 'auto', padding: '14px' }}>
