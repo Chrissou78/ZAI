@@ -580,13 +580,58 @@ const Community: React.FC = () => {
                   ))}
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: '0.75rem' }}>
-                <Button variant="primary" size="sm" onClick={handleUpload} disabled={!uploadFile || uploading}>
+              <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
+                <button
+                  onClick={handleUpload}
+                  disabled={!uploadFile || uploading}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: '8px',
+                    background: (!uploadFile || uploading) ? '#ccc' : accent, color: '#fff', border: 'none',
+                    padding: '12px 32px', borderRadius: '4px',
+                    fontSize: '13px', fontWeight: 600, letterSpacing: '0.08em',
+                    cursor: (!uploadFile || uploading) ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.2s',
+                    boxShadow: (!uploadFile || uploading) ? 'none' : '0 2px 8px rgba(200,16,46,0.25)',
+                  }}
+                  onMouseEnter={e => {
+                    if (uploadFile && !uploading) {
+                      e.currentTarget.style.background = '#e01232';
+                      e.currentTarget.style.boxShadow = '0 4px 14px rgba(200,16,46,0.35)';
+                      e.currentTarget.style.transform = 'translateY(-1px)';
+                    }
+                  }}
+                  onMouseLeave={e => {
+                    if (uploadFile && !uploading) {
+                      e.currentTarget.style.background = accent;
+                      e.currentTarget.style.boxShadow = '0 2px 8px rgba(200,16,46,0.25)';
+                      e.currentTarget.style.transform = 'translateY(0)';
+                    }
+                  }}
+                >
                   {uploading ? 'Uploading to IPFS...' : 'Share'}
-                </Button>
-                <Button variant="secondary" size="sm" onClick={() => {
-                  setShowUpload(false); setUploadFile(null); setUploadPreview(null); setUploadCaption(''); setTaggedMembers([]);
-                }}>Cancel</Button>
+                </button>
+                <button
+                  onClick={() => {
+                    setShowUpload(false); setUploadFile(null); setUploadPreview(null); setUploadCaption(''); setTaggedMembers([]);
+                  }}
+                  style={{
+                    padding: '12px 32px', borderRadius: '4px',
+                    fontSize: '13px', fontWeight: 600, letterSpacing: '0.08em',
+                    background: 'transparent', color: textDark,
+                    border: `2px solid ${textDark}`,
+                    cursor: 'pointer', transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.background = textDark;
+                    e.currentTarget.style.color = '#fff';
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.background = 'transparent';
+                    e.currentTarget.style.color = textDark;
+                  }}
+                >
+                  Cancel
+                </button>
               </div>
             </div>
           )}
