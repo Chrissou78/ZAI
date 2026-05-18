@@ -610,19 +610,82 @@ const Events: React.FC = () => {
           </p>
 
           {/* Program */}
-          {selectedEvent.program && (
-            <div style={{ marginBottom: '1.25rem' }}>
-              <div style={{ fontSize: '10px', letterSpacing: '0.2em', textTransform: 'uppercase', color: textDark, marginBottom: '8px', fontWeight: 600 }}>
-                Program
+          {selectedEvent.program && (() => {
+            // Parse BlockNote JSON format from WalletTwo
+            let programLines: string[] = [];
+            try {
+              const raw = typeof selectedEvent.program === 'string' ? selectedEvent.program : '';
+              if (raw.trim().startsWith('[')) {
+                const blocks = JSON.parse(raw);
+                programLines = blocks
+                  .map((block: any) => {
+                    if (!block.content || block.content.length === 0) return '';
+                    return block.content.map((node: any) => node.text || '').join('');
+                  })
+                  .filter((line: string) => line.trim() !== '');
+              }
+            } catch {}
+
+            // Fallback: plain text split by newlines
+            if (programLines.length === 0) {
+              const raw = typeof selectedEvent.program === 'string' ? selectedEvent.program : '';
+              programLines = raw.split('\n').filter((l: string) => l.trim());
+            }
+
+            // Try to detect time-prefixed lines (e.g. "09.00 Welcome")
+            const timeRegex = /^(\d{1,2}[.:h]\d{2})\s+(.+)$/;
+            const hasTimeLines = programLines.some(l => timeRegex.test(l.trim()));
+
+            return (
+              <div style={{ marginBottom: '1.25rem' }}>
+                <div style={{
+                  fontSize: '10px', letterSpacing: '0.2em', textTransform: 'uppercase',
+                  color: '#1a1a1a', marginBottom: '8px', fontWeight: 600,
+                }}>
+                  Program
+                </div>
+
+                <div style={{ border: '1px solid #e0ddd6', overflow: 'hidden' }}>
+                  {programLines.map((line, idx) => {
+                    const trimmed = line.trim();
+                    const timeMatch = trimmed.match(timeRegex);
+
+                    return (
+                      <div
+                        key={idx}
+                        style={{
+                          display: 'flex',
+                          gap: '14px',
+                          padding: '12px 14px',
+                          borderBottom: idx < programLines.length - 1 ? '1px solid #e0ddd6' : 'none',
+                          background: idx % 2 === 0 ? '#fff' : '#fafaf8',
+                          alignItems: 'baseline',
+                        }}
+                      >
+                        {hasTimeLines && timeMatch ? (
+                          <>
+                            <div style={{
+                              minWidth: '50px', fontSize: '12px', fontWeight: 600,
+                              color: '#c8102e', flexShrink: 0,
+                            }}>
+                              {timeMatch[1]}
+                            </div>
+                            <div style={{ fontSize: '13px', color: '#1a1a1a', lineHeight: 1.5 }}>
+                              {timeMatch[2]}
+                            </div>
+                          </>
+                        ) : (
+                          <div style={{ fontSize: '13px', color: '#1a1a1a', lineHeight: 1.5 }}>
+                            {trimmed}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-              <div style={{
-                padding: '14px', background: '#f9f8f6', border: `1px solid ${borderColor}`,
-                fontSize: '13px', lineHeight: 1.7, color: textMuted, whiteSpace: 'pre-line',
-              }}>
-                {selectedEvent.program}
-              </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* Gallery carousel */}
           {selectedEvent.galleryImages && selectedEvent.galleryImages.length > 0 && (

@@ -1,6 +1,5 @@
 import jwt from 'jsonwebtoken';
 
-// Lazy DB import — don't crash if DB is unavailable
 let dbModule = null;
 async function getDB() {
   if (!dbModule) {
@@ -14,12 +13,9 @@ async function getDB() {
 }
 
 const API_KEY = () => process.env.WALLETTWO_API_KEY;
-const BASE = 'https://api.wallettwo.com/blockchain/v1/api';
+const RWA_BASE = 'https://api.wallettwo.com/rwa/v1/api';
+const BLOCKCHAIN_BASE = 'https://api.wallettwo.com/blockchain/v1/api';
 const CHAIN_ID = () => process.env.CHAIN_ID || '137';
-
-// ── Only show NFTs from the ZAI contract ──
-const ZAI_CONTRACT = '0xedd1a9446a2c0e50a8287c9527bf2a7498bfbc55';
-const ZAI_EXPERIENCE_CARD_CONTRACT = '0x3ec471e2a682381ee75b395eff068e04b6b5da5d';
 
 function authenticate(req) {
   const authHeader = req.headers.authorization;
@@ -35,6 +31,49 @@ function genId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
 }
 
+// ── Fetch with timeout and API key ──
+async function rwaFetch(path, opts = {}) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+  try {
+    const res = await fetch(`${RWA_BASE}${path}`, {
+      ...opts,
+      signal: controller.signal,
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': API_KEY(),
+        ...(opts.headers || {}),
+      },
+    });
+    clearTimeout(timeout);
+    const data = await res.json().catch(() => null);
+    return { status: res.status, data };
+  } catch (err) {
+    clearTimeout(timeout);
+    console.error(`rwaFetch ${path} failed:`, err.message);
+    return { status: 503, data: null };
+  }
+}
+
+async function blockchainFetch(path) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+  try {
+    const res = await fetch(`${BLOCKCHAIN_BASE}${path}`, {
+      signal: controller.signal,
+      headers: { 'x-api-key': API_KEY() },
+    });
+    clearTimeout(timeout);
+    const data = await res.json().catch(() => null);
+    return { status: res.status, data };
+  } catch (err) {
+    clearTimeout(timeout);
+    console.error(`blockchainFetch ${path} failed:`, err.message);
+    return { status: 503, data: null };
+  }
+}
+
+// ── SAS insurance API ──
 async function callSasApi(payload) {
   const sasUrl = process.env.SAS_API_URL;
   const sasUser = process.env.SAS_USERNAME;
@@ -69,17 +108,66 @@ async function fetchSasMakes() {
   return response.json();
 }
 
+// ── Resolve NFT metadata image URL ──
+function resolveImageUrl(nft, rwa) {
+  // 1. Check nft-level data
+  if (nft.rwa_nft_data && nft.rwa_nft_data.length > 0) {
+    for (const d of nft.rwa_nft_data) {
+      if (d.key === 'image' || d.key === 'imageUrl' || d.key === 'img') {
+        if (d.value) return d.value;
+      }
+    }
+  }
+  // 2. Check RWA-level data
+  if (rwa?.data) {
+    for (const key of ['image', 'imageUrl', 'img', 'coverImage']) {
+      if (rwa.data[key]?.value) return rwa.data[key].value;
+    }
+  }
+  return '';
+}
+
+function resolveDescription(nft, rwa) {
+  if (nft.rwa_nft_data && nft.rwa_nft_data.length > 0) {
+    for (const d of nft.rwa_nft_data) {
+      if (d.key === 'description' || d.key === 'desc') {
+        if (d.value) return d.value;
+      }
+    }
+  }
+  if (rwa?.data) {
+    for (const key of ['description', 'desc']) {
+      if (rwa.data[key]?.value) return rwa.data[key].value;
+    }
+  }
+  return '';
+}
+
+function resolveDataField(nft, rwa, fieldNames) {
+  if (nft.rwa_nft_data && nft.rwa_nft_data.length > 0) {
+    for (const d of nft.rwa_nft_data) {
+      if (fieldNames.includes(d.key) && d.value) return d.value;
+    }
+  }
+  if (rwa?.data) {
+    for (const key of fieldNames) {
+      if (rwa.data[key]?.value) return rwa.data[key].value;
+    }
+  }
+  return '';
+}
+
 export default async function handler(req, res) {
   const fullPath = req.url.split('?')[0].replace(/^\/api\/products\/?/, '').replace(/\/$/, '');
 
-  // ─── GET /api/products/user/:userId — list user's ZAI products ───
+  // ─── GET /api/products/user/:userId — list user's products via RWA API ───
   const userMatch = fullPath.match(/^user\/(.+)$/);
   if (userMatch && req.method === 'GET') {
     const decoded = authenticate(req);
     if (!decoded) return res.status(401).json({ error: 'No token provided' });
 
     try {
-      // ★ Try DB but don't let it crash the request ★
+      // ★ DB setup (non-fatal) ★
       let pool = null;
       let dbReady = false;
       try {
@@ -93,51 +181,112 @@ export default async function handler(req, res) {
         console.error('DB init failed (non-fatal):', dbErr.message);
       }
 
-      // Fetch NFTs from WalletTwo
+      const wallet = decoded.wallet?.toLowerCase();
       let products = [];
-      let rawNftCount = 0;
-      let allAddresses = []; // ★ debug: collect all token_address values
-      try {
-        const nftUrl = `${BASE}/nft?address=${decoded.wallet}&chainId=${CHAIN_ID()}`;
-        console.log('Fetching NFTs from:', nftUrl);
+      let rwaList = [];
+      let allContractAddresses = [];
 
-        const response = await fetch(nftUrl, {
-          headers: { 'x-api-key': API_KEY() },
-        });
+      // ── Step 1: Get all company RWAs ──
+      const { status: rwaStatus, data: rwaData } = await rwaFetch('/rwa?limit=200');
 
-        if (response.ok) {
-          const data = await response.json();
-          const allNfts = data.result || [];
-          rawNftCount = allNfts.length;
-
-          // ★ Collect all unique contract addresses for debugging ★
-          allAddresses = [...new Set(allNfts.map(nft => nft.token_address))];
-
-          products = allNfts
-            .filter(nft => {
-              const addr = (nft.token_address || '').toLowerCase();
-              return addr === ZAI_CONTRACT;
-            })
-            .map(nft => ({
-              id: `${nft.token_address}-${nft.token_id}`,
-              name: nft.normalized_metadata?.name || nft.name || 'ZAI Product',
-              description: nft.normalized_metadata?.description || '',
-              image: nft.normalized_metadata?.image || '',
-              tokenAddress: nft.token_address,
-              tokenId: nft.token_id,
-              contractType: nft.contract_type,
-              symbol: nft.symbol,
-              metadata: nft.normalized_metadata || {},
-            }));
-        } else {
-          const errText = await response.text();
-          console.error('WalletTwo NFT API error:', response.status, errText);
-        }
-      } catch (nftErr) {
-        console.error('NFT fetch error (non-fatal):', nftErr.message);
+      if (rwaStatus === 200 && rwaData?.rwas) {
+        rwaList = rwaData.rwas;
+        allContractAddresses = rwaList
+          .filter(r => r.smartContractAddress)
+          .map(r => ({ name: r.name, address: r.smartContractAddress, chainId: r.chainId }));
       }
 
-      // Fetch insurance from DB (only if DB is ready)
+      // ── Step 2: Get user's on-chain NFTs from blockchain endpoint ──
+      let userNftsByContract = {}; // contract_address_lower -> [{ token_id, metadata }]
+      if (wallet) {
+        const { status: nftStatus, data: nftData } = await blockchainFetch(
+          `/nft?address=${wallet}&chainId=${CHAIN_ID()}`
+        );
+        if (nftStatus === 200 && nftData?.result) {
+          for (const nft of nftData.result) {
+            const addr = (nft.token_address || '').toLowerCase();
+            if (!userNftsByContract[addr]) userNftsByContract[addr] = [];
+            userNftsByContract[addr].push(nft);
+          }
+        }
+      }
+
+      // ── Step 3: For each RWA whose contract the user holds, fetch metadata ──
+      for (const rwa of rwaList) {
+        const contractAddr = (rwa.smartContractAddress || '').toLowerCase();
+        if (!contractAddr) continue;
+
+        const userHoldings = userNftsByContract[contractAddr];
+        if (!userHoldings || userHoldings.length === 0) continue;
+
+        // Fetch RWA detail for NFT counters
+        let rwaDetail = rwa;
+        try {
+          const { status: detStatus, data: detData } = await rwaFetch(`/rwa/${rwa.id}`);
+          if (detStatus === 200 && detData) rwaDetail = detData;
+        } catch {}
+
+        // Fetch claimed NFTs for this RWA to get secrets, serial, rwa_nft_data
+        let rwaNfts = [];
+        try {
+          const { status: nftsStatus, data: nftsData } = await rwaFetch(
+            `/rwa/${rwa.id}/nfts?claimed=true&limit=200`
+          );
+          if (nftsStatus === 200 && nftsData?.nfts) {
+            rwaNfts = nftsData.nfts;
+          }
+        } catch {}
+
+        // Build a map of serial -> rwa nft data for quick lookup
+        const rwaNftBySerial = {};
+        for (const rn of rwaNfts) {
+          rwaNftBySerial[rn.serial] = rn;
+        }
+
+        // Map each user-held token to a product
+        for (const holding of userHoldings) {
+          const tokenId = holding.token_id;
+          const blockchainMeta = holding.normalized_metadata || {};
+
+          // Try to match with RWA NFT by serial/tokenId
+          const matchedRwaNft = rwaNftBySerial[tokenId] || rwaNfts.find(n => n.serial === tokenId) || null;
+
+          const image = resolveImageUrl(matchedRwaNft || {}, rwaDetail) || blockchainMeta.image || '';
+          const description = resolveDescription(matchedRwaNft || {}, rwaDetail) || blockchainMeta.description || '';
+          const name = blockchainMeta.name || rwaDetail.name || 'ZAI Product';
+          const color = resolveDataField(matchedRwaNft || {}, rwaDetail, ['color', 'colour']);
+          const size = resolveDataField(matchedRwaNft || {}, rwaDetail, ['size', 'length']);
+          const model = resolveDataField(matchedRwaNft || {}, rwaDetail, ['model']);
+
+          products.push({
+            id: `${contractAddr}-${tokenId}`,
+            name,
+            description,
+            image,
+            type: rwaDetail.type || '',
+            color,
+            size,
+            model,
+            serialNumber: matchedRwaNft?.serial || tokenId,
+            claimedAt: matchedRwaNft?.mintedAt || null,
+            tokenAddress: contractAddr,
+            tokenId,
+            contractType: holding.contract_type || '',
+            symbol: holding.symbol || '',
+            rwaId: rwa.id,
+            rwaName: rwaDetail.name,
+            metadata: {
+              ...blockchainMeta,
+              ...(matchedRwaNft?.rwa_nft_data || []).reduce((acc, d) => { acc[d.key] = d.value; return acc; }, {}),
+              ...(rwaDetail.data
+                ? Object.fromEntries(Object.entries(rwaDetail.data).map(([k, v]) => [k, v.value]))
+                : {}),
+            },
+          });
+        }
+      }
+
+      // ── Step 4: Fetch insurance data from DB ──
       let insuranceMap = {};
       if (dbReady && pool) {
         try {
@@ -159,6 +308,7 @@ export default async function handler(req, res) {
             }
           }
 
+          // Also check for any insurance entries not matched above
           const localInsResult = await pool.query(
             `SELECT product_id, sas_status, sas_certificate_id, sas_transaction_id, device_data, created_at
              FROM insurance_registrations WHERE user_id = $1`,
@@ -180,7 +330,7 @@ export default async function handler(req, res) {
         }
       }
 
-      // Merge insurance data
+      // ── Step 5: Enrich and return ──
       const enrichedProducts = products.map(p => ({
         ...p,
         insurance: insuranceMap[p.id] || { active: false, status: null, certificateId: null },
@@ -197,14 +347,12 @@ export default async function handler(req, res) {
           activeInsurance,
           pendingClaims: 0,
         },
-        // ★ Debug info — remove after confirming it works ★
         _debug: {
           chainId: CHAIN_ID(),
           wallet: decoded.wallet,
-          rawNftCount,
-          filteredCount: products.length,
-          zaiContract: ZAI_CONTRACT,
-          allContractAddresses: allAddresses,
+          rwaCount: rwaList.length,
+          allContractAddresses,
+          productsFound: enrichedProducts.length,
           dbConnected: dbReady,
         },
       });
@@ -360,12 +508,56 @@ export default async function handler(req, res) {
     }
   }
 
-  // ─── POST /api/products/claim ───
+  // ─── POST /api/products/claim — claim via RWA API ───
   if (fullPath === 'claim' && req.method === 'POST') {
     const decoded = authenticate(req);
     if (!decoded) return res.status(401).json({ error: 'No token provided' });
-    const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-    return res.json({ success: true, message: 'Product claim submitted', data: { serialNumber: body.serialNumber, userId: decoded.userId } });
+    try {
+      const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+      const { ids, secrets, serialNumber } = body;
+
+      // If ids + secrets are provided, use the RWA claim endpoint
+      if (ids && secrets && decoded.wallet) {
+        const { status, data } = await rwaFetch('/nft/claim', {
+          method: 'POST',
+          body: JSON.stringify({ ids, secrets, wallet: decoded.wallet }),
+        });
+        if (status >= 400) {
+          return res.status(status).json({ success: false, error: data?.message || 'Claim failed' });
+        }
+        return res.json({ success: true, message: 'NFTs queued for minting', data });
+      }
+
+      // Fallback: serial number claim (placeholder)
+      return res.json({ success: true, message: 'Product claim submitted', data: { serialNumber, userId: decoded.userId } });
+    } catch (err) {
+      return res.status(500).json({ success: false, error: err.message });
+    }
+  }
+
+  // ─── GET /api/products/catalog — list all company RWAs (public catalog) ───
+  if (fullPath === 'catalog' && req.method === 'GET') {
+    try {
+      const { status, data } = await rwaFetch('/rwa?limit=200');
+      if (status !== 200 || !data?.rwas) {
+        return res.json({ success: true, data: [], _providerOffline: true });
+      }
+      return res.json({
+        success: true,
+        data: data.rwas.map(r => ({
+          id: r.id,
+          name: r.name,
+          type: r.type,
+          contractAddress: r.smartContractAddress,
+          chainId: r.chainId,
+          isBuyable: r.isBuyable,
+          isClaimable: r.isClaimable,
+          data: r.data || {},
+        })),
+      });
+    } catch (err) {
+      return res.status(500).json({ success: false, error: err.message });
+    }
   }
 
   // ─── GET /api/products/:productId ───
