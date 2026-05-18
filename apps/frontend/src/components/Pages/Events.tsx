@@ -12,15 +12,38 @@ type EventStatus = 'upcoming' | 'past' | 'all';
 interface Event {
   id: string;
   title: string;
+  name?: string;
   tag: string;
   location: string;
   date: string;
+  startDate?: string;
+  endDate?: string;
   description: string;
+  program?: string;
+  coverImage?: string | null;
+  galleryImages?: string[];
   imageUrl?: string;
   tier: string;
   status: 'upcoming' | 'past';
   registered: boolean;
+  maxAttendees?: number | null;
+  totalAttendees?: number;
+  price?: number;
+  currency?: string;
+  discountPrice?: number | null;
+  discountPercentage?: number | null;
+  contractRequiredToAttend?: string[];
+  contractRequiredToDiscount?: string[];
+  chainId?: number | null;
 }
+
+// ── Style constants ──
+const accent = '#c8102e';
+const textDark = '#1a1a1a';
+const textMuted = '#6a6a6a';
+const bgMuted = '#f0ede6';
+const borderColor = '#e0ddd6';
+const gold = '#b8a06a';
 
 const Events: React.FC = () => {
   const navigate = useNavigate();
@@ -34,7 +57,6 @@ const Events: React.FC = () => {
   const [showEventModal, setShowEventModal] = useState(false);
   const [registering, setRegistering] = useState(false);
 
-  // Fetch events on mount
   useEffect(() => {
     fetchEvents();
   }, []);
@@ -53,7 +75,6 @@ const Events: React.FC = () => {
     }
   };
 
-  // Filter events
   const filteredEvents = useMemo(() => {
     return events.filter((event) => {
       if (statusFilter !== 'all' && event.status !== statusFilter) return false;
@@ -78,21 +99,41 @@ const Events: React.FC = () => {
       setRegistering(true);
       try {
         const response = await apiService.post(`/events/${selectedEvent.id}/register`);
-
         if (response.data?.success) {
-          setShowEventModal(false);
-          // Update event registration status
           setEvents(events.map(e =>
-            e.id === selectedEvent.id ? { ...e, registered: true } : e
+            e.id === selectedEvent.id
+              ? { ...e, registered: true, totalAttendees: (e.totalAttendees || 0) + 1 }
+              : e
           ));
-          setTimeout(() => {
-            setSelectedEvent(null);
-            alert('Successfully registered for the event!');
-          }, 300);
+          setSelectedEvent(prev => prev ? { ...prev, registered: true, totalAttendees: (prev.totalAttendees || 0) + 1 } : null);
+          alert('Successfully registered for the event!');
         }
       } catch (err: any) {
         console.error('Error registering for event:', err);
         alert(err.response?.data?.error || 'Failed to register for event');
+      } finally {
+        setRegistering(false);
+      }
+    }
+  };
+
+  const handleUnregister = async () => {
+    if (selectedEvent && user?.id) {
+      setRegistering(true);
+      try {
+        const response = await apiService.delete(`/events/${selectedEvent.id}/register`);
+        if (response.data?.success) {
+          setEvents(events.map(e =>
+            e.id === selectedEvent.id
+              ? { ...e, registered: false, totalAttendees: Math.max((e.totalAttendees || 1) - 1, 0) }
+              : e
+          ));
+          setSelectedEvent(prev => prev ? { ...prev, registered: false, totalAttendees: Math.max((prev.totalAttendees || 1) - 1, 0) } : null);
+          alert('Successfully unregistered from the event.');
+        }
+      } catch (err: any) {
+        console.error('Error unregistering from event:', err);
+        alert(err.response?.data?.error || 'Failed to unregister');
       } finally {
         setRegistering(false);
       }
@@ -114,17 +155,24 @@ const Events: React.FC = () => {
       return {
         day: date.getDate(),
         month: date.toLocaleString('en-US', { month: 'short' }).toUpperCase(),
-        full: date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+        year: date.getFullYear(),
+        full: date.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
       };
     } catch {
-      return { day: '?', month: '?', full: dateStr };
+      return { day: '?', month: '?', year: '', full: dateStr };
     }
+  };
+
+  const formatPrice = (event: Event) => {
+    if (event.price === undefined || event.price === null) return null;
+    if (event.price === 0) return 'Free';
+    return `${event.price} ${event.currency || 'EUR'}`;
   };
 
   if (isLoading) {
     return (
       <div style={{ padding: '3rem 4rem 5rem', textAlign: 'center' }}>
-        <div style={{ fontSize: '16px', color: '#6a6a6a' }}>Loading events...</div>
+        <div style={{ fontSize: '16px', color: textMuted }}>Loading events...</div>
       </div>
     );
   }
@@ -136,7 +184,7 @@ const Events: React.FC = () => {
         style={{
           marginBottom: '2.5rem',
           paddingBottom: '2rem',
-          borderBottom: '1px solid #e0ddd6',
+          borderBottom: `1px solid ${borderColor}`,
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'flex-end',
@@ -148,7 +196,7 @@ const Events: React.FC = () => {
               fontSize: '11px',
               letterSpacing: '0.3em',
               textTransform: 'uppercase',
-              color: '#c8102e',
+              color: accent,
               marginBottom: '0.4rem',
             }}
           >
@@ -164,13 +212,13 @@ const Events: React.FC = () => {
           >
             Exclusive zai experiences
           </h1>
-          <p style={{ color: '#6a6a6a', fontSize: '13px', maxWidth: '520px', margin: 0 }}>
+          <p style={{ color: textMuted, fontSize: '13px', maxWidth: '520px', margin: 0 }}>
             Experience card holders receive priority access to exclusive events.
           </p>
         </div>
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-          <div style={{ display: 'flex', gap: 0, border: '1px solid #e0ddd6' }}>
-            {(['all', 'demo', 'factory', 'partner'] as const).map((filter) => (
+          <div style={{ display: 'flex', gap: 0, border: `1px solid ${borderColor}` }}>
+            {(['all', 'demo', 'factory', 'partner', 'community'] as const).map((filter, i, arr) => (
               <button
                 key={filter}
                 onClick={() => setTypeFilter(filter)}
@@ -180,10 +228,10 @@ const Events: React.FC = () => {
                   letterSpacing: '0.15em',
                   textTransform: 'uppercase',
                   cursor: 'pointer',
-                  background: typeFilter === filter ? '#1a1a1a' : '#ffffff',
-                  color: typeFilter === filter ? '#ffffff' : '#6a6a6a',
+                  background: typeFilter === filter ? textDark : '#ffffff',
+                  color: typeFilter === filter ? '#ffffff' : textMuted,
                   border: 'none',
-                  borderRight: filter !== 'partner' ? '1px solid #e0ddd6' : 'none',
+                  borderRight: i < arr.length - 1 ? `1px solid ${borderColor}` : 'none',
                   fontFamily: "'Inter', sans-serif",
                   transition: 'all 0.2s',
                 }}
@@ -195,6 +243,12 @@ const Events: React.FC = () => {
         </div>
       </div>
 
+      {error && (
+        <div style={{ padding: '12px 16px', background: 'rgba(200,16,46,0.06)', border: `1px solid rgba(200,16,46,0.15)`, marginBottom: '1.5rem', fontSize: '13px', color: accent }}>
+          {error}
+        </div>
+      )}
+
       {/* Tabs for status */}
       <Tabs
         tabs={[
@@ -204,23 +258,24 @@ const Events: React.FC = () => {
             content: (
               <div>
                 {filteredEvents.filter((e) => e.status === 'upcoming').length === 0 ? (
-                  <div style={{ padding: '3rem', textAlign: 'center', background: '#f0ede6', border: '1px solid #e0ddd6' }}>
-                    <p style={{ color: '#6a6a6a' }}>No upcoming events at the moment.</p>
+                  <div style={{ padding: '3rem', textAlign: 'center', background: bgMuted, border: `1px solid ${borderColor}` }}>
+                    <p style={{ color: textMuted }}>No upcoming events at the moment.</p>
                   </div>
                 ) : (
                   <div
                     style={{
                       display: 'grid',
-                      gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+                      gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
                       gap: '1px',
-                      background: '#e0ddd6',
-                      border: '1px solid #e0ddd6',
+                      background: borderColor,
+                      border: `1px solid ${borderColor}`,
                     }}
                   >
                     {filteredEvents
                       .filter((e) => e.status === 'upcoming')
                       .map((event) => {
-                        const dateInfo = parseDate(event.date);
+                        const dateInfo = parseDate(event.startDate || event.date);
+                        const priceLabel = formatPrice(event);
                         return (
                           <div
                             key={event.id}
@@ -233,49 +288,77 @@ const Events: React.FC = () => {
                               flexDirection: 'column',
                               transition: 'background 0.2s',
                             }}
-                            onMouseEnter={(e) => (e.currentTarget.style.background = '#f0ede6')}
+                            onMouseEnter={(e) => (e.currentTarget.style.background = bgMuted)}
                             onMouseLeave={(e) => (e.currentTarget.style.background = '#ffffff')}
                           >
-                            {/* Image */}
+                            {/* Cover image or emoji fallback */}
                             <div
                               style={{
                                 position: 'relative',
                                 overflow: 'hidden',
-                                height: '160px',
+                                height: '180px',
                                 background: '#0d0d0d',
                               }}
                             >
-                              <div
-                                style={{
-                                  width: '100%',
-                                  height: '100%',
-                                  background: '#f0ede6',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  fontSize: '48px',
-                                }}
-                              >
-                                {getEventTypeEmoji(event.tag)}
-                              </div>
+                              {event.coverImage ? (
+                                <img
+                                  src={event.coverImage}
+                                  alt={event.title}
+                                  style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                                />
+                              ) : (
+                                <div
+                                  style={{
+                                    width: '100%',
+                                    height: '100%',
+                                    background: bgMuted,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    fontSize: '48px',
+                                  }}
+                                >
+                                  {getEventTypeEmoji(event.tag)}
+                                </div>
+                              )}
                               {/* Date Badge */}
                               <div
                                 style={{
                                   position: 'absolute',
                                   top: '0.75rem',
                                   left: '0.75rem',
-                                  background: '#c8102e',
-                                  padding: '5px 8px',
+                                  background: accent,
+                                  padding: '6px 10px',
                                   textAlign: 'center',
+                                  minWidth: '44px',
                                 }}
                               >
-                                <div style={{ fontSize: '16px', fontWeight: 200, lineHeight: 1, color: 'white' }}>
+                                <div style={{ fontSize: '18px', fontWeight: 300, lineHeight: 1, color: 'white' }}>
                                   {dateInfo.day}
                                 </div>
-                                <div style={{ fontSize: '8px', letterSpacing: '0.2em', textTransform: 'uppercase', color: 'white' }}>
+                                <div style={{ fontSize: '8px', letterSpacing: '0.2em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.85)' }}>
                                   {dateInfo.month}
                                 </div>
                               </div>
+                              {/* Registration badge */}
+                              {event.registered && (
+                                <div
+                                  style={{
+                                    position: 'absolute',
+                                    top: '0.75rem',
+                                    right: '0.75rem',
+                                    background: 'rgba(42,157,78,0.9)',
+                                    color: '#fff',
+                                    fontSize: '10px',
+                                    fontWeight: 600,
+                                    letterSpacing: '0.1em',
+                                    padding: '4px 10px',
+                                    textTransform: 'uppercase',
+                                  }}
+                                >
+                                  Registered
+                                </div>
+                              )}
                             </div>
 
                             {/* Info */}
@@ -285,7 +368,7 @@ const Events: React.FC = () => {
                                   fontSize: '11px',
                                   letterSpacing: '0.3em',
                                   textTransform: 'uppercase',
-                                  color: '#c8102e',
+                                  color: accent,
                                   marginBottom: '5px',
                                 }}
                               >
@@ -293,10 +376,11 @@ const Events: React.FC = () => {
                               </div>
                               <h3
                                 style={{
-                                  fontSize: '13px',
+                                  fontSize: '14px',
                                   fontWeight: 500,
-                                  margin: '0 0 4px',
+                                  margin: '0 0 6px',
                                   lineHeight: 1.35,
+                                  color: textDark,
                                 }}
                               >
                                 {event.title}
@@ -304,8 +388,8 @@ const Events: React.FC = () => {
                               <div
                                 style={{
                                   fontSize: '11px',
-                                  color: '#6a6a6a',
-                                  marginBottom: '5px',
+                                  color: textMuted,
+                                  marginBottom: '6px',
                                   display: 'flex',
                                   alignItems: 'center',
                                   gap: '4px',
@@ -316,28 +400,45 @@ const Events: React.FC = () => {
                               <p
                                 style={{
                                   fontSize: '11px',
-                                  color: '#6a6a6a',
+                                  color: textMuted,
                                   lineHeight: 1.6,
                                   flex: 1,
                                   margin: 0,
+                                  display: '-webkit-box',
+                                  WebkitLineClamp: 3,
+                                  WebkitBoxOrient: 'vertical',
+                                  overflow: 'hidden',
                                 }}
                               >
                                 {event.description}
                               </p>
+                              {/* Attendees + Price bar */}
                               <div
                                 style={{
                                   display: 'flex',
                                   justifyContent: 'space-between',
                                   alignItems: 'center',
-                                  marginTop: '10px',
+                                  marginTop: '12px',
                                   paddingTop: '10px',
-                                  borderTop: '1px solid #e0ddd6',
+                                  borderTop: `1px solid ${borderColor}`,
+                                  fontSize: '11px',
+                                  color: textMuted,
                                 }}
                               >
-                                <div style={{ fontSize: '12px', color: '#6a6a6a' }}>
-                                  {event.tier === 'all' ? 'Open' : event.tier}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                  {event.totalAttendees !== undefined && (
+                                    <span>
+                                      👥 {event.totalAttendees}
+                                      {event.maxAttendees ? `/${event.maxAttendees}` : ''}
+                                    </span>
+                                  )}
+                                  {priceLabel && (
+                                    <span style={{ color: priceLabel === 'Free' ? '#2a9d4e' : textMuted, fontWeight: priceLabel === 'Free' ? 600 : 400 }}>
+                                      {priceLabel === 'Free' ? '✓ Free' : `💰 ${priceLabel}`}
+                                    </span>
+                                  )}
                                 </div>
-                                <span style={{ fontSize: '12px', color: '#6a6a6a' }}>›</span>
+                                <span style={{ fontSize: '14px', color: textMuted }}>›</span>
                               </div>
                             </div>
                           </div>
@@ -354,35 +455,59 @@ const Events: React.FC = () => {
             content: (
               <div>
                 {filteredEvents.filter((e) => e.status === 'past').length === 0 ? (
-                  <div style={{ padding: '3rem', textAlign: 'center', background: '#f0ede6', border: '1px solid #e0ddd6' }}>
-                    <p style={{ color: '#6a6a6a' }}>No past events.</p>
+                  <div style={{ padding: '3rem', textAlign: 'center', background: bgMuted, border: `1px solid ${borderColor}` }}>
+                    <p style={{ color: textMuted }}>No past events.</p>
                   </div>
                 ) : (
-                  <div style={{ background: '#f0ede6', padding: '0', borderRadius: '4px', border: '1px solid #e0ddd6' }}>
+                  <div style={{ background: bgMuted, borderRadius: '4px', border: `1px solid ${borderColor}` }}>
                     {filteredEvents
                       .filter((e) => e.status === 'past')
-                      .map((event, idx) => (
-                        <div
-                          key={event.id}
-                          onClick={() => handleEventSelect(event)}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            padding: '1rem 1.25rem',
-                            borderBottom: idx < filteredEvents.filter((e) => e.status === 'past').length - 1 ? '1px solid #e0ddd6' : 'none',
-                            cursor: 'pointer',
-                            background: 'white',
-                          }}
-                        >
-                          <div style={{ width: '4px', height: '4px', background: '#c8102e', borderRadius: '50%', marginRight: '12px', flexShrink: 0 }} />
-                          <div style={{ flex: 1 }}>
-                            <div style={{ fontSize: '12px', fontWeight: 500 }}>{event.title}</div>
-                            <div style={{ fontSize: '10px', color: '#6a6a6a' }}>
-                              {event.date} · {event.location}
+                      .map((event, idx, arr) => {
+                        const dateInfo = parseDate(event.startDate || event.date);
+                        return (
+                          <div
+                            key={event.id}
+                            onClick={() => handleEventSelect(event)}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              padding: '1rem 1.25rem',
+                              borderBottom: idx < arr.length - 1 ? `1px solid ${borderColor}` : 'none',
+                              cursor: 'pointer',
+                              background: 'white',
+                              transition: 'background 0.15s',
+                              gap: '14px',
+                            }}
+                            onMouseEnter={(e) => (e.currentTarget.style.background = bgMuted)}
+                            onMouseLeave={(e) => (e.currentTarget.style.background = 'white')}
+                          >
+                            {/* Mini cover or emoji */}
+                            <div style={{
+                              width: '48px', height: '48px', borderRadius: '4px', overflow: 'hidden',
+                              background: bgMuted, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              flexShrink: 0, fontSize: '20px',
+                            }}>
+                              {event.coverImage ? (
+                                <img src={event.coverImage} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                              ) : (
+                                getEventTypeEmoji(event.tag)
+                              )}
                             </div>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontSize: '12px', fontWeight: 500, color: textDark }}>{event.title}</div>
+                              <div style={{ fontSize: '10px', color: textMuted, marginTop: '2px' }}>
+                                {dateInfo.full} · {event.location}
+                              </div>
+                            </div>
+                            {event.totalAttendees !== undefined && (
+                              <div style={{ fontSize: '10px', color: textMuted }}>
+                                👥 {event.totalAttendees}
+                              </div>
+                            )}
+                            <span style={{ fontSize: '14px', color: textMuted }}>›</span>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                   </div>
                 )}
               </div>
@@ -398,7 +523,7 @@ const Events: React.FC = () => {
         style={{
           marginTop: '2rem',
           padding: '2rem',
-          background: '#1a1a1a',
+          background: textDark,
           border: '1px solid #2a2a2a',
           display: 'flex',
           justifyContent: 'space-between',
@@ -411,7 +536,7 @@ const Events: React.FC = () => {
             Unlock more events
           </div>
           <div style={{ fontSize: '18px', fontWeight: 200 }}>
-            Reach <span style={{ color: '#b8a06a' }}>Atelier</span> for factory visits & private sessions
+            Reach <span style={{ color: gold }}>Atelier</span> for factory visits & private sessions
           </div>
         </div>
         <div style={{ textAlign: 'right' }}>
@@ -420,63 +545,12 @@ const Events: React.FC = () => {
         </div>
       </div>
 
-      {/* Event Detail Modal */}
+      {/* ─── Event Detail Modal ─── */}
       {selectedEvent && (
         <Modal
           isOpen={showEventModal}
-          onClose={() => setShowEventModal(false)}
-          title={selectedEvent.tag || 'EVENT'}
-          size="md"
-        >
-          <h2 style={{ fontSize: '20px', fontWeight: 300, margin: '0 0 5px' }}>
-            {selectedEvent.title}
-          </h2>
-          <div style={{ fontSize: '12px', color: '#6a6a6a', marginBottom: '1.25rem' }}>
-            {selectedEvent.date} · {selectedEvent.location}
-          </div>
-          <p style={{ fontSize: '14px', lineHeight: 1.8, color: '#6a6a6a', marginBottom: '1.25rem' }}>
-            {selectedEvent.description}
-          </p>
-          <div
-            style={{
-              padding: '10px 12px',
-              background: 'rgba(255, 255, 255, 0.04)',
-              border: '1px solid #e0ddd6',
-              marginBottom: '1.25rem',
-              fontSize: '12px',
-              color: '#6a6a6a',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '7px',
-            }}
-          >
-            <div style={{ width: '4px', height: '4px', background: '#b8a06a', borderRadius: '50%' }} />
-            {selectedEvent.tier === 'all' ? 'Open to all members' : `Requires ${selectedEvent.tier} tier`}
-          </div>
-          {!selectedEvent.registered && (
-            <Button
-              variant="primary"
-              fullWidth
-              onClick={handleRegister}
-              disabled={registering}
-              style={{ marginBottom: '12px' }}
-            >
-              {registering ? 'Registering...' : 'Register Interest'}
-            </Button>
-          )}
-          <Button
-            variant="secondary"
-            fullWidth
-            onClick={() => setShowEventModal(false)}
-          >
-            {selectedEvent.registered ? 'Close' : 'Close'}
-          </Button>
-        </Modal>
-      )}{selectedEvent && (
-        <Modal
-          isOpen={showEventModal}
-          onClose={() => setShowEventModal(false)}
-          title={selectedEvent.tag || 'EVENT'}
+          onClose={() => { setShowEventModal(false); setTimeout(() => setSelectedEvent(null), 300); }}
+          title={selectedEvent.tag?.toUpperCase() || 'EVENT'}
           size="lg"
         >
           {/* Cover image */}
@@ -485,20 +559,22 @@ const Events: React.FC = () => {
               <img
                 src={selectedEvent.coverImage}
                 alt={selectedEvent.title}
-                style={{ width: '100%', height: '240px', objectFit: 'cover', display: 'block' }}
+                style={{ width: '100%', height: '260px', objectFit: 'cover', display: 'block' }}
               />
             </div>
           )}
 
-          <h2 style={{ fontSize: '22px', fontWeight: 300, margin: '0 0 8px' }}>
+          <h2 style={{ fontSize: '22px', fontWeight: 300, margin: '0 0 8px', color: textDark }}>
             {selectedEvent.title}
           </h2>
 
-          {/* Date, location, attendees */}
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', fontSize: '12px', color: '#6a6a6a', marginBottom: '1.25rem' }}>
-            <span>📅 {new Date(selectedEvent.startDate || selectedEvent.date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
-            {selectedEvent.endDate && selectedEvent.endDate !== selectedEvent.startDate && (
-              <span>→ {new Date(selectedEvent.endDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}</span>
+          {/* Date, location, attendees row */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', fontSize: '12px', color: textMuted, marginBottom: '1.25rem' }}>
+            <span>
+              📅 {new Date(selectedEvent.startDate || selectedEvent.date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+            </span>
+            {selectedEvent.endDate && selectedEvent.endDate !== (selectedEvent.startDate || selectedEvent.date) && (
+              <span>→ {new Date(selectedEvent.endDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</span>
             )}
             <span>📍 {selectedEvent.location}</span>
             {selectedEvent.totalAttendees !== undefined && (
@@ -506,10 +582,10 @@ const Events: React.FC = () => {
             )}
           </div>
 
-          {/* Price */}
+          {/* Price block */}
           {selectedEvent.price !== undefined && (
             <div style={{
-              padding: '10px 14px', background: '#f0ede6', border: '1px solid #e0ddd6',
+              padding: '10px 14px', background: bgMuted, border: `1px solid ${borderColor}`,
               marginBottom: '1.25rem', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '10px',
             }}>
               {selectedEvent.price === 0 ? (
@@ -518,7 +594,7 @@ const Events: React.FC = () => {
                 <>
                   <span style={{ fontWeight: 600 }}>{selectedEvent.price} {selectedEvent.currency || 'EUR'}</span>
                   {selectedEvent.discountPrice != null && (
-                    <span style={{ color: '#c8102e', fontSize: '11px' }}>
+                    <span style={{ color: accent, fontSize: '11px' }}>
                       Discount: {selectedEvent.discountPrice} {selectedEvent.currency || 'EUR'}
                       {selectedEvent.discountPercentage ? ` (-${selectedEvent.discountPercentage}%)` : ''}
                     </span>
@@ -529,49 +605,85 @@ const Events: React.FC = () => {
           )}
 
           {/* Description */}
-          <p style={{ fontSize: '14px', lineHeight: 1.8, color: '#6a6a6a', marginBottom: '1.25rem' }}>
+          <p style={{ fontSize: '14px', lineHeight: 1.8, color: textMuted, marginBottom: '1.25rem' }}>
             {selectedEvent.description}
           </p>
 
           {/* Program */}
           {selectedEvent.program && (
             <div style={{ marginBottom: '1.25rem' }}>
-              <div style={{ fontSize: '10px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#1a1a1a', marginBottom: '8px', fontWeight: 600 }}>
+              <div style={{ fontSize: '10px', letterSpacing: '0.2em', textTransform: 'uppercase', color: textDark, marginBottom: '8px', fontWeight: 600 }}>
                 Program
               </div>
               <div style={{
-                padding: '14px', background: '#f9f8f6', border: '1px solid #e0ddd6',
-                fontSize: '13px', lineHeight: 1.7, color: '#6a6a6a', whiteSpace: 'pre-line',
+                padding: '14px', background: '#f9f8f6', border: `1px solid ${borderColor}`,
+                fontSize: '13px', lineHeight: 1.7, color: textMuted, whiteSpace: 'pre-line',
               }}>
                 {selectedEvent.program}
               </div>
             </div>
           )}
 
-          {/* Gallery */}
+          {/* Gallery carousel */}
           {selectedEvent.galleryImages && selectedEvent.galleryImages.length > 0 && (
             <div style={{ marginBottom: '1.25rem' }}>
-              <div style={{ fontSize: '10px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#1a1a1a', marginBottom: '8px', fontWeight: 600 }}>
+              <div style={{ fontSize: '10px', letterSpacing: '0.2em', textTransform: 'uppercase', color: textDark, marginBottom: '8px', fontWeight: 600 }}>
                 Gallery
               </div>
-              <div style={{ display: 'flex', gap: '8px', overflowX: 'auto' }}>
+              <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px' }}>
                 {selectedEvent.galleryImages.map((img, idx) => (
                   <img key={idx} src={img} alt={`Gallery ${idx + 1}`}
-                    style={{ width: '120px', height: '80px', objectFit: 'cover', borderRadius: '4px', flexShrink: 0 }}
+                    style={{ width: '140px', height: '95px', objectFit: 'cover', borderRadius: '4px', flexShrink: 0, border: `1px solid ${borderColor}` }}
                   />
                 ))}
               </div>
             </div>
           )}
 
-          {/* Registration status */}
+          {/* Tier info */}
+          <div
+            style={{
+              padding: '10px 12px',
+              background: 'rgba(255, 255, 255, 0.04)',
+              border: `1px solid ${borderColor}`,
+              marginBottom: '1.25rem',
+              fontSize: '12px',
+              color: textMuted,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '7px',
+            }}
+          >
+            <div style={{ width: '4px', height: '4px', background: gold, borderRadius: '50%' }} />
+            {selectedEvent.tier === 'all' || !selectedEvent.tier ? 'Open to all members' : `Requires ${selectedEvent.tier} tier`}
+          </div>
+
+          {/* Registration / Unregistration */}
           {selectedEvent.registered ? (
-            <div style={{
-              padding: '12px 14px', background: 'rgba(42, 157, 78, 0.08)', border: '1px solid rgba(42, 157, 78, 0.2)',
-              marginBottom: '12px', fontSize: '13px', color: '#2a9d4e', fontWeight: 500, textAlign: 'center',
-            }}>
-              ✓ You are registered for this event
-            </div>
+            <>
+              <div style={{
+                padding: '12px 14px', background: 'rgba(42, 157, 78, 0.08)', border: '1px solid rgba(42, 157, 78, 0.2)',
+                marginBottom: '12px', fontSize: '13px', color: '#2a9d4e', fontWeight: 500, textAlign: 'center',
+              }}>
+                ✓ You are registered for this event
+              </div>
+              {selectedEvent.status === 'upcoming' && (
+                <button
+                  onClick={handleUnregister}
+                  disabled={registering}
+                  style={{
+                    width: '100%', padding: '10px', marginBottom: '12px',
+                    background: 'transparent', border: `1px solid ${borderColor}`,
+                    color: textMuted, fontSize: '12px', cursor: registering ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = accent; e.currentTarget.style.color = accent; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = borderColor; e.currentTarget.style.color = textMuted; }}
+                >
+                  {registering ? 'Processing...' : 'Cancel Registration'}
+                </button>
+              )}
+            </>
           ) : selectedEvent.status === 'upcoming' ? (
             <Button
               variant="primary"
@@ -583,7 +695,8 @@ const Events: React.FC = () => {
               {registering ? 'Registering...' : 'Register Interest'}
             </Button>
           ) : null}
-          <Button variant="secondary" fullWidth onClick={() => setShowEventModal(false)}>
+
+          <Button variant="secondary" fullWidth onClick={() => { setShowEventModal(false); setTimeout(() => setSelectedEvent(null), 300); }}>
             Close
           </Button>
         </Modal>

@@ -425,9 +425,32 @@ export default async function handler(req, res) {
       if (!emoji) return res.status(400).json({ success: false, error: 'Emoji is required' });
 
       const photoId = reactionsPostMatch[1];
-      const userName = user.name || user.givenName || 'Member';
 
-      // Toggle: if already reacted with this emoji, remove it; otherwise add it
+      // ── Resolve user name (same logic as upload/comments) ──
+      let userName = 'Member';
+      if (user.givenName && user.familyName) {
+        userName = `${user.givenName} ${user.familyName}`.trim();
+      } else if (user.name && user.name !== '') {
+        userName = user.name;
+      } else if (user.givenName) {
+        userName = user.givenName;
+      }
+      if (userName === 'Member') {
+        try {
+          const profileRes = await getPool().query(
+            'SELECT name, given_name, family_name FROM user_profiles WHERE user_id = $1',
+            [user.userId]
+          );
+          if (profileRes.rows[0]) {
+            const p = profileRes.rows[0];
+            const dbName = (p.given_name && p.family_name)
+              ? `${p.given_name} ${p.family_name}`.trim()
+              : p.name || '';
+            if (dbName) userName = dbName;
+          }
+        } catch {}
+      }
+
       const existing = await getPool().query(
         'SELECT id FROM photo_reactions WHERE photo_id=$1 AND user_id=$2 AND emoji=$3',
         [photoId, user.userId, emoji]
