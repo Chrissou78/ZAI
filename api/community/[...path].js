@@ -76,6 +76,54 @@ function genId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
 }
 
+// ── Centralized user-name resolution with 3-level fallback ──
+async function resolveUserName(decoded) {
+  let name = 'Member';
+
+  // 1. Try JWT fields (populated after auth fix includes name in token)
+  if (decoded.givenName && decoded.familyName) {
+    name = `${decoded.givenName} ${decoded.familyName}`.trim();
+  } else if (decoded.name && decoded.name !== '') {
+    name = decoded.name;
+  } else if (decoded.givenName) {
+    name = decoded.givenName;
+  }
+
+  // 2. Fallback: query user_profiles table
+  if (name === 'Member' && decoded.userId) {
+    try {
+      const profileRes = await getPool().query(
+        'SELECT name, given_name, family_name FROM user_profiles WHERE user_id = $1',
+        [decoded.userId]
+      );
+      if (profileRes.rows[0]) {
+        const p = profileRes.rows[0];
+        const dbName = (p.given_name && p.family_name)
+          ? `${p.given_name} ${p.family_name}`.trim()
+          : p.name || '';
+        if (dbName) name = dbName;
+      }
+    } catch {}
+  }
+
+  // 3. Last-resort fallback: fetch from WalletTwo members API
+  if (name === 'Member' && decoded.userId) {
+    try {
+      const response = await fetch(
+        `${WALLETTWO_API}/members?limit=200`,
+        { headers: { 'x-api-key': API_KEY() } }
+      );
+      if (response.ok) {
+        const data = await response.json();
+        const member = (data.members || []).find(m => m.userId === decoded.userId);
+        if (member?.user?.name) name = member.user.name;
+      }
+    } catch {}
+  }
+
+  return name;
+}
+
 export default async function handler(req, res) {
   const fullPath = req.url.split('?')[0].replace('/api/community/', '').replace(/\/$/, '');
 
@@ -94,7 +142,6 @@ export default async function handler(req, res) {
       }
       const data = await response.json();
 
-      // Check blocked members
       let blockedIds = new Set();
       const dbOk = await initDB();
       if (dbOk) {
@@ -104,13 +151,11 @@ export default async function handler(req, res) {
         } catch {}
       }
 
-      // Check if caller is admin
       const decoded = authenticate(req);
       const callerIsAdmin = isAdmin(decoded);
 
       const members = (data.members || [])
         .filter(m => {
-          // Non-admins don't see blocked members
           if (!callerIsAdmin && blockedIds.has(m.userId)) return false;
           return true;
         })
@@ -207,7 +252,6 @@ export default async function handler(req, res) {
       const result = await getPool().query('SELECT * FROM photos ORDER BY created_at DESC LIMIT $1 OFFSET $2', [l, o]);
       const countResult = await getPool().query('SELECT COUNT(*)::int AS total FROM photos');
 
-      // Fetch reactions for all photos in one query
       const photoIds = result.rows.map(r => r.id);
       let reactionsMap = {};
       if (photoIds.length > 0) {
@@ -257,7 +301,6 @@ export default async function handler(req, res) {
 
       if (buffer.length > 4 * 1024 * 1024) return res.status(400).json({ success: false, error: 'Image must be under 4 MB' });
 
-      // Debug: check env
       if (!process.env.PINATA_JWT) {
         return res.status(500).json({ success: false, error: 'PINATA_JWT env variable is not set' });
       }
@@ -311,30 +354,7 @@ export default async function handler(req, res) {
 
       const photoUrl = `https://gateway.pinata.cloud/ipfs/${cid}`;
       const id = genId();
-      let authorName = 'Member';
-      if (user.givenName && user.familyName) {
-        authorName = `${user.givenName} ${user.familyName}`.trim();
-      } else if (user.name && user.name !== '') {
-        authorName = user.name;
-      } else if (user.givenName) {
-        authorName = user.givenName;
-      }
-      // Fallback: check user_profiles table
-      if (authorName === 'Member') {
-        try {
-          const profileRes = await getPool().query(
-            'SELECT name, given_name, family_name FROM user_profiles WHERE user_id = $1',
-            [user.userId]
-          );
-          if (profileRes.rows[0]) {
-            const p = profileRes.rows[0];
-            const dbName = (p.given_name && p.family_name)
-              ? `${p.given_name} ${p.family_name}`.trim()
-              : p.name || '';
-            if (dbName) authorName = dbName;
-          }
-        } catch {}
-      }
+      const authorName = await resolveUserName(user);
 
       try {
         await getPool().query(
@@ -353,7 +373,6 @@ export default async function handler(req, res) {
       return res.status(500).json({ success: false, error: 'Unexpected error', detail: error.message, stack: error.stack?.split('\n').slice(0, 3) });
     }
   }
-
 
   // GET /api/community/gallery/:photoId
   const photoMatch = fullPath.match(/^gallery\/([^/]+)$/);
@@ -389,7 +408,6 @@ export default async function handler(req, res) {
     try {
       const photo = await getPool().query('SELECT author_id FROM photos WHERE id=$1', [photoMatch[1]]);
       if (!photo.rows[0]) return res.status(404).json({ success: false, error: 'Photo not found' });
-      // ★ Admin can delete any photo ★
       if (photo.rows[0].author_id !== user.userId && !isAdmin(user)) {
         return res.status(403).json({ success: false, error: 'Not authorized' });
       }
@@ -398,7 +416,7 @@ export default async function handler(req, res) {
     } catch (error) { return res.status(500).json({ success: false, error: error.message }); }
   }
 
-   // GET /api/community/gallery/:photoId/reactions
+  // GET /api/community/gallery/:photoId/reactions
   const reactionsGetMatch = fullPath.match(/^gallery\/([^/]+)\/reactions$/);
   if (reactionsGetMatch && req.method === 'GET') {
     const dbOk = await initDB();
@@ -425,31 +443,7 @@ export default async function handler(req, res) {
       if (!emoji) return res.status(400).json({ success: false, error: 'Emoji is required' });
 
       const photoId = reactionsPostMatch[1];
-
-      // ── Resolve user name (same logic as upload/comments) ──
-      let userName = 'Member';
-      if (user.givenName && user.familyName) {
-        userName = `${user.givenName} ${user.familyName}`.trim();
-      } else if (user.name && user.name !== '') {
-        userName = user.name;
-      } else if (user.givenName) {
-        userName = user.givenName;
-      }
-      if (userName === 'Member') {
-        try {
-          const profileRes = await getPool().query(
-            'SELECT name, given_name, family_name FROM user_profiles WHERE user_id = $1',
-            [user.userId]
-          );
-          if (profileRes.rows[0]) {
-            const p = profileRes.rows[0];
-            const dbName = (p.given_name && p.family_name)
-              ? `${p.given_name} ${p.family_name}`.trim()
-              : p.name || '';
-            if (dbName) userName = dbName;
-          }
-        } catch {}
-      }
+      const userName = await resolveUserName(user);
 
       const existing = await getPool().query(
         'SELECT id FROM photo_reactions WHERE photo_id=$1 AND user_id=$2 AND emoji=$3',
@@ -481,30 +475,7 @@ export default async function handler(req, res) {
       const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
       if (!body.text || body.text.length > 1000) return res.status(400).json({ success: false, error: 'Comment text required (max 1000 chars)' });
       const id = genId();
-      let authorName = 'Member';
-      if (user.givenName && user.familyName) {
-        authorName = `${user.givenName} ${user.familyName}`.trim();
-      } else if (user.name && user.name !== '') {
-        authorName = user.name;
-      } else if (user.givenName) {
-        authorName = user.givenName;
-      }
-      // Fallback: check user_profiles table
-      if (authorName === 'Member') {
-        try {
-          const profileRes = await getPool().query(
-            'SELECT name, given_name, family_name FROM user_profiles WHERE user_id = $1',
-            [user.userId]
-          );
-          if (profileRes.rows[0]) {
-            const p = profileRes.rows[0];
-            const dbName = (p.given_name && p.family_name)
-              ? `${p.given_name} ${p.family_name}`.trim()
-              : p.name || '';
-            if (dbName) authorName = dbName;
-          }
-        } catch {}
-      }
+      const authorName = await resolveUserName(user);
       await getPool().query('INSERT INTO photo_comments (id, photo_id, text, author_id, author_name) VALUES ($1,$2,$3,$4,$5)', [id, commentPostMatch[1], body.text, user.userId, authorName]);
       await getPool().query('UPDATE photos SET comment_count = comment_count + 1 WHERE id=$1', [commentPostMatch[1]]);
       return res.json({ success: true, data: { id, text: body.text, authorId: user.userId, authorName, createdAt: new Date().toISOString() } });
@@ -521,7 +492,6 @@ export default async function handler(req, res) {
     try {
       const comment = await getPool().query('SELECT author_id FROM photo_comments WHERE id=$1 AND photo_id=$2', [commentDelMatch[2], commentDelMatch[1]]);
       if (!comment.rows[0]) return res.status(404).json({ success: false, error: 'Comment not found' });
-      // ★ Admin can delete any comment ★
       if (comment.rows[0].author_id !== user.userId && !isAdmin(user)) {
         return res.status(403).json({ success: false, error: 'Not authorized' });
       }
@@ -567,30 +537,7 @@ export default async function handler(req, res) {
       const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
       if (!body.text || body.text.length > 2000) return res.status(400).json({ success: false, error: 'Message text required (max 2000 chars)' });
       const id = genId();
-      let authorName = 'Member';
-      if (user.givenName && user.familyName) {
-        authorName = `${user.givenName} ${user.familyName}`.trim();
-      } else if (user.name && user.name !== '') {
-        authorName = user.name;
-      } else if (user.givenName) {
-        authorName = user.givenName;
-      }
-      // Fallback: check user_profiles table
-      if (authorName === 'Member') {
-        try {
-          const profileRes = await getPool().query(
-            'SELECT name, given_name, family_name FROM user_profiles WHERE user_id = $1',
-            [user.userId]
-          );
-          if (profileRes.rows[0]) {
-            const p = profileRes.rows[0];
-            const dbName = (p.given_name && p.family_name)
-              ? `${p.given_name} ${p.family_name}`.trim()
-              : p.name || '';
-            if (dbName) authorName = dbName;
-          }
-        } catch {}
-      }
+      const authorName = await resolveUserName(user);
       const recipientId = body.recipientId || null;
       await getPool().query('INSERT INTO chat_messages (id, text, author_id, author_name, recipient_id) VALUES ($1,$2,$3,$4,$5)', [id, body.text, user.userId, authorName, recipientId]);
       return res.json({ success: true, data: { id, text: body.text, authorId: user.userId, authorName, recipientId, createdAt: new Date().toISOString() } });
@@ -607,7 +554,6 @@ export default async function handler(req, res) {
     try {
       const msg = await getPool().query('SELECT author_id FROM chat_messages WHERE id=$1', [chatDelMatch[1]]);
       if (!msg.rows[0]) return res.status(404).json({ success: false, error: 'Message not found' });
-      // ★ Admin can delete any message ★
       if (msg.rows[0].author_id !== user.userId && !isAdmin(user)) {
         return res.status(403).json({ success: false, error: 'Not authorized' });
       }
@@ -636,26 +582,23 @@ export default async function handler(req, res) {
     } catch (error) { return res.status(500).json({ success: false, error: error.message }); }
   }
 
-  // ─── GET /api/community/notifications ───
+  // ─── NOTIFICATIONS ───
+
   if (fullPath === 'notifications' && req.method === 'GET') {
     const decoded = authenticate(req);
     if (!decoded) return res.json({ success: true, data: { newCount: 0 } });
     const dbOk = await initDB();
     if (!dbOk) return res.json({ success: true, data: { newCount: 0 } });
     try {
-      // Get user's last seen timestamp
       const profile = await getPool().query(
         'SELECT community_last_seen FROM user_profiles WHERE user_id = $1',
         [decoded.userId]
       );
       const lastSeen = profile.rows[0]?.community_last_seen || new Date(0);
-
-      // Count photos newer than last seen
       const result = await getPool().query(
         'SELECT COUNT(*)::int AS count FROM photos WHERE created_at > $1',
         [lastSeen]
       );
-
       return res.json({
         success: true,
         data: { newCount: result.rows[0].count, lastSeen },
@@ -665,7 +608,6 @@ export default async function handler(req, res) {
     }
   }
 
-  // ─── POST /api/community/notifications/seen ───
   if (fullPath === 'notifications/seen' && req.method === 'POST') {
     const decoded = authenticate(req);
     if (!decoded) return res.status(401).json({ error: 'No token provided' });
@@ -683,6 +625,7 @@ export default async function handler(req, res) {
   }
 
   // ─── STATS ───
+
   if (fullPath === 'stats' && req.method === 'GET') {
     const dbOk = await initDB();
     try {

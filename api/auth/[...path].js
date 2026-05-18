@@ -67,7 +67,14 @@ async function handleLogin(req, res) {
     };
 
     const jwtToken = jwt.sign(
-      { userId: userId, wallet, wallettwoToken: sessionToken },
+      {
+        userId: userId,
+        wallet,
+        wallettwoToken: sessionToken,
+        name: mappedUser.name,
+        givenName: mappedUser.givenName,
+        familyName: mappedUser.familyName,
+      },
       process.env.JWT_SECRET || 'fallback-secret',
       { expiresIn: '7d' }
     );
