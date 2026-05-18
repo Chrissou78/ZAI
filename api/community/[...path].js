@@ -311,7 +311,30 @@ export default async function handler(req, res) {
 
       const photoUrl = `https://gateway.pinata.cloud/ipfs/${cid}`;
       const id = genId();
-      const authorName = user.name || user.givenName || 'Member';
+      let authorName = 'Member';
+      if (user.givenName && user.familyName) {
+        authorName = `${user.givenName} ${user.familyName}`.trim();
+      } else if (user.name && user.name !== '') {
+        authorName = user.name;
+      } else if (user.givenName) {
+        authorName = user.givenName;
+      }
+      // Fallback: check user_profiles table
+      if (authorName === 'Member') {
+        try {
+          const profileRes = await getPool().query(
+            'SELECT name, given_name, family_name FROM user_profiles WHERE user_id = $1',
+            [user.userId]
+          );
+          if (profileRes.rows[0]) {
+            const p = profileRes.rows[0];
+            const dbName = (p.given_name && p.family_name)
+              ? `${p.given_name} ${p.family_name}`.trim()
+              : p.name || '';
+            if (dbName) authorName = dbName;
+          }
+        } catch {}
+      }
 
       try {
         await getPool().query(
@@ -435,7 +458,30 @@ export default async function handler(req, res) {
       const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
       if (!body.text || body.text.length > 1000) return res.status(400).json({ success: false, error: 'Comment text required (max 1000 chars)' });
       const id = genId();
-      const authorName = user.name || user.givenName || 'Member';
+      let authorName = 'Member';
+      if (user.givenName && user.familyName) {
+        authorName = `${user.givenName} ${user.familyName}`.trim();
+      } else if (user.name && user.name !== '') {
+        authorName = user.name;
+      } else if (user.givenName) {
+        authorName = user.givenName;
+      }
+      // Fallback: check user_profiles table
+      if (authorName === 'Member') {
+        try {
+          const profileRes = await getPool().query(
+            'SELECT name, given_name, family_name FROM user_profiles WHERE user_id = $1',
+            [user.userId]
+          );
+          if (profileRes.rows[0]) {
+            const p = profileRes.rows[0];
+            const dbName = (p.given_name && p.family_name)
+              ? `${p.given_name} ${p.family_name}`.trim()
+              : p.name || '';
+            if (dbName) authorName = dbName;
+          }
+        } catch {}
+      }
       await getPool().query('INSERT INTO photo_comments (id, photo_id, text, author_id, author_name) VALUES ($1,$2,$3,$4,$5)', [id, commentPostMatch[1], body.text, user.userId, authorName]);
       await getPool().query('UPDATE photos SET comment_count = comment_count + 1 WHERE id=$1', [commentPostMatch[1]]);
       return res.json({ success: true, data: { id, text: body.text, authorId: user.userId, authorName, createdAt: new Date().toISOString() } });
@@ -498,7 +544,30 @@ export default async function handler(req, res) {
       const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
       if (!body.text || body.text.length > 2000) return res.status(400).json({ success: false, error: 'Message text required (max 2000 chars)' });
       const id = genId();
-      const authorName = user.name || user.givenName || 'Member';
+      let authorName = 'Member';
+      if (user.givenName && user.familyName) {
+        authorName = `${user.givenName} ${user.familyName}`.trim();
+      } else if (user.name && user.name !== '') {
+        authorName = user.name;
+      } else if (user.givenName) {
+        authorName = user.givenName;
+      }
+      // Fallback: check user_profiles table
+      if (authorName === 'Member') {
+        try {
+          const profileRes = await getPool().query(
+            'SELECT name, given_name, family_name FROM user_profiles WHERE user_id = $1',
+            [user.userId]
+          );
+          if (profileRes.rows[0]) {
+            const p = profileRes.rows[0];
+            const dbName = (p.given_name && p.family_name)
+              ? `${p.given_name} ${p.family_name}`.trim()
+              : p.name || '';
+            if (dbName) authorName = dbName;
+          }
+        } catch {}
+      }
       const recipientId = body.recipientId || null;
       await getPool().query('INSERT INTO chat_messages (id, text, author_id, author_name, recipient_id) VALUES ($1,$2,$3,$4,$5)', [id, body.text, user.userId, authorName, recipientId]);
       return res.json({ success: true, data: { id, text: body.text, authorId: user.userId, authorName, recipientId, createdAt: new Date().toISOString() } });

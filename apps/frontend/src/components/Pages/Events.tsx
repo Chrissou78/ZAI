@@ -43,31 +43,8 @@ const Events: React.FC = () => {
     try {
       setIsLoading(true);
       setError(null);
-
-      // Fetch upcoming events
-      const upcomingResponse = await apiService.get('/events', {
-        params: { status: 'upcoming' }
-      });
-
-      // Fetch past events
-      const pastResponse = await apiService.get('/events', {
-        params: { status: 'past' }
-      });
-
-      const allEvents = [
-        ...(upcomingResponse.data?.data || []).map((event: any) => ({
-          ...event,
-          status: 'upcoming',
-          registered: false,
-        })),
-        ...(pastResponse.data?.data || []).map((event: any) => ({
-          ...event,
-          status: 'past',
-          registered: true,
-        })),
-      ];
-
-      setEvents(allEvents);
+      const response = await apiService.get('/events');
+      setEvents(response.data?.data || []);
     } catch (err: any) {
       console.error('Error fetching events:', err);
       setError(err.response?.data?.error || 'Failed to load events');
@@ -493,6 +470,121 @@ const Events: React.FC = () => {
             onClick={() => setShowEventModal(false)}
           >
             {selectedEvent.registered ? 'Close' : 'Close'}
+          </Button>
+        </Modal>
+      )}{selectedEvent && (
+        <Modal
+          isOpen={showEventModal}
+          onClose={() => setShowEventModal(false)}
+          title={selectedEvent.tag || 'EVENT'}
+          size="lg"
+        >
+          {/* Cover image */}
+          {selectedEvent.coverImage && (
+            <div style={{ margin: '-1.5rem -1.5rem 1.5rem', overflow: 'hidden' }}>
+              <img
+                src={selectedEvent.coverImage}
+                alt={selectedEvent.title}
+                style={{ width: '100%', height: '240px', objectFit: 'cover', display: 'block' }}
+              />
+            </div>
+          )}
+
+          <h2 style={{ fontSize: '22px', fontWeight: 300, margin: '0 0 8px' }}>
+            {selectedEvent.title}
+          </h2>
+
+          {/* Date, location, attendees */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', fontSize: '12px', color: '#6a6a6a', marginBottom: '1.25rem' }}>
+            <span>📅 {new Date(selectedEvent.startDate || selectedEvent.date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+            {selectedEvent.endDate && selectedEvent.endDate !== selectedEvent.startDate && (
+              <span>→ {new Date(selectedEvent.endDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}</span>
+            )}
+            <span>📍 {selectedEvent.location}</span>
+            {selectedEvent.totalAttendees !== undefined && (
+              <span>👥 {selectedEvent.totalAttendees}{selectedEvent.maxAttendees ? `/${selectedEvent.maxAttendees}` : ''} attendees</span>
+            )}
+          </div>
+
+          {/* Price */}
+          {selectedEvent.price !== undefined && (
+            <div style={{
+              padding: '10px 14px', background: '#f0ede6', border: '1px solid #e0ddd6',
+              marginBottom: '1.25rem', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '10px',
+            }}>
+              {selectedEvent.price === 0 ? (
+                <span style={{ color: '#2a9d4e', fontWeight: 600 }}>Free Event</span>
+              ) : (
+                <>
+                  <span style={{ fontWeight: 600 }}>{selectedEvent.price} {selectedEvent.currency || 'EUR'}</span>
+                  {selectedEvent.discountPrice != null && (
+                    <span style={{ color: '#c8102e', fontSize: '11px' }}>
+                      Discount: {selectedEvent.discountPrice} {selectedEvent.currency || 'EUR'}
+                      {selectedEvent.discountPercentage ? ` (-${selectedEvent.discountPercentage}%)` : ''}
+                    </span>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Description */}
+          <p style={{ fontSize: '14px', lineHeight: 1.8, color: '#6a6a6a', marginBottom: '1.25rem' }}>
+            {selectedEvent.description}
+          </p>
+
+          {/* Program */}
+          {selectedEvent.program && (
+            <div style={{ marginBottom: '1.25rem' }}>
+              <div style={{ fontSize: '10px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#1a1a1a', marginBottom: '8px', fontWeight: 600 }}>
+                Program
+              </div>
+              <div style={{
+                padding: '14px', background: '#f9f8f6', border: '1px solid #e0ddd6',
+                fontSize: '13px', lineHeight: 1.7, color: '#6a6a6a', whiteSpace: 'pre-line',
+              }}>
+                {selectedEvent.program}
+              </div>
+            </div>
+          )}
+
+          {/* Gallery */}
+          {selectedEvent.galleryImages && selectedEvent.galleryImages.length > 0 && (
+            <div style={{ marginBottom: '1.25rem' }}>
+              <div style={{ fontSize: '10px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#1a1a1a', marginBottom: '8px', fontWeight: 600 }}>
+                Gallery
+              </div>
+              <div style={{ display: 'flex', gap: '8px', overflowX: 'auto' }}>
+                {selectedEvent.galleryImages.map((img, idx) => (
+                  <img key={idx} src={img} alt={`Gallery ${idx + 1}`}
+                    style={{ width: '120px', height: '80px', objectFit: 'cover', borderRadius: '4px', flexShrink: 0 }}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Registration status */}
+          {selectedEvent.registered ? (
+            <div style={{
+              padding: '12px 14px', background: 'rgba(42, 157, 78, 0.08)', border: '1px solid rgba(42, 157, 78, 0.2)',
+              marginBottom: '12px', fontSize: '13px', color: '#2a9d4e', fontWeight: 500, textAlign: 'center',
+            }}>
+              ✓ You are registered for this event
+            </div>
+          ) : selectedEvent.status === 'upcoming' ? (
+            <Button
+              variant="primary"
+              fullWidth
+              onClick={handleRegister}
+              disabled={registering}
+              style={{ marginBottom: '12px' }}
+            >
+              {registering ? 'Registering...' : 'Register Interest'}
+            </Button>
+          ) : null}
+          <Button variant="secondary" fullWidth onClick={() => setShowEventModal(false)}>
+            Close
           </Button>
         </Modal>
       )}

@@ -28,7 +28,6 @@ interface Photo {
   caption: string;
   authorId: string;
   authorName: string;
-  taggedMembers: string[];
   commentCount: number;
   createdAt: string;
   comments?: Comment[];
@@ -136,7 +135,6 @@ const Community: React.FC = () => {
   const [uploadCaption, setUploadCaption] = useState('');
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploadPreview, setUploadPreview] = useState<string | null>(null);
-  const [taggedMembers, setTaggedMembers] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState<string | null>(null);
 
@@ -195,10 +193,10 @@ const Community: React.FC = () => {
     if (!uploadFile || !uploadPreview) return;
     setUploading(true);
     try {
-      const res = await apiService.post('/community/gallery', { image: uploadPreview, caption: uploadCaption, taggedMembers });
+      const res = await apiService.post('/community/gallery', { image: uploadPreview, caption: uploadCaption });
       if (res.data?.success) {
         setPhotos(prev => [res.data.data, ...prev]);
-        setShowUpload(false); setUploadCaption(''); setUploadFile(null); setUploadPreview(null); setTaggedMembers([]);
+        setShowUpload(false); setUploadCaption(''); setUploadFile(null); setUploadPreview(null);
         fetchStats();
       }
     } catch (err: any) { alert(err.response?.data?.error || 'Upload failed'); }
@@ -350,18 +348,16 @@ const Community: React.FC = () => {
             >{pickerOpen ? '×' : '😊'}</button>
             {pickerOpen && (
               <div onClick={(e) => e.stopPropagation()} style={{
-                position: 'absolute', bottom: '110%', right: '-8px',
-                background: 'rgba(255,255,255,0.97)', borderRadius: '16px',
-                padding: '10px', display: 'grid', gridTemplateColumns: 'repeat(4, 42px)', gap: '4px',
-                boxShadow: '0 4px 20px rgba(0,0,0,0.25)', zIndex: 10,
-                backdropFilter: 'blur(12px)',
-                maxHeight: '260px', overflowY: 'auto',
+                position: 'absolute', top: '110%', right: 0,
+                background: '#fff', border: '1px solid #e0ddd6', borderRadius: '12px',
+                padding: '8px', display: 'grid', gridTemplateColumns: 'repeat(4, 36px)', gap: '4px',
+                boxShadow: '0 4px 16px rgba(0,0,0,0.15)', zIndex: 20,
               }}>
                 {REACTION_EMOJIS.map(em => (
                   <button key={em} onClick={(e) => { e.stopPropagation(); toggleReaction(photo.id, em); }}
-                    style={{ width: 42, height: 42, border: 'none', background: 'transparent', borderRadius: '6px', cursor: 'pointer', fontSize: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.15s' }}
-                    onMouseEnter={e => (e.currentTarget.style.background = bgMuted)}
-                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                    style={{ width: 36, height: 36, border: 'none', background: 'transparent', borderRadius: '50%', cursor: 'pointer', fontSize: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(200,16,46,0.1)'; e.currentTarget.style.transform = 'scale(1.2)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.transform = 'scale(1)'; }}
                   >{em}</button>
                 ))}
               </div>
@@ -381,7 +377,6 @@ const Community: React.FC = () => {
           zIndex: 5,
         }}
       >
-        {/* Existing reaction pills */}
         {hasReactions && Object.entries(grouped).map(([emoji, info]) => (
           <button
             key={emoji}
@@ -402,7 +397,6 @@ const Community: React.FC = () => {
           </button>
         ))}
 
-        {/* Emoji quick-pick widget */}
         <div style={{ position: 'relative', marginLeft: 'auto' }}>
           <button
             onClick={(e) => { e.stopPropagation(); setShowEmojiPicker(pickerOpen ? null : photo.id); }}
@@ -423,10 +417,12 @@ const Community: React.FC = () => {
             <div
               onClick={(e) => e.stopPropagation()}
               style={{
-                position: 'absolute', bottom: '110%', left: '50%', transform: 'translateX(-50%)',
-                background: '#fff', border: '1px solid #e0ddd6', borderRadius: '12px',
-                padding: '8px', display: 'grid', gridTemplateColumns: 'repeat(6, 38px)', gap: '2px',
-                boxShadow: '0 4px 16px rgba(0,0,0,0.12)', zIndex: 10,
+                position: 'absolute', bottom: '110%', right: 0,
+                background: 'rgba(255,255,255,0.97)', borderRadius: '16px',
+                padding: '10px', display: 'grid', gridTemplateColumns: 'repeat(4, 42px)', gap: '4px',
+                boxShadow: '0 4px 20px rgba(0,0,0,0.25)', zIndex: 10,
+                backdropFilter: 'blur(12px)',
+                maxHeight: '260px', overflowY: 'auto',
               }}
             >
               {REACTION_EMOJIS.map(em => (
@@ -434,7 +430,7 @@ const Community: React.FC = () => {
                   key={em}
                   onClick={(e) => { e.stopPropagation(); toggleReaction(photo.id, em); }}
                   style={{
-                    width: 38, height: 38, border: 'none', background: 'transparent',
+                    width: 42, height: 42, border: 'none', background: 'transparent',
                     borderRadius: '50%', cursor: 'pointer', fontSize: '22px',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     transition: 'all 0.15s',
@@ -563,23 +559,6 @@ const Community: React.FC = () => {
               )}
               <input type="text" placeholder="Add a caption..." value={uploadCaption} onChange={e => setUploadCaption(e.target.value)}
                 style={{ width: '100%', padding: '10px 12px', border: sectionBorder, fontSize: '13px', marginBottom: '0.75rem', boxSizing: 'border-box' }} />
-              <div style={{ marginBottom: '1rem' }}>
-                <div style={{ ...labelStyle, marginBottom: '0.5rem' }}>Tag members (optional)</div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                  {members.filter(m => !m.isBlocked).slice(0, 20).map(m => (
-                    <button key={m.id}
-                      onClick={() => setTaggedMembers(prev => prev.includes(m.id) ? prev.filter(id => id !== m.id) : [...prev, m.id])}
-                      style={{
-                        padding: '4px 10px', fontSize: '11px', borderRadius: '12px', cursor: 'pointer',
-                        border: taggedMembers.includes(m.id) ? `1px solid ${accent}` : sectionBorder,
-                        background: taggedMembers.includes(m.id) ? '#fef2f2' : '#fff',
-                        color: taggedMembers.includes(m.id) ? accent : textMuted,
-                      }}>
-                      {m.name}
-                    </button>
-                  ))}
-                </div>
-              </div>
               <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
                 <button
                   onClick={handleUpload}
@@ -612,7 +591,7 @@ const Community: React.FC = () => {
                 </button>
                 <button
                   onClick={() => {
-                    setShowUpload(false); setUploadFile(null); setUploadPreview(null); setUploadCaption(''); setTaggedMembers([]);
+                    setShowUpload(false); setUploadFile(null); setUploadPreview(null); setUploadCaption('');
                   }}
                   style={{
                     padding: '12px 32px', borderRadius: '4px',
@@ -692,12 +671,12 @@ const Community: React.FC = () => {
             <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '2rem' }}
               onClick={() => { setSelectedPhoto(null); setShowEmojiPicker(null); }}>
               <div onClick={e => e.stopPropagation()}
-                style={{ background: '#fff', borderRadius: '4px', maxWidth: '800px', width: '100%', maxHeight: '90vh', overflow: 'auto', display: 'grid', gridTemplateColumns: '1fr 320px' }}>
-                <div style={{ background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '400px', position: 'relative' }}>
+                style={{ background: '#fff', borderRadius: '4px', maxWidth: '800px', width: '100%', maxHeight: '90vh', overflow: 'visible', display: 'grid', gridTemplateColumns: '1fr 320px' }}>
+                <div style={{ background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '400px', position: 'relative', overflow: 'visible', borderRadius: '4px 0 0 4px' }}>
                   <img src={selectedPhoto.url} alt={selectedPhoto.caption} style={{ maxWidth: '100%', maxHeight: '80vh', objectFit: 'contain' }} />
                   <ReactionBar photo={selectedPhoto} overlay />
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', borderLeft: sectionBorder }}>
+                <div style={{ display: 'flex', flexDirection: 'column', borderLeft: sectionBorder, maxHeight: '90vh', overflow: 'hidden' }}>
                   <div style={{ padding: '14px', borderBottom: sectionBorder }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div>
@@ -714,11 +693,6 @@ const Community: React.FC = () => {
                     </div>
                     {selectedPhoto.caption && (
                       <p style={{ fontSize: '13px', color: textDark, margin: '8px 0 0', lineHeight: 1.5 }}>{selectedPhoto.caption}</p>
-                    )}
-                    {selectedPhoto.taggedMembers && selectedPhoto.taggedMembers.length > 0 && (
-                      <div style={{ fontSize: '10px', color: textMuted, marginTop: '6px' }}>
-                        Tagged: {selectedPhoto.taggedMembers.map(id => members.find(m => m.id === id)?.name || id.slice(0, 6)).join(', ')}
-                      </div>
                     )}
                   </div>
 
