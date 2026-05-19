@@ -19,6 +19,7 @@ interface Product {
   image?: string;
   type?: string;
   price?: string;
+  priceRaw?: string;
   currency?: string;
   materials?: string;
   collection?: string;
@@ -149,6 +150,7 @@ const Products: React.FC = () => {
     setInsuranceError(null);
     setInsuranceResult(null);
     setInsuranceForm({
+      // Customer — pre-filled from user profile
       salutation: (user as any)?.salutation || 1,
       firstname: user?.givenName || (user as any)?.firstName || '',
       lastname: user?.familyName || (user as any)?.lastName || '',
@@ -159,14 +161,17 @@ const Products: React.FC = () => {
       language: (user as any)?.language || 'en',
       email: user?.email || '',
       phone: (user as any)?.phoneNumber || (user as any)?.phone || '',
-      deviceType: 1,
+      // Device — pre-filled from product data
+      deviceType: product.collection?.toLowerCase() === 'snowboard' ? 2
+        : product.collection?.toLowerCase() === 'cross-country' ? 3
+        : 1, // default Ski Alpine
       makeName: 'zai',
       makeId: 1,
-      model: product.metadata?.model || product.name || '',
-      serial: product.metadata?.serial || product.serialNumber || product.tokenId || '',
-      price: product.price || product.metadata?.price || '',
+      model: product.name || '',
+      serial: product.serialNumber || product.tokenId || '',
+      price: product.priceRaw || product.price || '',
       length: product.metadata?.length || '',
-      purchasingdate: product.metadata?.purchasingdate || product.claimedAt?.split('T')[0] || new Date().toISOString().split('T')[0],
+      purchasingdate: product.claimedAt?.split('T')[0] || new Date().toISOString().split('T')[0],
     });
     setShowInsuranceModal(true);
   };
