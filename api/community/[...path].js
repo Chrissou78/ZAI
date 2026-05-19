@@ -316,16 +316,15 @@ export default async function handler(req, res) {
 
       if (!image) return res.status(400).json({ success: false, error: 'Image is required (base64)' });
 
-      const base64Data = image.replace(/^data:image\/\w+;base64,/, '');
-      const mimeMatch = image.match(/^data:(image\/\w+);base64,/);
+      // Validate mime type
+      const mimeMatch = image.match(/^data:(image\/[a-zA-Z]+);base64,/);
       const mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
       const allowedTypes = ['image/jpeg', 'image/png', 'image/tiff'];
       if (!allowedTypes.includes(mimeType)) {
         return res.status(400).json({ success: false, error: 'Only JPG, PNG, and TIFF images are allowed' });
       }
-      const ext = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/tiff': 'tiff' }[mimeType];
-      const fileName = `photo-${Date.now()}.${ext}`;
-      const header = `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${fileName}"\r\nContent-Type: ${mimeType}\r\n\r\n`;
+
+      const base64Data = image.replace(/^data:image\/[a-zA-Z]+;base64,/, '');
       const buffer = Buffer.from(base64Data, 'base64');
 
       if (buffer.length > 4 * 1024 * 1024) return res.status(400).json({ success: false, error: 'Image must be under 4 MB' });
@@ -334,10 +333,8 @@ export default async function handler(req, res) {
         return res.status(500).json({ success: false, error: 'PINATA_JWT env variable is not set' });
       }
 
+      const ext = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/tiff': 'tiff' }[mimeType];
       const boundary = '----PinataFormBoundary' + Date.now().toString(36);
-      const mimeMatch = image.match(/^data:(image\/\w+);base64,/);
-      const mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
-      const ext = mimeType.split('/')[1] || 'jpg';
       const fileName = `photo-${Date.now()}.${ext}`;
       const header = `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${fileName}"\r\nContent-Type: ${mimeType}\r\n\r\n`;
       const footer = `\r\n--${boundary}--\r\n`;
@@ -399,7 +396,7 @@ export default async function handler(req, res) {
 
       return res.json({
         success: true,
-        data: { id, cid, url: photoUrl, caption: caption || '', authorId: user.userId, authorName, taggedMembers: taggedMembers || [], commentCount: 0, createdAt: new Date().toISOString() },
+        data: { id, cid, url: photoUrl, caption: caption || '', authorId: user.userId, authorName, taggedMembers: taggedMembers || [], commentCount: 0, createdAt: new Date().toISOString(), reactions: [] },
       });
     } catch (error) {
       return res.status(500).json({ success: false, error: 'Unexpected error', detail: error.message, stack: error.stack?.split('\n').slice(0, 3) });
