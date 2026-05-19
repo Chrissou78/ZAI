@@ -186,107 +186,146 @@ export default async function handler(req, res) {
       let rwaList = [];
       let allContractAddresses = [];
 
+      console.log('[PRODUCTS] === Starting product fetch ===');
+      console.log('[PRODUCTS] User:', decoded.userId, 'Wallet:', wallet);
+      console.log('[PRODUCTS] Chain ID:', CHAIN_ID());
+      console.log('[PRODUCTS] API Key present:', !!API_KEY());
+      console.log('[PRODUCTS] API Key first 8 chars:', API_KEY()?.slice(0, 8));
+
       // ── Step 1: Get all company RWAs ──
+      console.log('[PRODUCTS] Step 1: Fetching RWAs from', `${RWA_BASE}/rwa?limit=200`);
       const { status: rwaStatus, data: rwaData } = await rwaFetch('/rwa?limit=200');
+      console.log('[PRODUCTS] RWA response status:', rwaStatus);
+      console.log('[PRODUCTS] RWA response data:', JSON.stringify(rwaData)?.slice(0, 500));
 
       if (rwaStatus === 200 && rwaData?.rwas) {
         rwaList = rwaData.rwas;
         allContractAddresses = rwaList
           .filter(r => r.smartContractAddress)
           .map(r => ({ name: r.name, address: r.smartContractAddress, chainId: r.chainId }));
+        console.log('[PRODUCTS] Found', rwaList.length, 'RWAs, contracts:', JSON.stringify(allContractAddresses));
+      } else {
+        console.log('[PRODUCTS] ⚠ RWA fetch failed or empty. Status:', rwaStatus);
       }
 
       // ── Step 2: Get user's on-chain NFTs from blockchain endpoint ──
-      let userNftsByContract = {}; // contract_address_lower -> [{ token_id, metadata }]
+      let userNftsByContract = {};
       if (wallet) {
-        const { status: nftStatus, data: nftData } = await blockchainFetch(
-          `/nft?address=${wallet}&chainId=${CHAIN_ID()}`
-        );
+        const blockchainUrl = `/nft?address=${wallet}&chainId=${CHAIN_ID()}`;
+        console.log('[PRODUCTS] Step 2: Fetching on-chain NFTs from', `${BLOCKCHAIN_BASE}${blockchainUrl}`);
+        const { status: nftStatus, data: nftData } = await blockchainFetch(blockchainUrl);
+        console.log('[PRODUCTS] Blockchain response status:', nftStatus);
+        console.log('[PRODUCTS] Blockchain response keys:', nftData ? Object.keys(nftData) : 'null');
+        console.log('[PRODUCTS] Blockchain raw (first 500):', JSON.stringify(nftData)?.slice(0, 500));
+
         if (nftStatus === 200 && nftData?.result) {
+          console.log('[PRODUCTS] Found', nftData.result.length, 'on-chain NFTs');
           for (const nft of nftData.result) {
             const addr = (nft.token_address || '').toLowerCase();
             if (!userNftsByContract[addr]) userNftsByContract[addr] = [];
             userNftsByContract[addr].push(nft);
+            console.log('[PRODUCTS]   NFT contract:', addr, 'tokenId:', nft.token_id, 'name:', nft.name || nft.normalized_metadata?.name);
+          }
+        } else {
+          console.log('[PRODUCTS] ⚠ Blockchain NFT fetch failed or empty. Status:', nftStatus);
+        }
+
+        console.log('[PRODUCTS] User holds NFTs on', Object.keys(userNftsByContract).length, 'contracts:', Object.keys(userNftsByContract));
+      } else {
+        console.log('[PRODUCTS] ⚠ No wallet found in JWT');
+      }
+
+      // ── Step 3: Match user holdings with RWAs ──
+      console.log('[PRODUCTS] Step 3: Matching holdings with RWAs');
+      if (rwaList.length === 0) {
+        console.log('[PRODUCTS] ⚠ No RWAs to match against — trying blockchain-only fallback');
+
+        // ★ FALLBACK: If no RWAs, show all on-chain NFTs directly ★
+        for (const [contractAddr, holdings] of Object.entries(userNftsByContract)) {
+          for (const holding of holdings) {
+            const meta = holding.normalized_metadata || {};
+            products.push({
+              id: `${contractAddr}-${holding.token_id}`,
+              name: meta.name || holding.name || 'ZAI Product',
+              description: meta.description || '',
+              image: meta.image || '',
+              type: '',
+              color: '',
+              size: '',
+              model: '',
+              serialNumber: holding.token_id,
+              claimedAt: null,
+              tokenAddress: contractAddr,
+              tokenId: holding.token_id,
+              contractType: holding.contract_type || '',
+              symbol: holding.symbol || '',
+              rwaId: null,
+              rwaName: null,
+              metadata: meta,
+            });
+          }
+        }
+        console.log('[PRODUCTS] Fallback produced', products.length, 'products from on-chain data');
+      } else {
+        for (const rwa of rwaList) {
+          const contractAddr = (rwa.smartContractAddress || '').toLowerCase();
+          if (!contractAddr) { console.log('[PRODUCTS]   Skipping RWA', rwa.name, '— no contract'); continue; }
+
+          const userHoldings = userNftsByContract[contractAddr];
+          console.log('[PRODUCTS]   RWA:', rwa.name, 'contract:', contractAddr, 'user holds:', userHoldings?.length || 0);
+
+          if (!userHoldings || userHoldings.length === 0) continue;
+
+          let rwaDetail = rwa;
+          try {
+            const { status: detStatus, data: detData } = await rwaFetch(`/rwa/${rwa.id}`);
+            if (detStatus === 200 && detData) rwaDetail = detData;
+          } catch {}
+
+          let rwaNfts = [];
+          try {
+            const { status: nftsStatus, data: nftsData } = await rwaFetch(`/rwa/${rwa.id}/nfts?claimed=true&limit=200`);
+            if (nftsStatus === 200 && nftsData?.nfts) rwaNfts = nftsData.nfts;
+          } catch {}
+
+          const rwaNftBySerial = {};
+          for (const rn of rwaNfts) rwaNftBySerial[rn.serial] = rn;
+
+          for (const holding of userHoldings) {
+            const tokenId = holding.token_id;
+            const blockchainMeta = holding.normalized_metadata || {};
+            const matchedRwaNft = rwaNftBySerial[tokenId] || rwaNfts.find(n => n.serial === tokenId) || null;
+
+            const image = resolveImageUrl(matchedRwaNft || {}, rwaDetail) || blockchainMeta.image || '';
+            const description = resolveDescription(matchedRwaNft || {}, rwaDetail) || blockchainMeta.description || '';
+            const name = blockchainMeta.name || rwaDetail.name || 'ZAI Product';
+            const color = resolveDataField(matchedRwaNft || {}, rwaDetail, ['color', 'colour']);
+            const size = resolveDataField(matchedRwaNft || {}, rwaDetail, ['size', 'length']);
+            const model = resolveDataField(matchedRwaNft || {}, rwaDetail, ['model']);
+
+            products.push({
+              id: `${contractAddr}-${tokenId}`,
+              name, description, image, type: rwaDetail.type || '',
+              color, size, model,
+              serialNumber: matchedRwaNft?.serial || tokenId,
+              claimedAt: matchedRwaNft?.mintedAt || null,
+              tokenAddress: contractAddr, tokenId,
+              contractType: holding.contract_type || '',
+              symbol: holding.symbol || '',
+              rwaId: rwa.id, rwaName: rwaDetail.name,
+              metadata: {
+                ...blockchainMeta,
+                ...(matchedRwaNft?.rwa_nft_data || []).reduce((acc, d) => { acc[d.key] = d.value; return acc; }, {}),
+                ...(rwaDetail.data ? Object.fromEntries(Object.entries(rwaDetail.data).map(([k, v]) => [k, v.value])) : {}),
+              },
+            });
           }
         }
       }
 
-      // ── Step 3: For each RWA whose contract the user holds, fetch metadata ──
-      for (const rwa of rwaList) {
-        const contractAddr = (rwa.smartContractAddress || '').toLowerCase();
-        if (!contractAddr) continue;
+      console.log('[PRODUCTS] Total products matched:', products.length);
 
-        const userHoldings = userNftsByContract[contractAddr];
-        if (!userHoldings || userHoldings.length === 0) continue;
-
-        // Fetch RWA detail for NFT counters
-        let rwaDetail = rwa;
-        try {
-          const { status: detStatus, data: detData } = await rwaFetch(`/rwa/${rwa.id}`);
-          if (detStatus === 200 && detData) rwaDetail = detData;
-        } catch {}
-
-        // Fetch claimed NFTs for this RWA to get secrets, serial, rwa_nft_data
-        let rwaNfts = [];
-        try {
-          const { status: nftsStatus, data: nftsData } = await rwaFetch(
-            `/rwa/${rwa.id}/nfts?claimed=true&limit=200`
-          );
-          if (nftsStatus === 200 && nftsData?.nfts) {
-            rwaNfts = nftsData.nfts;
-          }
-        } catch {}
-
-        // Build a map of serial -> rwa nft data for quick lookup
-        const rwaNftBySerial = {};
-        for (const rn of rwaNfts) {
-          rwaNftBySerial[rn.serial] = rn;
-        }
-
-        // Map each user-held token to a product
-        for (const holding of userHoldings) {
-          const tokenId = holding.token_id;
-          const blockchainMeta = holding.normalized_metadata || {};
-
-          // Try to match with RWA NFT by serial/tokenId
-          const matchedRwaNft = rwaNftBySerial[tokenId] || rwaNfts.find(n => n.serial === tokenId) || null;
-
-          const image = resolveImageUrl(matchedRwaNft || {}, rwaDetail) || blockchainMeta.image || '';
-          const description = resolveDescription(matchedRwaNft || {}, rwaDetail) || blockchainMeta.description || '';
-          const name = blockchainMeta.name || rwaDetail.name || 'ZAI Product';
-          const color = resolveDataField(matchedRwaNft || {}, rwaDetail, ['color', 'colour']);
-          const size = resolveDataField(matchedRwaNft || {}, rwaDetail, ['size', 'length']);
-          const model = resolveDataField(matchedRwaNft || {}, rwaDetail, ['model']);
-
-          products.push({
-            id: `${contractAddr}-${tokenId}`,
-            name,
-            description,
-            image,
-            type: rwaDetail.type || '',
-            color,
-            size,
-            model,
-            serialNumber: matchedRwaNft?.serial || tokenId,
-            claimedAt: matchedRwaNft?.mintedAt || null,
-            tokenAddress: contractAddr,
-            tokenId,
-            contractType: holding.contract_type || '',
-            symbol: holding.symbol || '',
-            rwaId: rwa.id,
-            rwaName: rwaDetail.name,
-            metadata: {
-              ...blockchainMeta,
-              ...(matchedRwaNft?.rwa_nft_data || []).reduce((acc, d) => { acc[d.key] = d.value; return acc; }, {}),
-              ...(rwaDetail.data
-                ? Object.fromEntries(Object.entries(rwaDetail.data).map(([k, v]) => [k, v.value]))
-                : {}),
-            },
-          });
-        }
-      }
-
-      // ── Step 4: Fetch insurance data from DB ──
+      // ── Step 4: Insurance ──
       let insuranceMap = {};
       if (dbReady && pool) {
         try {
@@ -299,68 +338,51 @@ export default async function handler(req, res) {
             );
             for (const row of insResult.rows) {
               insuranceMap[row.product_id] = {
-                active: row.sas_status === 'success',
-                status: row.sas_status,
-                certificateId: row.sas_certificate_id,
-                transactionId: row.sas_transaction_id,
-                activatedAt: row.created_at,
-              };
-            }
-          }
-
-          // Also check for any insurance entries not matched above
-          const localInsResult = await pool.query(
-            `SELECT product_id, sas_status, sas_certificate_id, sas_transaction_id, device_data, created_at
-             FROM insurance_registrations WHERE user_id = $1`,
-            [decoded.userId]
-          );
-          for (const row of localInsResult.rows) {
-            if (!insuranceMap[row.product_id]) {
-              insuranceMap[row.product_id] = {
-                active: row.sas_status === 'success',
-                status: row.sas_status,
-                certificateId: row.sas_certificate_id,
-                transactionId: row.sas_transaction_id,
+                active: row.sas_status === 'success', status: row.sas_status,
+                certificateId: row.sas_certificate_id, transactionId: row.sas_transaction_id,
                 activatedAt: row.created_at,
               };
             }
           }
         } catch (insErr) {
-          console.error('Insurance DB query failed (non-fatal):', insErr.message);
+          console.error('[PRODUCTS] Insurance query failed:', insErr.message);
         }
       }
 
-      // ── Step 5: Enrich and return ──
+      // ── Step 5: Return ──
       const enrichedProducts = products.map(p => ({
         ...p,
         insurance: insuranceMap[p.id] || { active: false, status: null, certificateId: null },
         warranty: { active: true, expiresAt: null, years: 2 },
       }));
 
-      const activeInsurance = Object.values(insuranceMap).filter(i => i.active).length;
+      console.log('[PRODUCTS] === Returning', enrichedProducts.length, 'products ===');
 
       return res.json({
         success: true,
         data: enrichedProducts,
         stats: {
           totalProducts: enrichedProducts.length,
-          activeInsurance,
+          activeInsurance: Object.values(insuranceMap).filter(i => i.active).length,
           pendingClaims: 0,
         },
         _debug: {
           chainId: CHAIN_ID(),
           wallet: decoded.wallet,
           rwaCount: rwaList.length,
+          rwaStatus,
           allContractAddresses,
+          onChainContracts: Object.keys(userNftsByContract),
+          onChainNftCount: Object.values(userNftsByContract).flat().length,
           productsFound: enrichedProducts.length,
           dbConnected: dbReady,
         },
       });
     } catch (err) {
+      console.error('[PRODUCTS] FATAL ERROR:', err);
       if (err.name === 'JsonWebTokenError' || err.name === 'TokenExpiredError') {
         return res.status(401).json({ error: 'Invalid or expired token' });
       }
-      console.error('Products API error:', err);
       return res.status(500).json({ success: false, error: err.message });
     }
   }
