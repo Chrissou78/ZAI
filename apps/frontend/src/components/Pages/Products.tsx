@@ -96,6 +96,7 @@ const Products: React.FC = () => {
     salutation: 1, firstname: '', lastname: '', address1: '', zip: '', city: '', country: 'CH', language: 'en', email: '', phone: '',
     deviceType: 1, makeName: 'zai', makeId: 1, model: '', serial: '', price: '', length: '', purchasingdate: new Date().toISOString().split('T')[0],
   });
+  const [zoomImage, setZoomImage] = useState<{ src: string; alt: string } | null>(null);
 
   useEffect(() => {
     if (user?.id) fetchUserProducts();
@@ -328,6 +329,7 @@ const Products: React.FC = () => {
               {/* Product Image */}
               {product.image && (
                 <div
+                  onClick={() => setZoomImage({ src: product.image!, alt: product.name })}
                   style={{
                     background: '#f0ede6',
                     borderRight: '1px solid #e0ddd6',
@@ -336,6 +338,7 @@ const Products: React.FC = () => {
                     justifyContent: 'center',
                     overflow: 'hidden',
                     position: 'relative',
+                    cursor: 'zoom-in',
                   }}
                 >
                   <img
@@ -348,7 +351,6 @@ const Products: React.FC = () => {
                       minHeight: 280,
                     }}
                   />
-                  {/* Claimed badge */}
                   <div style={{
                     position: 'absolute', top: '0.75rem', left: '0.75rem',
                     background: '#1a1a1a', color: '#fff', fontSize: 9,
@@ -768,6 +770,62 @@ const Products: React.FC = () => {
           </div>
         )}
       </Modal>
+      {/* ── IMAGE ZOOM OVERLAY ── */}
+      {zoomImage && (
+        <div
+          onClick={() => setZoomImage(null)}
+          style={{
+            position: 'fixed',
+            top: 0, left: 0, right: 0, bottom: 0,
+            background: 'rgba(0, 0, 0, 0.85)',
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'zoom-out',
+            backdropFilter: 'blur(4px)',
+          }}
+        >
+          {/* Close button */}
+          <button
+            onClick={() => setZoomImage(null)}
+            style={{
+              position: 'absolute', top: '1.5rem', right: '1.5rem',
+              background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)',
+              color: '#fff', width: 40, height: 40, fontSize: 20,
+              cursor: 'pointer', display: 'flex', alignItems: 'center',
+              justifyContent: 'center', transition: 'background 0.2s',
+            }}
+            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.2)')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.1)')}
+          >
+            ✕
+          </button>
+
+          {/* Product name */}
+          <div style={{
+            position: 'absolute', bottom: '1.5rem', left: '50%', transform: 'translateX(-50%)',
+            color: 'rgba(255,255,255,0.6)', fontSize: '11px', letterSpacing: '0.2em',
+            textTransform: 'uppercase',
+          }}>
+            {zoomImage.alt}
+          </div>
+
+          {/* Zoomed image */}
+          <img
+            src={zoomImage.src}
+            alt={zoomImage.alt}
+            onClick={e => e.stopPropagation()}
+            style={{
+              maxWidth: '90vw',
+              maxHeight: '85vh',
+              objectFit: 'contain',
+              cursor: 'default',
+              boxShadow: '0 8px 40px rgba(0,0,0,0.4)',
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 };
