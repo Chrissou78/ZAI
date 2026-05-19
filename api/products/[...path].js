@@ -71,10 +71,31 @@ async function fetchTokenMetadata(tokenUri) {
 
 // Parse the metadata string and extract product fields
 // The blockchain returns metadata as a JSON string with nested data.{field}.value
+const CURRENCY_MAP = {
+  'b60f590b-2855-4b3c-a78a-8cac203e4768': 'CHF',
+};
+
+function resolveCurrency(raw) {
+  if (!raw) return 'CHF';
+  // If it's already a short code like CHF, EUR, USD
+  if (raw.length <= 5 && /^[A-Z]+$/.test(raw)) return raw;
+  // UUID lookup
+  return CURRENCY_MAP[raw] || 'CHF';
+}
+
+function formatPrice(raw) {
+  if (!raw) return '';
+  const num = parseFloat(raw);
+  if (isNaN(num)) return raw;
+  // Format with thousands separator and no decimals for whole numbers
+  return num % 1 === 0
+    ? num.toLocaleString('en-CH')
+    : num.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
 function parseNftToProduct(nft) {
   let meta = {};
 
-  // metadata can be a JSON string or null
   if (nft.metadata) {
     try {
       meta = typeof nft.metadata === 'string' ? JSON.parse(nft.metadata) : nft.metadata;
@@ -85,42 +106,54 @@ function parseNftToProduct(nft) {
   const tokenAddress = (nft.token_address || '').toLowerCase();
   const tokenId = nft.token_id || '';
 
-  // Extract fields from data.{key}.value pattern
-  const image = rwaData.image?.value || meta.image || '';
-  const description = rwaData.description?.value || meta.description || '';
+  // Extract from data.{key}.value
+  const rawImage = rwaData.image?.value || '';
+  const rawDescription = rwaData.description?.value || '';
+  const rawPrice = rwaData.price?.value || '';
+  const rawCurrency = rwaData.currency?.value || '';
+  const rawMaterials = rwaData.materials?.value || '';
+  const rawCollection = rwaData.collection?.value || '';
+  const rawInsurance = rwaData.insurance?.value || '';
+
+  // Top-level fields
   const name = meta.name || nft.name || 'ZAI Product';
-  const price = rwaData.price?.value || '';
-  const currency = rwaData.currency?.value || '';
-  const materials = rwaData.materials?.value || '';
-  const collection = rwaData.collection?.value || '';
-  const hasInsurance = rwaData.insurance?.value === '1' || rwaData.insurance?.value === 'true';
+  const type = meta.type || nft.contract_type || '';
+  const serial = meta.serial || tokenId;
+  const rwaId = meta.rwaId || null;
+  const rwaName = meta.rwa?.name || nft.name || '';
+  const isClaimed = meta.isClaimed || false;
 
   return {
     id: `${tokenAddress}-${tokenId}`,
     name,
-    description,
-    image,
-    price,
-    currency,
-    materials,
-    collection,
-    hasInsurance,
-    type: meta.type || nft.contract_type || '',
+    description: rawDescription,
+    image: rawImage,
+    price: formatPrice(rawPrice),
+    priceRaw: rawPrice,
+    currency: resolveCurrency(rawCurrency),
+    materials: rawMaterials,
+    collection: rawCollection,
+    hasInsurance: rawInsurance === '1' || rawInsurance === 'true',
+    type,
     tokenAddress,
     tokenId,
     symbol: nft.symbol || '',
-    serialNumber: meta.serial || tokenId,
-    rwaId: meta.rwaId || null,
-    rwaName: meta.rwa?.name || nft.name || '',
+    serialNumber: serial,
+    rwaId,
+    rwaName,
     chainId: null,
     claimedAt: nft.last_token_uri_sync || null,
-    isClaimed: meta.isClaimed || false,
+    isClaimed,
     tokenUri: nft.token_uri || '',
-    metadata: {
-      ...Object.fromEntries(
-        Object.entries(rwaData).map(([k, v]) => [k, v.value || v])
-      ),
-    },
+    // Flatten all data fields for the frontend
+    metadata: Object.fromEntries(
+      Object.entries(rwaData).map(([k, v]) => {
+        const val = v?.value || v;
+        // Resolve currency UUID in the flattened metadata too
+        if (k === 'currency') return [k, resolveCurrency(val)];
+        return [k, val];
+      })
+    ),
   };
 }
 
