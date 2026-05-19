@@ -326,8 +326,11 @@ export default async function handler(req, res) {
       }
 
       const boundary = '----PinataFormBoundary' + Date.now().toString(36);
-      const fileName = `photo-${Date.now()}.jpg`;
-      const header = `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${fileName}"\r\nContent-Type: image/jpeg\r\n\r\n`;
+      const mimeMatch = image.match(/^data:(image\/\w+);base64,/);
+      const mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+      const ext = mimeType.split('/')[1] || 'jpg';
+      const fileName = `photo-${Date.now()}.${ext}`;
+      const header = `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${fileName}"\r\nContent-Type: ${mimeType}\r\n\r\n`;
       const footer = `\r\n--${boundary}--\r\n`;
 
       const multipartBody = Buffer.concat([
