@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAppContext } from '../../context/AppContext';
 import { apiService } from '../../services/api';
 import Button from '../Common/Button';
@@ -45,6 +45,14 @@ interface Comment {
 interface CommunityStats {
   totalMembers: number;
   totalPhotos: number;
+}
+
+/** Extend the shape returned by the reactions endpoint */
+interface ReactionResponse {
+  success: boolean;
+  action: 'added' | 'removed';
+  emoji: string;
+  data?: Reaction;
 }
 
 type Tab = 'feed' | 'members';
@@ -136,9 +144,20 @@ const Community: React.FC = () => {
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploadPreview, setUploadPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [showEmojiPicker, setShowEmojiPicker] = useState<string | null>(null);
+
+  // Emoji picker — lifted to component root so the portal works everywhere
+  const [emojiPickerPhotoId, setEmojiPickerPhotoId] = useState<string | null>(null);
+  const [emojiPickerPos, setEmojiPickerPos] = useState<{ top: number; left: number } | null>(null);
+  const [emojiPickerContext, setEmojiPickerContext] = useState<'grid' | 'overlay'>('grid');
 
   const [isLoading, setIsLoading] = useState(true);
+
+  // Close emoji picker on scroll (prevents stale position)
+  useEffect(() => {
+    const close = () => { setEmojiPickerPhotoId(null); setEmojiPickerPos(null); };
+    window.addEventListener('scroll', close, true);
+    return () => window.removeEventListener('scroll', close, true);
+  }, []);
 
   // ─── Data fetching ───
 
@@ -248,42 +267,41 @@ const Community: React.FC = () => {
     } catch (err: any) { alert(err.response?.data?.error || 'Failed to delete comment'); }
   };
 
-  // ─── Reactions ───
+  // ─── Reactions (fixed TS typing) ───
 
   const toggleReaction = async (photoId: string, emoji: string) => {
     try {
-      const res = await apiService.post(`/community/gallery/${photoId}/reactions`, { emoji });
-      if (res.data?.success) {
-        const action = res.data.action as string;
+      const res = await apiService.post<ReactionResponse>(`/community/gallery/${photoId}/reactions`, { emoji });
+      const body = res.data as unknown as ReactionResponse;
+      if (body.success) {
+        const action = body.action;
         const userName = user?.givenName || user?.name || 'Member';
 
-        setPhotos(prev => prev.map(p => {
-          if (p.id !== photoId) return p;
-          const reactions = [...(p.reactions || [])];
+        const patchReactions = (reactions: Reaction[]): Reaction[] => {
           if (action === 'added') {
-            reactions.push({ emoji, userId: user?.id || '', userName });
-          } else {
-            const idx = reactions.findIndex(r => r.emoji === emoji && r.userId === user?.id);
-            if (idx >= 0) reactions.splice(idx, 1);
+            return [...reactions, { emoji, userId: user?.id || '', userName }];
           }
-          return { ...p, reactions };
-        }));
+          const idx = reactions.findIndex(r => r.emoji === emoji && r.userId === user?.id);
+          if (idx >= 0) {
+            const copy = [...reactions];
+            copy.splice(idx, 1);
+            return copy;
+          }
+          return reactions;
+        };
+
+        setPhotos(prev => prev.map(p =>
+          p.id === photoId ? { ...p, reactions: patchReactions(p.reactions || []) } : p
+        ));
 
         if (selectedPhoto?.id === photoId) {
-          setSelectedPhoto(prev => {
-            if (!prev) return null;
-            const reactions = [...(prev.reactions || [])];
-            if (action === 'added') {
-              reactions.push({ emoji, userId: user?.id || '', userName });
-            } else {
-              const idx = reactions.findIndex(r => r.emoji === emoji && r.userId === user?.id);
-              if (idx >= 0) reactions.splice(idx, 1);
-            }
-            return { ...prev, reactions };
-          });
+          setSelectedPhoto(prev =>
+            prev ? { ...prev, reactions: patchReactions(prev.reactions || []) } : null
+          );
         }
 
-        setShowEmojiPicker(null);
+        setEmojiPickerPhotoId(null);
+        setEmojiPickerPos(null);
       }
     } catch (err: any) { alert(err.response?.data?.error || 'Failed to react'); }
   };
@@ -307,14 +325,34 @@ const Community: React.FC = () => {
     } catch (err: any) { alert(err.response?.data?.error || 'Failed to unblock member'); }
   };
 
+  // ─── Emoji picker opener (shared by grid + overlay) ───
+
+  const openEmojiPicker = (
+    e: React.MouseEvent<HTMLButtonElement>,
+    photoId: string,
+    context: 'grid' | 'overlay',
+  ) => {
+    e.stopPropagation();
+    if (emojiPickerPhotoId === photoId) {
+      // toggle off
+      setEmojiPickerPhotoId(null);
+      setEmojiPickerPos(null);
+      return;
+    }
+    const rect = e.currentTarget.getBoundingClientRect();
+    setEmojiPickerPos({ top: rect.top, left: rect.right });
+    setEmojiPickerPhotoId(photoId);
+    setEmojiPickerContext(context);
+  };
+
   // ─── ReactionBar sub-component ───
 
   const ReactionBar = ({ photo, overlay = false }: { photo: Photo; overlay?: boolean }) => {
     const grouped = groupReactions(photo.reactions || [], user?.id);
     const hasReactions = Object.keys(grouped).length > 0;
-    const pickerOpen = showEmojiPicker === photo.id;
+    const pickerOpen = emojiPickerPhotoId === photo.id;
 
-    // Non-overlay version (used under photo cards in grid)
+    // ── Non-overlay (grid cards) ──
     if (!overlay) {
       return (
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', minHeight: '28px' }}>
@@ -335,39 +373,26 @@ const Community: React.FC = () => {
               <span style={{ fontSize: '10px', fontWeight: 600, color: info.reacted ? accent : textMuted }}>{info.count}</span>
             </button>
           ))}
-          <div style={{ position: 'relative', marginLeft: 'auto' }}>
+          <div style={{ marginLeft: 'auto' }}>
             <button
-              onClick={(e) => { e.stopPropagation(); setShowEmojiPicker(pickerOpen ? null : photo.id); }}
+              onClick={(e) => openEmojiPicker(e, photo.id, 'grid')}
               style={{
-                width: 28, height: 28, borderRadius: '50%', border: '1px solid #e0ddd6',
-                background: pickerOpen ? bgMuted : '#fff', cursor: 'pointer',
+                width: 28, height: 28, borderRadius: '50%',
+                border: '1px solid #e0ddd6',
+                background: pickerOpen ? bgMuted : '#fff',
+                fontSize: '16px', color: textMuted, cursor: 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: '16px', transition: 'all 0.15s',
               }}
               title="Add reaction"
-            >{pickerOpen ? '×' : '😊'}</button>
-            {pickerOpen && (
-              <div onClick={(e) => e.stopPropagation()} style={{
-                position: 'absolute', top: '110%', right: 0,
-                background: '#fff', border: '1px solid #e0ddd6', borderRadius: '12px',
-                padding: '8px', display: 'grid', gridTemplateColumns: 'repeat(4, 36px)', gap: '4px',
-                boxShadow: '0 4px 16px rgba(0,0,0,0.15)', zIndex: 20,
-              }}>
-                {REACTION_EMOJIS.map(em => (
-                  <button key={em} onClick={(e) => { e.stopPropagation(); toggleReaction(photo.id, em); }}
-                    style={{ width: 36, height: 36, border: 'none', background: 'transparent', borderRadius: '50%', cursor: 'pointer', fontSize: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' }}
-                    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(200,16,46,0.1)'; e.currentTarget.style.transform = 'scale(1.2)'; }}
-                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.transform = 'scale(1)'; }}
-                  >{em}</button>
-                ))}
-              </div>
-            )}
+            >
+              {pickerOpen ? '×' : '😊'}
+            </button>
           </div>
         </div>
       );
     }
 
-    // ── Overlay version (floating widget on the photo) ──
+    // ── Overlay version (floating on the photo in modal) ──
     return (
       <div
         onClick={(e) => e.stopPropagation()}
@@ -397,9 +422,9 @@ const Community: React.FC = () => {
           </button>
         ))}
 
-        <div style={{ position: 'relative', marginLeft: 'auto' }}>
+        <div style={{ marginLeft: 'auto' }}>
           <button
-            onClick={(e) => { e.stopPropagation(); setShowEmojiPicker(pickerOpen ? null : photo.id); }}
+            onClick={(e) => openEmojiPicker(e, photo.id, 'overlay')}
             style={{
               width: 36, height: 36, borderRadius: '50%', border: 'none',
               background: pickerOpen ? 'rgba(255,255,255,0.95)' : 'rgba(0,0,0,0.5)',
@@ -413,40 +438,6 @@ const Community: React.FC = () => {
           >
             {pickerOpen ? '×' : '😊'}
           </button>
-          {pickerOpen && (
-            <div
-              onClick={(e) => e.stopPropagation()}
-              style={{
-                position: 'absolute', bottom: '110%', right: 0,
-                background: 'rgba(255,255,255,0.97)', borderRadius: '16px',
-                padding: '10px', display: 'grid', gridTemplateColumns: 'repeat(4, 42px)', gap: '4px',
-                boxShadow: '0 4px 20px rgba(0,0,0,0.25)', zIndex: 10,
-                backdropFilter: 'blur(12px)',
-                maxHeight: '260px', overflowY: 'auto',
-              }}
-            >
-              {REACTION_EMOJIS.map(em => (
-                <button
-                  key={em}
-                  onClick={(e) => { e.stopPropagation(); toggleReaction(photo.id, em); }}
-                  style={{
-                    width: 42, height: 42, border: 'none', background: 'transparent',
-                    borderRadius: '50%', cursor: 'pointer', fontSize: '22px',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    transition: 'all 0.15s',
-                  }}
-                  onMouseEnter={e => {
-                    e.currentTarget.style.background = 'rgba(200,16,46,0.1)';
-                    e.currentTarget.style.transform = 'scale(1.25)';
-                  }}
-                  onMouseLeave={e => {
-                    e.currentTarget.style.background = 'transparent';
-                    e.currentTarget.style.transform = 'scale(1)';
-                  }}
-                >{em}</button>
-              ))}
-            </div>
-          )}
         </div>
       </div>
     );
@@ -669,7 +660,7 @@ const Community: React.FC = () => {
           {/* ── Photo detail modal ── */}
           {selectedPhoto && (
             <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '2rem' }}
-              onClick={() => { setSelectedPhoto(null); setShowEmojiPicker(null); }}>
+              onClick={() => { setSelectedPhoto(null); setEmojiPickerPhotoId(null); setEmojiPickerPos(null); }}>
               <div onClick={e => e.stopPropagation()}
                 style={{ background: '#fff', borderRadius: '4px', maxWidth: '800px', width: '100%', maxHeight: '90vh', overflow: 'visible', display: 'grid', gridTemplateColumns: '1fr 320px' }}>
                 <div style={{ background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '400px', position: 'relative', overflow: 'visible', borderRadius: '4px 0 0 4px' }}>
@@ -827,6 +818,60 @@ const Community: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ═══════════ PORTAL EMOJI PICKER (renders once, positioned via fixed coords) ═══════════ */}
+      {emojiPickerPhotoId && emojiPickerPos && (
+        <>
+          {/* Invisible backdrop to close on outside click */}
+          <div
+            onClick={() => { setEmojiPickerPhotoId(null); setEmojiPickerPos(null); }}
+            style={{ position: 'fixed', inset: 0, zIndex: 9998 }}
+          />
+          {/* The picker itself */}
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              position: 'fixed',
+              top: emojiPickerPos.top,
+              left: emojiPickerPos.left,
+              transform: 'translate(-100%, -100%) translate(-8px, -4px)',
+              background: emojiPickerContext === 'overlay' ? 'rgba(255,255,255,0.97)' : '#fff',
+              border: '1px solid #e0ddd6',
+              borderRadius: '12px',
+              padding: '8px',
+              display: 'grid',
+              gridTemplateColumns: 'repeat(4, 36px)',
+              gap: '4px',
+              boxShadow: '0 4px 20px rgba(0,0,0,0.2)',
+              zIndex: 9999,
+              backdropFilter: emojiPickerContext === 'overlay' ? 'blur(12px)' : undefined,
+              maxHeight: '260px',
+              overflowY: 'auto',
+            }}
+          >
+            {REACTION_EMOJIS.map(em => (
+              <button
+                key={em}
+                onClick={(e) => { e.stopPropagation(); toggleReaction(emojiPickerPhotoId!, em); }}
+                style={{
+                  width: 36, height: 36, border: 'none', background: 'transparent',
+                  borderRadius: '50%', cursor: 'pointer', fontSize: '18px',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  transition: 'all 0.15s',
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.background = 'rgba(200,16,46,0.1)';
+                  e.currentTarget.style.transform = 'scale(1.2)';
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.background = 'transparent';
+                  e.currentTarget.style.transform = 'scale(1)';
+                }}
+              >{em}</button>
+            ))}
+          </div>
+        </>
       )}
     </div>
   );
