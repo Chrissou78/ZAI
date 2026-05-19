@@ -10,6 +10,11 @@ const ADMIN_WALLET = '0xff0f56711f61c52662d60be95f954649441107ec';
 let pool;
 let dbReady = false;
 
+// ── In-memory cache for member names (refreshed every 5 min) ──
+let memberNameCache = {};      // userId -> displayName
+let memberCacheExpiry = 0;     // timestamp when cache expires
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
 function getPool() {
   if (!pool) {
     pool = new Pool({
@@ -76,21 +81,49 @@ function genId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
 }
 
-// ── Centralized user-name resolution with 3-level fallback ──
-async function resolveUserName(decoded) {
-  let name = 'Member';
+// ── Fetch all member names from WalletTwo and cache them ──
+async function refreshMemberCache() {
+  if (Date.now() < memberCacheExpiry) return; // still fresh
+  try {
+    const response = await fetch(
+      `${WALLETTWO_API}/members?limit=200`,
+      { headers: { 'x-api-key': API_KEY() } }
+    );
+    if (response.ok) {
+      const data = await response.json();
+      const newCache = {};
+      for (const m of (data.members || [])) {
+        const user = m.user || {};
+        if (user.name) {
+          newCache[m.userId] = user.name;
+        }
+      }
+      memberNameCache = newCache;
+      memberCacheExpiry = Date.now() + CACHE_TTL;
+    }
+  } catch (err) {
+    console.error('Member cache refresh failed:', err.message);
+  }
+}
 
-  // 1. Try JWT fields (populated after auth fix includes name in token)
-  if (decoded.givenName && decoded.familyName) {
-    name = `${decoded.givenName} ${decoded.familyName}`.trim();
-  } else if (decoded.name && decoded.name !== '') {
-    name = decoded.name;
-  } else if (decoded.givenName) {
-    name = decoded.givenName;
+// ── Resolve user name: WalletTwo members first, then JWT, then DB ──
+async function resolveUserName(decoded) {
+  // 1. WalletTwo members API (same source the members list uses — always has real names)
+  await refreshMemberCache();
+  if (decoded.userId && memberNameCache[decoded.userId]) {
+    return memberNameCache[decoded.userId];
   }
 
-  // 2. Fallback: query user_profiles table
-  if (name === 'Member' && decoded.userId) {
+  // 2. JWT fields (if auth was updated to include name)
+  if (decoded.givenName && decoded.familyName) {
+    const jwtName = `${decoded.givenName} ${decoded.familyName}`.trim();
+    if (jwtName) return jwtName;
+  }
+  if (decoded.name && decoded.name !== '') return decoded.name;
+  if (decoded.givenName) return decoded.givenName;
+
+  // 3. Fallback: user_profiles table
+  if (decoded.userId) {
     try {
       const profileRes = await getPool().query(
         'SELECT name, given_name, family_name FROM user_profiles WHERE user_id = $1',
@@ -101,27 +134,12 @@ async function resolveUserName(decoded) {
         const dbName = (p.given_name && p.family_name)
           ? `${p.given_name} ${p.family_name}`.trim()
           : p.name || '';
-        if (dbName) name = dbName;
+        if (dbName) return dbName;
       }
     } catch {}
   }
 
-  // 3. Last-resort fallback: fetch from WalletTwo members API
-  if (name === 'Member' && decoded.userId) {
-    try {
-      const response = await fetch(
-        `${WALLETTWO_API}/members?limit=200`,
-        { headers: { 'x-api-key': API_KEY() } }
-      );
-      if (response.ok) {
-        const data = await response.json();
-        const member = (data.members || []).find(m => m.userId === decoded.userId);
-        if (member?.user?.name) name = member.user.name;
-      }
-    } catch {}
-  }
-
-  return name;
+  return 'Member';
 }
 
 export default async function handler(req, res) {
@@ -209,7 +227,7 @@ export default async function handler(req, res) {
     } catch (error) { return res.status(500).json({ success: false, error: error.message }); }
   }
 
-  // ─── POST /api/community/members/:memberId/block — Admin: block member ───
+  // ─── POST /api/community/members/:memberId/block ───
   const blockMatch = fullPath.match(/^members\/([^/]+)\/block$/);
   if (blockMatch && req.method === 'POST') {
     const user = authenticate(req);
@@ -227,7 +245,7 @@ export default async function handler(req, res) {
     } catch (error) { return res.status(500).json({ success: false, error: error.message }); }
   }
 
-  // ─── DELETE /api/community/members/:memberId/block — Admin: unblock member ───
+  // ─── DELETE /api/community/members/:memberId/block ───
   if (blockMatch && req.method === 'DELETE') {
     const user = authenticate(req);
     if (!user) return res.status(401).json({ error: 'No token provided' });
@@ -399,7 +417,7 @@ export default async function handler(req, res) {
     } catch (error) { return res.status(500).json({ success: false, error: error.message }); }
   }
 
-  // DELETE /api/community/gallery/:photoId — owner OR admin
+  // DELETE /api/community/gallery/:photoId
   if (photoMatch && req.method === 'DELETE') {
     const user = authenticate(req);
     if (!user) return res.status(401).json({ error: 'No token provided' });
@@ -430,7 +448,7 @@ export default async function handler(req, res) {
     } catch (error) { return res.status(500).json({ success: false, error: error.message }); }
   }
 
-  // POST /api/community/gallery/:photoId/reactions — toggle reaction
+  // POST /api/community/gallery/:photoId/reactions
   const reactionsPostMatch = fullPath.match(/^gallery\/([^/]+)\/reactions$/);
   if (reactionsPostMatch && req.method === 'POST') {
     const user = authenticate(req);
@@ -482,7 +500,7 @@ export default async function handler(req, res) {
     } catch (error) { return res.status(500).json({ success: false, error: error.message }); }
   }
 
-  // DELETE comments — owner OR admin
+  // DELETE comments
   const commentDelMatch = fullPath.match(/^gallery\/([^/]+)\/comments\/([^/]+)$/);
   if (commentDelMatch && req.method === 'DELETE') {
     const user = authenticate(req);
@@ -544,7 +562,7 @@ export default async function handler(req, res) {
     } catch (error) { return res.status(500).json({ success: false, error: error.message }); }
   }
 
-  // DELETE chat message — owner OR admin
+  // DELETE chat message
   const chatDelMatch = fullPath.match(/^chat\/([^/]+)$/);
   if (chatDelMatch && req.method === 'DELETE') {
     const user = authenticate(req);
