@@ -317,6 +317,15 @@ export default async function handler(req, res) {
       if (!image) return res.status(400).json({ success: false, error: 'Image is required (base64)' });
 
       const base64Data = image.replace(/^data:image\/\w+;base64,/, '');
+      const mimeMatch = image.match(/^data:(image\/\w+);base64,/);
+      const mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/tiff'];
+      if (!allowedTypes.includes(mimeType)) {
+        return res.status(400).json({ success: false, error: 'Only JPG, PNG, and TIFF images are allowed' });
+      }
+      const ext = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/tiff': 'tiff' }[mimeType];
+      const fileName = `photo-${Date.now()}.${ext}`;
+      const header = `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${fileName}"\r\nContent-Type: ${mimeType}\r\n\r\n`;
       const buffer = Buffer.from(base64Data, 'base64');
 
       if (buffer.length > 4 * 1024 * 1024) return res.status(400).json({ success: false, error: 'Image must be under 4 MB' });

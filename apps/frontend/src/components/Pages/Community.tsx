@@ -201,6 +201,12 @@ const Community: React.FC = () => {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    const allowed = ['image/jpeg', 'image/png', 'image/tiff'];
+    if (!allowed.includes(file.type)) {
+      alert('Only JPG, PNG, and TIFF images are allowed');
+      e.target.value = '';
+      return;
+    }
     if (file.size > 4 * 1024 * 1024) { alert('Image must be under 4 MB'); return; }
     setUploadFile(file);
     const reader = new FileReader();
@@ -537,7 +543,7 @@ const Community: React.FC = () => {
                   color: textMuted, fontSize: '13px', marginBottom: '1rem',
                 }}>
                   Click to select an image (max 4 MB)
-                  <input type="file" accept="image/*" onChange={handleFileChange} style={{ display: 'none' }} />
+                  <input type="file" accept="image/jpeg,image/png,image/tiff" onChange={handleFileChange} style={{ display: 'none' }} />
                 </label>
               ) : (
                 <div style={{ marginBottom: '1rem', position: 'relative' }}>
