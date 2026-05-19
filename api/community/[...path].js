@@ -6,6 +6,8 @@ const { Pool } = pg;
 const WALLETTWO_API = 'https://api.wallettwo.com/auth/v1/api';
 const API_KEY = () => process.env.WALLETTWO_API_KEY;
 const ADMIN_WALLET = '0xff0f56711f61c52662d60be95f954649441107ec';
+const PINATA_GATEWAY = () => process.env.PINATA_GATEWAY || 'gateway.pinata.cloud';
+
 
 let pool;
 let dbReady = false;
@@ -293,7 +295,7 @@ export default async function handler(req, res) {
         success: true,
         isAdmin: isAdmin(decoded),
         data: result.rows.map(r => ({
-          id: r.id, cid: r.cid, url: r.url, caption: r.caption,
+          id: r.id, cid: r.cid, url: r.url.replace('gateway.pinata.cloud', PINATA_GATEWAY()), caption: r.caption,
           authorId: r.author_id, authorName: r.author_name,
           taggedMembers: r.tagged_members || [], commentCount: r.comment_count, createdAt: r.created_at,
           reactions: reactionsMap[r.id] || [],
@@ -370,7 +372,7 @@ export default async function handler(req, res) {
         return res.status(500).json({ success: false, error: 'No CID returned', detail: JSON.stringify(pinataData) });
       }
 
-      const photoUrl = `https://gateway.pinata.cloud/ipfs/${cid}`;
+      const photoUrl = `https://${PINATA_GATEWAY()}/ipfs/${cid}`;
       const id = genId();
       const authorName = await resolveUserName(user);
 
@@ -407,7 +409,7 @@ export default async function handler(req, res) {
       return res.json({
         success: true, isAdmin: isAdmin(decoded),
         data: {
-          id: p.id, cid: p.cid, url: p.url, caption: p.caption,
+          id: p.id, cid: p.cid, url: p.url.replace('gateway.pinata.cloud', PINATA_GATEWAY()), caption: p.caption,
           authorId: p.author_id, authorName: p.author_name,
           taggedMembers: p.tagged_members || [], commentCount: p.comment_count, createdAt: p.created_at,
           comments: comments.rows.map(c => ({ id: c.id, text: c.text, authorId: c.author_id, authorName: c.author_name, createdAt: c.created_at })),
