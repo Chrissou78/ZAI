@@ -17,6 +17,159 @@ interface Activity {
   icon: string;
 }
 
+/* ── Skeleton shimmer keyframes (injected once) ── */
+const SHIMMER_ID = 'zai-shimmer-keyframes';
+function ensureShimmerStyle() {
+  if (typeof document === 'undefined') return;
+  if (document.getElementById(SHIMMER_ID)) return;
+  const style = document.createElement('style');
+  style.id = SHIMMER_ID;
+  style.textContent = `
+    @keyframes zaiShimmer {
+      0%   { background-position: -400px 0; }
+      100% { background-position: 400px 0; }
+    }
+  `;
+  document.head.appendChild(style);
+}
+
+const shimmerStyle: React.CSSProperties = {
+  background: 'linear-gradient(90deg, #f0ede6 25%, #e8e4db 50%, #f0ede6 75%)',
+  backgroundSize: '800px 100%',
+  animation: 'zaiShimmer 1.6s infinite ease-in-out',
+  borderRadius: '4px',
+};
+
+const SkeletonBlock: React.FC<{ width?: string; height?: string; style?: React.CSSProperties }> = ({
+  width = '100%',
+  height = '14px',
+  style,
+}) => <div style={{ ...shimmerStyle, width, height, ...style }} />;
+
+/* ── Spinner ── */
+const SPINNER_ID = 'zai-spinner-keyframes';
+function ensureSpinnerStyle() {
+  if (typeof document === 'undefined') return;
+  if (document.getElementById(SPINNER_ID)) return;
+  const style = document.createElement('style');
+  style.id = SPINNER_ID;
+  style.textContent = `
+    @keyframes zaiSpin {
+      0%   { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  `;
+  document.head.appendChild(style);
+}
+
+const Spinner: React.FC = () => (
+  <div
+    style={{
+      width: '20px',
+      height: '20px',
+      border: '2px solid #e0ddd6',
+      borderTop: '2px solid #b8a06a',
+      borderRadius: '50%',
+      animation: 'zaiSpin 0.8s linear infinite',
+      display: 'inline-block',
+    }}
+  />
+);
+
+/* ── Loading overlay for the whole dashboard content ── */
+const DashboardSkeleton: React.FC = () => (
+  <div style={{ padding: '3rem 4rem 6rem', fontFamily: "'Inter', sans-serif" }}>
+    {/* Header skeleton */}
+    <div style={{ marginBottom: '2.5rem', paddingBottom: '2rem', borderBottom: '1px solid #e0ddd6' }}>
+      <SkeletonBlock width="60px" height="11px" style={{ marginBottom: '0.6rem' }} />
+      <SkeletonBlock width="220px" height="36px" style={{ marginBottom: '0.5rem' }} />
+      <SkeletonBlock width="360px" height="13px" />
+    </div>
+
+    {/* Profile + Welcome skeleton */}
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: '300px 1fr',
+        gap: '1px',
+        background: '#e0ddd6',
+        border: '1px solid #e0ddd6',
+        marginBottom: '1px',
+      }}
+    >
+      <div style={{ background: '#f0ede6', padding: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <SkeletonBlock width="56px" height="56px" style={{ borderRadius: '50%', marginBottom: '1rem' }} />
+        <SkeletonBlock width="140px" height="16px" style={{ marginBottom: '6px' }} />
+        <SkeletonBlock width="200px" height="11px" style={{ marginBottom: '1.25rem' }} />
+        <SkeletonBlock width="100px" height="10px" />
+      </div>
+      <div style={{ background: '#1a1a1a', padding: '2rem' }}>
+        <SkeletonBlock width="100px" height="10px" style={{ marginBottom: '0.75rem', background: 'linear-gradient(90deg, #2a2a2a 25%, #333 50%, #2a2a2a 75%)', backgroundSize: '800px 100%', animation: 'zaiShimmer 1.6s infinite ease-in-out' }} />
+        <SkeletonBlock width="240px" height="28px" style={{ marginBottom: '1rem', background: 'linear-gradient(90deg, #2a2a2a 25%, #333 50%, #2a2a2a 75%)', backgroundSize: '800px 100%', animation: 'zaiShimmer 1.6s infinite ease-in-out' }} />
+        <SkeletonBlock width="300px" height="12px" style={{ background: 'linear-gradient(90deg, #2a2a2a 25%, #333 50%, #2a2a2a 75%)', backgroundSize: '800px 100%', animation: 'zaiShimmer 1.6s infinite ease-in-out' }} />
+      </div>
+    </div>
+
+    {/* Stats skeleton */}
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(2, 1fr)',
+        gap: '1px',
+        background: '#e0ddd6',
+        border: '1px solid #e0ddd6',
+        borderTop: 0,
+        marginBottom: '1px',
+      }}
+    >
+      {[0, 1].map((i) => (
+        <div key={i} style={{ background: '#fff', padding: '1.5rem 1.25rem' }}>
+          <SkeletonBlock width="50px" height="32px" style={{ marginBottom: '8px' }} />
+          <SkeletonBlock width="120px" height="11px" style={{ marginBottom: '4px' }} />
+          <SkeletonBlock width="180px" height="11px" />
+        </div>
+      ))}
+    </div>
+
+    {/* Activity + Quick actions skeleton */}
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: '1fr 1fr',
+        gap: '1px',
+        background: '#e0ddd6',
+        border: '1px solid #e0ddd6',
+        borderTop: 0,
+      }}
+    >
+      <div style={{ background: '#fff', padding: '1.75rem' }}>
+        <SkeletonBlock width="130px" height="11px" style={{ marginBottom: '1.25rem' }} />
+        {[0, 1, 2].map((i) => (
+          <div key={i} style={{ display: 'flex', gap: '10px', marginBottom: '0.75rem' }}>
+            <SkeletonBlock width="20px" height="20px" style={{ flexShrink: 0, borderRadius: '50%' }} />
+            <div style={{ flex: 1 }}>
+              <SkeletonBlock width="80%" height="12px" style={{ marginBottom: '4px' }} />
+              <SkeletonBlock width="60px" height="10px" />
+            </div>
+          </div>
+        ))}
+      </div>
+      <div style={{ background: '#f0ede6', padding: '1.75rem' }}>
+        <SkeletonBlock width="120px" height="11px" style={{ marginBottom: '1.25rem' }} />
+        {[0, 1].map((i) => (
+          <div key={i} style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '0.9rem' }}>
+            <SkeletonBlock width="32px" height="32px" style={{ flexShrink: 0 }} />
+            <div style={{ flex: 1 }}>
+              <SkeletonBlock width="70%" height="12px" style={{ marginBottom: '4px' }} />
+              <SkeletonBlock width="50%" height="11px" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+);
+
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const { user, isLoading } = useAppContext();
@@ -29,6 +182,11 @@ const Dashboard: React.FC = () => {
   const [activity, setActivity] = useState<Activity[]>([]);
   const [dashboardLoading, setDashboardLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    ensureShimmerStyle();
+    ensureSpinnerStyle();
+  }, []);
 
   useEffect(() => {
     if (!user && !isLoading) {
@@ -60,14 +218,22 @@ const Dashboard: React.FC = () => {
       const recentActivity: Activity[] = [];
 
       // Add recent products to activity
+      // Use last_token_uri_sync, block_number_minted, or current timestamp as date
       if (products.length > 0) {
-        products.slice(0, 3).forEach((product: any) => {
+        // Sort products by claimedAt descending before slicing
+        const sortedProducts = [...products].sort((a: any, b: any) => {
+          const dateA = a.claimedAt ? new Date(a.claimedAt).getTime() : 0;
+          const dateB = b.claimedAt ? new Date(b.claimedAt).getTime() : 0;
+          return dateB - dateA;
+        });
+
+        sortedProducts.slice(0, 3).forEach((product: any) => {
           recentActivity.push({
             id: product.id,
             type: 'product',
             title: `Product claimed: ${product.name}`,
-            date: product.claimedAt,
-            icon: '📦',
+            date: product.claimedAt || product.createdAt || new Date().toISOString(),
+            icon: '\uD83D\uDCE6',
           });
         });
       }
@@ -78,9 +244,9 @@ const Dashboard: React.FC = () => {
           recentActivity.push({
             id: event.id,
             type: 'event',
-            title: `Event registered: ${event.title}`,
+            title: `Event: ${event.title}`,
             date: event.date,
-            icon: '📅',
+            icon: '\uD83D\uDCC5',
           });
         });
       }
@@ -111,8 +277,13 @@ const Dashboard: React.FC = () => {
     }
   };
 
+  // Show full-page skeleton while auth is resolving OR dashboard data is loading
   if (isLoading || !user) {
     return <div style={{ padding: '2rem' }}>Loading...</div>;
+  }
+
+  if (dashboardLoading) {
+    return <DashboardSkeleton />;
   }
 
   const memberSince = user.createdAt ? new Date(user.createdAt).getFullYear() : new Date().getFullYear();
@@ -120,14 +291,32 @@ const Dashboard: React.FC = () => {
   const formatDate = (dateStr: string) => {
     try {
       const date = new Date(dateStr);
+      if (isNaN(date.getTime())) return dateStr;
       const now = new Date();
       const diffMs = now.getTime() - date.getTime();
-      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-      const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+      const isFuture = diffMs < 0;
+      const absDiffMs = Math.abs(diffMs);
+      const diffMinutes = Math.floor(absDiffMs / (1000 * 60));
+      const diffHours = Math.floor(absDiffMs / (1000 * 60 * 60));
+      const diffDays = Math.floor(absDiffMs / (1000 * 60 * 60 * 24));
 
-      if (diffHours < 1) return 'Just now';
+      if (isFuture) {
+        // Future dates (events)
+        if (diffDays === 0 && diffHours < 24) return 'Today';
+        if (diffDays === 1) return 'Tomorrow';
+        if (diffDays < 7) return `In ${diffDays} days`;
+        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      }
+
+      // Past dates
+      if (diffMinutes < 1) return 'Just now';
+      if (diffMinutes < 60) return `${diffMinutes} min${diffMinutes > 1 ? 's' : ''} ago`;
       if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
       if (diffDays < 30) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+      if (diffDays < 365) {
+        const months = Math.floor(diffDays / 30);
+        return `${months} month${months > 1 ? 's' : ''} ago`;
+      }
 
       return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     } catch {
@@ -351,9 +540,7 @@ const Dashboard: React.FC = () => {
             Recent activity
           </div>
 
-          {dashboardLoading ? (
-            <div style={{ color: '#6a6a6a', fontSize: '12px' }}>Loading activity...</div>
-          ) : activity.length === 0 ? (
+          {activity.length === 0 ? (
             <div style={{ color: '#6a6a6a', fontSize: '12px' }}>
               No recent activity. Start by claiming a product or registering for an event!
             </div>
@@ -453,8 +640,8 @@ const Dashboard: React.FC = () => {
             Quick actions
           </div>
           {[
-            { icon: '📦', title: 'Claim a product', sub: 'NFC or serial number', page: '/products' },
-            { icon: '📅', title: 'Browse events', sub: 'See upcoming events', page: '/events' },
+            { icon: '\uD83D\uDCE6', title: 'Claim a product', sub: 'NFC or serial number', page: '/products' },
+            { icon: '\uD83D\uDCC5', title: 'Browse events', sub: 'See upcoming events', page: '/events' },
           ].map((action, i) => (
             <div
               key={i}
