@@ -1,6 +1,67 @@
 import jwt from 'jsonwebtoken';
 import { getPool, initDB } from '../db.js';
-import { authenticator } from 'otplib';
+import { createHmac, randomBytes } from 'crypto';
+
+// ── Inline TOTP helpers (replaces otplib) ──
+function base32Encode(buffer) {
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  let result = '';
+  let bits = 0, value = 0;
+  for (const byte of buffer) {
+    value = (value << 8) | byte;
+    bits += 8;
+    while (bits >= 5) {
+      bits -= 5;
+      result += alphabet[(value >>> bits) & 31];
+    }
+  }
+  if (bits > 0) result += alphabet[(value << (5 - bits)) & 31];
+  return result;
+}
+
+function base32Decode(str) {
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  let bits = 0, value = 0;
+  const bytes = [];
+  for (const ch of str.toUpperCase().replace(/=+$/, '')) {
+    const idx = alphabet.indexOf(ch);
+    if (idx === -1) continue;
+    value = (value << 5) | idx;
+    bits += 5;
+    if (bits >= 8) {
+      bits -= 8;
+      bytes.push((value >>> bits) & 0xff);
+    }
+  }
+  return Buffer.from(bytes);
+}
+
+function generateSecret() {
+  return base32Encode(randomBytes(20));
+}
+
+function totpCode(secret, time) {
+  const counter = Math.floor((time || Date.now() / 1000) / 30);
+  const buf = Buffer.alloc(8);
+  buf.writeUInt32BE(0, 0);
+  buf.writeUInt32BE(counter, 4);
+  const hmac = createHmac('sha1', base32Decode(secret)).update(buf).digest();
+  const offset = hmac[hmac.length - 1] & 0x0f;
+  const code = ((hmac[offset] & 0x7f) << 24 | hmac[offset + 1] << 16 | hmac[offset + 2] << 8 | hmac[offset + 3]) % 1000000;
+  return code.toString().padStart(6, '0');
+}
+
+function verifyTOTP(token, secret) {
+  const now = Date.now() / 1000;
+  for (const offset of [-1, 0, 1]) {
+    if (totpCode(secret, now + offset * 30) === token) return true;
+  }
+  return false;
+}
+
+function totpKeyUri(account, issuer, secret) {
+  return `otpauth://totp/${encodeURIComponent(issuer)}:${encodeURIComponent(account)}?secret=${secret}&issuer=${encodeURIComponent(issuer)}&algorithm=SHA1&digits=6&period=30`;
+}
 
 const DEFAULT_SETTINGS = {
   notifications: {
@@ -342,18 +403,14 @@ export default async function handler(req, res) {
       const pool = getPool();
       await ensureSecurity(decoded.userId);
 
-      const secret = authenticator.generateSecret();
-      const otpauthUrl = authenticator.keyuri(
-        decoded.email || decoded.userId,
-        'ZAI',
-        secret
-      );
-
-      await pool.query(`
-        UPDATE user_security SET two_factor_secret = $2, two_factor_method = $3, updated_at = NOW() WHERE user_id = $1
-      `, [decoded.userId, secret, tfMethod]);
-
+      const secret = generateSecret();
+      const otpauthUrl = totpKeyUri(decoded.email || decoded.wallet || decoded.userId, 'ZAI', secret);
       const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(otpauthUrl)}`;
+
+      await pool.query(
+        `UPDATE user_security SET two_factor_secret = $2, two_factor_method = $3, updated_at = NOW() WHERE user_id = $1`,
+        [decoded.userId, secret, tfMethod]
+      );
 
       return res.json({ success: true, secret, qrCodeUrl, otpauthUrl });
     } catch (err) {
@@ -370,31 +427,30 @@ export default async function handler(req, res) {
       const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
       const { code } = body || {};
       if (!code || code.length !== 6) {
-        return res.status(400).json({ error: 'Please enter a 6-digit code' });
+        return res.status(400).json({ error: 'Invalid verification code' });
       }
       await initDB();
       const pool = getPool();
-
       const secResult = await pool.query(
-        `SELECT two_factor_secret FROM user_security WHERE user_id = $1`,
+        `SELECT two_factor_secret, two_factor_method FROM user_security WHERE user_id = $1`,
         [decoded.userId]
       );
-      if (!secResult.rows.length || !secResult.rows[0].two_factor_secret) {
-        return res.status(400).json({ error: '2FA setup not initiated. Please start setup first.' });
+      const secRow = secResult.rows[0];
+      if (!secRow?.two_factor_secret) {
+        return res.status(400).json({ error: 'No 2FA setup found. Please run setup first.' });
       }
 
-      const storedSecret = secResult.rows[0].two_factor_secret;
-      const isValid = authenticator.verify({ token: code, secret: storedSecret });
+      const isValid = verifyTOTP(code, secRow.two_factor_secret);
 
       if (!isValid) {
-        return res.status(400).json({ error: 'Invalid verification code. Please try again.' });
+        return res.status(400).json({ error: 'Invalid verification code' });
       }
 
-      await pool.query(`
-        UPDATE user_security SET two_factor_enabled = true, updated_at = NOW() WHERE user_id = $1
-      `, [decoded.userId]);
-
-      return res.json({ success: true, message: 'Two-factor authentication enabled successfully' });
+      await pool.query(
+        `UPDATE user_security SET two_factor_enabled = true, updated_at = NOW() WHERE user_id = $1`,
+        [decoded.userId]
+      );
+      return res.json({ success: true, message: 'Two-factor authentication enabled' });
     } catch (err) {
       console.error('2FA verify error:', err);
       return res.status(500).json({ success: false, error: err.message });
@@ -409,30 +465,29 @@ export default async function handler(req, res) {
       const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
       const { code } = body || {};
       if (!code || code.length !== 6) {
-        return res.status(400).json({ error: 'Please enter your current 6-digit code to disable 2FA' });
+        return res.status(400).json({ error: 'Invalid verification code' });
       }
       await initDB();
       const pool = getPool();
-
       const secResult = await pool.query(
         `SELECT two_factor_secret FROM user_security WHERE user_id = $1`,
         [decoded.userId]
       );
-      if (!secResult.rows.length || !secResult.rows[0].two_factor_secret) {
-        return res.status(400).json({ error: '2FA is not set up' });
+      const secRow = secResult.rows[0];
+      if (!secRow?.two_factor_secret) {
+        return res.status(400).json({ error: '2FA is not enabled' });
       }
 
-      const isValid = authenticator.verify({ token: code, secret: secResult.rows[0].two_factor_secret });
+      const isValid = verifyTOTP(code, secRow.two_factor_secret);
+
       if (!isValid) {
-        return res.status(400).json({ error: 'Invalid code. 2FA was not disabled.' });
+        return res.status(400).json({ error: 'Invalid verification code' });
       }
 
-      await pool.query(`
-        UPDATE user_security
-        SET two_factor_enabled = false, two_factor_secret = NULL, two_factor_method = 'none', updated_at = NOW()
-        WHERE user_id = $1
-      `, [decoded.userId]);
-
+      await pool.query(
+        `UPDATE user_security SET two_factor_enabled = false, two_factor_secret = NULL, two_factor_method = 'none', updated_at = NOW() WHERE user_id = $1`,
+        [decoded.userId]
+      );
       return res.json({ success: true, message: 'Two-factor authentication disabled' });
     } catch (err) {
       console.error('2FA disable error:', err);
@@ -447,16 +502,12 @@ export default async function handler(req, res) {
     try {
       await initDB();
       const pool = getPool();
-      await ensureSecurity(decoded.userId);
-
       const userAgent = req.headers['user-agent'] || 'Unknown';
-      const currentSessionId = `${decoded.userId}-${Buffer.from(userAgent).toString('base64').slice(0, 16)}`;
-
+      const sessionId = `${decoded.userId}-${Buffer.from(userAgent).toString('base64').slice(0, 16)}`;
       const result = await pool.query(
         `SELECT id, device, browser, ip_address, last_active, created_at FROM user_sessions WHERE user_id = $1 ORDER BY last_active DESC`,
         [decoded.userId]
       );
-
       return res.json({
         success: true,
         sessions: result.rows.map(s => ({
@@ -466,7 +517,7 @@ export default async function handler(req, res) {
           ipAddress: s.ip_address,
           lastActive: s.last_active,
           createdAt: s.created_at,
-          isCurrent: s.id === currentSessionId,
+          isCurrent: s.id === sessionId,
         })),
       });
     } catch (err) {
@@ -482,11 +533,15 @@ export default async function handler(req, res) {
     try {
       const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
       const { sessionId } = body || {};
-      if (!sessionId) return res.status(400).json({ error: 'Session ID required' });
+      if (!sessionId) return res.status(400).json({ error: 'sessionId required' });
       await initDB();
-      await getPool().query(`DELETE FROM user_sessions WHERE id = $1 AND user_id = $2`, [sessionId, decoded.userId]);
+      await getPool().query(
+        `DELETE FROM user_sessions WHERE id = $1 AND user_id = $2`,
+        [sessionId, decoded.userId]
+      );
       return res.json({ success: true, message: 'Session revoked' });
     } catch (err) {
+      console.error('Session revoke error:', err);
       return res.status(500).json({ success: false, error: err.message });
     }
   }
@@ -496,12 +551,16 @@ export default async function handler(req, res) {
     const decoded = authenticate(req);
     if (!decoded) return res.status(401).json({ error: 'No token provided' });
     try {
+      await initDB();
       const userAgent = req.headers['user-agent'] || 'Unknown';
       const currentSessionId = `${decoded.userId}-${Buffer.from(userAgent).toString('base64').slice(0, 16)}`;
-      await initDB();
-      await getPool().query(`DELETE FROM user_sessions WHERE user_id = $1 AND id != $2`, [decoded.userId, currentSessionId]);
+      await getPool().query(
+        `DELETE FROM user_sessions WHERE user_id = $1 AND id != $2`,
+        [decoded.userId, currentSessionId]
+      );
       return res.json({ success: true, message: 'All other sessions revoked' });
     } catch (err) {
+      console.error('Revoke all error:', err);
       return res.status(500).json({ success: false, error: err.message });
     }
   }
