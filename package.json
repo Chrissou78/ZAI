@@ -4,8 +4,9 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "jsonwebtoken": "^9.0.2",
     "axios": "^1.6.0",
+    "jsonwebtoken": "^9.0.2",
+    "otplib": "^13.4.0",
     "pg": "^8.13.0"
   },
   "scripts": {
