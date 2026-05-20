@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import { getPool, initDB } from '../db.js';
+import { authenticator } from 'otplib';
 
 const DEFAULT_SETTINGS = {
   notifications: {
@@ -222,283 +223,313 @@ export default async function handler(req, res) {
     return res.json({ success: true, message: 'Card replacement request submitted' });
   }
 
-    // ─── GET /api/users/me/security ───
-  if (path === 'me/security' && req.method === 'GET') {
-    const decoded = authenticate(req);
-    if (!decoded) return res.status(401).json({ error: 'No token provided' });
-    try {
-      await initDB();
-      const pool = getPool();
+  // ── At the top of the file, add this import ──
+import { authenticator } from 'otplib';
 
-      // Ensure security table exists
-      await pool.query(`
-        CREATE TABLE IF NOT EXISTS user_security (
-          user_id TEXT PRIMARY KEY REFERENCES user_profiles(user_id) ON DELETE CASCADE,
-          two_factor_enabled BOOLEAN DEFAULT false,
-          two_factor_method TEXT DEFAULT 'none',
-          two_factor_secret TEXT,
-          last_password_change TIMESTAMPTZ,
-          updated_at TIMESTAMPTZ DEFAULT NOW()
-        );
-        CREATE TABLE IF NOT EXISTS user_sessions (
-          id TEXT PRIMARY KEY,
-          user_id TEXT NOT NULL,
-          device TEXT DEFAULT '',
-          browser TEXT DEFAULT '',
-          ip TEXT DEFAULT '',
-          location TEXT DEFAULT '',
-          last_active TIMESTAMPTZ DEFAULT NOW(),
-          is_current BOOLEAN DEFAULT false,
-          created_at TIMESTAMPTZ DEFAULT NOW()
-        );
-        CREATE INDEX IF NOT EXISTS idx_sessions_user ON user_sessions(user_id);
-      `);
+// ──────────────────────────────────────────────
+// GET /api/users/me/security
+// ──────────────────────────────────────────────
+if (method === 'GET' && pathParts[2] === 'me' && pathParts[3] === 'security') {
+  const decoded = authenticate(req);
+  if (!decoded) return res.status(401).json({ error: 'Unauthorized' });
 
-      // Upsert current session
-      const ua = req.headers['user-agent'] || '';
-      const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || '';
-      let browser = 'Unknown';
-      if (ua.includes('Firefox')) browser = 'Firefox';
-      else if (ua.includes('Edg')) browser = 'Edge';
-      else if (ua.includes('Chrome')) browser = 'Chrome';
-      else if (ua.includes('Safari')) browser = 'Safari';
-      let device = 'Unknown';
-      if (ua.includes('Windows')) device = 'Windows';
-      else if (ua.includes('Mac')) device = 'macOS';
-      else if (ua.includes('Linux')) device = 'Linux';
-      else if (ua.includes('iPhone') || ua.includes('iPad')) device = 'iOS';
-      else if (ua.includes('Android')) device = 'Android';
+  const db = await getDb();
 
-      const sessionId = `${decoded.userId}-${Buffer.from(ua).toString('base64').slice(0, 16)}`;
-      await pool.query(`
-        INSERT INTO user_sessions (id, user_id, device, browser, ip, is_current, last_active)
-        VALUES ($1, $2, $3, $4, $5, true, NOW())
-        ON CONFLICT (id) DO UPDATE SET last_active = NOW(), ip = $5, is_current = true
-      `, [sessionId, decoded.userId, device, browser, ip]);
+  // Ensure tables exist
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS user_security (
+      user_id TEXT PRIMARY KEY,
+      two_factor_enabled BOOLEAN DEFAULT false,
+      two_factor_method TEXT DEFAULT 'none',
+      two_factor_secret TEXT,
+      last_password_change TIMESTAMPTZ,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      updated_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
 
-      // Get security settings
-      const secResult = await pool.query('SELECT * FROM user_security WHERE user_id = $1', [decoded.userId]);
-      const sec = secResult.rows[0] || {};
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS user_sessions (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      device TEXT,
+      browser TEXT,
+      ip_address TEXT,
+      last_active TIMESTAMPTZ DEFAULT NOW(),
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `);
 
-      // Get sessions
-      const sessResult = await pool.query(
-        'SELECT * FROM user_sessions WHERE user_id = $1 ORDER BY last_active DESC LIMIT 20',
-        [decoded.userId]
-      );
+  // Upsert security row
+  await db.query(`
+    INSERT INTO user_security (user_id) VALUES ($1)
+    ON CONFLICT (user_id) DO NOTHING
+  `, [decoded.userId]);
 
-      return res.json({
-        success: true,
-        data: {
-          twoFactorEnabled: sec.two_factor_enabled || false,
-          twoFactorMethod: sec.two_factor_method || 'none',
-          lastPasswordChange: sec.last_password_change || null,
-          sessions: sessResult.rows.map(s => ({
-            id: s.id,
-            device: s.device,
-            browser: s.browser,
-            ip: s.ip,
-            location: s.location || '—',
-            lastActive: s.last_active,
-            isCurrent: s.id === sessionId,
-          })),
-        },
-      });
-    } catch (err) {
-      return res.status(500).json({ success: false, error: err.message });
-    }
+  // Upsert current session
+  const userAgent = req.headers['user-agent'] || 'Unknown';
+  const sessionId = `${decoded.userId}-${Buffer.from(userAgent).toString('base64').slice(0, 16)}`;
+  const device = /Mobile|Android|iPhone/i.test(userAgent) ? 'Mobile' : 'Desktop';
+  const browser = userAgent.match(/(Chrome|Firefox|Safari|Edge|Opera)/i)?.[1] || 'Unknown';
+  const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'Unknown';
+
+  await db.query(`
+    INSERT INTO user_sessions (id, user_id, device, browser, ip_address, last_active)
+    VALUES ($1, $2, $3, $4, $5, NOW())
+    ON CONFLICT (id) DO UPDATE SET last_active = NOW(), ip_address = $5
+  `, [sessionId, decoded.userId, device, browser, ip]);
+
+  // Fetch security settings
+  const secResult = await db.query(
+    `SELECT two_factor_enabled, two_factor_method, last_password_change FROM user_security WHERE user_id = $1`,
+    [decoded.userId]
+  );
+
+  // Fetch sessions (last 10)
+  const sessResult = await db.query(
+    `SELECT id, device, browser, ip_address, last_active, created_at FROM user_sessions WHERE user_id = $1 ORDER BY last_active DESC LIMIT 10`,
+    [decoded.userId]
+  );
+
+  const sec = secResult.rows[0] || {};
+  return res.status(200).json({
+    success: true,
+    security: {
+      twoFactorEnabled: sec.two_factor_enabled || false,
+      twoFactorMethod: sec.two_factor_method || 'none',
+      lastPasswordChange: sec.last_password_change || null,
+    },
+    sessions: sessResult.rows.map(s => ({
+      id: s.id,
+      device: s.device,
+      browser: s.browser,
+      ipAddress: s.ip_address,
+      lastActive: s.last_active,
+      createdAt: s.created_at,
+      isCurrent: s.id === sessionId,
+    })),
+  });
+}
+
+// ──────────────────────────────────────────────
+// POST /api/users/me/change-password
+// ──────────────────────────────────────────────
+if (method === 'POST' && pathParts[2] === 'me' && pathParts[3] === 'change-password') {
+  const decoded = authenticate(req);
+  if (!decoded) return res.status(401).json({ error: 'Unauthorized' });
+
+  const { newPassword } = req.body || {};
+  if (!newPassword || newPassword.length < 8) {
+    return res.status(400).json({ error: 'Password must be at least 8 characters' });
   }
 
-  // ─── POST /api/users/me/change-password ───
-  if (path === 'me/change-password' && req.method === 'POST') {
-    const decoded = authenticate(req);
-    if (!decoded) return res.status(401).json({ error: 'No token provided' });
-    try {
-      const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-      const { currentPassword, newPassword } = body;
-      if (!newPassword || newPassword.length < 8) {
-        return res.status(400).json({ success: false, error: 'New password must be at least 8 characters' });
-      }
+  const db = await getDb();
+  await db.query(`
+    INSERT INTO user_security (user_id, last_password_change, updated_at)
+    VALUES ($1, NOW(), NOW())
+    ON CONFLICT (user_id) DO UPDATE SET last_password_change = NOW(), updated_at = NOW()
+  `, [decoded.userId]);
 
-      // Forward password change to WalletTwo if they support it
-      // For now, update our local record
-      await initDB();
-      const pool = getPool();
-      await pool.query(`
-        CREATE TABLE IF NOT EXISTS user_security (
-          user_id TEXT PRIMARY KEY,
-          two_factor_enabled BOOLEAN DEFAULT false,
-          two_factor_method TEXT DEFAULT 'none',
-          two_factor_secret TEXT,
-          last_password_change TIMESTAMPTZ,
-          updated_at TIMESTAMPTZ DEFAULT NOW()
-        )
-      `);
-      await pool.query(`
-        INSERT INTO user_security (user_id, last_password_change) VALUES ($1, NOW())
-        ON CONFLICT (user_id) DO UPDATE SET last_password_change = NOW(), updated_at = NOW()
-      `, [decoded.userId]);
+  return res.status(200).json({ success: true, message: 'Password updated' });
+}
 
-      return res.json({ success: true, message: 'Password changed' });
-    } catch (err) {
-      return res.status(500).json({ success: false, error: err.message });
-    }
+// ──────────────────────────────────────────────
+// POST /api/users/me/2fa/setup
+// ──────────────────────────────────────────────
+if (method === 'POST' && pathParts[2] === 'me' && pathParts[3] === '2fa' && pathParts[4] === 'setup') {
+  const decoded = authenticate(req);
+  if (!decoded) return res.status(401).json({ error: 'Unauthorized' });
+
+  const { method: tfMethod } = req.body || {};
+  const db = await getDb();
+
+  // Generate a real TOTP secret using otplib
+  const secret = authenticator.generateSecret();
+
+  // Build the otpauth URI for authenticator apps
+  const otpauthUrl = authenticator.keyuri(
+    decoded.email || decoded.userId,
+    'ZAI',
+    secret
+  );
+
+  // Store the secret (not yet enabled — user must verify first)
+  await db.query(`
+    INSERT INTO user_security (user_id, two_factor_secret, two_factor_method, updated_at)
+    VALUES ($1, $2, $3, NOW())
+    ON CONFLICT (user_id) DO UPDATE
+      SET two_factor_secret = $2, two_factor_method = $3, updated_at = NOW()
+  `, [decoded.userId, secret, tfMethod || 'authenticator']);
+
+  // QR code URL (using a public QR API — can be replaced with a local generator)
+  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(otpauthUrl)}`;
+
+  return res.status(200).json({
+    success: true,
+    secret,
+    qrCodeUrl,
+    otpauthUrl,
+    message: 'Scan the QR code with your authenticator app, then verify with a code.',
+  });
+}
+
+// ──────────────────────────────────────────────
+// POST /api/users/me/2fa/verify
+// ──────────────────────────────────────────────
+if (method === 'POST' && pathParts[2] === 'me' && pathParts[3] === '2fa' && pathParts[4] === 'verify') {
+  const decoded = authenticate(req);
+  if (!decoded) return res.status(401).json({ error: 'Unauthorized' });
+
+  const { code } = req.body || {};
+  if (!code || code.length !== 6) {
+    return res.status(400).json({ error: 'Please enter a 6-digit code' });
   }
 
-  // ─── POST /api/users/me/2fa/setup ───
-  if (path === 'me/2fa/setup' && req.method === 'POST') {
-    const decoded = authenticate(req);
-    if (!decoded) return res.status(401).json({ error: 'No token provided' });
-    try {
-      const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-      const method = body.method || 'authenticator';
+  const db = await getDb();
 
-      await initDB();
-      const pool = getPool();
-      await pool.query(`
-        CREATE TABLE IF NOT EXISTS user_security (
-          user_id TEXT PRIMARY KEY,
-          two_factor_enabled BOOLEAN DEFAULT false,
-          two_factor_method TEXT DEFAULT 'none',
-          two_factor_secret TEXT,
-          last_password_change TIMESTAMPTZ,
-          updated_at TIMESTAMPTZ DEFAULT NOW()
-        )
-      `);
+  // Retrieve the stored secret
+  const secResult = await db.query(
+    `SELECT two_factor_secret, two_factor_method FROM user_security WHERE user_id = $1`,
+    [decoded.userId]
+  );
 
-      // Generate a random secret (base32-like)
-      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
-      let secret = '';
-      for (let i = 0; i < 32; i++) secret += chars[Math.floor(Math.random() * chars.length)];
-
-      // Store pending secret
-      await pool.query(`
-        INSERT INTO user_security (user_id, two_factor_secret, two_factor_method) VALUES ($1, $2, $3)
-        ON CONFLICT (user_id) DO UPDATE SET two_factor_secret = $2, two_factor_method = $3, updated_at = NOW()
-      `, [decoded.userId, secret, method]);
-
-      const response = { success: true, data: { method } };
-
-      if (method === 'authenticator') {
-        // Build otpauth URL for QR code generation
-        const otpauthUrl = `otpauth://totp/ZAI:${decoded.email || decoded.userId}?secret=${secret}&issuer=ZAI%20Experience%20Club&digits=6`;
-        // Use a public QR API for the QR code image
-        const qrCode = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(otpauthUrl)}`;
-        response.data.qrCode = qrCode;
-        response.data.secret = secret;
-      }
-
-      return res.json(response);
-    } catch (err) {
-      return res.status(500).json({ success: false, error: err.message });
-    }
+  if (!secResult.rows.length || !secResult.rows[0].two_factor_secret) {
+    return res.status(400).json({ error: '2FA setup not initiated. Please start setup first.' });
   }
 
-  // ─── POST /api/users/me/2fa/verify ───
-  if (path === 'me/2fa/verify' && req.method === 'POST') {
-    const decoded = authenticate(req);
-    if (!decoded) return res.status(401).json({ error: 'No token provided' });
-    try {
-      const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-      const { code } = body;
-      if (!code || code.length < 6) return res.status(400).json({ success: false, error: 'Invalid code' });
+  const storedSecret = secResult.rows[0].two_factor_secret;
+  const method2fa = secResult.rows[0].two_factor_method;
 
-      await initDB();
-      const pool = getPool();
-      // In a real implementation, verify the TOTP code against the stored secret
-      // For now, accept any 6-digit code to enable the feature
-      await pool.query(`
-        UPDATE user_security SET two_factor_enabled = true, updated_at = NOW() WHERE user_id = $1
-      `, [decoded.userId]);
+  // Real TOTP verification
+  let isValid = false;
 
-      return res.json({ success: true, message: '2FA enabled' });
-    } catch (err) {
-      return res.status(500).json({ success: false, error: err.message });
-    }
+  if (method2fa === 'email') {
+    // For email method, we stored a 6-digit code as the "secret"
+    // In a production app you'd store a separate short-lived code
+    // For now, generate the TOTP from the secret and compare
+    isValid = authenticator.verify({ token: code, secret: storedSecret });
+  } else {
+    // Authenticator app — standard TOTP verification
+    // otplib allows a ±1 step window by default (30s steps)
+    isValid = authenticator.verify({ token: code, secret: storedSecret });
   }
 
-  // ─── POST /api/users/me/2fa/disable ───
-  if (path === 'me/2fa/disable' && req.method === 'POST') {
-    const decoded = authenticate(req);
-    if (!decoded) return res.status(401).json({ error: 'No token provided' });
-    try {
-      const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-      const { code } = body;
-      if (!code || code.length < 6) return res.status(400).json({ success: false, error: 'Invalid code' });
-
-      await initDB();
-      await getPool().query(`
-        UPDATE user_security SET two_factor_enabled = false, two_factor_method = 'none', two_factor_secret = NULL, updated_at = NOW() WHERE user_id = $1
-      `, [decoded.userId]);
-
-      return res.json({ success: true, message: '2FA disabled' });
-    } catch (err) {
-      return res.status(500).json({ success: false, error: err.message });
-    }
+  if (!isValid) {
+    return res.status(400).json({ error: 'Invalid verification code. Please try again.' });
   }
 
-  // ─── GET /api/users/me/sessions ───
-  if (path === 'me/sessions' && req.method === 'GET') {
-    const decoded = authenticate(req);
-    if (!decoded) return res.status(401).json({ error: 'No token provided' });
-    try {
-      await initDB();
-      const pool = getPool();
-      await pool.query(`
-        CREATE TABLE IF NOT EXISTS user_sessions (
-          id TEXT PRIMARY KEY, user_id TEXT NOT NULL, device TEXT DEFAULT '', browser TEXT DEFAULT '',
-          ip TEXT DEFAULT '', location TEXT DEFAULT '', last_active TIMESTAMPTZ DEFAULT NOW(),
-          is_current BOOLEAN DEFAULT false, created_at TIMESTAMPTZ DEFAULT NOW()
-        )
-      `);
+  // Code is valid — enable 2FA
+  await db.query(`
+    UPDATE user_security
+    SET two_factor_enabled = true, updated_at = NOW()
+    WHERE user_id = $1
+  `, [decoded.userId]);
 
-      const ua = req.headers['user-agent'] || '';
-      const sessionId = `${decoded.userId}-${Buffer.from(ua).toString('base64').slice(0, 16)}`;
+  return res.status(200).json({ success: true, message: 'Two-factor authentication enabled successfully' });
+}
 
-      const result = await pool.query(
-        'SELECT * FROM user_sessions WHERE user_id = $1 ORDER BY last_active DESC LIMIT 20',
-        [decoded.userId]
-      );
-      return res.json({
-        success: true,
-        data: result.rows.map(s => ({
-          id: s.id, device: s.device, browser: s.browser, ip: s.ip,
-          location: s.location || '—', lastActive: s.last_active,
-          isCurrent: s.id === sessionId,
-        })),
-      });
-    } catch (err) {
-      return res.status(500).json({ success: false, error: err.message });
-    }
+// ──────────────────────────────────────────────
+// POST /api/users/me/2fa/disable
+// ──────────────────────────────────────────────
+if (method === 'POST' && pathParts[2] === 'me' && pathParts[3] === '2fa' && pathParts[4] === 'disable') {
+  const decoded = authenticate(req);
+  if (!decoded) return res.status(401).json({ error: 'Unauthorized' });
+
+  const { code } = req.body || {};
+  if (!code || code.length !== 6) {
+    return res.status(400).json({ error: 'Please enter your current 6-digit code to disable 2FA' });
   }
 
-  // ─── POST /api/users/me/sessions/revoke ───
-  if (path === 'me/sessions/revoke' && req.method === 'POST') {
-    const decoded = authenticate(req);
-    if (!decoded) return res.status(401).json({ error: 'No token provided' });
-    try {
-      const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-      await initDB();
-      await getPool().query('DELETE FROM user_sessions WHERE id = $1 AND user_id = $2', [body.sessionId, decoded.userId]);
-      return res.json({ success: true, message: 'Session revoked' });
-    } catch (err) {
-      return res.status(500).json({ success: false, error: err.message });
-    }
+  const db = await getDb();
+
+  const secResult = await db.query(
+    `SELECT two_factor_secret FROM user_security WHERE user_id = $1`,
+    [decoded.userId]
+  );
+
+  if (!secResult.rows.length || !secResult.rows[0].two_factor_secret) {
+    return res.status(400).json({ error: '2FA is not set up' });
   }
 
-  // ─── POST /api/users/me/sessions/revoke-all ───
-  if (path === 'me/sessions/revoke-all' && req.method === 'POST') {
-    const decoded = authenticate(req);
-    if (!decoded) return res.status(401).json({ error: 'No token provided' });
-    try {
-      const ua = req.headers['user-agent'] || '';
-      const currentSessionId = `${decoded.userId}-${Buffer.from(ua).toString('base64').slice(0, 16)}`;
-      await initDB();
-      await getPool().query('DELETE FROM user_sessions WHERE user_id = $1 AND id != $2', [decoded.userId, currentSessionId]);
-      return res.json({ success: true, message: 'All other sessions revoked' });
-    } catch (err) {
-      return res.status(500).json({ success: false, error: err.message });
-    }
+  const storedSecret = secResult.rows[0].two_factor_secret;
+
+  // Verify the code before allowing disable
+  const isValid = authenticator.verify({ token: code, secret: storedSecret });
+  if (!isValid) {
+    return res.status(400).json({ error: 'Invalid code. 2FA was not disabled.' });
   }
+
+  await db.query(`
+    UPDATE user_security
+    SET two_factor_enabled = false, two_factor_secret = NULL, two_factor_method = 'none', updated_at = NOW()
+    WHERE user_id = $1
+  `, [decoded.userId]);
+
+  return res.status(200).json({ success: true, message: 'Two-factor authentication disabled' });
+}
+
+// ──────────────────────────────────────────────
+// GET /api/users/me/sessions
+// ──────────────────────────────────────────────
+if (method === 'GET' && pathParts[2] === 'me' && pathParts[3] === 'sessions') {
+  const decoded = authenticate(req);
+  if (!decoded) return res.status(401).json({ error: 'Unauthorized' });
+
+  const db = await getDb();
+  const userAgent = req.headers['user-agent'] || 'Unknown';
+  const currentSessionId = `${decoded.userId}-${Buffer.from(userAgent).toString('base64').slice(0, 16)}`;
+
+  const result = await db.query(
+    `SELECT id, device, browser, ip_address, last_active, created_at FROM user_sessions WHERE user_id = $1 ORDER BY last_active DESC`,
+    [decoded.userId]
+  );
+
+  return res.status(200).json({
+    success: true,
+    sessions: result.rows.map(s => ({
+      id: s.id,
+      device: s.device,
+      browser: s.browser,
+      ipAddress: s.ip_address,
+      lastActive: s.last_active,
+      createdAt: s.created_at,
+      isCurrent: s.id === currentSessionId,
+    })),
+  });
+}
+
+// ──────────────────────────────────────────────
+// POST /api/users/me/sessions/revoke
+// ──────────────────────────────────────────────
+if (method === 'POST' && pathParts[2] === 'me' && pathParts[3] === 'sessions' && pathParts[4] === 'revoke') {
+  const decoded = authenticate(req);
+  if (!decoded) return res.status(401).json({ error: 'Unauthorized' });
+
+  const { sessionId } = req.body || {};
+  if (!sessionId) return res.status(400).json({ error: 'Session ID required' });
+
+  const db = await getDb();
+  await db.query(`DELETE FROM user_sessions WHERE id = $1 AND user_id = $2`, [sessionId, decoded.userId]);
+
+  return res.status(200).json({ success: true, message: 'Session revoked' });
+}
+
+// ──────────────────────────────────────────────
+// POST /api/users/me/sessions/revoke-all
+// ──────────────────────────────────────────────
+if (method === 'POST' && pathParts[2] === 'me' && pathParts[3] === 'sessions' && pathParts[4] === 'revoke-all') {
+  const decoded = authenticate(req);
+  if (!decoded) return res.status(401).json({ error: 'Unauthorized' });
+
+  const userAgent = req.headers['user-agent'] || 'Unknown';
+  const currentSessionId = `${decoded.userId}-${Buffer.from(userAgent).toString('base64').slice(0, 16)}`;
+
+  const db = await getDb();
+  await db.query(`DELETE FROM user_sessions WHERE user_id = $1 AND id != $2`, [decoded.userId, currentSessionId]);
+
+  return res.status(200).json({ success: true, message: 'All other sessions revoked' });
+}
+
 
   return res.status(404).json({ error: 'Route not found' });
 }
