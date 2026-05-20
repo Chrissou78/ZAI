@@ -150,6 +150,13 @@ async function ensureSecurity(userId) {
       created_at TIMESTAMPTZ DEFAULT NOW()
     )
   `);
+  // Migrate: add ip_address column if table exists but column doesn't
+  await pool.query(`
+    DO $$ BEGIN
+      ALTER TABLE user_sessions ADD COLUMN ip_address TEXT;
+    EXCEPTION WHEN duplicate_column THEN NULL;
+    END $$
+  `);
   await pool.query(
     `INSERT INTO user_security (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING`,
     [userId]
