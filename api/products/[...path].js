@@ -120,7 +120,7 @@ function formatPrice(raw) {
     : num.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-function parseNftToProduct(nft) {
+function parseNftToProduct(nft, currencyMap) {
   let meta = {};
 
   if (nft.metadata) {
@@ -157,7 +157,7 @@ function parseNftToProduct(nft) {
     image: rawImage,
     price: formatPrice(rawPrice),
     priceRaw: rawPrice,
-    currency: resolveCurrency(rawCurrency),
+    currency: resolveCurrency(rawCurrency, currencyMap || CURRENCY_MAP),
     materials: rawMaterials,
     collection: rawCollection,
     hasInsurance: rawInsurance === '1' || rawInsurance === 'true',
@@ -177,7 +177,7 @@ function parseNftToProduct(nft) {
       Object.entries(rwaData).map(([k, v]) => {
         const val = v?.value || v;
         // Resolve currency UUID in the flattened metadata too
-        if (k === 'currency') return [k, resolveCurrency(val)];
+        if (k === 'currency') return [k, resolveCurrency(val, currencyMap || CURRENCY_MAP)];
         return [k, val];
       })
     ),
@@ -263,6 +263,7 @@ export default async function handler(req, res) {
       console.log('[PRODUCTS] Blockchain returned', rawNfts.length, 'NFTs, status:', nftStatus);
 
       // ── Step 2: Parse each NFT ──
+      const currencyMap = await getCurrencyMap();
       const products = [];
 
       for (const nft of rawNfts) {
@@ -275,7 +276,7 @@ export default async function handler(req, res) {
           }
         }
 
-        const product = parseNftToProduct(nft);
+        const product = parseNftToProduct(nft, currencyMap);
         products.push(product);
       }
 
