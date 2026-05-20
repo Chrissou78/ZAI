@@ -38,6 +38,31 @@ async function getCurrencyMap() {
   return { 'b60f590b-2855-4b3c-a78a-8cac203e4768': 'CHF' };
 }
 
+// Cache ZAI contract addresses (1 hour)
+let zaiContractCache = null;
+let zaiContractCacheTime = 0;
+
+async function getZaiContracts() {
+  if (zaiContractCache && Date.now() - zaiContractCacheTime < 3600000) return zaiContractCache;
+  try {
+    const { status, data } = await apiFetch(RWA_BASE, '/rwa?limit=200');
+    if (status === 200 && data) {
+      const rwas = Array.isArray(data) ? data : (data.data || data.result || []);
+      const contracts = new Set();
+      for (const rwa of rwas) {
+        if (rwa.contractAddress) contracts.add(rwa.contractAddress.toLowerCase());
+      }
+      zaiContractCache = contracts;
+      zaiContractCacheTime = Date.now();
+      console.log('[PRODUCTS] ZAI contracts loaded:', contracts.size);
+      return contracts;
+    }
+  } catch (err) {
+    console.error('[PRODUCTS] RWA contract fetch failed:', err.message);
+  }
+  return new Set();
+}
+
 const API_KEY = () => process.env.WALLETTWO_API_KEY;
 const BLOCKCHAIN_BASE = 'https://api.wallettwo.com/blockchain/v1/api';
 const RWA_BASE = 'https://rwa.onchainlabs.ch/v1/api';
@@ -220,14 +245,16 @@ async function fetchSasMakes() {
 export default async function handler(req, res) {
   const fullPath = req.url.split('?')[0].replace(/^\/api\/products\/?/, '').replace(/\/$/, '');
 
-  // ═══════════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════════════
   // GET /api/products/user/:userId
   //
   // 1. Fetch user's NFTs from blockchain API by wallet
-  // 2. Parse metadata (JSON string with data.{key}.value)
-  // 3. For NFTs with null metadata, fetch from token_uri
-  // 4. Enrich with insurance from DB
-  // ═══════════════════════════════════════════════════════════
+  // 2. Get known ZAI contract addresses from RWA API
+  // 3. Filter to ZAI NFTs only
+  // 4. Parse metadata (JSON string with data.{key}.value)
+  // 5. For NFTs with null metadata, fetch from token_uri
+  // 6. Enrich with insurance from DB
+  // ══════════════════════════════════════════════════════════════
   const userMatch = fullPath.match(/^user\/(.+)$/);
   if (userMatch && req.method === 'GET') {
     const decoded = authenticate(req);
@@ -262,11 +289,20 @@ export default async function handler(req, res) {
       const rawNfts = (nftStatus === 200 && nftData?.result) ? nftData.result : [];
       console.log('[PRODUCTS] Blockchain returned', rawNfts.length, 'NFTs, status:', nftStatus);
 
-      // ── Step 2: Parse each NFT ──
+      // ── Step 1b: Get known ZAI contract addresses ──
+      const zaiContracts = await getZaiContracts();
+
+      // ── Step 2: Filter to ZAI NFTs only, then parse ──
       const currencyMap = await getCurrencyMap();
       const products = [];
 
       for (const nft of rawNfts) {
+        // Skip non-ZAI NFTs if we have a contract list
+        if (zaiContracts.size > 0) {
+          const addr = (nft.token_address || '').toLowerCase();
+          if (!zaiContracts.has(addr)) continue;
+        }
+
         // If metadata is null, try fetching from token_uri
         if (!nft.metadata && nft.token_uri) {
           console.log('[PRODUCTS] Fetching metadata from token_uri:', nft.token_uri);
@@ -280,7 +316,7 @@ export default async function handler(req, res) {
         products.push(product);
       }
 
-      console.log('[PRODUCTS] Products parsed:', products.length);
+      console.log('[PRODUCTS] Products parsed:', products.length, '(filtered from', rawNfts.length, 'NFTs)');
 
       // ── Step 3: Insurance from DB ──
       let insuranceMap = {};
@@ -325,6 +361,7 @@ export default async function handler(req, res) {
           wallet,
           blockchainStatus: nftStatus,
           rawNftCount: rawNfts.length,
+          zaiContractsLoaded: zaiContracts.size,
           productsFound: enriched.length,
           dbConnected: dbReady,
         },
@@ -338,9 +375,9 @@ export default async function handler(req, res) {
     }
   }
 
-  // ═══════════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════════════
   // POST /api/products/:productId/activate-insurance
-  // ═══════════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════════════
   const insuranceMatch = fullPath.match(/^([^/]+)\/activate-insurance$/);
   if (insuranceMatch && req.method === 'POST') {
     const decoded = authenticate(req);
@@ -391,125 +428,133 @@ export default async function handler(req, res) {
       }
 
       const device = {
-        type: parseInt(body.deviceType) || 1,
-        make: { ID: parseInt(body.makeId) || 1, name: body.makeName || 'zai' },
+        deviceType: body.deviceType || 1,
+        makeName: body.makeName || 'zai',
+        makeId: body.makeId || 1,
         model: body.model || '',
         serial: body.serial || '',
-        itemnumber: body.itemnumber || '',
         price: parseFloat(body.price) || 0,
-        length: parseInt(body.length) || 0,
+        length: body.length || '',
         purchasingdate: body.purchasingdate || new Date().toISOString().split('T')[0],
       };
 
-      const missingDevice = [];
-      if (!device.model) missingDevice.push('model');
-      if (!device.serial) missingDevice.push('serial');
-      if (!device.price) missingDevice.push('price');
-      if (missingDevice.length > 0) {
-        return res.status(400).json({ success: false, error: 'Missing device fields', missingFields: missingDevice });
-      }
+      const sasProductIds = (process.env.SAS_PRODUCT_IDS || '').split(',').map(Number).filter(Boolean);
+      const sasPartnerId = parseInt(process.env.SAS_PARTNER_ID) || 0;
 
-      const sasProductIds = (process.env.SAS_PRODUCT_IDS || '9').split(',').map(id => ({ ID: parseInt(id.trim()) }));
       const sasPayload = {
-        partner: {
-          ID: parseInt(process.env.SAS_PARTNER_ID) || 1,
-          reference: `${customer.firstname} ${customer.lastname}`,
-          storename: 'ZAI Experience Club', storelocation: 'Online',
+        customer,
+        device: {
+          ...device,
+          productIds: sasProductIds,
+          partnerId: sasPartnerId,
         },
-        customer, device, products: sasProductIds,
       };
 
+      // Upsert registration
       const regId = existing.rows[0]?.id || genId();
-
       if (existing.rows[0]) {
         await pool.query(
-          `UPDATE insurance_registrations SET sas_status='pending', customer_data=$2, device_data=$3, products_data=$4, error_detail=NULL, updated_at=NOW() WHERE id=$1`,
-          [regId, JSON.stringify(sasPayload.customer), JSON.stringify(sasPayload.device), JSON.stringify(sasPayload.products)]
+          `UPDATE insurance_registrations SET sas_status='pending', sas_payload=$2, updated_at=NOW() WHERE id=$1`,
+          [regId, JSON.stringify(sasPayload)]
         );
       } else {
         await pool.query(
-          `INSERT INTO insurance_registrations (id, user_id, product_id, sas_status, customer_data, device_data, products_data) VALUES ($1,$2,$3,'pending',$4,$5,$6)`,
-          [regId, decoded.userId, productId, JSON.stringify(sasPayload.customer), JSON.stringify(sasPayload.device), JSON.stringify(sasPayload.products)]
+          `INSERT INTO insurance_registrations (id, user_id, product_id, sas_status, sas_payload, created_at, updated_at)
+           VALUES ($1, $2, $3, 'pending', $4, NOW(), NOW())`,
+          [regId, decoded.userId, productId, JSON.stringify(sasPayload)]
         );
       }
 
+      // Call SAS
       try {
         const sasResult = await callSasApi(sasPayload);
+        const certId = sasResult.certificateId || sasResult.certificate_id || null;
+        const txId = sasResult.transactionId || sasResult.transaction_id || null;
+
         await pool.query(
-          `UPDATE insurance_registrations SET sas_status='success', sas_transaction_id=$2, sas_certificate_id=$3, updated_at=NOW() WHERE id=$1`,
-          [regId, sasResult.transactionid, sasResult.certificateid]
+          `UPDATE insurance_registrations SET sas_status='success', sas_certificate_id=$2, sas_transaction_id=$3, sas_response=$4, updated_at=NOW() WHERE id=$1`,
+          [regId, certId, txId, JSON.stringify(sasResult)]
         );
+
         return res.json({
-          success: true, message: 'Insurance activated',
-          data: { transactionId: sasResult.transactionid, certificateId: sasResult.certificateid, status: 'success' },
+          success: true,
+          data: { certificateId: certId, transactionId: txId },
+          message: 'Insurance activated successfully',
         });
       } catch (sasErr) {
-        await pool.query(`UPDATE insurance_registrations SET sas_status='error', error_detail=$2, updated_at=NOW() WHERE id=$1`, [regId, sasErr.message]);
-        return res.status(502).json({ success: false, error: 'Insurance provider error', detail: sasErr.message });
+        await pool.query(
+          `UPDATE insurance_registrations SET sas_status='error', sas_response=$2, updated_at=NOW() WHERE id=$1`,
+          [regId, JSON.stringify({ error: sasErr.message })]
+        );
+        return res.status(502).json({ success: false, error: sasErr.message, detail: 'SAS API call failed' });
       }
     } catch (err) {
-      console.error('[INSURANCE] Error:', err);
+      console.error('[PRODUCTS] Insurance activation error:', err);
       return res.status(500).json({ success: false, error: err.message });
     }
   }
 
-  // ═══════════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════════════
   // GET /api/products/:productId/insurance
-  // ═══════════════════════════════════════════════════════════
-  const insuranceStatusMatch = fullPath.match(/^([^/]+)\/insurance$/);
-  if (insuranceStatusMatch && req.method === 'GET') {
+  // ══════════════════════════════════════════════════════════════
+  const insStatusMatch = fullPath.match(/^([^/]+)\/insurance$/);
+  if (insStatusMatch && req.method === 'GET') {
     const decoded = authenticate(req);
     if (!decoded) return res.status(401).json({ error: 'No token provided' });
     try {
       const db = await getDB();
-      if (!db) return res.json({ success: true, data: { active: false, status: null } });
+      if (!db) return res.status(503).json({ success: false, error: 'Database unavailable' });
       await db.initDB();
-      const result = await db.getPool().query(
-        'SELECT * FROM insurance_registrations WHERE user_id = $1 AND product_id = $2 ORDER BY created_at DESC LIMIT 1',
-        [decoded.userId, insuranceStatusMatch[1]]
+      const pool = db.getPool();
+      const result = await pool.query(
+        `SELECT sas_status, sas_certificate_id, sas_transaction_id, created_at
+         FROM insurance_registrations WHERE user_id = $1 AND product_id = $2
+         ORDER BY created_at DESC LIMIT 1`,
+        [decoded.userId, insStatusMatch[1]]
       );
-      if (!result.rows[0]) return res.json({ success: true, data: { active: false, status: null } });
       const row = result.rows[0];
       return res.json({
         success: true,
-        data: {
-          active: row.sas_status === 'success', status: row.sas_status,
-          certificateId: row.sas_certificate_id, transactionId: row.sas_transaction_id,
-          error: row.error_detail, activatedAt: row.created_at,
-        },
+        data: row ? {
+          active: row.sas_status === 'success',
+          status: row.sas_status,
+          certificateId: row.sas_certificate_id,
+          transactionId: row.sas_transaction_id,
+          activatedAt: row.created_at,
+        } : { active: false, status: null },
       });
     } catch (err) {
       return res.status(500).json({ success: false, error: err.message });
     }
   }
 
-  // ═══════════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════════════
   // GET /api/products/makes
-  // ═══════════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════════════
   if (fullPath === 'makes' && req.method === 'GET') {
     try {
-      return res.json({ success: true, data: await fetchSasMakes() });
+      const makes = await fetchSasMakes();
+      return res.json({ success: true, data: makes });
     } catch (err) {
       return res.status(500).json({ success: false, error: err.message });
     }
   }
 
-  // ═══════════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════════════
   // POST /api/products/claim
-  // ═══════════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════════════
   if (fullPath === 'claim' && req.method === 'POST') {
     const decoded = authenticate(req);
     if (!decoded) return res.status(401).json({ error: 'No token provided' });
     try {
       const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-      const { ids, secrets } = body;
-      const wallet = decoded.wallet;
+      const { ids, secrets, wallet } = body || {};
 
       if (!ids || !secrets || !wallet) {
-        return res.status(400).json({ success: false, error: 'ids, secrets, and wallet are required' });
+        return res.status(400).json({ success: false, error: 'Missing required fields: ids, secrets, wallet' });
       }
-      if (ids.length !== secrets.length) {
-        return res.status(400).json({ success: false, error: 'ids and secrets must match in length' });
+      if (!Array.isArray(ids) || !Array.isArray(secrets) || ids.length !== secrets.length) {
+        return res.status(400).json({ success: false, error: 'ids and secrets must be arrays of equal length' });
       }
 
       const { status, data } = await apiFetch(RWA_BASE, '/nft/claim', {
@@ -517,45 +562,48 @@ export default async function handler(req, res) {
         body: JSON.stringify({ ids, secrets, wallet }),
       });
 
-      if (status >= 400) {
-        return res.status(status).json({ success: false, error: data?.message || 'Claim failed', detail: data });
+      if (status === 200 && data?.success !== false) {
+        return res.json({ success: true, data });
+      } else {
+        return res.status(status || 500).json({ success: false, error: data?.error || data?.message || 'Claim failed' });
       }
-
-      return res.json({ success: true, message: 'NFTs queued for minting', data });
     } catch (err) {
+      console.error('[PRODUCTS] Claim error:', err);
       return res.status(500).json({ success: false, error: err.message });
     }
   }
 
-  // ═══════════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════════════
   // GET /api/products/catalog
-  // ═══════════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════════════
   if (fullPath === 'catalog' && req.method === 'GET') {
     try {
       const { status, data } = await apiFetch(RWA_BASE, '/rwa?limit=200');
-      if (status !== 200 || !data?.rwas) {
-        return res.json({ success: true, data: [], _debug: { rwaStatus: status } });
+      if (status === 200 && data) {
+        const rwas = Array.isArray(data) ? data : (data.data || data.result || []);
+        const catalog = rwas.map(r => ({
+          id: r.id,
+          name: r.name,
+          type: r.type,
+          contractAddress: r.contractAddress,
+          chainId: r.chainId,
+          isBuyable: r.isBuyable || false,
+          isClaimable: r.isClaimable || false,
+          data: r.data || null,
+        }));
+        return res.json({ success: true, data: catalog });
       }
-      return res.json({
-        success: true,
-        data: data.rwas.map(r => ({
-          id: r.id, name: r.name, type: r.type,
-          contractAddress: r.smartContractAddress, chainId: r.chainId,
-          isBuyable: r.isBuyable, isClaimable: r.isClaimable,
-          data: r.data || {},
-        })),
-      });
+      return res.json({ success: true, data: [] });
     } catch (err) {
       return res.status(500).json({ success: false, error: err.message });
     }
   }
 
-  // ═══════════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════════════
   // GET /api/products/:productId
-  // ═══════════════════════════════════════════════════════════
-  const productMatch = fullPath.match(/^([^/]+)$/);
-  if (productMatch && req.method === 'GET') {
-    return res.json({ success: true, data: { id: productMatch[1] } });
+  // ══════════════════════════════════════════════════════════════
+  if (fullPath && !fullPath.includes('/') && req.method === 'GET') {
+    return res.json({ success: true, data: { id: fullPath } });
   }
 
   return res.status(404).json({ error: 'Route not found' });
