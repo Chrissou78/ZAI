@@ -10,6 +10,34 @@ async function getDB() {
   return dbModule;
 }
 
+let currencyCache = null;
+let currencyCacheTime = 0;
+
+async function getCurrencyMap() {
+  // Cache for 1 hour
+  if (currencyCache && Date.now() - currencyCacheTime < 3600000) return currencyCache;
+  try {
+    const { status, data } = await apiFetch(BLOCKCHAIN_BASE, '/currencies');
+    if (status === 200 && data) {
+      // Build UUID → code map from the API response
+      const map = {};
+      const currencies = Array.isArray(data) ? data : (data.data || data.currencies || []);
+      for (const c of currencies) {
+        if (c.id && c.code) map[c.id] = c.code;
+        if (c.id && c.symbol) map[c.id] = c.symbol;
+      }
+      currencyCache = map;
+      currencyCacheTime = Date.now();
+      console.log('[PRODUCTS] Currency map loaded:', Object.keys(map).length, 'entries');
+      return map;
+    }
+  } catch (err) {
+    console.error('[PRODUCTS] Currency API failed:', err.message);
+  }
+  // Fallback
+  return { 'b60f590b-2855-4b3c-a78a-8cac203e4768': 'CHF' };
+}
+
 const API_KEY = () => process.env.WALLETTWO_API_KEY;
 const BLOCKCHAIN_BASE = 'https://api.wallettwo.com/blockchain/v1/api';
 const RWA_BASE = 'https://api.wallettwo.com/rwa/v1/api';
@@ -75,13 +103,12 @@ const CURRENCY_MAP = {
   'b60f590b-2855-4b3c-a78a-8cac203e4768': 'CHF',
 };
 
-function resolveCurrency(raw) {
+function resolveCurrency(raw, currencyMap) {
   if (!raw) return 'CHF';
-  // If it's already a short code like CHF, EUR, USD
   if (raw.length <= 5 && /^[A-Z]+$/.test(raw)) return raw;
-  // UUID lookup
-  return CURRENCY_MAP[raw] || 'CHF';
+  return currencyMap[raw] || 'CHF';
 }
+
 
 function formatPrice(raw) {
   if (!raw) return '';
