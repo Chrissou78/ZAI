@@ -32,11 +32,6 @@ interface Product {
   rwaName?: string;
   chainId?: string | null;
   metadata?: Record<string, any>;
-  warranty: {
-    active: boolean;
-    expiresAt: string | null;
-    years: number;
-  };
   insurance: InsuranceInfo;
 }
 
@@ -77,7 +72,9 @@ const Products: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [expandedProduct, setExpandedProduct] = useState<string | null>(null);
+
+  // Detail modal
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
   // Claim modal
   const [showClaimModal, setShowClaimModal] = useState(false);
@@ -150,7 +147,6 @@ const Products: React.FC = () => {
     setInsuranceError(null);
     setInsuranceResult(null);
     setInsuranceForm({
-      // Customer — pre-filled from user profile
       salutation: (user as any)?.salutation || 1,
       firstname: user?.givenName || (user as any)?.firstName || '',
       lastname: user?.familyName || (user as any)?.lastName || '',
@@ -161,10 +157,9 @@ const Products: React.FC = () => {
       language: (user as any)?.language || 'en',
       email: user?.email || '',
       phone: (user as any)?.phoneNumber || (user as any)?.phone || '',
-      // Device — pre-filled from product data
       deviceType: product.collection?.toLowerCase() === 'snowboard' ? 2
         : product.collection?.toLowerCase() === 'cross-country' ? 3
-        : 1, // default Ski Alpine
+        : 1,
       makeName: 'zai',
       makeId: 1,
       model: product.name || '',
@@ -229,8 +224,6 @@ const Products: React.FC = () => {
     if (p.metadata?.weight) specs.push({ label: 'Weight', value: p.metadata.weight });
     if (p.metadata?.color) specs.push({ label: 'Color', value: p.metadata.color });
     if (p.metadata?.size) specs.push({ label: 'Size', value: p.metadata.size });
-    if (p.serialNumber) specs.push({ label: 'Serial', value: p.serialNumber });
-    if (p.tokenId) specs.push({ label: 'Token ID', value: `#${p.tokenId}` });
     return specs;
   };
 
@@ -257,7 +250,7 @@ const Products: React.FC = () => {
             Your zai products
           </h1>
           <p style={{ color: '#6a6a6a', fontSize: '13px', maxWidth: '520px', margin: 0 }}>
-            Claim products using your experience card or serial number to activate warranty and access exclusive benefits.
+            Claim products using your experience card or serial number to access exclusive benefits.
           </p>
         </div>
         <Button variant="primary" onClick={() => setShowClaimModal(true)}>+ Claim Product</Button>
@@ -265,13 +258,12 @@ const Products: React.FC = () => {
 
       {/* Stats */}
       <div style={{
-        display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1px',
+        display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1px',
         background: '#e0ddd6', border: '1px solid #e0ddd6', marginBottom: '2rem',
       }}>
         {[
           { label: 'Products claimed', value: products.length, color: '#1a1a1a' },
           { label: 'Insurance active', value: activeInsurance, color: '#4caf7d' },
-          { label: 'Warranty', value: `${products.length > 0 ? '2' : '0'} yr`, color: '#b8a06a' },
         ].map((stat, i) => (
           <div key={i} style={{ background: '#f0ede6', padding: '1.25rem 1.5rem', textAlign: 'center' }}>
             <div style={{ fontSize: '28px', fontWeight: 200, color: stat.color }}>{stat.value}</div>
@@ -308,527 +300,407 @@ const Products: React.FC = () => {
         </div>
       )}
 
-      {/* Product Cards */}
-      {products.map((product) => {
-        const specs = getSpecs(product);
-        const isExpanded = expandedProduct === product.id;
-
-        return (
+      {/* Product Carousel Grid */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
+        gap: '1.5rem',
+        marginBottom: '2rem',
+      }}>
+        {products.map((product) => (
           <div
             key={product.id}
+            onClick={() => setSelectedProduct(product)}
             style={{
               border: '1px solid #e0ddd6',
-              marginBottom: '1.5rem',
               background: '#fff',
+              cursor: 'pointer',
               overflow: 'hidden',
+              transition: 'box-shadow 0.2s, transform 0.2s',
+            }}
+            onMouseEnter={(e) => {
+              (e.currentTarget as HTMLDivElement).style.boxShadow = '0 4px 20px rgba(0,0,0,0.08)';
+              (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-2px)';
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLDivElement).style.boxShadow = 'none';
+              (e.currentTarget as HTMLDivElement).style.transform = 'none';
             }}
           >
-            {/* Main card: image left, info right */}
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: product.image ? '340px 1fr' : '1fr',
-                minHeight: 280,
-              }}
-            >
-              {/* Product Image */}
-              {product.image && (
-                <div
-                  onClick={() => setZoomImage({ src: product.image!, alt: product.name })}
-                  style={{
-                    background: '#f0ede6',
-                    borderRight: '1px solid #e0ddd6',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    overflow: 'hidden',
-                    position: 'relative',
-                    cursor: 'zoom-in',
-                  }}
-                >
-                  <img
-                    src={product.image}
-                    alt={product.name}
-                    style={{
-                      width: '100%',
-                      height: '100%',
-                      objectFit: 'cover',
-                      minHeight: 280,
-                    }}
-                  />
-                  <div style={{
-                    position: 'absolute', top: '0.75rem', left: '0.75rem',
-                    background: '#1a1a1a', color: '#fff', fontSize: 9,
-                    letterSpacing: '0.2em', textTransform: 'uppercase', padding: '4px 10px',
-                  }}>
-                    Claimed
-                  </div>
+            {/* Thumbnail */}
+            <div style={{
+              background: '#f0ede6',
+              height: 220,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              overflow: 'hidden',
+              position: 'relative',
+            }}>
+              {product.image ? (
+                <img
+                  src={product.image}
+                  alt={product.name}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
+              ) : (
+                <div style={{ fontSize: '48px', opacity: 0.3 }}>⛷</div>
+              )}
+              {/* Claimed badge */}
+              <div style={{
+                position: 'absolute', top: '0.5rem', left: '0.5rem',
+                background: '#1a1a1a', color: '#fff', fontSize: 9,
+                letterSpacing: '0.2em', textTransform: 'uppercase', padding: '3px 8px',
+              }}>
+                Claimed
+              </div>
+              {/* Insurance badge */}
+              {product.insurance?.active && (
+                <div style={{
+                  position: 'absolute', top: '0.5rem', right: '0.5rem',
+                  background: '#4caf7d', color: '#fff', fontSize: 9,
+                  letterSpacing: '0.1em', textTransform: 'uppercase', padding: '3px 8px',
+                }}>
+                  Insured
                 </div>
               )}
-
-              {/* Product Info */}
-              <div style={{ padding: '2rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                <div>
-                  {/* Name & Collection */}
-                  <div style={{
-                    fontSize: '10px', letterSpacing: '0.3em', textTransform: 'uppercase',
-                    color: '#b8a06a', marginBottom: '0.4rem',
-                  }}>
-                    {product.collection || product.rwaName || 'zai'}
-                  </div>
-                  <h2 style={{
-                    fontSize: '26px', fontWeight: 300, margin: '0 0 0.75rem',
-                    color: '#1a1a1a', lineHeight: 1.2,
-                  }}>
-                    {product.name}
-                  </h2>
-
-                  {/* Price */}
-                  {product.price && (
-                    <div style={{
-                      fontSize: '18px', fontWeight: 200, color: '#1a1a1a',
-                      marginBottom: '1rem',
-                    }}>
-                      {product.currency || 'CHF'} {product.price}
-                    </div>
-                  )}
-
-                  {/* Description */}
-                  {product.description && (
-                    <p style={{
-                      fontSize: '13px', color: '#6a6a6a', lineHeight: 1.7,
-                      margin: '0 0 1.25rem', maxWidth: 480,
-                    }}>
-                      {product.description.length > 200 && !isExpanded
-                        ? product.description.slice(0, 200) + '...'
-                        : product.description}
-                      {product.description.length > 200 && (
-                        <button
-                          onClick={() => setExpandedProduct(isExpanded ? null : product.id)}
-                          style={{
-                            background: 'none', border: 'none', color: '#c8102e',
-                            cursor: 'pointer', fontSize: '12px', marginLeft: 4,
-                            fontFamily: "'Inter', sans-serif",
-                          }}
-                        >
-                          {isExpanded ? 'Show less' : 'Read more'}
-                        </button>
-                      )}
-                    </p>
-                  )}
-
-                  {/* Specs grid */}
-                  {specs.length > 0 && (
-                    <div style={{
-                      display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
-                      gap: '0px', background: '#e0ddd6', border: '1px solid #e0ddd6',
-                      marginBottom: '1.25rem',
-                    }}>
-                      {specs.map((spec, i) => (
-                        <div key={i} style={{ background: '#fafaf7', padding: '10px 12px' }}>
-                          <div style={{
-                            fontSize: '9px', letterSpacing: '0.2em', textTransform: 'uppercase',
-                            color: '#999', marginBottom: 2,
-                          }}>
-                            {spec.label}
-                          </div>
-                          <div style={{ fontSize: '12px', color: '#1a1a1a', fontWeight: 400 }}>
-                            {spec.value}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Bottom actions: warranty + insurance */}
-                <div style={{
-                  display: 'flex', alignItems: 'center', gap: '1rem',
-                  paddingTop: '1rem', borderTop: '1px solid #e0ddd6',
-                  flexWrap: 'wrap',
-                }}>
-                  {/* Warranty status */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <div style={{
-                      width: 6, height: 6, background: '#4caf7d', borderRadius: '50%',
-                      boxShadow: '0 0 5px #4caf7d',
-                    }} />
-                    <span style={{
-                      fontSize: '11px', letterSpacing: '0.15em', textTransform: 'uppercase',
-                      color: '#4caf7d',
-                    }}>
-                      {product.warranty?.years || 2}-year warranty
-                    </span>
-                  </div>
-
-                  {/* Insurance status / button */}
-                  {product.insurance?.active ? (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <div style={{
-                        width: 6, height: 6, background: '#b8a06a', borderRadius: '50%',
-                        boxShadow: '0 0 5px #b8a06a',
-                      }} />
-                      <span style={{
-                        fontSize: '11px', letterSpacing: '0.15em', textTransform: 'uppercase',
-                        color: '#b8a06a',
-                      }}>
-                        Insurance active
-                        {product.insurance.certificateId ? ` · #${product.insurance.certificateId}` : ''}
-                      </span>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => openInsuranceModal(product)}
-                      style={{
-                        background: '#7D1E2C', color: '#fff', border: 'none',
-                        padding: '10px 22px', fontSize: '11px', letterSpacing: '0.15em',
-                        textTransform: 'uppercase', cursor: 'pointer',
-                        fontFamily: "'Inter', sans-serif", transition: 'background 0.2s',
-                      }}
-                      onMouseEnter={e => (e.currentTarget.style.background = '#9a2535')}
-                      onMouseLeave={e => (e.currentTarget.style.background = '#7D1E2C')}
-                    >
-                      Activate Insurance
-                    </button>
-                  )}
-                </div>
-              </div>
             </div>
 
-            {/* No image fallback badge */}
-            {!product.image && (
-              <div style={{
-                position: 'relative',
-              }}>
+            {/* Card info */}
+            <div style={{ padding: '1rem 1.25rem' }}>
+              {product.collection && (
                 <div style={{
-                  position: 'absolute', top: '-100%', left: '2rem',
-                  background: '#1a1a1a', color: '#fff', fontSize: 9,
-                  letterSpacing: '0.2em', textTransform: 'uppercase', padding: '4px 10px',
+                  fontSize: '9px', letterSpacing: '0.25em', textTransform: 'uppercase',
+                  color: '#b8a06a', marginBottom: '0.3rem',
                 }}>
-                  Claimed
+                  {product.collection}
                 </div>
+              )}
+              <div style={{ fontSize: '15px', fontWeight: 400, color: '#1a1a1a', marginBottom: '0.4rem' }}>
+                {product.name}
               </div>
-            )}
+              {product.price && (
+                <div style={{ fontSize: '13px', color: '#6a6a6a' }}>
+                  {product.price} {product.currency || 'CHF'}
+                </div>
+              )}
+            </div>
           </div>
-        );
-      })}
+        ))}
+      </div>
 
-      {/* Claim CTA at bottom */}
+      {/* Claim another product CTA */}
       {products.length > 0 && (
-        <div
-          onClick={() => setShowClaimModal(true)}
-          style={{
-            border: '1px dashed #e0ddd6', padding: '2rem', textAlign: 'center',
-            cursor: 'pointer', transition: 'background 0.2s', background: '#fff',
-          }}
-          onMouseEnter={e => (e.currentTarget.style.background = '#f0ede6')}
-          onMouseLeave={e => (e.currentTarget.style.background = '#fff')}
-        >
-          <div style={{
-            width: 36, height: 36, border: '1px solid #6a6a6a', borderRadius: '50%',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 18, color: '#6a6a6a', margin: '0 auto 8px',
-          }}>+</div>
-          <div style={{
-            fontSize: 11, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#6a6a6a',
-          }}>
-            Claim another product
+        <div style={{
+          padding: '2rem', textAlign: 'center', border: '1px dashed #e0ddd6',
+          background: '#f0ede6', marginBottom: '2rem',
+        }}>
+          <div style={{ fontSize: '14px', fontWeight: 300, marginBottom: '0.8rem', color: '#1a1a1a' }}>
+            Have another zai product?
           </div>
+          <Button variant="primary" onClick={() => setShowClaimModal(true)}>+ Claim another product</Button>
         </div>
       )}
 
       {/* How to claim */}
-      <div style={{
-        background: '#f0ede6', padding: '1.5rem', border: '1px solid #e0ddd6',
-        marginTop: '2rem',
-      }}>
-        <div style={{
-          fontSize: 10, letterSpacing: '0.3em', textTransform: 'uppercase', color: '#1a1a1a',
-          marginBottom: '0.75rem', paddingBottom: '0.75rem', borderBottom: '1px solid #e0ddd6',
-        }}>
+      <div style={{ marginBottom: '3rem' }}>
+        <div style={{ fontSize: '11px', letterSpacing: '0.3em', textTransform: 'uppercase', color: '#b8a06a', marginBottom: '1rem' }}>
           How to claim
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {['Tap your zai Experience Card with an NFC-enabled phone',
-            'Or enter your product serial number manually',
-            'Activate warranty & insurance instantly',
-          ].map((step, i) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-              <div style={{
-                width: 18, height: 18, border: '1px solid #c8102e', borderRadius: '50%',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 9, color: '#c8102e', flexShrink: 0, marginTop: 1, fontWeight: 'bold',
-              }}>{i + 1}</div>
-              <div style={{ fontSize: 11, color: '#6a6a6a' }}>{step}</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem' }}>
+          {[
+            { step: '01', title: 'Get your card', desc: 'Receive your zai Experience Card with your product purchase.' },
+            { step: '02', title: 'Tap or enter serial', desc: 'Use NFC tap or manually enter the serial number from your card.' },
+            { step: '03', title: 'Enjoy benefits', desc: 'Access insurance, exclusive events, and community features.' },
+          ].map((item) => (
+            <div key={item.step} style={{ padding: '1.5rem', border: '1px solid #e0ddd6' }}>
+              <div style={{ fontSize: '24px', fontWeight: 200, color: '#c8102e', marginBottom: '0.75rem' }}>{item.step}</div>
+              <div style={{ fontSize: '13px', fontWeight: 500, marginBottom: '0.5rem' }}>{item.title}</div>
+              <div style={{ fontSize: '12px', color: '#6a6a6a', lineHeight: 1.6 }}>{item.desc}</div>
             </div>
           ))}
         </div>
       </div>
 
-      {/* ── CLAIM MODAL ── */}
-      <Modal
-        isOpen={showClaimModal}
-        onClose={() => { setShowClaimModal(false); setClaimMethod(null); setSerialInput(''); setClaimError(null); }}
-        title="Claim Your Product"
-        size="md"
-      >
-        {claimSuccess ? (
-          <div style={{ textAlign: 'center', padding: '2rem 0' }}>
-            <div style={{ fontSize: 48, marginBottom: 16 }}>✓</div>
-            <div style={{ fontSize: 16, fontWeight: 500, color: '#4caf7d', marginBottom: 8 }}>Product Claimed!</div>
-            <p style={{ color: '#6a6a6a' }}>Your product has been successfully registered.</p>
-          </div>
-        ) : !claimMethod ? (
-          <div>
-            <p style={{ color: '#6a6a6a', marginBottom: 24 }}>Choose how you'd like to register your zai product</p>
-            <Button variant="primary" fullWidth onClick={() => setClaimMethod('nfc')} style={{ marginBottom: 12 }}>
-              Tap NFC Card
-            </Button>
-            <Button variant="secondary" fullWidth onClick={() => setClaimMethod('serial')}>
-              Enter Serial Number
-            </Button>
-          </div>
-        ) : claimMethod === 'serial' ? (
-          <div>
-            <label style={{ display: 'block', marginBottom: 16 }}>
-              <div style={labelStyle}>Serial Number</div>
-              <input
-                type="text" placeholder="e.g. ZAI-N21-2024-XXXX"
-                value={serialInput} onChange={e => setSerialInput(e.target.value)}
-                disabled={claimLoading}
-                style={{ ...inputStyle, fontFamily: 'monospace', fontSize: 14, opacity: claimLoading ? 0.6 : 1 }}
-              />
-            </label>
-            {claimError && (
-              <div style={{ color: '#c8102e', fontSize: 12, marginBottom: 12, padding: 8, background: '#fff5f5' }}>
-                {claimError}
+      {/* ═══ PRODUCT DETAIL MODAL ═══ */}
+      {selectedProduct && (
+        <Modal isOpen={true} onClose={() => setSelectedProduct(null)} title={selectedProduct.name}>
+          <div style={{ maxWidth: 600 }}>
+            {/* Image */}
+            {selectedProduct.image && (
+              <div
+                onClick={() => setZoomImage({ src: selectedProduct.image!, alt: selectedProduct.name })}
+                style={{
+                  background: '#f0ede6', marginBottom: '1.5rem', cursor: 'zoom-in',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  maxHeight: 360, overflow: 'hidden',
+                }}
+              >
+                <img src={selectedProduct.image} alt={selectedProduct.name} style={{ width: '100%', objectFit: 'contain', maxHeight: 360 }} />
               </div>
             )}
-            <Button variant="primary" fullWidth disabled={!serialInput.trim() || claimLoading} onClick={handleClaimSubmit} style={{ marginBottom: 12 }}>
-              {claimLoading ? 'Claiming...' : 'Claim Product'}
-            </Button>
-            <Button variant="secondary" fullWidth onClick={() => setClaimMethod(null)} disabled={claimLoading}>Back</Button>
+
+            {/* Collection tag */}
+            {selectedProduct.collection && (
+              <div style={{ fontSize: '10px', letterSpacing: '0.3em', textTransform: 'uppercase', color: '#b8a06a', marginBottom: '0.4rem' }}>
+                {selectedProduct.collection}
+              </div>
+            )}
+
+            {/* Description */}
+            {selectedProduct.description && (
+              <p style={{ fontSize: '13px', color: '#6a6a6a', lineHeight: 1.7, marginBottom: '1.5rem' }}>
+                {selectedProduct.description}
+              </p>
+            )}
+
+            {/* Specs */}
+            {getSpecs(selectedProduct).length > 0 && (
+              <div style={{ marginBottom: '1.5rem' }}>
+                <div style={{ fontSize: '10px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#6a6a6a', marginBottom: '0.75rem' }}>
+                  Specifications
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1px', background: '#e0ddd6', border: '1px solid #e0ddd6' }}>
+                  {getSpecs(selectedProduct).map((spec, i) => (
+                    <div key={i} style={{ background: '#f0ede6', padding: '0.75rem 1rem' }}>
+                      <div style={{ fontSize: '9px', letterSpacing: '0.15em', textTransform: 'uppercase', color: '#999', marginBottom: 2 }}>
+                        {spec.label}
+                      </div>
+                      <div style={{ fontSize: '13px', color: '#1a1a1a' }}>{spec.value}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Insurance action */}
+            <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.5rem' }}>
+              {selectedProduct.insurance?.active ? (
+                <div style={{
+                  padding: '10px 20px', background: '#f0faf4', border: '1px solid #4caf7d',
+                  color: '#2e7d4f', fontSize: '12px', letterSpacing: '0.1em', textTransform: 'uppercase',
+                  display: 'flex', alignItems: 'center', gap: 6,
+                }}>
+                  ✓ Insurance Active
+                </div>
+              ) : (
+                <Button variant="primary" onClick={() => { setSelectedProduct(null); openInsuranceModal(selectedProduct); }}>
+                  Activate Insurance
+                </Button>
+              )}
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* ═══ CLAIM MODAL ═══ */}
+      <Modal isOpen={showClaimModal} onClose={() => { setShowClaimModal(false); setClaimMethod(null); setSerialInput(''); setClaimError(null); setClaimSuccess(false); }} title="Claim a Product">
+        {claimSuccess ? (
+          <div style={{ textAlign: 'center', padding: '2rem 0' }}>
+            <div style={{ fontSize: '48px', marginBottom: '1rem' }}>✓</div>
+            <div style={{ fontSize: '18px', fontWeight: 300 }}>Product Claimed!</div>
           </div>
         ) : (
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: 48, marginBottom: 12 }}>📱</div>
-            <p style={{ color: '#6a6a6a', marginBottom: 24 }}>Ready to scan. Tap your NFC card on your phone.</p>
-            <Button variant="primary" fullWidth onClick={() => setClaimMethod(null)}>Back</Button>
+          <div>
+            {!claimMethod && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <button
+                  onClick={() => setClaimMethod('nfc')}
+                  style={{
+                    padding: '1.25rem', border: '1px solid #e0ddd6', background: '#f0ede6',
+                    cursor: 'pointer', textAlign: 'left', fontFamily: "'Inter', sans-serif",
+                  }}
+                >
+                  <div style={{ fontWeight: 500, marginBottom: 4 }}>NFC Tap</div>
+                  <div style={{ fontSize: '12px', color: '#6a6a6a' }}>Tap your Experience Card on your device</div>
+                </button>
+                <button
+                  onClick={() => setClaimMethod('serial')}
+                  style={{
+                    padding: '1.25rem', border: '1px solid #e0ddd6', background: '#f0ede6',
+                    cursor: 'pointer', textAlign: 'left', fontFamily: "'Inter', sans-serif",
+                  }}
+                >
+                  <div style={{ fontWeight: 500, marginBottom: 4 }}>Serial Number</div>
+                  <div style={{ fontSize: '12px', color: '#6a6a6a' }}>Enter the serial number from your card</div>
+                </button>
+              </div>
+            )}
+
+            {claimMethod === 'nfc' && (
+              <div style={{ textAlign: 'center', padding: '2rem 0' }}>
+                <div style={{ fontSize: '48px', marginBottom: '1rem' }}>📱</div>
+                <p style={{ color: '#6a6a6a', fontSize: '13px' }}>Hold your NFC card near your device...</p>
+                <button
+                  onClick={() => setClaimMethod(null)}
+                  style={{ marginTop: '1rem', background: 'none', border: 'none', color: '#c8102e', cursor: 'pointer', fontSize: '13px' }}
+                >
+                  ← Back
+                </button>
+              </div>
+            )}
+
+            {claimMethod === 'serial' && (
+              <div>
+                <label style={labelStyle}>Serial Number</label>
+                <input
+                  type="text"
+                  value={serialInput}
+                  onChange={(e) => setSerialInput(e.target.value)}
+                  placeholder="Enter serial number"
+                  style={{ ...inputStyle, marginBottom: '1rem' }}
+                />
+                {claimError && (
+                  <div style={{ color: '#c8102e', fontSize: '12px', marginBottom: '1rem' }}>{claimError}</div>
+                )}
+                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                  <button
+                    onClick={() => setClaimMethod(null)}
+                    style={{ padding: '10px 20px', border: '1px solid #e0ddd6', background: '#fff', cursor: 'pointer', fontFamily: "'Inter', sans-serif" }}
+                  >
+                    Back
+                  </button>
+                  <Button variant="primary" onClick={handleClaimSubmit} disabled={claimLoading || !serialInput.trim()}>
+                    {claimLoading ? 'Claiming...' : 'Claim Product'}
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </Modal>
 
-      {/* ── INSURANCE MODAL ── */}
-      <Modal isOpen={showInsuranceModal} onClose={() => setShowInsuranceModal(false)} title="Activate Insurance" size="lg">
+      {/* ═══ INSURANCE MODAL ═══ */}
+      <Modal isOpen={showInsuranceModal} onClose={() => setShowInsuranceModal(false)} title="Activate Insurance">
         {insuranceStep === 'loading' && (
           <div style={{ textAlign: 'center', padding: '3rem 0' }}>
-            <div style={{ fontSize: 48, marginBottom: 16 }}>⏳</div>
-            <div style={{ fontSize: 14, color: '#6a6a6a' }}>Registering with insurance provider...</div>
+            <div style={{ fontSize: '16px', color: '#6a6a6a' }}>Activating insurance...</div>
           </div>
         )}
 
         {insuranceStep === 'success' && (
           <div style={{ textAlign: 'center', padding: '2rem 0' }}>
-            <div style={{ fontSize: 48, marginBottom: 16 }}>🛡</div>
-            <div style={{ fontSize: 16, fontWeight: 500, color: '#4caf7d', marginBottom: 8 }}>Insurance Activated!</div>
+            <div style={{ fontSize: '48px', marginBottom: '1rem' }}>✓</div>
+            <div style={{ fontSize: '18px', fontWeight: 300, marginBottom: '1rem' }}>Insurance Activated!</div>
             {insuranceResult && (
-              <div style={{ background: '#f0faf4', border: '1px solid #b6e8cc', padding: '1rem', marginBottom: 16 }}>
-                <div style={{ fontSize: 12, color: '#6a6a6a', marginBottom: 4 }}>Certificate ID</div>
-                <div style={{ fontSize: 20, fontWeight: 300, color: '#1a1a1a', fontFamily: 'monospace' }}>
-                  #{insuranceResult.certificateId}
-                </div>
-                <div style={{ fontSize: 11, color: '#6a6a6a', marginTop: 8 }}>
-                  Transaction: #{insuranceResult.transactionId}
-                </div>
+              <div style={{ fontSize: '12px', color: '#6a6a6a' }}>
+                Certificate #{insuranceResult.certificateId} · Transaction #{insuranceResult.transactionId}
               </div>
             )}
-            <Button variant="primary" fullWidth onClick={() => setShowInsuranceModal(false)}>Done</Button>
           </div>
         )}
 
         {insuranceStep === 'error' && (
           <div style={{ textAlign: 'center', padding: '2rem 0' }}>
-            <div style={{ fontSize: 48, marginBottom: 16 }}>⚠</div>
-            <div style={{ fontSize: 16, fontWeight: 500, color: '#c8102e', marginBottom: 8 }}>Activation Failed</div>
-            <div style={{ fontSize: 13, color: '#6a6a6a', marginBottom: 16, padding: '0.75rem', background: '#fff5f5' }}>
-              {insuranceError}
-            </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <Button variant="primary" fullWidth onClick={() => setInsuranceStep('form')}>Try Again</Button>
-              <Button variant="secondary" fullWidth onClick={() => setShowInsuranceModal(false)}>Close</Button>
-            </div>
+            <div style={{ fontSize: '48px', marginBottom: '1rem' }}>✗</div>
+            <div style={{ fontSize: '14px', color: '#c8102e', marginBottom: '1rem' }}>{insuranceError}</div>
+            <Button variant="primary" onClick={() => setInsuranceStep('form')}>Try Again</Button>
           </div>
         )}
 
         {insuranceStep === 'form' && (
           <div>
-            <p style={{ color: '#6a6a6a', fontSize: 13, marginBottom: '1.5rem', lineHeight: 1.6 }}>
-              Register your product with Suisse Alpine Services for insurance coverage. Fields marked with * are required.
-            </p>
-
-            {/* Customer section */}
-            <div style={{
-              fontSize: 10, letterSpacing: '0.3em', textTransform: 'uppercase', color: '#1a1a1a',
-              marginBottom: '1rem', paddingBottom: '0.5rem', borderBottom: '1px solid #e0ddd6',
-            }}>
-              Customer Information
+            <div style={{ fontSize: '10px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#6a6a6a', marginBottom: '1rem' }}>
+              Personal Information
             </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '1.5rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
               <div>
-                <label style={labelStyle}>Salutation *</label>
-                <select value={insuranceForm.salutation} onChange={e => updateInsuranceField('salutation', parseInt(e.target.value))} style={inputStyle}>
+                <label style={labelStyle}>Salutation</label>
+                <select value={insuranceForm.salutation} onChange={(e) => updateInsuranceField('salutation', parseInt(e.target.value))} style={inputStyle}>
                   {SALUTATIONS.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
                 </select>
               </div>
               <div>
                 <label style={labelStyle}>Language</label>
-                <select value={insuranceForm.language} onChange={e => updateInsuranceField('language', e.target.value)} style={inputStyle}>
-                  <option value="en">English</option>
-                  <option value="de">Deutsch</option>
-                  <option value="fr">Français</option>
-                  <option value="it">Italiano</option>
+                <select value={insuranceForm.language} onChange={(e) => updateInsuranceField('language', e.target.value)} style={inputStyle}>
+                  <option value="en">English</option><option value="de">Deutsch</option><option value="fr">Français</option><option value="it">Italiano</option>
                 </select>
               </div>
               <div>
-                <label style={labelStyle}>First name *</label>
-                <input type="text" value={insuranceForm.firstname} onChange={e => updateInsuranceField('firstname', e.target.value)} style={inputStyle} />
+                <label style={labelStyle}>First Name</label>
+                <input type="text" value={insuranceForm.firstname} onChange={(e) => updateInsuranceField('firstname', e.target.value)} style={inputStyle} />
               </div>
               <div>
-                <label style={labelStyle}>Last name *</label>
-                <input type="text" value={insuranceForm.lastname} onChange={e => updateInsuranceField('lastname', e.target.value)} style={inputStyle} />
+                <label style={labelStyle}>Last Name</label>
+                <input type="text" value={insuranceForm.lastname} onChange={(e) => updateInsuranceField('lastname', e.target.value)} style={inputStyle} />
               </div>
               <div style={{ gridColumn: '1 / -1' }}>
-                <label style={labelStyle}>Address *</label>
-                <input type="text" value={insuranceForm.address1} onChange={e => updateInsuranceField('address1', e.target.value)} style={inputStyle} />
+                <label style={labelStyle}>Address</label>
+                <input type="text" value={insuranceForm.address1} onChange={(e) => updateInsuranceField('address1', e.target.value)} style={inputStyle} />
               </div>
               <div>
-                <label style={labelStyle}>ZIP *</label>
-                <input type="text" value={insuranceForm.zip} onChange={e => updateInsuranceField('zip', e.target.value)} style={inputStyle} />
+                <label style={labelStyle}>Zip</label>
+                <input type="text" value={insuranceForm.zip} onChange={(e) => updateInsuranceField('zip', e.target.value)} style={inputStyle} />
               </div>
               <div>
-                <label style={labelStyle}>City *</label>
-                <input type="text" value={insuranceForm.city} onChange={e => updateInsuranceField('city', e.target.value)} style={inputStyle} />
+                <label style={labelStyle}>City</label>
+                <input type="text" value={insuranceForm.city} onChange={(e) => updateInsuranceField('city', e.target.value)} style={inputStyle} />
               </div>
               <div>
-                <label style={labelStyle}>Country (2-letter code) *</label>
-                <input type="text" value={insuranceForm.country} onChange={e => updateInsuranceField('country', e.target.value)} maxLength={2} style={{ ...inputStyle, textTransform: 'uppercase' }} />
+                <label style={labelStyle}>Country</label>
+                <input type="text" value={insuranceForm.country} onChange={(e) => updateInsuranceField('country', e.target.value)} style={inputStyle} />
               </div>
               <div>
                 <label style={labelStyle}>Email</label>
-                <input type="email" value={insuranceForm.email} onChange={e => updateInsuranceField('email', e.target.value)} style={inputStyle} />
+                <input type="email" value={insuranceForm.email} onChange={(e) => updateInsuranceField('email', e.target.value)} style={inputStyle} />
               </div>
-              <div style={{ gridColumn: '1 / -1' }}>
+              <div>
                 <label style={labelStyle}>Phone</label>
-                <input type="tel" value={insuranceForm.phone} onChange={e => updateInsuranceField('phone', e.target.value)} placeholder="+41..." style={inputStyle} />
+                <input type="tel" value={insuranceForm.phone} onChange={(e) => updateInsuranceField('phone', e.target.value)} style={inputStyle} />
               </div>
             </div>
 
-            {/* Device section */}
-            <div style={{
-              fontSize: 10, letterSpacing: '0.3em', textTransform: 'uppercase', color: '#1a1a1a',
-              marginBottom: '1rem', paddingBottom: '0.5rem', borderBottom: '1px solid #e0ddd6',
-            }}>
+            <div style={{ fontSize: '10px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#6a6a6a', marginBottom: '1rem' }}>
               Device Information
             </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '1.5rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
               <div>
-                <label style={labelStyle}>Type *</label>
-                <select value={insuranceForm.deviceType} onChange={e => updateInsuranceField('deviceType', parseInt(e.target.value))} style={inputStyle}>
-                  {DEVICE_TYPES.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
+                <label style={labelStyle}>Device Type</label>
+                <select value={insuranceForm.deviceType} onChange={(e) => updateInsuranceField('deviceType', parseInt(e.target.value))} style={inputStyle}>
+                  {DEVICE_TYPES.map(d => <option key={d.id} value={d.id}>{d.label}</option>)}
                 </select>
               </div>
               <div>
-                <label style={labelStyle}>Make</label>
-                <input type="text" value={insuranceForm.makeName} onChange={e => updateInsuranceField('makeName', e.target.value)} style={inputStyle} />
+                <label style={labelStyle}>Model</label>
+                <input type="text" value={insuranceForm.model} onChange={(e) => updateInsuranceField('model', e.target.value)} style={inputStyle} />
               </div>
               <div>
-                <label style={labelStyle}>Model *</label>
-                <input type="text" value={insuranceForm.model} onChange={e => updateInsuranceField('model', e.target.value)} placeholder="e.g. Spada" style={inputStyle} />
+                <label style={labelStyle}>Serial</label>
+                <input type="text" value={insuranceForm.serial} onChange={(e) => updateInsuranceField('serial', e.target.value)} style={inputStyle} />
               </div>
               <div>
-                <label style={labelStyle}>Serial Number *</label>
-                <input type="text" value={insuranceForm.serial} onChange={e => updateInsuranceField('serial', e.target.value)} style={{ ...inputStyle, fontFamily: 'monospace' }} />
-              </div>
-              <div>
-                <label style={labelStyle}>Price (CHF) *</label>
-                <input type="number" step="0.01" value={insuranceForm.price} onChange={e => updateInsuranceField('price', e.target.value)} style={inputStyle} />
+                <label style={labelStyle}>Price</label>
+                <input type="text" value={insuranceForm.price} onChange={(e) => updateInsuranceField('price', e.target.value)} style={inputStyle} />
               </div>
               <div>
                 <label style={labelStyle}>Length (cm)</label>
-                <input type="number" value={insuranceForm.length} onChange={e => updateInsuranceField('length', e.target.value)} style={inputStyle} />
+                <input type="text" value={insuranceForm.length} onChange={(e) => updateInsuranceField('length', e.target.value)} style={inputStyle} />
               </div>
-              <div style={{ gridColumn: '1 / -1' }}>
-                <label style={labelStyle}>Purchase Date *</label>
-                <input type="date" value={insuranceForm.purchasingdate} onChange={e => updateInsuranceField('purchasingdate', e.target.value)} style={inputStyle} />
+              <div>
+                <label style={labelStyle}>Purchase Date</label>
+                <input type="date" value={insuranceForm.purchasingdate} onChange={(e) => updateInsuranceField('purchasingdate', e.target.value)} style={inputStyle} />
               </div>
             </div>
 
-            <div style={{ display: 'flex', gap: 8 }}>
-              <Button variant="primary" fullWidth onClick={handleInsuranceSubmit}
-                disabled={!insuranceForm.firstname || !insuranceForm.lastname || !insuranceForm.address1 || !insuranceForm.zip || !insuranceForm.city || !insuranceForm.model || !insuranceForm.serial || !insuranceForm.price}>
-                Activate Insurance
-              </Button>
-              <Button variant="secondary" fullWidth onClick={() => setShowInsuranceModal(false)}>Cancel</Button>
-            </div>
+            <Button variant="primary" onClick={handleInsuranceSubmit} style={{ width: '100%' }}>
+              Activate Insurance
+            </Button>
           </div>
         )}
       </Modal>
-      {/* ── IMAGE ZOOM OVERLAY ── */}
+
+      {/* ═══ ZOOM IMAGE MODAL ═══ */}
       {zoomImage && (
         <div
           onClick={() => setZoomImage(null)}
           style={{
-            position: 'fixed',
-            top: 0, left: 0, right: 0, bottom: 0,
-            background: 'rgba(0, 0, 0, 0.85)',
-            zIndex: 9999,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
+            position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+            background: 'rgba(0,0,0,0.85)', zIndex: 9999,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
             cursor: 'zoom-out',
-            backdropFilter: 'blur(4px)',
           }}
         >
-          {/* Close button */}
-          <button
-            onClick={() => setZoomImage(null)}
-            style={{
-              position: 'absolute', top: '1.5rem', right: '1.5rem',
-              background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)',
-              color: '#fff', width: 40, height: 40, fontSize: 20,
-              cursor: 'pointer', display: 'flex', alignItems: 'center',
-              justifyContent: 'center', transition: 'background 0.2s',
-            }}
-            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.2)')}
-            onMouseLeave={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.1)')}
-          >
-            ✕
-          </button>
-
-          {/* Product name */}
-          <div style={{
-            position: 'absolute', bottom: '1.5rem', left: '50%', transform: 'translateX(-50%)',
-            color: 'rgba(255,255,255,0.6)', fontSize: '11px', letterSpacing: '0.2em',
-            textTransform: 'uppercase',
-          }}>
-            {zoomImage.alt}
-          </div>
-
-          {/* Zoomed image */}
-          <img
-            src={zoomImage.src}
-            alt={zoomImage.alt}
-            onClick={e => e.stopPropagation()}
-            style={{
-              maxWidth: '90vw',
-              maxHeight: '85vh',
-              objectFit: 'contain',
-              cursor: 'default',
-              boxShadow: '0 8px 40px rgba(0,0,0,0.4)',
-            }}
-          />
+          <img src={zoomImage.src} alt={zoomImage.alt} style={{ maxWidth: '90vw', maxHeight: '90vh', objectFit: 'contain' }} />
         </div>
       )}
     </div>

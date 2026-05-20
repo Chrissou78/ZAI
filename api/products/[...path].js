@@ -40,7 +40,7 @@ async function getCurrencyMap() {
 
 const API_KEY = () => process.env.WALLETTWO_API_KEY;
 const BLOCKCHAIN_BASE = 'https://api.wallettwo.com/blockchain/v1/api';
-const RWA_BASE = 'https://api.wallettwo.com/rwa/v1/api';
+const RWA_BASE = 'https://rwa.onchainlabs.ch/v1/api';
 const CHAIN_ID = () => process.env.CHAIN_ID || '137';
 
 function authenticate(req) {
@@ -309,7 +309,6 @@ export default async function handler(req, res) {
       const enriched = products.map(p => ({
         ...p,
         insurance: insuranceMap[p.id] || { active: false, status: null, certificateId: null },
-        warranty: { active: true, expiresAt: null, years: 2 },
       }));
 
       return res.json({
