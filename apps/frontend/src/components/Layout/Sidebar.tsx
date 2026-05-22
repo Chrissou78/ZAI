@@ -3,7 +3,6 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAppContext } from '../../context/AppContext';
 import { apiService } from '../../services/api';
 import UserAvatar from '../Common/UserAvatar';
-import { ZaiLogo } from '../Icons/LogoIcons';
 import {
   HomeIcon,
   DashboardIcon,
@@ -22,7 +21,6 @@ const Sidebar: React.FC = () => {
 
   const isActive = (path: string) => location.pathname === path;
 
-  // Check for new community photos from DB
   const checkCommunityUpdates = useCallback(async () => {
     if (!user) { setCommunityNewCount(0); return; }
     try {
@@ -35,14 +33,12 @@ const Sidebar: React.FC = () => {
     }
   }, [user]);
 
-  // Poll every 60s
   useEffect(() => {
     checkCommunityUpdates();
     const interval = setInterval(checkCommunityUpdates, 60000);
     return () => clearInterval(interval);
   }, [checkCommunityUpdates]);
 
-  // When user visits /community, mark as seen in DB
   useEffect(() => {
     if (location.pathname === '/community' && user) {
       apiService.post('/community/notifications/seen').catch(() => {});
@@ -92,17 +88,16 @@ const Sidebar: React.FC = () => {
         color: '#f5f4f0',
       }}
     >
-      {/* Logo — centered */}
-      <div style={{
-        padding: '1.5rem',
-        borderBottom: '1px solid #2a2a2a',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}>
-        <div style={{ marginBottom: '0.4rem', color: '#f5f4f0' }}>
-          <ZaiLogo size={60} />
+      {/* Logo — text only "zai", left-aligned, NO cross/mark SVG */}
+      <div style={{ padding: '1.5rem', borderBottom: '1px solid #2a2a2a' }}>
+        <div style={{
+          fontSize: '24px',
+          fontWeight: 200,
+          letterSpacing: '0.15em',
+          color: '#f5f4f0',
+          marginBottom: '0.4rem',
+        }}>
+          zai
         </div>
         <div style={{
           fontSize: '11px',
@@ -115,7 +110,7 @@ const Sidebar: React.FC = () => {
         </div>
       </div>
 
-      {/* User Profile — gold removed, role now warm white */}
+      {/* User Profile — kept, but role/member label removed, avatar icon white not gold */}
       {user && (
         <div style={{
           padding: '1rem 1.5rem',
@@ -131,18 +126,9 @@ const Sidebar: React.FC = () => {
           />
           <div>
             <div style={{ fontSize: '12px', color: '#f5f4f0', fontWeight: 500 }}>
-              {user.givenName || user.firstName || 'User'} {user.familyName || user.lastName || ''}
+              {user.givenName || user.firstName || ''} {user.familyName || user.lastName || ''}
             </div>
-            {/* Removed gold (#b8a06a) → now uses muted warm white */}
-            <div style={{
-              fontSize: '11px',
-              color: '#999',
-              letterSpacing: '0.1em',
-              marginTop: '2px',
-              textTransform: 'uppercase',
-            }}>
-              {user.role || 'member'}
-            </div>
+            {/* Role label ("member" / "User") REMOVED */}
           </div>
         </div>
       )}
@@ -181,7 +167,6 @@ const Sidebar: React.FC = () => {
                     borderLeft: active ? '2px solid #c8102e' : '2px solid transparent',
                     background: active ? 'rgba(255,255,255,0.05)' : 'transparent',
                     position: 'relative',
-                    // Shadow effect on inactive items
                     boxShadow: active
                       ? 'none'
                       : 'inset 0 -1px 0 rgba(255,255,255,0.04), 0 1px 3px rgba(0,0,0,0.25)',

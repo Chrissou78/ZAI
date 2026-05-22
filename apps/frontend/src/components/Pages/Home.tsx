@@ -23,25 +23,32 @@ const Home: React.FC = () => {
           padding: '5rem 4rem',
         }}
       >
-        {/* Top Bar */}
+        {/* Top Bar — 3-column grid: left empty | center logo | right wallet button */}
         <div
           style={{
             position: 'absolute',
             top: 0,
             left: 0,
             right: 0,
-            display: 'flex',
-            justifyContent: 'space-between',
+            display: 'grid',
+            gridTemplateColumns: '1fr auto 1fr',
             alignItems: 'center',
-            padding: '1.5rem 4rem',
+            padding: '1.5rem 3rem',
             zIndex: 3,
           }}
         >
-          <div style={{ fontSize: '24px', fontWeight: 300, letterSpacing: '0.15em', color: '#ffffff' }}>
-            zai
+          {/* Left spacer */}
+          <div />
+          {/* Center — ZaiLogo cross mark, centered */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <ZaiLogo size={80} color="#ffffff" />
           </div>
-          <WalletConnectButton />
+          {/* Right — wallet button */}
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <WalletConnectButton />
+          </div>
         </div>
+
         {/* Overlay */}
         <div
           style={{
@@ -58,7 +65,7 @@ const Home: React.FC = () => {
             zai experience club
           </div>
           <h1 style={{ fontSize: 'clamp(52px, 6.5vw, 96px)', fontWeight: 200, lineHeight: 1.05, letterSpacing: '-0.02em', marginBottom: '1.5rem', color: '#fff' }}>
-            Your world.<br />Beyond the<br /><span style={{ color: '#b8a06a' }}>mountain.</span>
+            Your world.<br />Beyond the<br /><span style={{ color: '#f5f4f0' }}>mountain.</span>
           </h1>
           <p style={{ color: '#999', fontSize: '17px', maxWidth: '480px', lineHeight: 1.8, marginBottom: '2rem' }}>
             More than ownership — a living connection to zai. Claim your products, earn your place, and unlock a world of events, rewards, and access built for those who live for the run.
@@ -106,7 +113,8 @@ const Home: React.FC = () => {
             </div>
           )}
         </div>
-        {/* Hero Stats */}
+
+        {/* Hero Stats — gold removed, now #f5f4f0 */}
         <div
           style={{
             position: 'absolute',
@@ -119,7 +127,7 @@ const Home: React.FC = () => {
           }}
         >
           <div style={{ flex: 1, padding: '1.25rem', borderRight: '1px solid #1e1e1e', textAlign: 'center' }}>
-            <div style={{ fontSize: '28px', fontWeight: 200, color: '#b8a06a', height: '38px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+            <div style={{ fontSize: '28px', fontWeight: 200, color: '#f5f4f0', height: '38px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
               2003
             </div>
             <div style={{ fontSize: '12px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#555', marginTop: '3px' }}>
@@ -127,7 +135,7 @@ const Home: React.FC = () => {
             </div>
           </div>
           <div style={{ flex: 1, padding: '1.25rem', borderRight: '1px solid #1e1e1e', textAlign: 'center' }}>
-            <div style={{ fontSize: '28px', fontWeight: 200, color: '#b8a06a', height: '38px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+            <div style={{ fontSize: '28px', fontWeight: 200, color: '#f5f4f0', height: '38px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
               <MountainIcon />
             </div>
             <div style={{ fontSize: '12px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#555', marginTop: '3px' }}>
@@ -135,7 +143,7 @@ const Home: React.FC = () => {
             </div>
           </div>
           <div style={{ flex: 1, padding: '1.25rem', textAlign: 'center' }}>
-            <div style={{ fontSize: '28px', fontWeight: 200, color: '#b8a06a', height: '38px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+            <div style={{ fontSize: '28px', fontWeight: 200, color: '#f5f4f0', height: '38px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
               100%
             </div>
             <div style={{ fontSize: '12px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#555', marginTop: '3px' }}>
@@ -173,6 +181,7 @@ const Home: React.FC = () => {
               ))}
             </div>
           </div>
+          {/* Experience Card visual — gold on chip & card text stays (it's the physical card design) */}
           <div style={{ background: 'linear-gradient(135deg, #1a1a1a, #2a2a2a)', border: '1px solid #333', borderRadius: '14px', padding: '1.4rem 1.6rem', position: 'relative', overflow: 'hidden', color: '#fff', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', aspectRatio: '1.586' }}>
             <div style={{ position: 'absolute', top: '-30px', right: '-30px', width: '100px', height: '100px', background: 'radial-gradient(circle, rgba(200,16,46,0.15), transparent 70%)' }} />
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -233,6 +242,7 @@ const Home: React.FC = () => {
           </div>
         </div>
       </section>
+
       {/* Benefits Section */}
       <section style={{ background: '#f0ede6', padding: '5rem 4rem', borderTop: '1px solid #e0ddd6' }}>
         <div style={{ maxWidth: '900px', margin: '0 auto' }}>
@@ -393,34 +403,18 @@ const Home: React.FC = () => {
 
             {/* Follow */}
             <div>
-        <div style={{ fontSize: '10px', letterSpacing: '0.25em', textTransform: 'uppercase', color: '#444', marginBottom: '0.6rem' }}>
-          Follow
-            </div>
+              <div style={{ fontSize: '10px', letterSpacing: '0.25em', textTransform: 'uppercase', color: '#444', marginBottom: '0.6rem' }}>
+                Follow
+              </div>
               <div style={{ display: 'flex', gap: '10px' }}>
                 <a
                   href="https://instagram.com/zaiski"
                   target="_blank"
                   rel="noopener noreferrer"
                   title="Instagram"
-                  style={{
-                    width: '30px',
-                    height: '30px',
-                    border: '1px solid #2a2a2a',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: '#555',
-                    textDecoration: 'none',
-                    transition: 'all 0.2s',
-                  }}
-                  onMouseEnter={(e) => {
-                    (e.currentTarget as HTMLAnchorElement).style.borderColor = '#555';
-                    (e.currentTarget as HTMLAnchorElement).style.color = '#fff';
-                  }}
-                  onMouseLeave={(e) => {
-                    (e.currentTarget as HTMLAnchorElement).style.borderColor = '#2a2a2a';
-                    (e.currentTarget as HTMLAnchorElement).style.color = '#555';
-                  }}
+                  style={{ width: '30px', height: '30px', border: '1px solid #2a2a2a', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555', textDecoration: 'none', transition: 'all 0.2s' }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = '#555'; (e.currentTarget as HTMLAnchorElement).style.color = '#fff'; }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = '#2a2a2a'; (e.currentTarget as HTMLAnchorElement).style.color = '#555'; }}
                 >
                   <InstagramIcon />
                 </a>
@@ -429,25 +423,9 @@ const Home: React.FC = () => {
                   target="_blank"
                   rel="noopener noreferrer"
                   title="Facebook"
-                  style={{
-                    width: '30px',
-                    height: '30px',
-                    border: '1px solid #2a2a2a',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: '#555',
-                    textDecoration: 'none',
-                    transition: 'all 0.2s',
-                  }}
-                  onMouseEnter={(e) => {
-                    (e.currentTarget as HTMLAnchorElement).style.borderColor = '#555';
-                    (e.currentTarget as HTMLAnchorElement).style.color = '#fff';
-                  }}
-                  onMouseLeave={(e) => {
-                    (e.currentTarget as HTMLAnchorElement).style.borderColor = '#2a2a2a';
-                    (e.currentTarget as HTMLAnchorElement).style.color = '#555';
-                  }}
+                  style={{ width: '30px', height: '30px', border: '1px solid #2a2a2a', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555', textDecoration: 'none', transition: 'all 0.2s' }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = '#555'; (e.currentTarget as HTMLAnchorElement).style.color = '#fff'; }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = '#2a2a2a'; (e.currentTarget as HTMLAnchorElement).style.color = '#555'; }}
                 >
                   <FacebookIcon />
                 </a>
@@ -456,25 +434,9 @@ const Home: React.FC = () => {
                   target="_blank"
                   rel="noopener noreferrer"
                   title="LinkedIn"
-                  style={{
-                    width: '30px',
-                    height: '30px',
-                    border: '1px solid #2a2a2a',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: '#555',
-                    textDecoration: 'none',
-                    transition: 'all 0.2s',
-                  }}
-                  onMouseEnter={(e) => {
-                    (e.currentTarget as HTMLAnchorElement).style.borderColor = '#555';
-                    (e.currentTarget as HTMLAnchorElement).style.color = '#fff';
-                  }}
-                  onMouseLeave={(e) => {
-                    (e.currentTarget as HTMLAnchorElement).style.borderColor = '#2a2a2a';
-                    (e.currentTarget as HTMLAnchorElement).style.color = '#555';
-                  }}
+                  style={{ width: '30px', height: '30px', border: '1px solid #2a2a2a', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555', textDecoration: 'none', transition: 'all 0.2s' }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = '#555'; (e.currentTarget as HTMLAnchorElement).style.color = '#fff'; }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = '#2a2a2a'; (e.currentTarget as HTMLAnchorElement).style.color = '#555'; }}
                 >
                   <LinkedInIcon />
                 </a>
@@ -483,25 +445,9 @@ const Home: React.FC = () => {
                   target="_blank"
                   rel="noopener noreferrer"
                   title="YouTube"
-                  style={{
-                    width: '30px',
-                    height: '30px',
-                    border: '1px solid #2a2a2a',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: '#555',
-                    textDecoration: 'none',
-                    transition: 'all 0.2s',
-                  }}
-                  onMouseEnter={(e) => {
-                    (e.currentTarget as HTMLAnchorElement).style.borderColor = '#555';
-                    (e.currentTarget as HTMLAnchorElement).style.color = '#fff';
-                  }}
-                  onMouseLeave={(e) => {
-                    (e.currentTarget as HTMLAnchorElement).style.borderColor = '#2a2a2a';
-                    (e.currentTarget as HTMLAnchorElement).style.color = '#555';
-                  }}
+                  style={{ width: '30px', height: '30px', border: '1px solid #2a2a2a', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555', textDecoration: 'none', transition: 'all 0.2s' }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = '#555'; (e.currentTarget as HTMLAnchorElement).style.color = '#fff'; }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = '#2a2a2a'; (e.currentTarget as HTMLAnchorElement).style.color = '#555'; }}
                 >
                   <YouTubeIcon />
                 </a>
@@ -510,25 +456,9 @@ const Home: React.FC = () => {
                   target="_blank"
                   rel="noopener noreferrer"
                   title="WhatsApp"
-                  style={{
-                    width: '30px',
-                    height: '30px',
-                    border: '1px solid #2a2a2a',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: '#555',
-                    textDecoration: 'none',
-                    transition: 'all 0.2s',
-                  }}
-                  onMouseEnter={(e) => {
-                    (e.currentTarget as HTMLAnchorElement).style.borderColor = '#555';
-                    (e.currentTarget as HTMLAnchorElement).style.color = '#fff';
-                  }}
-                  onMouseLeave={(e) => {
-                    (e.currentTarget as HTMLAnchorElement).style.borderColor = '#2a2a2a';
-                    (e.currentTarget as HTMLAnchorElement).style.color = '#555';
-                  }}
+                  style={{ width: '30px', height: '30px', border: '1px solid #2a2a2a', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555', textDecoration: 'none', transition: 'all 0.2s' }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = '#555'; (e.currentTarget as HTMLAnchorElement).style.color = '#fff'; }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = '#2a2a2a'; (e.currentTarget as HTMLAnchorElement).style.color = '#555'; }}
                 >
                   <WhatsAppIcon />
                 </a>
