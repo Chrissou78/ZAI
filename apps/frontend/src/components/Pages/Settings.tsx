@@ -326,276 +326,382 @@ const Settings: React.FC = () => {
     </div>
   );
 
-  // ── Shared styles ──
-  const sectionTitle: React.CSSProperties = {
-    fontSize: 13, fontWeight: 600, letterSpacing: '0.1em',
-    textTransform: 'uppercase', color: '#1a1a1a', marginBottom: '1.5rem',
-  };
+  // ── Shared styles (aligned with HTML design) ──
   const rowStyle: React.CSSProperties = {
     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-    padding: '1rem 0', borderBottom: '1px solid #f0ede6',
+    padding: '1.25rem 0', borderBottom: '1px solid #e0ddd6',
   };
-  const labelStyle: React.CSSProperties = { fontSize: 14, color: '#1a1a1a' };
-  const subLabel: React.CSSProperties = { fontSize: 12, color: '#8a8a8a', marginTop: 2 };
+  const labelStyle: React.CSSProperties = { fontSize: '13px', color: '#1a1a1a', fontWeight: 400 };
+  const subLabel: React.CSSProperties = { fontSize: '11px', color: '#6a6a6a', marginTop: '3px' };
   const btnPrimary: React.CSSProperties = {
-    background: '#7D1E2C', color: '#fff', border: 'none', padding: '10px 24px',
-    fontSize: 11, letterSpacing: '0.15em', textTransform: 'uppercase',
-    cursor: 'pointer', transition: 'background 0.2s',
+    background: '#7D1E2C', color: '#fff', border: 'none', padding: '13px 28px',
+    fontSize: '11px', letterSpacing: '0.15em', textTransform: 'uppercase',
+    cursor: 'pointer', transition: 'background 0.2s', fontFamily: "'Inter', sans-serif",
   };
   const btnOutline: React.CSSProperties = {
-    background: 'transparent', color: '#7D1E2C', border: '1px solid #7D1E2C',
-    padding: '10px 24px', fontSize: 11, letterSpacing: '0.15em',
+    background: 'transparent', color: '#1a1a1a', border: '1px solid #e0ddd6',
+    padding: '13px 28px', fontSize: '11px', letterSpacing: '0.15em',
     textTransform: 'uppercase', cursor: 'pointer', transition: 'all 0.2s',
+    fontFamily: "'Inter', sans-serif",
   };
   const btnDanger: React.CSSProperties = {
-    background: '#c0392b', color: '#fff', border: 'none', padding: '10px 24px',
-    fontSize: 11, letterSpacing: '0.15em', textTransform: 'uppercase',
-    cursor: 'pointer',
+    background: '#c8102e', color: '#fff', border: 'none', padding: '13px 28px',
+    fontSize: '11px', letterSpacing: '0.15em', textTransform: 'uppercase',
+    cursor: 'pointer', fontFamily: "'Inter', sans-serif",
   };
   const modalOverlay: React.CSSProperties = {
     position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-    background: 'rgba(0,0,0,0.5)', zIndex: 1000,
+    background: 'rgba(10,10,10,0.6)', zIndex: 1000,
     display: 'flex', alignItems: 'center', justifyContent: 'center',
-    backdropFilter: 'blur(2px)',
+    backdropFilter: 'blur(4px)',
   };
   const modalBox: React.CSSProperties = {
-    background: '#fff', padding: '2rem', maxWidth: 480, width: '90%',
-    boxShadow: '0 8px 40px rgba(0,0,0,0.15)',
+    background: '#fff', padding: '2.5rem', maxWidth: 480, width: '90%',
+    border: '1px solid #e0ddd6',
   };
   const inputStyle: React.CSSProperties = {
     width: '100%', padding: '10px 12px', border: '1px solid #e0ddd6',
-    fontSize: 14, marginBottom: '1rem', boxSizing: 'border-box',
-    outline: 'none',
+    fontSize: '13px', marginBottom: '1rem', boxSizing: 'border-box',
+    outline: 'none', fontFamily: "'Inter', sans-serif",
+  };
+
+  const panelLabels: Record<Panel, { icon: string; label: string }> = {
+    notifications: { icon: '🔔', label: 'Notifications' },
+    card: { icon: '💳', label: 'Experience Card' },
+    privacy: { icon: '🔒', label: 'Privacy' },
+    region: { icon: '🌍', label: 'Region' },
+    security: { icon: '🛡️', label: 'Security' },
   };
 
   if (loading) {
     return (
-      <div style={{ padding: '3rem', display: 'flex', justifyContent: 'center' }}>
-        <div style={{ fontSize: 14, color: '#8a8a8a' }}>Loading settings...</div>
+      <div style={{ padding: '3rem 4rem', textAlign: 'center' }}>
+        <div style={{ fontSize: '14px', color: '#6a6a6a' }}>Loading settings...</div>
       </div>
     );
   }
 
   return (
-    <div style={{ display: 'flex', gap: '2rem', padding: '2rem', maxWidth: 960 }}>
-      {/* ── Side navigation ── */}
-      <div style={{ minWidth: 180 }}>
-        <div style={{ ...sectionTitle, marginBottom: '1rem' }}>Settings</div>
-        {(['notifications', 'card', 'privacy', 'region', 'security'] as Panel[]).map(p => (
-          <div
-            key={p}
-            onClick={() => setActivePanel(p)}
-            style={{
-              padding: '10px 16px', cursor: 'pointer', fontSize: 13,
-              textTransform: 'capitalize', marginBottom: 2,
-              background: activePanel === p ? '#f0ede6' : 'transparent',
-              color: activePanel === p ? '#7D1E2C' : '#1a1a1a',
-              fontWeight: activePanel === p ? 600 : 400,
-              transition: 'all 0.2s',
-            }}
-          >
-            {p}
-          </div>
-        ))}
+    <div style={{ padding: '3rem 4rem 5rem' }}>
+      {/* Page Header — matches all other pages */}
+      <div
+        style={{
+          marginBottom: '2.5rem',
+          paddingBottom: '2rem',
+          borderBottom: '1px solid #e0ddd6',
+        }}
+      >
+        <div
+          style={{
+            fontSize: '11px',
+            letterSpacing: '0.3em',
+            textTransform: 'uppercase',
+            color: '#c8102e',
+            marginBottom: '0.4rem',
+          }}
+        >
+          account
+        </div>
+        <h1 style={{ fontSize: 'clamp(24px, 3.5vw, 40px)', fontWeight: 300, lineHeight: 1.15, margin: '0 0 0.3rem', color: '#1a1a1a' }}>
+          Settings
+        </h1>
+        <p style={{ color: '#6a6a6a', fontSize: '13px', maxWidth: '520px', margin: '0.4rem 0 0' }}>
+          Manage your notifications, card, privacy, and security preferences.
+        </p>
       </div>
 
-      {/* ── Panel content ── */}
-      <div style={{ flex: 1 }}>
-        {error && (
-          <div style={{ background: '#fef0f0', color: '#8a1a1a', padding: '12px 16px', marginBottom: '1rem', fontSize: 13 }}>
-            {error}
-          </div>
-        )}
-        {success && (
-          <div style={{ background: '#f0faf4', color: '#1a5c3a', padding: '12px 16px', marginBottom: '1rem', fontSize: 13 }}>
-            {success}
-          </div>
-        )}
+      {error && (
+        <div style={{ padding: '12px 16px', background: 'rgba(200,16,46,0.06)', border: '1px solid rgba(200,16,46,0.15)', marginBottom: '1.5rem', fontSize: '13px', color: '#c8102e' }}>
+          {error}
+        </div>
+      )}
+      {success && (
+        <div style={{ padding: '12px 16px', background: 'rgba(42,157,78,0.06)', border: '1px solid rgba(42,157,78,0.15)', marginBottom: '1.5rem', fontSize: '13px', color: '#2a9d4e' }}>
+          {success}
+        </div>
+      )}
 
-        {/* ═══ NOTIFICATIONS ═══ */}
-        {activePanel === 'notifications' && (
-          <div>
-            <div style={sectionTitle}>Notifications</div>
-            {([
-              ['emailNotifications', 'Email Notifications', 'Receive updates via email'],
-              ['pushNotifications', 'Push Notifications', 'Browser push notifications'],
-              ['productUpdates', 'Product Updates', 'Updates about your products'],
-              ['communityAlerts', 'Community Alerts', 'Community activity alerts'],
-            ] as const).map(([key, label, desc]) => (
-              <div key={key} style={rowStyle}>
-                <div>
-                  <div style={labelStyle}>{label}</div>
-                  <div style={subLabel}>{desc}</div>
+      {/* Layout — grid matching the HTML design with 1px gap borders */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '220px 1fr',
+          gap: '1px',
+          background: '#e0ddd6',
+          border: '1px solid #e0ddd6',
+        }}
+      >
+        {/* Side navigation */}
+        <div style={{ background: '#f0ede6', padding: '1.5rem 0' }}>
+          {(Object.keys(panelLabels) as Panel[]).map((p) => (
+            <div
+              key={p}
+              onClick={() => setActivePanel(p)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                padding: '12px 1.5rem',
+                cursor: 'pointer',
+                fontSize: '12px',
+                letterSpacing: '0.05em',
+                color: activePanel === p ? '#c8102e' : '#1a1a1a',
+                fontWeight: activePanel === p ? 500 : 400,
+                borderLeft: activePanel === p ? '3px solid #c8102e' : '3px solid transparent',
+                background: activePanel === p ? 'rgba(200,16,46,0.04)' : 'transparent',
+                transition: 'all 0.2s',
+              }}
+              onMouseEnter={(e) => {
+                if (activePanel !== p) e.currentTarget.style.background = 'rgba(0,0,0,0.02)';
+              }}
+              onMouseLeave={(e) => {
+                if (activePanel !== p) e.currentTarget.style.background = 'transparent';
+              }}
+            >
+              <span style={{ fontSize: '14px' }}>{panelLabels[p].icon}</span>
+              {panelLabels[p].label}
+            </div>
+          ))}
+        </div>
+
+        {/* Panel content */}
+        <div style={{ background: '#fff', padding: '2rem' }}>
+          {/* Panel title */}
+          <div
+            style={{
+              fontSize: '11px',
+              letterSpacing: '0.3em',
+              textTransform: 'uppercase',
+              color: '#1a1a1a',
+              marginBottom: '1.5rem',
+              paddingBottom: '0.75rem',
+              borderBottom: '1px solid #e0ddd6',
+            }}
+          >
+            {panelLabels[activePanel].label}
+          </div>
+
+          {/* ═══ NOTIFICATIONS ═══ */}
+          {activePanel === 'notifications' && (
+            <div>
+              {([
+                ['emailNotifications', 'Email Notifications', 'Receive updates via email'],
+                ['pushNotifications', 'Push Notifications', 'Browser push notifications'],
+                ['productUpdates', 'Product Updates', 'Updates about your products'],
+                ['communityAlerts', 'Community Alerts', 'Community activity alerts'],
+              ] as const).map(([key, label, desc]) => (
+                <div key={key} style={rowStyle}>
+                  <div>
+                    <div style={labelStyle}>{label}</div>
+                    <div style={subLabel}>{desc}</div>
+                  </div>
+                  <ToggleSwitch checked={notifications[key]} onChange={() => toggleNotification(key)} />
                 </div>
-                <ToggleSwitch checked={notifications[key]} onChange={() => toggleNotification(key)} />
-              </div>
-            ))}
-            <div style={{ marginTop: '2rem' }}>
-              <button onClick={saveSettings} disabled={saving} style={btnPrimary}>
-                {saving ? 'Saving...' : 'Save'}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* ═══ CARD ═══ */}
-        {activePanel === 'card' && (
-          <div>
-            <div style={sectionTitle}>Card</div>
-            <div style={rowStyle}>
-              <div>
-                <div style={labelStyle}>Card ID</div>
-                <div style={subLabel}>{card.cardId || 'Not assigned'}</div>
-              </div>
-              <span style={{ fontSize: 12, color: card.isActive ? '#1a5c3a' : '#8a8a8a' }}>
-                {card.isActive ? 'Active' : 'Inactive'}
-              </span>
-            </div>
-            <div style={rowStyle}>
-              <div>
-                <div style={labelStyle}>NFC</div>
-                <div style={subLabel}>Enable near-field communication</div>
-              </div>
-              <ToggleSwitch checked={card.nfcEnabled} onChange={() => toggleCard('nfcEnabled')} />
-            </div>
-            <div style={rowStyle}>
-              <div>
-                <div style={labelStyle}>Auto Login</div>
-                <div style={subLabel}>Log in automatically with your card</div>
-              </div>
-              <ToggleSwitch checked={card.autoLogin} onChange={() => toggleCard('autoLogin')} />
-            </div>
-            <div style={{ marginTop: '2rem', display: 'flex', gap: '1rem' }}>
-              <button onClick={saveSettings} disabled={saving} style={btnPrimary}>
-                {saving ? 'Saving...' : 'Save'}
-              </button>
-              <button style={btnOutline}>Request Replacement</button>
-            </div>
-          </div>
-        )}
-
-        {/* ═══ PRIVACY ═══ */}
-        {activePanel === 'privacy' && (
-          <div>
-            <div style={sectionTitle}>Privacy</div>
-            {([
-              ['dataSharing', 'Data Sharing', 'Share usage data to improve ZAI'],
-              ['analytics', 'Analytics', 'Allow analytics tracking'],
-              ['profileVisibility', 'Profile Visibility', 'Make your profile visible to others'],
-              ['communityVisibility', 'Community Visibility', 'Appear in community lists'],
-            ] as const).map(([key, label, desc]) => (
-              <div key={key} style={rowStyle}>
-                <div>
-                  <div style={labelStyle}>{label}</div>
-                  <div style={subLabel}>{desc}</div>
-                </div>
-                <ToggleSwitch checked={privacy[key]} onChange={() => togglePrivacy(key)} />
-              </div>
-            ))}
-            <div style={{ marginTop: '2rem' }}>
-              <button onClick={saveSettings} disabled={saving} style={btnPrimary}>
-                {saving ? 'Saving...' : 'Save'}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* ═══ REGION ═══ */}
-        {activePanel === 'region' && (
-          <div>
-            <div style={sectionTitle}>Region</div>
-            <div style={rowStyle}>
-              <div style={labelStyle}>Country</div>
-              <div style={{ fontSize: 14, color: '#444' }}>{region.country}</div>
-            </div>
-            <div style={rowStyle}>
-              <div style={labelStyle}>Currency</div>
-              <div style={{ fontSize: 14, color: '#444' }}>{region.currency}</div>
-            </div>
-            <div style={rowStyle}>
-              <div style={labelStyle}>Language</div>
-              <div style={{ fontSize: 14, color: '#444' }}>{region.language}</div>
-            </div>
-          </div>
-        )}
-
-        {/* ═══ SECURITY ═══ */}
-        {activePanel === 'security' && (
-          <div>
-            <div style={sectionTitle}>Security</div>
-
-            {/* Password */}
-            <div style={rowStyle}>
-              <div>
-                <div style={labelStyle}>Password</div>
-                <div style={subLabel}>
-                  {security.lastPasswordChange
-                    ? `Last changed ${new Date(security.lastPasswordChange).toLocaleDateString()}`
-                    : 'Never changed'}
-                </div>
-              </div>
-              <button onClick={() => { setShowPasswordModal(true); setPasswordError(''); setPasswordForm({ current: '', newPass: '', confirm: '' }); }} style={btnPrimary}>
-                Change
-              </button>
-            </div>
-
-            {/* Two-Factor Authentication */}
-            <div style={rowStyle}>
-              <div>
-                <div style={labelStyle}>Two-Factor Authentication</div>
-                <div style={subLabel}>
-                  {security.twoFactorEnabled
-                    ? `Enabled via ${security.twoFactorMethod}`
-                    : 'Add an extra layer of security'}
-                </div>
-              </div>
-              {security.twoFactorEnabled ? (
+              ))}
+              <div style={{ marginTop: '2rem' }}>
                 <button
-                  onClick={() => { setShowDisable2FAModal(true); setDisableCode(''); setDisableError(''); }}
-                  style={btnOutline}
-                >
-                  Disable
-                </button>
-              ) : (
-                <button
-                  onClick={() => {
-                    setShowTwoFactorModal(true);
-                    setTfaStep('choose');
-                    setTfaCode('');
-                    setTfaError('');
-                    setTfaSecret('');
-                    setTfaQrUrl('');
-                  }}
+                  onClick={saveSettings}
+                  disabled={saving}
                   style={btnPrimary}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = '#9a2535')}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = '#7D1E2C')}
                 >
-                  Enable
+                  {saving ? 'Saving...' : 'Save Changes'}
                 </button>
-              )}
-            </div>
-
-            {/* Active Sessions */}
-            <div style={rowStyle}>
-              <div>
-                <div style={labelStyle}>Active Sessions</div>
-                <div style={subLabel}>Manage your logged-in devices</div>
               </div>
-              <button onClick={openSessionsModal} style={btnOutline}>
-                View
-              </button>
             </div>
+          )}
 
-            {/* Logout */}
-            <div style={{ ...rowStyle, borderBottom: 'none' }}>
-              <div>
-                <div style={labelStyle}>Sign Out</div>
-                <div style={subLabel}>Log out of your current session</div>
+          {/* ═══ CARD ═══ */}
+          {activePanel === 'card' && (
+            <div>
+              <div style={rowStyle}>
+                <div>
+                  <div style={labelStyle}>Card ID</div>
+                  <div style={subLabel}>{card.cardId || 'Not assigned'}</div>
+                </div>
+                <div style={{
+                  fontSize: '10px', letterSpacing: '0.2em', textTransform: 'uppercase',
+                  padding: '4px 12px',
+                  background: card.isActive ? 'rgba(42,157,78,0.06)' : '#f0ede6',
+                  border: card.isActive ? '1px solid rgba(42,157,78,0.2)' : '1px solid #e0ddd6',
+                  color: card.isActive ? '#2a9d4e' : '#6a6a6a',
+                }}>
+                  {card.isActive ? 'Active' : 'Inactive'}
+                </div>
               </div>
-              <button onClick={() => setShowLogoutModal(true)} style={btnDanger}>
-                Logout
-              </button>
+              <div style={rowStyle}>
+                <div>
+                  <div style={labelStyle}>NFC</div>
+                  <div style={subLabel}>Enable near-field communication</div>
+                </div>
+                <ToggleSwitch checked={card.nfcEnabled} onChange={() => toggleCard('nfcEnabled')} />
+              </div>
+              <div style={rowStyle}>
+                <div>
+                  <div style={labelStyle}>Auto Login</div>
+                  <div style={subLabel}>Log in automatically with your card</div>
+                </div>
+                <ToggleSwitch checked={card.autoLogin} onChange={() => toggleCard('autoLogin')} />
+              </div>
+              <div style={{ marginTop: '2rem', display: 'flex', gap: '0.75rem' }}>
+                <button
+                  onClick={saveSettings}
+                  disabled={saving}
+                  style={btnPrimary}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = '#9a2535')}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = '#7D1E2C')}
+                >
+                  {saving ? 'Saving...' : 'Save Changes'}
+                </button>
+                <button
+                  style={btnOutline}
+                  onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#1a1a1a')}
+                  onMouseLeave={(e) => (e.currentTarget.style.borderColor = '#e0ddd6')}
+                >
+                  Request Replacement
+                </button>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+
+          {/* ═══ PRIVACY ═══ */}
+          {activePanel === 'privacy' && (
+            <div>
+              {([
+                ['dataSharing', 'Data Sharing', 'Share usage data to improve ZAI'],
+                ['analytics', 'Analytics', 'Allow analytics tracking'],
+                ['profileVisibility', 'Profile Visibility', 'Make your profile visible to others'],
+                ['communityVisibility', 'Community Visibility', 'Appear in community lists'],
+              ] as const).map(([key, label, desc]) => (
+                <div key={key} style={rowStyle}>
+                  <div>
+                    <div style={labelStyle}>{label}</div>
+                    <div style={subLabel}>{desc}</div>
+                  </div>
+                  <ToggleSwitch checked={privacy[key]} onChange={() => togglePrivacy(key)} />
+                </div>
+              ))}
+              <div style={{ marginTop: '2rem' }}>
+                <button
+                  onClick={saveSettings}
+                  disabled={saving}
+                  style={btnPrimary}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = '#9a2535')}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = '#7D1E2C')}
+                >
+                  {saving ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ═══ REGION ═══ */}
+          {activePanel === 'region' && (
+            <div>
+              {[
+                { label: 'Country', value: region.country },
+                { label: 'Currency', value: region.currency },
+                { label: 'Language', value: region.language },
+              ].map((item, i) => (
+                <div key={i} style={rowStyle}>
+                  <div style={labelStyle}>{item.label}</div>
+                  <div style={{ fontSize: '13px', color: '#1a1a1a' }}>{item.value}</div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* ═══ SECURITY ═══ */}
+          {activePanel === 'security' && (
+            <div>
+              {/* Password */}
+              <div style={rowStyle}>
+                <div>
+                  <div style={labelStyle}>Password</div>
+                  <div style={subLabel}>
+                    {security.lastPasswordChange
+                      ? `Last changed ${new Date(security.lastPasswordChange).toLocaleDateString()}`
+                      : 'Never changed'}
+                  </div>
+                </div>
+                <button
+                  onClick={() => { setShowPasswordModal(true); setPasswordError(''); setPasswordForm({ current: '', newPass: '', confirm: '' }); }}
+                  style={btnPrimary}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = '#9a2535')}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = '#7D1E2C')}
+                >
+                  Change
+                </button>
+              </div>
+
+              {/* Two-Factor Authentication */}
+              <div style={rowStyle}>
+                <div>
+                  <div style={labelStyle}>Two-Factor Authentication</div>
+                  <div style={subLabel}>
+                    {security.twoFactorEnabled
+                      ? `Enabled via ${security.twoFactorMethod}`
+                      : 'Add an extra layer of security'}
+                  </div>
+                </div>
+                {security.twoFactorEnabled ? (
+                  <button
+                    onClick={() => { setShowDisable2FAModal(true); setDisableCode(''); setDisableError(''); }}
+                    style={btnOutline}
+                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#c8102e'; e.currentTarget.style.color = '#c8102e'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#e0ddd6'; e.currentTarget.style.color = '#1a1a1a'; }}
+                  >
+                    Disable
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => {
+                      setShowTwoFactorModal(true);
+                      setTfaStep('choose');
+                      setTfaCode('');
+                      setTfaError('');
+                      setTfaSecret('');
+                      setTfaQrUrl('');
+                    }}
+                    style={btnPrimary}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = '#9a2535')}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = '#7D1E2C')}
+                  >
+                    Enable
+                  </button>
+                )}
+              </div>
+
+              {/* Active Sessions */}
+              <div style={rowStyle}>
+                <div>
+                  <div style={labelStyle}>Active Sessions</div>
+                  <div style={subLabel}>Manage your logged-in devices</div>
+                </div>
+                <button
+                  onClick={openSessionsModal}
+                  style={btnOutline}
+                  onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#1a1a1a')}
+                  onMouseLeave={(e) => (e.currentTarget.style.borderColor = '#e0ddd6')}
+                >
+                  View
+                </button>
+              </div>
+
+              {/* Logout */}
+              <div style={{ ...rowStyle, borderBottom: 'none' }}>
+                <div>
+                  <div style={labelStyle}>Sign Out</div>
+                  <div style={subLabel}>Log out of your current session</div>
+                </div>
+                <button onClick={() => setShowLogoutModal(true)} style={btnDanger}>
+                  Logout
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* ═══════════════════════ MODALS ═══════════════════════ */}
@@ -604,35 +710,53 @@ const Settings: React.FC = () => {
       {showPasswordModal && (
         <div style={modalOverlay} onClick={() => setShowPasswordModal(false)}>
           <div style={modalBox} onClick={e => e.stopPropagation()}>
-            <div style={{ ...sectionTitle, marginBottom: '1.5rem' }}>Change Password</div>
+            <div style={{
+              fontSize: '11px', letterSpacing: '0.3em', textTransform: 'uppercase',
+              color: '#1a1a1a', marginBottom: '1.5rem', paddingBottom: '0.75rem',
+              borderBottom: '1px solid #e0ddd6',
+            }}>
+              Change Password
+            </div>
             {passwordError && (
-              <div style={{ background: '#fef0f0', color: '#8a1a1a', padding: '10px 14px', marginBottom: '1rem', fontSize: 13 }}>
+              <div style={{ background: 'rgba(200,16,46,0.06)', color: '#c8102e', padding: '10px 14px', marginBottom: '1rem', fontSize: '12px', border: '1px solid rgba(200,16,46,0.15)' }}>
                 {passwordError}
               </div>
             )}
-            <label style={{ fontSize: 12, color: '#8a8a8a', display: 'block', marginBottom: 4 }}>Current Password</label>
+            <label style={{ fontSize: '10px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#6a6a6a', display: 'block', marginBottom: '6px' }}>Current Password</label>
             <input
               type="password" style={inputStyle}
               value={passwordForm.current}
               onChange={e => setPasswordForm(p => ({ ...p, current: e.target.value }))}
             />
-            <label style={{ fontSize: 12, color: '#8a8a8a', display: 'block', marginBottom: 4 }}>New Password</label>
+            <label style={{ fontSize: '10px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#6a6a6a', display: 'block', marginBottom: '6px' }}>New Password</label>
             <input
               type="password" style={inputStyle}
               value={passwordForm.newPass}
               onChange={e => setPasswordForm(p => ({ ...p, newPass: e.target.value }))}
             />
-            <label style={{ fontSize: 12, color: '#8a8a8a', display: 'block', marginBottom: 4 }}>Confirm New Password</label>
+            <label style={{ fontSize: '10px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#6a6a6a', display: 'block', marginBottom: '6px' }}>Confirm New Password</label>
             <input
               type="password" style={inputStyle}
               value={passwordForm.confirm}
               onChange={e => setPasswordForm(p => ({ ...p, confirm: e.target.value }))}
             />
-            <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
-              <button onClick={handlePasswordChange} disabled={passwordSaving} style={btnPrimary}>
+            <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
+              <button
+                onClick={handlePasswordChange} disabled={passwordSaving}
+                style={btnPrimary}
+                onMouseEnter={(e) => (e.currentTarget.style.background = '#9a2535')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = '#7D1E2C')}
+              >
                 {passwordSaving ? 'Saving...' : 'Update Password'}
               </button>
-              <button onClick={() => setShowPasswordModal(false)} style={btnOutline}>Cancel</button>
+              <button
+                onClick={() => setShowPasswordModal(false)}
+                style={btnOutline}
+                onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#1a1a1a')}
+                onMouseLeave={(e) => (e.currentTarget.style.borderColor = '#e0ddd6')}
+              >
+                Cancel
+              </button>
             </div>
           </div>
         </div>
@@ -642,7 +766,11 @@ const Settings: React.FC = () => {
       {showTwoFactorModal && (
         <div style={modalOverlay} onClick={() => setShowTwoFactorModal(false)}>
           <div style={modalBox} onClick={e => e.stopPropagation()}>
-            <div style={{ ...sectionTitle, marginBottom: '1.5rem' }}>
+            <div style={{
+              fontSize: '11px', letterSpacing: '0.3em', textTransform: 'uppercase',
+              color: '#1a1a1a', marginBottom: '1.5rem', paddingBottom: '0.75rem',
+              borderBottom: '1px solid #e0ddd6',
+            }}>
               {tfaStep === 'choose' && 'Enable Two-Factor Authentication'}
               {tfaStep === 'scan' && 'Scan QR Code'}
               {tfaStep === 'verify' && 'Verify Code'}
@@ -650,7 +778,7 @@ const Settings: React.FC = () => {
             </div>
 
             {tfaError && (
-              <div style={{ background: '#fef0f0', color: '#8a1a1a', padding: '10px 14px', marginBottom: '1rem', fontSize: 13 }}>
+              <div style={{ background: 'rgba(200,16,46,0.06)', color: '#c8102e', padding: '10px 14px', marginBottom: '1rem', fontSize: '12px', border: '1px solid rgba(200,16,46,0.15)' }}>
                 {tfaError}
               </div>
             )}
@@ -658,38 +786,46 @@ const Settings: React.FC = () => {
             {/* Step 1: Choose method */}
             {tfaStep === 'choose' && (
               <div>
-                <div style={{ marginBottom: '1.5rem', fontSize: 13, color: '#666' }}>
+                <div style={{ marginBottom: '1.5rem', fontSize: '13px', color: '#6a6a6a' }}>
                   Choose your preferred verification method.
                 </div>
                 <div
                   onClick={() => setTfaMethod('authenticator')}
                   style={{
-                    padding: '1rem', border: `2px solid ${tfaMethod === 'authenticator' ? '#7D1E2C' : '#e0ddd6'}`,
+                    padding: '1.25rem', border: `1px solid ${tfaMethod === 'authenticator' ? '#c8102e' : '#e0ddd6'}`,
                     marginBottom: '0.75rem', cursor: 'pointer', transition: 'border 0.2s',
+                    background: tfaMethod === 'authenticator' ? 'rgba(200,16,46,0.03)' : '#fff',
                   }}
                 >
-                  <div style={{ fontWeight: 600, fontSize: 14 }}>Authenticator App</div>
-                  <div style={{ fontSize: 12, color: '#8a8a8a', marginTop: 4 }}>
+                  <div style={{ fontWeight: 500, fontSize: '13px', color: '#1a1a1a' }}>Authenticator App</div>
+                  <div style={{ fontSize: '11px', color: '#6a6a6a', marginTop: '4px' }}>
                     Use Google Authenticator, Authy, or any TOTP app
                   </div>
                 </div>
                 <div
                   onClick={() => setTfaMethod('email')}
                   style={{
-                    padding: '1rem', border: `2px solid ${tfaMethod === 'email' ? '#7D1E2C' : '#e0ddd6'}`,
+                    padding: '1.25rem', border: `1px solid ${tfaMethod === 'email' ? '#c8102e' : '#e0ddd6'}`,
                     marginBottom: '1.5rem', cursor: 'pointer', transition: 'border 0.2s',
+                    background: tfaMethod === 'email' ? 'rgba(200,16,46,0.03)' : '#fff',
                   }}
                 >
-                  <div style={{ fontWeight: 600, fontSize: 14 }}>Email Verification</div>
-                  <div style={{ fontSize: 12, color: '#8a8a8a', marginTop: 4 }}>
+                  <div style={{ fontWeight: 500, fontSize: '13px', color: '#1a1a1a' }}>Email Verification</div>
+                  <div style={{ fontSize: '11px', color: '#6a6a6a', marginTop: '4px' }}>
                     Receive a code via email each time you log in
                   </div>
                 </div>
-                <div style={{ display: 'flex', gap: '1rem' }}>
-                  <button onClick={handleSetup2FA} disabled={tfaLoading} style={btnPrimary}>
+                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                  <button onClick={handleSetup2FA} disabled={tfaLoading} style={btnPrimary}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = '#9a2535')}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = '#7D1E2C')}>
                     {tfaLoading ? 'Setting up...' : 'Continue'}
                   </button>
-                  <button onClick={() => setShowTwoFactorModal(false)} style={btnOutline}>Cancel</button>
+                  <button onClick={() => setShowTwoFactorModal(false)} style={btnOutline}
+                    onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#1a1a1a')}
+                    onMouseLeave={(e) => (e.currentTarget.style.borderColor = '#e0ddd6')}>
+                    Cancel
+                  </button>
                 </div>
               </div>
             )}
@@ -699,33 +835,41 @@ const Settings: React.FC = () => {
               <div>
                 {tfaMethod === 'authenticator' ? (
                   <>
-                    <div style={{ fontSize: 13, color: '#666', marginBottom: '1.5rem' }}>
+                    <div style={{ fontSize: '13px', color: '#6a6a6a', marginBottom: '1.5rem' }}>
                       Scan this QR code with your authenticator app (Google Authenticator, Authy, etc.).
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem' }}>
                       <img src={tfaQrUrl} alt="2FA QR Code" style={{ width: 200, height: 200 }} />
                     </div>
-                    <div style={{ background: '#f9f8f5', padding: '1rem', marginBottom: '1.5rem', textAlign: 'center' }}>
-                      <div style={{ fontSize: 11, color: '#8a8a8a', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                    <div style={{ background: '#f0ede6', padding: '1rem', marginBottom: '1.5rem', textAlign: 'center', border: '1px solid #e0ddd6' }}>
+                      <div style={{ fontSize: '10px', color: '#6a6a6a', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.15em' }}>
                         Or enter this code manually
                       </div>
-                      <div style={{ fontFamily: 'monospace', fontSize: 16, fontWeight: 600, letterSpacing: '0.2em', wordBreak: 'break-all' }}>
+                      <div style={{ fontFamily: 'monospace', fontSize: '16px', fontWeight: 600, letterSpacing: '0.2em', wordBreak: 'break-all', color: '#1a1a1a' }}>
                         {tfaSecret}
                       </div>
                     </div>
                   </>
                 ) : (
-                  <div style={{ fontSize: 13, color: '#666', marginBottom: '1.5rem' }}>
+                  <div style={{ fontSize: '13px', color: '#6a6a6a', marginBottom: '1.5rem' }}>
                     A verification code has been generated. In a production setup, this would be emailed to you.
                     For now, enter the code from your authenticator app using the secret below:
-                    <div style={{ background: '#f9f8f5', padding: '1rem', marginTop: '1rem', textAlign: 'center', fontFamily: 'monospace', fontSize: 16, fontWeight: 600 }}>
+                    <div style={{ background: '#f0ede6', padding: '1rem', marginTop: '1rem', textAlign: 'center', fontFamily: 'monospace', fontSize: '16px', fontWeight: 600, border: '1px solid #e0ddd6' }}>
                       {tfaSecret}
                     </div>
                   </div>
                 )}
-                <div style={{ display: 'flex', gap: '1rem' }}>
-                  <button onClick={() => setTfaStep('verify')} style={btnPrimary}>I've scanned it</button>
-                  <button onClick={() => setShowTwoFactorModal(false)} style={btnOutline}>Cancel</button>
+                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                  <button onClick={() => setTfaStep('verify')} style={btnPrimary}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = '#9a2535')}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = '#7D1E2C')}>
+                    I've scanned it
+                  </button>
+                  <button onClick={() => setShowTwoFactorModal(false)} style={btnOutline}
+                    onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#1a1a1a')}
+                    onMouseLeave={(e) => (e.currentTarget.style.borderColor = '#e0ddd6')}>
+                    Cancel
+                  </button>
                 </div>
               </div>
             )}
@@ -733,7 +877,7 @@ const Settings: React.FC = () => {
             {/* Step 3: Verify code */}
             {tfaStep === 'verify' && (
               <div>
-                <div style={{ fontSize: 13, color: '#666', marginBottom: '1.5rem' }}>
+                <div style={{ fontSize: '13px', color: '#6a6a6a', marginBottom: '1.5rem' }}>
                   Enter the 6-digit code from your authenticator app to complete setup.
                 </div>
                 <input
@@ -742,30 +886,40 @@ const Settings: React.FC = () => {
                   onChange={e => setTfaCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                   style={{
                     ...inputStyle,
-                    textAlign: 'center', fontSize: 24, fontFamily: 'monospace',
+                    textAlign: 'center', fontSize: '24px', fontFamily: 'monospace',
                     letterSpacing: '0.5em', fontWeight: 600,
                   }}
                 />
-                <div style={{ display: 'flex', gap: '1rem' }}>
-                  <button onClick={handleVerify2FA} disabled={tfaLoading} style={btnPrimary}>
+                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                  <button onClick={handleVerify2FA} disabled={tfaLoading} style={btnPrimary}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = '#9a2535')}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = '#7D1E2C')}>
                     {tfaLoading ? 'Verifying...' : 'Verify & Enable'}
                   </button>
-                  <button onClick={() => setTfaStep('scan')} style={btnOutline}>Back</button>
+                  <button onClick={() => setTfaStep('scan')} style={btnOutline}
+                    onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#1a1a1a')}
+                    onMouseLeave={(e) => (e.currentTarget.style.borderColor = '#e0ddd6')}>
+                    Back
+                  </button>
                 </div>
               </div>
             )}
 
             {/* Step 4: Success */}
             {tfaStep === 'success' && (
-              <div style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: 48, marginBottom: '1rem' }}>✓</div>
-                <div style={{ fontSize: 16, fontWeight: 600, marginBottom: '0.5rem' }}>
+              <div style={{ textAlign: 'center', padding: '1rem 0' }}>
+                <div style={{ width: '48px', height: '48px', margin: '0 auto 1rem', border: '2px solid #2a9d4e', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', color: '#2a9d4e' }}>✓</div>
+                <div style={{ fontSize: '16px', fontWeight: 300, marginBottom: '0.5rem', color: '#1a1a1a' }}>
                   Two-Factor Authentication Enabled
                 </div>
-                <div style={{ fontSize: 13, color: '#666', marginBottom: '1.5rem' }}>
+                <div style={{ fontSize: '13px', color: '#6a6a6a', marginBottom: '1.5rem' }}>
                   Your account is now protected with an additional layer of security.
                 </div>
-                <button onClick={() => setShowTwoFactorModal(false)} style={btnPrimary}>Done</button>
+                <button onClick={() => setShowTwoFactorModal(false)} style={btnPrimary}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = '#9a2535')}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = '#7D1E2C')}>
+                  Done
+                </button>
               </div>
             )}
           </div>
@@ -776,13 +930,19 @@ const Settings: React.FC = () => {
       {showDisable2FAModal && (
         <div style={modalOverlay} onClick={() => setShowDisable2FAModal(false)}>
           <div style={modalBox} onClick={e => e.stopPropagation()}>
-            <div style={{ ...sectionTitle, marginBottom: '1.5rem' }}>Disable Two-Factor Authentication</div>
+            <div style={{
+              fontSize: '11px', letterSpacing: '0.3em', textTransform: 'uppercase',
+              color: '#1a1a1a', marginBottom: '1.5rem', paddingBottom: '0.75rem',
+              borderBottom: '1px solid #e0ddd6',
+            }}>
+              Disable Two-Factor Authentication
+            </div>
             {disableError && (
-              <div style={{ background: '#fef0f0', color: '#8a1a1a', padding: '10px 14px', marginBottom: '1rem', fontSize: 13 }}>
+              <div style={{ background: 'rgba(200,16,46,0.06)', color: '#c8102e', padding: '10px 14px', marginBottom: '1rem', fontSize: '12px', border: '1px solid rgba(200,16,46,0.15)' }}>
                 {disableError}
               </div>
             )}
-            <div style={{ fontSize: 13, color: '#666', marginBottom: '1.5rem' }}>
+            <div style={{ fontSize: '13px', color: '#6a6a6a', marginBottom: '1.5rem' }}>
               Enter your current 6-digit verification code to disable 2FA.
             </div>
             <input
@@ -791,15 +951,19 @@ const Settings: React.FC = () => {
               onChange={e => setDisableCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
               style={{
                 ...inputStyle,
-                textAlign: 'center', fontSize: 24, fontFamily: 'monospace',
+                textAlign: 'center', fontSize: '24px', fontFamily: 'monospace',
                 letterSpacing: '0.5em', fontWeight: 600,
               }}
             />
-            <div style={{ display: 'flex', gap: '1rem' }}>
+            <div style={{ display: 'flex', gap: '0.75rem' }}>
               <button onClick={handleDisable2FA} disabled={disableLoading} style={btnDanger}>
                 {disableLoading ? 'Disabling...' : 'Disable 2FA'}
               </button>
-              <button onClick={() => setShowDisable2FAModal(false)} style={btnOutline}>Cancel</button>
+              <button onClick={() => setShowDisable2FAModal(false)} style={btnOutline}
+                onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#1a1a1a')}
+                onMouseLeave={(e) => (e.currentTarget.style.borderColor = '#e0ddd6')}>
+                Cancel
+              </button>
             </div>
           </div>
         </div>
@@ -809,19 +973,23 @@ const Settings: React.FC = () => {
       {showSessionsModal && (
         <div style={modalOverlay} onClick={() => setShowSessionsModal(false)}>
           <div style={{ ...modalBox, maxWidth: 560 }} onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-              <div style={sectionTitle}>Active Sessions</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', paddingBottom: '0.75rem', borderBottom: '1px solid #e0ddd6' }}>
+              <div style={{
+                fontSize: '11px', letterSpacing: '0.3em', textTransform: 'uppercase', color: '#1a1a1a',
+              }}>
+                Active Sessions
+              </div>
               <button
                 onClick={() => setShowSessionsModal(false)}
-                style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#8a8a8a' }}
+                style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: '#6a6a6a' }}
               >✕</button>
             </div>
             {sessionsLoading ? (
-              <div style={{ textAlign: 'center', padding: '2rem', color: '#8a8a8a', fontSize: 13 }}>
+              <div style={{ textAlign: 'center', padding: '2rem', color: '#6a6a6a', fontSize: '13px' }}>
                 Loading sessions...
               </div>
             ) : sessionsList.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '2rem', color: '#8a8a8a', fontSize: 13 }}>
+              <div style={{ textAlign: 'center', padding: '2rem', color: '#6a6a6a', fontSize: '13px' }}>
                 No active sessions found
               </div>
             ) : (
@@ -829,29 +997,31 @@ const Settings: React.FC = () => {
                 {sessionsList.map(session => (
                   <div key={session.id} style={{
                     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    padding: '1rem 0', borderBottom: '1px solid #f0ede6',
+                    padding: '1rem 0', borderBottom: '1px solid #e0ddd6',
                   }}>
                     <div>
-                      <div style={{ fontSize: 14, fontWeight: session.isCurrent ? 600 : 400 }}>
+                      <div style={{ fontSize: '13px', fontWeight: session.isCurrent ? 500 : 400, color: '#1a1a1a' }}>
                         {session.device} — {session.browser}
                         {session.isCurrent && (
                           <span style={{
-                            background: '#f0faf4', color: '#1a5c3a', fontSize: 10,
-                            padding: '2px 8px', marginLeft: 8, textTransform: 'uppercase',
-                            letterSpacing: '0.1em',
+                            background: 'rgba(42,157,78,0.06)', color: '#2a9d4e', fontSize: '9px',
+                            padding: '2px 8px', marginLeft: '8px', textTransform: 'uppercase',
+                            letterSpacing: '0.15em', border: '1px solid rgba(42,157,78,0.2)',
                           }}>
                             Current
                           </span>
                         )}
                       </div>
-                      <div style={{ fontSize: 12, color: '#8a8a8a', marginTop: 4 }}>
+                      <div style={{ fontSize: '11px', color: '#6a6a6a', marginTop: '4px' }}>
                         {session.ipAddress} · Last active {new Date(session.lastActive).toLocaleString()}
                       </div>
                     </div>
                     {!session.isCurrent && (
                       <button
                         onClick={() => revokeSession(session.id)}
-                        style={{ ...btnOutline, padding: '6px 14px', fontSize: 10 }}
+                        style={{ ...btnOutline, padding: '6px 14px', fontSize: '10px' }}
+                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#c8102e'; e.currentTarget.style.color = '#c8102e'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#e0ddd6'; e.currentTarget.style.color = '#1a1a1a'; }}
                       >
                         Revoke
                       </button>
@@ -875,13 +1045,17 @@ const Settings: React.FC = () => {
       {showLogoutModal && (
         <div style={modalOverlay} onClick={() => setShowLogoutModal(false)}>
           <div style={{ ...modalBox, textAlign: 'center' }} onClick={e => e.stopPropagation()}>
-            <div style={{ fontSize: 16, fontWeight: 600, marginBottom: '0.75rem' }}>Sign Out</div>
-            <div style={{ fontSize: 13, color: '#666', marginBottom: '1.5rem' }}>
+            <div style={{ fontSize: '16px', fontWeight: 300, marginBottom: '0.75rem', color: '#1a1a1a' }}>Sign Out</div>
+            <div style={{ fontSize: '13px', color: '#6a6a6a', marginBottom: '1.5rem' }}>
               Are you sure you want to log out of your account?
             </div>
-            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
               <button onClick={handleLogout} style={btnDanger}>Logout</button>
-              <button onClick={() => setShowLogoutModal(false)} style={btnOutline}>Cancel</button>
+              <button onClick={() => setShowLogoutModal(false)} style={btnOutline}
+                onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#1a1a1a')}
+                onMouseLeave={(e) => (e.currentTarget.style.borderColor = '#e0ddd6')}>
+                Cancel
+              </button>
             </div>
           </div>
         </div>

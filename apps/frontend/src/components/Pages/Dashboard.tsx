@@ -46,36 +46,6 @@ const SkeletonBlock: React.FC<{ width?: string; height?: string; style?: React.C
   style,
 }) => <div style={{ ...shimmerStyle, width, height, ...style }} />;
 
-/* ── Spinner ── */
-const SPINNER_ID = 'zai-spinner-keyframes';
-function ensureSpinnerStyle() {
-  if (typeof document === 'undefined') return;
-  if (document.getElementById(SPINNER_ID)) return;
-  const style = document.createElement('style');
-  style.id = SPINNER_ID;
-  style.textContent = `
-    @keyframes zaiSpin {
-      0%   { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-  `;
-  document.head.appendChild(style);
-}
-
-const Spinner: React.FC = () => (
-  <div
-    style={{
-      width: '20px',
-      height: '20px',
-      border: '2px solid #e0ddd6',
-      borderTop: '2px solid #b8a06a',
-      borderRadius: '50%',
-      animation: 'zaiSpin 0.8s linear infinite',
-      display: 'inline-block',
-    }}
-  />
-);
-
 /* ── Loading overlay for the whole dashboard content ── */
 const DashboardSkeleton: React.FC = () => (
   <div style={{ padding: '3rem 4rem 6rem', fontFamily: "'Inter', sans-serif" }}>
@@ -185,7 +155,6 @@ const Dashboard: React.FC = () => {
 
   useEffect(() => {
     ensureShimmerStyle();
-    ensureSpinnerStyle();
   }, []);
 
   useEffect(() => {
@@ -206,21 +175,15 @@ const Dashboard: React.FC = () => {
       setDashboardLoading(true);
       setError(null);
 
-      // Fetch user products
       const productsResponse = await apiService.get(`/products/user/${user?.id}`);
       const products = productsResponse.data?.data || [];
 
-      // Fetch upcoming events
       const eventsResponse = await apiService.get('/events', { params: { status: 'upcoming' } });
       const upcomingEvents = eventsResponse.data?.data || [];
 
-      // Build activity feed from recent actions
       const recentActivity: Activity[] = [];
 
-      // Add recent products to activity
-      // Use last_token_uri_sync, block_number_minted, or current timestamp as date
       if (products.length > 0) {
-        // Sort products by claimedAt descending before slicing
         const sortedProducts = [...products].sort((a: any, b: any) => {
           const dateA = a.claimedAt ? new Date(a.claimedAt).getTime() : 0;
           const dateB = b.claimedAt ? new Date(b.claimedAt).getTime() : 0;
@@ -233,12 +196,11 @@ const Dashboard: React.FC = () => {
             type: 'product',
             title: `Product claimed: ${product.name}`,
             date: product.claimedAt || product.createdAt || new Date().toISOString(),
-            icon: '\uD83D\uDCE6',
+            icon: 'product',
           });
         });
       }
 
-      // Add recent events to activity
       if (upcomingEvents.length > 0) {
         upcomingEvents.slice(0, 2).forEach((event: any) => {
           recentActivity.push({
@@ -246,12 +208,11 @@ const Dashboard: React.FC = () => {
             type: 'event',
             title: `Event: ${event.title}`,
             date: event.date,
-            icon: '\uD83D\uDCC5',
+            icon: 'event',
           });
         });
       }
 
-      // Sort by date (most recent first)
       recentActivity.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
       setStats({
@@ -277,7 +238,6 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  // Show full-page skeleton while auth is resolving OR dashboard data is loading
   if (isLoading || !user) {
     return <div style={{ padding: '2rem' }}>Loading...</div>;
   }
@@ -301,14 +261,12 @@ const Dashboard: React.FC = () => {
       const diffDays = Math.floor(absDiffMs / (1000 * 60 * 60 * 24));
 
       if (isFuture) {
-        // Future dates (events)
         if (diffDays === 0 && diffHours < 24) return 'Today';
         if (diffDays === 1) return 'Tomorrow';
         if (diffDays < 7) return `In ${diffDays} days`;
         return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
       }
 
-      // Past dates
       if (diffMinutes < 1) return 'Just now';
       if (diffMinutes < 60) return `${diffMinutes} min${diffMinutes > 1 ? 's' : ''} ago`;
       if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
@@ -322,6 +280,13 @@ const Dashboard: React.FC = () => {
     } catch {
       return dateStr;
     }
+  };
+
+  /* Activity dot color: product = red, event = blue */
+  const getActivityDotColor = (type: string) => {
+    if (type === 'product') return '#c8102e';
+    if (type === 'event') return '#2563eb';
+    return '#6a6a6a';
   };
 
   return (
@@ -353,7 +318,7 @@ const Dashboard: React.FC = () => {
             Dashboard
           </h1>
           <p style={{ color: '#6a6a6a', fontSize: '13px', maxWidth: '520px', margin: '0.4rem 0 0' }}>
-            Your zai experience club at a glance — points, products, and upcoming activity.
+            Your zai experience club at a glance — products, events, and upcoming activity.
           </p>
         </div>
         <button
@@ -378,7 +343,7 @@ const Dashboard: React.FC = () => {
       </div>
 
       {error && (
-        <div style={{ padding: '12px', background: '#fff5f5', border: '1px solid #ffdddd', color: '#c8102e', marginBottom: '1rem', borderRadius: '4px', fontSize: '12px' }}>
+        <div style={{ padding: '12px', background: '#fff5f5', border: '1px solid #ffdddd', color: '#c8102e', marginBottom: '1rem', fontSize: '12px' }}>
           {error}
         </div>
       )}
@@ -409,15 +374,15 @@ const Dashboard: React.FC = () => {
               width: '56px',
               height: '56px',
               borderRadius: '50%',
-              background: 'linear-gradient(135deg, #b8a06a, #8a7045)',
-              border: '2px solid #b8a06a',
+              background: '#1a1a1a',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               fontSize: '16px',
               fontWeight: '300',
               marginBottom: '1rem',
-              color: '#fff',
+              color: '#f5f4f0',
+              letterSpacing: '0.05em',
             }}
           >
             {user.givenName?.[0]}{user.familyName?.[0]}
@@ -450,16 +415,16 @@ const Dashboard: React.FC = () => {
             </div>
             <div style={{ fontSize: '28px', fontWeight: 200, lineHeight: 1.2, marginBottom: '1rem' }}>
               Welcome back,<br />
-              <span style={{ color: '#b8a06a' }}>{user.givenName}.</span>
+              <span style={{ color: '#f5f4f0' }}>{user.givenName}.</span>
             </div>
             <div style={{ fontSize: '12px', color: '#999', lineHeight: 1.8, maxWidth: '380px' }}>
-              {user.email && '✓ Email verified · '} 
+              {user.email && '✓ Email verified · '}
               {user.city && user.country ? `${user.city}, ${user.country}` : 'Update your profile to complete verification'}
             </div>
           </div>
           <div style={{ display: 'flex', gap: 0, border: '1px solid #2a2a2a', marginTop: '1.5rem', width: 'fit-content' }}>
             <div style={{ padding: '1rem 1.5rem', borderRight: '1px solid #2a2a2a', textAlign: 'center' }}>
-              <div style={{ fontSize: '20px', fontWeight: 200, color: '#b8a06a' }}>
+              <div style={{ fontSize: '20px', fontWeight: 200, color: '#f5f4f0' }}>
                 {stats.productsClaimed}
               </div>
               <div style={{ fontSize: '9px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#555', marginTop: '2px' }}>
@@ -525,6 +490,7 @@ const Dashboard: React.FC = () => {
           borderTop: 0,
         }}
       >
+        {/* Recent Activity */}
         <div style={{ background: '#fff', padding: '1.75rem' }}>
           <div
             style={{
@@ -557,7 +523,17 @@ const Dashboard: React.FC = () => {
                     borderBottom: i < activity.length - 1 ? '1px solid #e0ddd6' : 'none',
                   }}
                 >
-                  <div style={{ color: '#6a6a6a', marginTop: '2px' }}>{item.icon}</div>
+                  {/* Red/Blue dot instead of emoji */}
+                  <div
+                    style={{
+                      width: '8px',
+                      height: '8px',
+                      borderRadius: '50%',
+                      background: getActivityDotColor(item.type),
+                      flexShrink: 0,
+                      marginTop: '5px',
+                    }}
+                  />
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: '12px', color: '#1a1a1a', fontWeight: 500 }}>
                       {item.title}
@@ -594,7 +570,7 @@ const Dashboard: React.FC = () => {
                 <button
                   onClick={handleCopyWallet}
                   style={{
-                    background: copiedWallet ? '#2ecc71' : '#b8a06a',
+                    background: copiedWallet ? '#2ecc71' : '#1a1a1a',
                     color: '#fff',
                     border: 'none',
                     padding: '0.5rem 0.75rem',
@@ -607,12 +583,12 @@ const Dashboard: React.FC = () => {
                   }}
                   onMouseEnter={(e) => {
                     if (!copiedWallet) {
-                      (e.currentTarget as HTMLButtonElement).style.background = '#a0825f';
+                      (e.currentTarget as HTMLButtonElement).style.background = '#333';
                     }
                   }}
                   onMouseLeave={(e) => {
                     if (!copiedWallet) {
-                      (e.currentTarget as HTMLButtonElement).style.background = '#b8a06a';
+                      (e.currentTarget as HTMLButtonElement).style.background = '#1a1a1a';
                     }
                   }}
                 >
@@ -625,6 +601,7 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
 
+        {/* Quick Actions */}
         <div style={{ background: '#f0ede6', padding: '1.75rem' }}>
           <div
             style={{
@@ -640,8 +617,31 @@ const Dashboard: React.FC = () => {
             Quick actions
           </div>
           {[
-            { icon: '\uD83D\uDCE6', title: 'Claim a product', sub: 'NFC or serial number', page: '/products' },
-            { icon: '\uD83D\uDCC5', title: 'Browse events', sub: 'See upcoming events', page: '/events' },
+            {
+              title: 'Claim a product',
+              sub: 'NFC or serial number',
+              page: '/products',
+              icon: (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a1a1a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                  <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+                  <line x1="12" y1="22.08" x2="12" y2="12" />
+                </svg>
+              ),
+            },
+            {
+              title: 'Browse events',
+              sub: 'See upcoming events',
+              page: '/events',
+              icon: (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a1a1a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                  <line x1="16" y1="2" x2="16" y2="6" />
+                  <line x1="8" y1="2" x2="8" y2="6" />
+                  <line x1="3" y1="10" x2="21" y2="10" />
+                </svg>
+              ),
+            },
           ].map((action, i) => (
             <div
               key={i}
@@ -668,7 +668,6 @@ const Dashboard: React.FC = () => {
                   alignItems: 'center',
                   justifyContent: 'center',
                   flexShrink: 0,
-                  fontSize: '16px',
                 }}
               >
                 {action.icon}
