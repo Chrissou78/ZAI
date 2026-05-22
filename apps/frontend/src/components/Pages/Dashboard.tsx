@@ -195,7 +195,7 @@ const Dashboard: React.FC = () => {
             id: product.id,
             type: 'product',
             title: `Product claimed: ${product.name}`,
-            date: product.claimedAt || product.createdAt || new Date().toISOString(),
+            date: product.claimedAt || product.createdAt || '',
             icon: 'product',
           });
         });
@@ -250,6 +250,7 @@ const Dashboard: React.FC = () => {
 
   const formatDate = (dateStr: string) => {
     try {
+      if (!dateStr) return 'Date unknown';
       const date = new Date(dateStr);
       if (isNaN(date.getTime())) return dateStr;
       const now = new Date();
@@ -268,9 +269,14 @@ const Dashboard: React.FC = () => {
       }
 
       if (diffMinutes < 1) return 'Just now';
-      if (diffMinutes < 60) return `${diffMinutes} min${diffMinutes > 1 ? 's' : ''} ago`;
-      if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
-      if (diffDays < 30) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+      if (diffMinutes < 60) return `${diffMinutes}m ago`;
+      if (diffHours < 24) return `${diffHours}h ago`;
+      if (diffDays === 1) return 'Yesterday';
+      if (diffDays < 7) return `${diffDays} days ago`;
+      if (diffDays < 30) {
+        const weeks = Math.floor(diffDays / 7);
+        return `${weeks} week${weeks > 1 ? 's' : ''} ago`;
+      }
       if (diffDays < 365) {
         const months = Math.floor(diffDays / 30);
         return `${months} month${months > 1 ? 's' : ''} ago`;
@@ -278,7 +284,7 @@ const Dashboard: React.FC = () => {
 
       return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     } catch {
-      return dateStr;
+      return dateStr || 'Date unknown';
     }
   };
 

@@ -73,10 +73,8 @@ const Products: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Detail modal
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
-  // Claim modal
   const [showClaimModal, setShowClaimModal] = useState(false);
   const [claimMethod, setClaimMethod] = useState<'nfc' | 'serial' | null>(null);
   const [serialInput, setSerialInput] = useState('');
@@ -84,7 +82,6 @@ const Products: React.FC = () => {
   const [claimError, setClaimError] = useState<string | null>(null);
   const [claimSuccess, setClaimSuccess] = useState(false);
 
-  // Insurance modal
   const [showInsuranceModal, setShowInsuranceModal] = useState(false);
   const [insuranceProduct, setInsuranceProduct] = useState<Product | null>(null);
   const [insuranceStep, setInsuranceStep] = useState<'form' | 'loading' | 'success' | 'error'>('form');
@@ -200,9 +197,7 @@ const Products: React.FC = () => {
     setInsuranceForm(prev => ({ ...prev, [field]: value }));
   };
 
-  // Helpers
   const activeInsurance = products.filter(p => p.insurance?.active).length;
-  const hasMetadata = (p: Product) => !!(p.image || p.description);
 
   const inputStyle: React.CSSProperties = {
     width: '100%', padding: '10px 12px', border: '1px solid #e0ddd6', fontSize: '13px',
@@ -213,7 +208,6 @@ const Products: React.FC = () => {
     color: '#6a6a6a', marginBottom: '6px', display: 'block',
   };
 
-  // Build spec rows from metadata for the detail section
   const getSpecs = (p: Product): { label: string; value: string }[] => {
     const specs: { label: string; value: string }[] = [];
     if (p.price) specs.push({ label: 'Price', value: `${p.price}${p.currency ? ` ${p.currency}` : ' CHF'}` });
@@ -256,22 +250,44 @@ const Products: React.FC = () => {
         <Button variant="primary" onClick={() => setShowClaimModal(true)}>+ Claim Product</Button>
       </div>
 
-      {/* Stats */}
+      {/* Stats — LEFT aligned with icons */}
       <div style={{
-        display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1px',
-        background: '#e0ddd6', border: '1px solid #e0ddd6', marginBottom: '2rem',
+        display: 'flex', gap: '2rem', marginBottom: '2rem',
+        padding: '1.25rem 0', borderBottom: '1px solid #e0ddd6',
       }}>
-        {[
-          { label: 'Products claimed', value: products.length, color: '#1a1a1a' },
-          { label: 'Insurance active', value: activeInsurance, color: '#4caf7d' },
-        ].map((stat, i) => (
-          <div key={i} style={{ background: '#f0ede6', padding: '1.25rem 1.5rem', textAlign: 'center' }}>
-            <div style={{ fontSize: '28px', fontWeight: 200, color: stat.color }}>{stat.value}</div>
-            <div style={{ fontSize: '10px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#6a6a6a', marginTop: 4 }}>
-              {stat.label}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          {/* Black bars icon for products */}
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+            <rect x="1" y="2" width="4" height="14" rx="1" fill="#1a1a1a" />
+            <rect x="7" y="5" width="4" height="11" rx="1" fill="#1a1a1a" />
+            <rect x="13" y="8" width="4" height="8" rx="1" fill="#1a1a1a" />
+          </svg>
+          <div>
+            <div style={{ fontSize: '20px', fontWeight: 200, color: '#1a1a1a', lineHeight: 1 }}>
+              {products.length}
+            </div>
+            <div style={{ fontSize: '10px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#6a6a6a', marginTop: '2px' }}>
+              Products claimed
             </div>
           </div>
-        ))}
+        </div>
+        <div style={{ width: '1px', background: '#e0ddd6' }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          {/* Green dot for insurance */}
+          <div style={{
+            width: '12px', height: '12px', borderRadius: '50%',
+            background: '#4caf7d',
+            boxShadow: '0 0 0 3px rgba(76,175,125,0.2)',
+          }} />
+          <div>
+            <div style={{ fontSize: '20px', fontWeight: 200, color: '#1a1a1a', lineHeight: 1 }}>
+              {activeInsurance}
+            </div>
+            <div style={{ fontSize: '10px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#6a6a6a', marginTop: '2px' }}>
+              Insurance active
+            </div>
+          </div>
+        </div>
       </div>
 
       {error && (
@@ -289,7 +305,7 @@ const Products: React.FC = () => {
           padding: '3.5rem 2rem', textAlign: 'center', border: '1px dashed #e0ddd6',
           background: '#f0ede6', marginBottom: '2rem',
         }}>
-          <div style={{ fontSize: '48px', marginBottom: '1rem' }}>⛷</div>
+          <div style={{ fontSize: '48px', marginBottom: '1rem', opacity: 0.3 }}>⛷</div>
           <div style={{ fontSize: '16px', fontWeight: 300, marginBottom: 8, color: '#1a1a1a' }}>
             No products claimed yet
           </div>
@@ -300,133 +316,132 @@ const Products: React.FC = () => {
         </div>
       )}
 
-      {/* Product Carousel Grid */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
-        gap: '1.5rem',
-        marginBottom: '2rem',
-      }}>
-        {products.map((product) => (
-          <div
-            key={product.id}
-            onClick={() => setSelectedProduct(product)}
-            style={{
-              border: '1px solid #e0ddd6',
-              background: '#fff',
-              cursor: 'pointer',
-              overflow: 'hidden',
-              transition: 'box-shadow 0.2s, transform 0.2s',
-            }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLDivElement).style.boxShadow = '0 4px 20px rgba(0,0,0,0.08)';
-              (e.currentTarget as HTMLDivElement).style.transform = 'translateY(-2px)';
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLDivElement).style.boxShadow = 'none';
-              (e.currentTarget as HTMLDivElement).style.transform = 'none';
-            }}
-          >
-            {/* Thumbnail */}
-            <div style={{
-              background: '#f0ede6',
-              height: 220,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              overflow: 'hidden',
-              position: 'relative',
-            }}>
-              {product.image ? (
-                <img
-                  src={product.image}
-                  alt={product.name}
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                />
-              ) : (
-                <div style={{ fontSize: '48px', opacity: 0.3 }}>⛷</div>
-              )}
-              {/* Claimed badge */}
-              <div style={{
-                position: 'absolute', top: '0.5rem', left: '0.5rem',
-                background: '#1a1a1a', color: '#fff', fontSize: 9,
-                letterSpacing: '0.2em', textTransform: 'uppercase', padding: '3px 8px',
-              }}>
-                Claimed
-              </div>
-              {/* Insurance badge */}
-              {product.insurance?.active && (
-                <div style={{
-                  position: 'absolute', top: '0.5rem', right: '0.5rem',
-                  background: '#4caf7d', color: '#fff', fontSize: 9,
-                  letterSpacing: '0.1em', textTransform: 'uppercase', padding: '3px 8px',
-                }}>
-                  Insured
-                </div>
-              )}
-            </div>
-
-            {/* Card info */}
-            <div style={{ padding: '1rem 1.25rem' }}>
-              {product.collection && (
-                <div style={{
-                  fontSize: '9px', letterSpacing: '0.25em', textTransform: 'uppercase',
-                  color: '#b8a06a', marginBottom: '0.3rem',
-                }}>
-                  {product.collection}
-                </div>
-              )}
-              <div style={{ fontSize: '15px', fontWeight: 400, color: '#1a1a1a', marginBottom: '0.4rem' }}>
-                {product.name}
-              </div>
-              {product.price && (
-                <div style={{ fontSize: '13px', color: '#6a6a6a' }}>
-                  {product.price} {product.currency || 'CHF'}
-                </div>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Claim another product CTA */}
+      {/* Product Cards — horizontal scroll carousel like HTML */}
       {products.length > 0 && (
         <div style={{
-          padding: '2rem', textAlign: 'center', border: '1px dashed #e0ddd6',
-          background: '#f0ede6', marginBottom: '2rem',
+          display: 'flex',
+          gap: '1px',
+          background: '#e0ddd6',
+          border: '1px solid #e0ddd6',
+          overflowX: 'auto',
+          marginBottom: '3rem',
         }}>
-          <div style={{ fontSize: '14px', fontWeight: 300, marginBottom: '0.8rem', color: '#1a1a1a' }}>
-            Have another zai product?
-          </div>
-          <Button variant="primary" onClick={() => setShowClaimModal(true)}>+ Claim another product</Button>
+          {products.map((product) => (
+            <div
+              key={product.id}
+              onClick={() => setSelectedProduct(product)}
+              style={{
+                background: '#fff',
+                cursor: 'pointer',
+                minWidth: '280px',
+                flex: '0 0 280px',
+                transition: 'background 0.2s',
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = '#f0ede6')}
+              onMouseLeave={(e) => (e.currentTarget.style.background = '#fff')}
+            >
+              {/* Thumbnail */}
+              <div style={{
+                background: '#f0ede6',
+                height: 200,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                overflow: 'hidden',
+                position: 'relative',
+              }}>
+                {product.image ? (
+                  <img
+                    src={product.image}
+                    alt={product.name}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  />
+                ) : (
+                  <div style={{ fontSize: '48px', opacity: 0.15 }}>⛷</div>
+                )}
+                {/* Claimed badge */}
+                <div style={{
+                  position: 'absolute', top: '0.5rem', left: '0.5rem',
+                  background: '#1a1a1a', color: '#fff', fontSize: 9,
+                  letterSpacing: '0.2em', textTransform: 'uppercase', padding: '3px 8px',
+                }}>
+                  Claimed
+                </div>
+                {/* Insurance badge */}
+                {product.insurance?.active && (
+                  <div style={{
+                    position: 'absolute', top: '0.5rem', right: '0.5rem',
+                    background: '#4caf7d', color: '#fff', fontSize: 9,
+                    letterSpacing: '0.1em', textTransform: 'uppercase', padding: '3px 8px',
+                  }}>
+                    Insured
+                  </div>
+                )}
+              </div>
+
+              {/* Card info */}
+              <div style={{ padding: '1rem 1.25rem' }}>
+                {product.collection && (
+                  <div style={{
+                    fontSize: '9px', letterSpacing: '0.25em', textTransform: 'uppercase',
+                    color: '#c8102e', marginBottom: '0.3rem',
+                  }}>
+                    {product.collection}
+                  </div>
+                )}
+                <div style={{ fontSize: '14px', fontWeight: 500, color: '#1a1a1a', marginBottom: '0.3rem' }}>
+                  {product.name}
+                </div>
+                {product.price && (
+                  <div style={{ fontSize: '12px', color: '#6a6a6a' }}>
+                    {product.price} {product.currency || 'CHF'}
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
-      {/* How to claim */}
-      <div style={{ marginBottom: '3rem' }}>
-        <div style={{ fontSize: '11px', letterSpacing: '0.3em', textTransform: 'uppercase', color: '#b8a06a', marginBottom: '1rem' }}>
-          How to claim
+      {/* How to claim — dark background matching HTML */}
+      <div style={{
+        background: '#0a0a0a', padding: '2.5rem', marginBottom: '0',
+        border: '1px solid #2a2a2a',
+      }}>
+        <div style={{ fontSize: '11px', letterSpacing: '0.3em', textTransform: 'uppercase', color: '#c8102e', marginBottom: '0.75rem' }}>
+          how to claim
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem' }}>
+        <div style={{ fontSize: 'clamp(18px, 2.5vw, 24px)', fontWeight: 300, color: '#fff', marginBottom: '2rem', lineHeight: 1.3 }}>
+          Register your zai product
+        </div>
+        <div style={{
+          display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1px',
+          background: '#2a2a2a',
+        }}>
           {[
-            { step: '01', title: 'Get your card', desc: 'Receive your zai Experience Card with your product purchase.' },
-            { step: '02', title: 'Tap or enter serial', desc: 'Use NFC tap or manually enter the serial number from your card.' },
-            { step: '03', title: 'Enjoy benefits', desc: 'Access insurance, exclusive events, and community features.' },
+            { step: '01', title: 'Get your card', desc: 'Receive your zai Experience Card with your product purchase over CHF 500.' },
+            { step: '02', title: 'Tap or enter serial', desc: 'Use NFC tap or manually enter the serial number from your experience card.' },
+            { step: '03', title: 'Enjoy benefits', desc: 'Access free ski insurance, exclusive events, and community features.' },
           ].map((item) => (
-            <div key={item.step} style={{ padding: '1.5rem', border: '1px solid #e0ddd6' }}>
-              <div style={{ fontSize: '24px', fontWeight: 200, color: '#c8102e', marginBottom: '0.75rem' }}>{item.step}</div>
-              <div style={{ fontSize: '13px', fontWeight: 500, marginBottom: '0.5rem' }}>{item.title}</div>
-              <div style={{ fontSize: '12px', color: '#6a6a6a', lineHeight: 1.6 }}>{item.desc}</div>
+            <div key={item.step} style={{ background: '#1a1a1a', padding: '1.5rem' }}>
+              <div style={{ fontSize: '11px', letterSpacing: '0.2em', color: '#c8102e', marginBottom: '0.75rem', fontWeight: 500 }}>
+                Step {item.step}
+              </div>
+              <div style={{ fontSize: '13px', fontWeight: 500, color: '#fff', marginBottom: '0.5rem', lineHeight: 1.4 }}>
+                {item.title}
+              </div>
+              <div style={{ fontSize: '12px', color: '#666', lineHeight: 1.7 }}>
+                {item.desc}
+              </div>
             </div>
           ))}
         </div>
       </div>
 
-      {/* ═══ PRODUCT DETAIL MODAL ═══ */}
+      {/*  PRODUCT DETAIL MODAL  */}
       {selectedProduct && (
         <Modal isOpen={true} onClose={() => setSelectedProduct(null)} title={selectedProduct.name}>
           <div style={{ maxWidth: 600 }}>
-            {/* Image */}
             {selectedProduct.image && (
               <div
                 onClick={() => setZoomImage({ src: selectedProduct.image!, alt: selectedProduct.name })}
@@ -440,21 +455,18 @@ const Products: React.FC = () => {
               </div>
             )}
 
-            {/* Collection tag */}
             {selectedProduct.collection && (
-              <div style={{ fontSize: '10px', letterSpacing: '0.3em', textTransform: 'uppercase', color: '#b8a06a', marginBottom: '0.4rem' }}>
+              <div style={{ fontSize: '10px', letterSpacing: '0.3em', textTransform: 'uppercase', color: '#c8102e', marginBottom: '0.4rem' }}>
                 {selectedProduct.collection}
               </div>
             )}
 
-            {/* Description */}
             {selectedProduct.description && (
               <p style={{ fontSize: '13px', color: '#6a6a6a', lineHeight: 1.7, marginBottom: '1.5rem' }}>
                 {selectedProduct.description}
               </p>
             )}
 
-            {/* Specs */}
             {getSpecs(selectedProduct).length > 0 && (
               <div style={{ marginBottom: '1.5rem' }}>
                 <div style={{ fontSize: '10px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#6a6a6a', marginBottom: '0.75rem' }}>
@@ -473,7 +485,6 @@ const Products: React.FC = () => {
               </div>
             )}
 
-            {/* Insurance action */}
             <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.5rem' }}>
               {selectedProduct.insurance?.active ? (
                 <div style={{
@@ -493,7 +504,7 @@ const Products: React.FC = () => {
         </Modal>
       )}
 
-      {/* ═══ CLAIM MODAL ═══ */}
+      {/*  CLAIM MODAL  */}
       <Modal isOpen={showClaimModal} onClose={() => { setShowClaimModal(false); setClaimMethod(null); setSerialInput(''); setClaimError(null); setClaimSuccess(false); }} title="Claim a Product">
         {claimSuccess ? (
           <div style={{ textAlign: 'center', padding: '2rem 0' }}>
@@ -570,7 +581,7 @@ const Products: React.FC = () => {
         )}
       </Modal>
 
-      {/* ═══ INSURANCE MODAL ═══ */}
+      {/*  INSURANCE MODAL  */}
       <Modal isOpen={showInsuranceModal} onClose={() => setShowInsuranceModal(false)} title="Activate Insurance">
         {insuranceStep === 'loading' && (
           <div style={{ textAlign: 'center', padding: '3rem 0' }}>
@@ -592,7 +603,7 @@ const Products: React.FC = () => {
 
         {insuranceStep === 'error' && (
           <div style={{ textAlign: 'center', padding: '2rem 0' }}>
-            <div style={{ fontSize: '48px', marginBottom: '1rem' }}>✗</div>
+            <div style={{ fontSize: '48px', marginBottom: '1rem' }}>✕</div>
             <div style={{ fontSize: '14px', color: '#c8102e', marginBottom: '1rem' }}>{insuranceError}</div>
             <Button variant="primary" onClick={() => setInsuranceStep('form')}>Try Again</Button>
           </div>
@@ -689,7 +700,7 @@ const Products: React.FC = () => {
         )}
       </Modal>
 
-      {/* ═══ ZOOM IMAGE MODAL ═══ */}
+      {/*  ZOOM IMAGE MODAL  */}
       {zoomImage && (
         <div
           onClick={() => setZoomImage(null)}
