@@ -376,8 +376,8 @@ const Dashboard: React.FC = () => {
               borderRadius: '50%',
               background: '#1a1a1a',
               display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
+              alignItems: 'left',
+              justifyContent: 'left',
               fontSize: '16px',
               fontWeight: '300',
               marginBottom: '1rem',
@@ -391,7 +391,7 @@ const Dashboard: React.FC = () => {
             {user.givenName} {user.familyName}
           </div>
           <div style={{ fontSize: '11px', color: '#6a6a6a', marginBottom: '1.25rem' }}>
-            {user.email} · {user.city || 'Location not set'}
+            {user.email} · {user.city || 'Location not set'} - {user.country || 'Country not set'}
           </div>
           <div style={{ fontSize: '10px', color: '#6a6a6a', display: 'flex', alignItems: 'center', gap: '5px' }}>
             <div style={{ width: '4px', height: '4px', background: '#c8102e', borderRadius: '50%' }} />
@@ -418,8 +418,7 @@ const Dashboard: React.FC = () => {
               <span style={{ color: '#f5f4f0' }}>{user.givenName}.</span>
             </div>
             <div style={{ fontSize: '12px', color: '#999', lineHeight: 1.8, maxWidth: '380px' }}>
-              {user.email && '✓ Email verified · '}
-              {user.city && user.country ? `${user.city}, ${user.country}` : 'Update your profile to complete verification'}
+              {user.email && 'Explore exclusive events, manage your registered products, and access the full zai experience club.'}
             </div>
           </div>
           <div style={{ display: 'flex', gap: 0, border: '1px solid #2a2a2a', marginTop: '1.5rem', width: 'fit-content' }}>
