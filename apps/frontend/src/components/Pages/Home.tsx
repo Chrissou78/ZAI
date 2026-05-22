@@ -11,11 +11,11 @@ const Home: React.FC = () => {
 
   return (
     <div style={{ background: '#f5f4f0', minHeight: '100vh' }}>
-      {/* Hero Section */}
+      {/* Hero Section — new background image */}
       <section
         style={{
           minHeight: '100vh',
-          background: 'url(https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1600&q=80) center/cover no-repeat',
+          background: 'url(https://images.unsplash.com/photo-1486870591958-9b9d0d1dda99?w=1600&q=80) center/cover no-repeat',
           position: 'relative',
           overflow: 'hidden',
           display: 'flex',
@@ -23,7 +23,7 @@ const Home: React.FC = () => {
           padding: '5rem 4rem',
         }}
       >
-        {/* Top Bar — 3-column grid: left empty | center logo | right wallet button */}
+        {/* Top Bar — 3-column grid: left spacer | center ZaiLogo cross | right wallet */}
         <div
           style={{
             position: 'absolute',
@@ -37,13 +37,10 @@ const Home: React.FC = () => {
             zIndex: 3,
           }}
         >
-          {/* Left spacer */}
           <div />
-          {/* Center — ZaiLogo cross mark, centered */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <ZaiLogo size={80} color="#ffffff" />
           </div>
-          {/* Right — wallet button */}
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
             <WalletConnectButton />
           </div>
@@ -114,7 +111,7 @@ const Home: React.FC = () => {
           )}
         </div>
 
-        {/* Hero Stats — gold removed, now #f5f4f0 */}
+        {/* Hero Stats — ALL gold → #f5f4f0 */}
         <div
           style={{
             position: 'absolute',
@@ -153,7 +150,7 @@ const Home: React.FC = () => {
         </div>
       </section>
 
-      {/* Zai Experience Card Section */}
+      {/* Zai Experience Card Section — gold removed from card visual */}
       <section style={{ background: '#f0ede6', padding: '5rem 4rem', borderTop: '1px solid #e0ddd6' }}>
         <div style={{ maxWidth: '900px', margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5rem', alignItems: 'center' }}>
           <div>
@@ -181,13 +178,14 @@ const Home: React.FC = () => {
               ))}
             </div>
           </div>
-          {/* Experience Card visual — gold on chip & card text stays (it's the physical card design) */}
+          {/* Experience Card — chip silver/grey, text white, no gold */}
           <div style={{ background: 'linear-gradient(135deg, #1a1a1a, #2a2a2a)', border: '1px solid #333', borderRadius: '14px', padding: '1.4rem 1.6rem', position: 'relative', overflow: 'hidden', color: '#fff', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', aspectRatio: '1.586' }}>
             <div style={{ position: 'absolute', top: '-30px', right: '-30px', width: '100px', height: '100px', background: 'radial-gradient(circle, rgba(200,16,46,0.15), transparent 70%)' }} />
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <div style={{ width: '36px', height: '26px', background: 'linear-gradient(135deg, #b8a06a, #8a7045)', borderRadius: '4px' }} />
+              {/* Chip — silver/grey instead of gold */}
+              <div style={{ width: '36px', height: '26px', background: 'linear-gradient(135deg, #888, #555)', borderRadius: '4px' }} />
               <div style={{ fontSize: '14px', fontWeight: 200, letterSpacing: '0.15em' }}>
-                zai <span style={{ color: '#b8a06a' }}>experience club</span>
+                zai <span style={{ color: '#f5f4f0' }}>experience club</span>
               </div>
             </div>
             <div style={{ fontSize: '11px', letterSpacing: '0.2em', color: 'rgba(255,255,255,0.35)', fontFamily: 'monospace' }}>
@@ -306,7 +304,6 @@ const Home: React.FC = () => {
             The zai ecosystem brings together exclusive brand partners and a global community of zai owners — connected through a shared passion for the mountain. Partners will be revealed soon. Join the community to share your experiences.
           </p>
 
-          {/* Coming Soon Grid */}
           <div style={{ display: 'flex', gap: '1px', background: '#1e1e1e', border: '1px solid #1e1e1e', marginBottom: '2rem' }}>
             {['Mountain Pass', 'Destination', 'Financial', 'Mountain Pass', 'Destination'].map((label, i) => (
               <div key={i} style={{ flex: 1, background: '#1a1a1a', padding: '2rem 1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100px', position: 'relative', overflow: 'hidden' }}>
@@ -332,7 +329,6 @@ const Home: React.FC = () => {
       {/* Footer */}
       <footer style={{ background: '#0a0a0a', color: '#fff', borderTop: '1px solid #2e2e2e', padding: '2.5rem 4rem 1.5rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '2rem', paddingBottom: '2rem', borderBottom: '1px solid #2e2e2e', flexWrap: 'wrap', marginBottom: '1.25rem', maxWidth: '1200px', margin: '0 auto 1.25rem' }}>
-          {/* Logo and Newsletter */}
           <div>
             <div style={{ fontSize: '14px', fontWeight: 200, letterSpacing: '0.2em', marginBottom: '1.25rem', color: '#f5f4f0' }}>
               <ZaiLogo size={48} color="#333" />
@@ -381,93 +377,48 @@ const Home: React.FC = () => {
             </div>
           </div>
 
-          {/* Navigation Groups */}
           <div style={{ display: 'flex', gap: '3rem', flexWrap: 'wrap' }}>
-            {/* Explore */}
             <div>
               <div style={{ fontSize: '10px', letterSpacing: '0.25em', textTransform: 'uppercase', color: '#444', marginBottom: '0.6rem' }}>
                 Explore
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                <a href="#" style={{ fontSize: '11px', color: '#555', textDecoration: 'none', letterSpacing: '0.05em', transition: 'color 0.2s' }} onMouseEnter={(e) => (e.currentTarget.style.color = '#fff')} onMouseLeave={(e) => (e.currentTarget.style.color = '#555')}>
-                  Shop
-                </a>
-                <a href="#" style={{ fontSize: '11px', color: '#555', textDecoration: 'none', letterSpacing: '0.05em', transition: 'color 0.2s' }} onMouseEnter={(e) => (e.currentTarget.style.color = '#fff')} onMouseLeave={(e) => (e.currentTarget.style.color = '#555')}>
-                  Dealers
-                </a>
-                <a href="#" style={{ fontSize: '11px', color: '#555', textDecoration: 'none', letterSpacing: '0.05em', transition: 'color 0.2s' }} onMouseEnter={(e) => (e.currentTarget.style.color = '#fff')} onMouseLeave={(e) => (e.currentTarget.style.color = '#555')}>
-                  Contact
-                </a>
+                <a href="#" style={{ fontSize: '11px', color: '#555', textDecoration: 'none', letterSpacing: '0.05em', transition: 'color 0.2s' }} onMouseEnter={(e) => (e.currentTarget.style.color = '#fff')} onMouseLeave={(e) => (e.currentTarget.style.color = '#555')}>Shop</a>
+                <a href="#" style={{ fontSize: '11px', color: '#555', textDecoration: 'none', letterSpacing: '0.05em', transition: 'color 0.2s' }} onMouseEnter={(e) => (e.currentTarget.style.color = '#fff')} onMouseLeave={(e) => (e.currentTarget.style.color = '#555')}>Dealers</a>
+                <a href="#" style={{ fontSize: '11px', color: '#555', textDecoration: 'none', letterSpacing: '0.05em', transition: 'color 0.2s' }} onMouseEnter={(e) => (e.currentTarget.style.color = '#fff')} onMouseLeave={(e) => (e.currentTarget.style.color = '#555')}>Contact</a>
               </div>
             </div>
 
-            {/* Follow */}
             <div>
               <div style={{ fontSize: '10px', letterSpacing: '0.25em', textTransform: 'uppercase', color: '#444', marginBottom: '0.6rem' }}>
                 Follow
               </div>
               <div style={{ display: 'flex', gap: '10px' }}>
-                <a
-                  href="https://instagram.com/zaiski"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  title="Instagram"
-                  style={{ width: '30px', height: '30px', border: '1px solid #2a2a2a', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555', textDecoration: 'none', transition: 'all 0.2s' }}
-                  onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = '#555'; (e.currentTarget as HTMLAnchorElement).style.color = '#fff'; }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = '#2a2a2a'; (e.currentTarget as HTMLAnchorElement).style.color = '#555'; }}
-                >
-                  <InstagramIcon />
-                </a>
-                <a
-                  href="https://facebook.com/zaiski"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  title="Facebook"
-                  style={{ width: '30px', height: '30px', border: '1px solid #2a2a2a', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555', textDecoration: 'none', transition: 'all 0.2s' }}
-                  onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = '#555'; (e.currentTarget as HTMLAnchorElement).style.color = '#fff'; }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = '#2a2a2a'; (e.currentTarget as HTMLAnchorElement).style.color = '#555'; }}
-                >
-                  <FacebookIcon />
-                </a>
-                <a
-                  href="https://linkedin.com/company/zai-ski"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  title="LinkedIn"
-                  style={{ width: '30px', height: '30px', border: '1px solid #2a2a2a', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555', textDecoration: 'none', transition: 'all 0.2s' }}
-                  onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = '#555'; (e.currentTarget as HTMLAnchorElement).style.color = '#fff'; }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = '#2a2a2a'; (e.currentTarget as HTMLAnchorElement).style.color = '#555'; }}
-                >
-                  <LinkedInIcon />
-                </a>
-                <a
-                  href="https://youtube.com/@zaiski"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  title="YouTube"
-                  style={{ width: '30px', height: '30px', border: '1px solid #2a2a2a', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555', textDecoration: 'none', transition: 'all 0.2s' }}
-                  onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = '#555'; (e.currentTarget as HTMLAnchorElement).style.color = '#fff'; }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = '#2a2a2a'; (e.currentTarget as HTMLAnchorElement).style.color = '#555'; }}
-                >
-                  <YouTubeIcon />
-                </a>
-                <a
-                  href="https://wa.me/zaiski"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  title="WhatsApp"
-                  style={{ width: '30px', height: '30px', border: '1px solid #2a2a2a', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555', textDecoration: 'none', transition: 'all 0.2s' }}
-                  onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = '#555'; (e.currentTarget as HTMLAnchorElement).style.color = '#fff'; }}
-                  onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = '#2a2a2a'; (e.currentTarget as HTMLAnchorElement).style.color = '#555'; }}
-                >
-                  <WhatsAppIcon />
-                </a>
+                {[
+                  { href: 'https://instagram.com/zaiski', title: 'Instagram', icon: <InstagramIcon /> },
+                  { href: 'https://facebook.com/zaiski', title: 'Facebook', icon: <FacebookIcon /> },
+                  { href: 'https://linkedin.com/company/zai-ski', title: 'LinkedIn', icon: <LinkedInIcon /> },
+                  { href: 'https://youtube.com/@zaiski', title: 'YouTube', icon: <YouTubeIcon /> },
+                  { href: 'https://wa.me/zaiski', title: 'WhatsApp', icon: <WhatsAppIcon /> },
+                ].map((social) => (
+                  <a
+                    key={social.title}
+                    href={social.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title={social.title}
+                    style={{ width: '30px', height: '30px', border: '1px solid #2a2a2a', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555', textDecoration: 'none', transition: 'all 0.2s' }}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = '#555'; (e.currentTarget as HTMLAnchorElement).style.color = '#fff'; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.borderColor = '#2a2a2a'; (e.currentTarget as HTMLAnchorElement).style.color = '#555'; }}
+                  >
+                    {social.icon}
+                  </a>
+                ))}
               </div>
             </div>
           </div>
         </div>
 
-        {/* Bottom */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', maxWidth: '1200px', margin: '0 auto', paddingTop: '1.25rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '10px', color: '#444' }}>
             <svg width="12" height="10" viewBox="0 0 24 20" fill="none" style={{ flexShrink: 0 }}>
@@ -476,15 +427,9 @@ const Home: React.FC = () => {
             <span>Pontresina, Alps · Since 2003</span>
           </div>
           <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
-            <a href="#" style={{ fontSize: '10px', color: '#444', textDecoration: 'none', letterSpacing: '0.08em', transition: 'color 0.2s' }} onMouseEnter={(e) => (e.currentTarget.style.color = '#888')} onMouseLeave={(e) => (e.currentTarget.style.color = '#444')}>
-              Privacy Policy
-            </a>
-            <a href="#" style={{ fontSize: '10px', color: '#444', textDecoration: 'none', letterSpacing: '0.08em', transition: 'color 0.2s' }} onMouseEnter={(e) => (e.currentTarget.style.color = '#888')} onMouseLeave={(e) => (e.currentTarget.style.color = '#444')}>
-              Terms &amp; Conditions
-            </a>
-            <a href="#" style={{ fontSize: '10px', color: '#444', textDecoration: 'none', letterSpacing: '0.08em', transition: 'color 0.2s' }} onMouseEnter={(e) => (e.currentTarget.style.color = '#888')} onMouseLeave={(e) => (e.currentTarget.style.color = '#444')}>
-              Legal Information
-            </a>
+            <a href="#" style={{ fontSize: '10px', color: '#444', textDecoration: 'none', letterSpacing: '0.08em', transition: 'color 0.2s' }} onMouseEnter={(e) => (e.currentTarget.style.color = '#888')} onMouseLeave={(e) => (e.currentTarget.style.color = '#444')}>Privacy Policy</a>
+            <a href="#" style={{ fontSize: '10px', color: '#444', textDecoration: 'none', letterSpacing: '0.08em', transition: 'color 0.2s' }} onMouseEnter={(e) => (e.currentTarget.style.color = '#888')} onMouseLeave={(e) => (e.currentTarget.style.color = '#444')}>Terms &amp; Conditions</a>
+            <a href="#" style={{ fontSize: '10px', color: '#444', textDecoration: 'none', letterSpacing: '0.08em', transition: 'color 0.2s' }} onMouseEnter={(e) => (e.currentTarget.style.color = '#888')} onMouseLeave={(e) => (e.currentTarget.style.color = '#444')}>Legal Information</a>
           </div>
         </div>
       </footer>

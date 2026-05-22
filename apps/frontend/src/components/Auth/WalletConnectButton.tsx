@@ -32,7 +32,6 @@ export function WalletConnectButton() {
 
         console.log('📤 Sending to backend:', { token, userId: user, wallet });
 
-        // Send all required fields
         const response = await apiService.post('/auth/login', {
           token,
           userId: user,
@@ -53,7 +52,6 @@ export function WalletConnectButton() {
           localStorage.setItem('zai_user', JSON.stringify(response.data.user));
           localStorage.setItem('zai_token', jwtToken);
 
-          // CLOSE IFRAME IMMEDIATELY
           setShowModal(false);
 
           setTimeout(() => {
@@ -67,7 +65,6 @@ export function WalletConnectButton() {
         alert('Login failed. Please try again.');
       }
 
-      // REMOVE LISTENER
       window.removeEventListener('message', handleMessage);
     };
 
@@ -79,16 +76,18 @@ export function WalletConnectButton() {
     const initials = `${user.givenName?.[0] ?? ''}${user.familyName?.[0] ?? ''}`.toUpperCase();
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        {/* Avatar — no gold, dark bg with white text */}
         <div
           style={{
             width: '32px',
             height: '32px',
             borderRadius: '50%',
-            background: 'linear-gradient(135deg, #b8a06a, #8a7045)',
+            background: 'linear-gradient(135deg, #2a2a2a, #1a1a1a)',
+            border: '1px solid #555',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            color: 'white',
+            color: '#f5f4f0',
             fontSize: '12px',
             fontWeight: 500,
           }}
@@ -96,23 +95,20 @@ export function WalletConnectButton() {
           {initials}
         </div>
         <div style={{ fontSize: '12px' }}>
-          <div style={{ fontWeight: 500 }}>{user.givenName}</div>
-          <div style={{ color: '#b8a06a', fontSize: '10px' }}>{user.role || 'member'}</div>
+          <div style={{ fontWeight: 500, color: '#fff' }}>{user.givenName}</div>
+          {/* Role label removed */}
         </div>
       </div>
     );
   }
 
   const handleOpenModal = () => {
-    // Clear WalletTwo cookies/storage
     document.cookie = 'wallettwo_session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.wallettwo.com;';
     document.cookie = 'wallettwo_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.wallettwo.com;';
     
-    // Clear localStorage keys that WalletTwo might use
     const keysToRemove = Object.keys(localStorage).filter(k => k.includes('wallettwo') || k.includes('wallet_two'));
     keysToRemove.forEach(k => localStorage.removeItem(k));
     
-    // Force a new login by adding timestamp to iframe URL
     setShowModal(true);
   };
 
@@ -167,7 +163,7 @@ export function WalletConnectButton() {
               width: '420px',
               maxWidth: '92vw',
               height: '650px',
-              maxHeight :'80vh',
+              maxHeight: '80vh',
               background: '#fff',
               borderRadius: '8px',
               overflow: 'hidden',
@@ -209,12 +205,13 @@ export function WalletConnectButton() {
                   gap: '1rem',
                 }}
               >
+                {/* Spinner — gold replaced with red */}
                 <div
                   style={{
                     width: '40px',
                     height: '40px',
                     border: '4px solid #e0e0e0',
-                    borderTop: '4px solid #b8a06a',
+                    borderTop: '4px solid #c8102e',
                     borderRadius: '50%',
                     animation: 'spin 1s linear infinite',
                   }}

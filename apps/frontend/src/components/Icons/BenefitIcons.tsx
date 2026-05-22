@@ -19,7 +19,7 @@ export const LocationIcon = () => (
 
 export const MountainIcon = () => (
   <svg width="32" height="32" viewBox="0 0 36 36" fill="none">
-    <polyline points="2,30 10,14 17,22 22,12 34,30" stroke="#b8a06a" strokeWidth="2.2" strokeLinejoin="round" strokeLinecap="round"/>
-    <polyline points="22,12 26,18" stroke="#b8a06a" strokeWidth="2.2" strokeLinecap="round"/>
+    <polyline points="2,30 10,14 17,22 22,12 34,30" stroke="#f5f4f0" strokeWidth="2.2" strokeLinejoin="round" strokeLinecap="round"/>
+    <polyline points="22,12 26,18" stroke="#f5f4f0" strokeWidth="2.2" strokeLinecap="round"/>
   </svg>
 );
