@@ -378,7 +378,7 @@ const Dashboard: React.FC = () => {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              fontSize: '16px',
+              fontSize: '24px',
               fontWeight: '300',
               marginBottom: '1rem',
               color: '#f5f4f0',
