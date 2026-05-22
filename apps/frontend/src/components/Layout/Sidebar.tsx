@@ -92,19 +92,38 @@ const Sidebar: React.FC = () => {
         color: '#f5f4f0',
       }}
     >
-      {/* Logo */}
-      <div style={{ padding: '1.5rem', borderBottom: '1px solid #2a2a2a' }}>
+      {/* Logo — centered */}
+      <div style={{
+        padding: '1.5rem',
+        borderBottom: '1px solid #2a2a2a',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}>
         <div style={{ marginBottom: '0.4rem', color: '#f5f4f0' }}>
-            <ZaiLogo size={60} />
+          <ZaiLogo size={60} />
         </div>
-        <div style={{ fontSize: '11px', letterSpacing: '0.35em', textTransform: 'uppercase', color: '#6a6a6a', marginTop: '4px' }}>
-            experience club
+        <div style={{
+          fontSize: '11px',
+          letterSpacing: '0.35em',
+          textTransform: 'uppercase',
+          color: '#6a6a6a',
+          marginTop: '4px',
+        }}>
+          experience club
         </div>
       </div>
 
-      {/* User Profile */}
+      {/* User Profile — gold removed, role now warm white */}
       {user && (
-        <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid #2a2a2a', display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div style={{
+          padding: '1rem 1.5rem',
+          borderBottom: '1px solid #2a2a2a',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+        }}>
           <UserAvatar
             firstName={user.givenName || user.firstName}
             lastName={user.familyName || user.lastName}
@@ -114,7 +133,14 @@ const Sidebar: React.FC = () => {
             <div style={{ fontSize: '12px', color: '#f5f4f0', fontWeight: 500 }}>
               {user.givenName || user.firstName || 'User'} {user.familyName || user.lastName || ''}
             </div>
-            <div style={{ fontSize: '11px', color: '#b8a06a', letterSpacing: '0.1em', marginTop: '2px' }}>
+            {/* Removed gold (#b8a06a) → now uses muted warm white */}
+            <div style={{
+              fontSize: '11px',
+              color: '#999',
+              letterSpacing: '0.1em',
+              marginTop: '2px',
+              textTransform: 'uppercase',
+            }}>
               {user.role || 'member'}
             </div>
           </div>
@@ -125,67 +151,100 @@ const Sidebar: React.FC = () => {
       <div style={{ flex: 1, padding: '1.5rem 0' }}>
         {navSections.map((section, idx) => (
           <div key={idx} style={{ marginBottom: idx < navSections.length - 1 ? '1.5rem' : '0' }}>
-            <div style={{ padding: '0.5rem 1.5rem', fontSize: '10px', letterSpacing: '0.3em', textTransform: 'uppercase', color: '#555', marginBottom: '0.75rem' }}>
+            <div style={{
+              padding: '0.5rem 1.5rem',
+              fontSize: '10px',
+              letterSpacing: '0.3em',
+              textTransform: 'uppercase',
+              color: '#555',
+              marginBottom: '0.75rem',
+            }}>
               {section.section}
             </div>
-            {section.items.map((item) => (
-              <Link
-                key={item.path}
-                to={item.path}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.85rem',
-                  padding: '0.75rem 1.5rem',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  color: isActive(item.path) ? '#f5f4f0' : '#6a6a6a',
-                  textDecoration: 'none',
-                  fontSize: '13px',
-                  letterSpacing: '0.05em',
-                  borderLeft: isActive(item.path) ? '2px solid #c8102e' : '2px solid transparent',
-                  background: isActive(item.path) ? 'rgba(255,255,255,0.05)' : 'transparent',
-                  position: 'relative',
-                }}
-                onMouseEnter={(e) => {
-                  if (!isActive(item.path)) {
-                    (e.currentTarget as HTMLAnchorElement).style.color = '#f5f4f0';
-                    (e.currentTarget as HTMLAnchorElement).style.background = 'rgba(255,255,255,0.04)';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!isActive(item.path)) {
-                    (e.currentTarget as HTMLAnchorElement).style.color = '#6a6a6a';
-                    (e.currentTarget as HTMLAnchorElement).style.background = 'transparent';
-                  }
-                }}
-              >
-                <span style={{ display: 'flex', opacity: 0.7, width: '16px', height: '16px' }}>{item.icon}</span>
-                <span>{item.label}</span>
-                {'badge' in item && (item as any).badge > 0 && (
-                  <span
-                    style={{
-                      marginLeft: 'auto',
-                      minWidth: '18px',
-                      height: '18px',
-                      borderRadius: '9px',
-                      background: '#c8102e',
-                      color: '#fff',
-                      fontSize: '10px',
-                      fontWeight: 700,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      padding: '0 5px',
-                      lineHeight: 1,
-                      animation: 'pulse 2s ease-in-out infinite',
-                    }}
-                  >
-                    {(item as any).badge > 9 ? '9+' : (item as any).badge}
+            {section.items.map((item) => {
+              const active = isActive(item.path);
+              return (
+                <Link
+                  key={item.path}
+                  to={item.path}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.85rem',
+                    padding: '0.75rem 1.5rem',
+                    cursor: 'pointer',
+                    transition: 'all 0.25s ease',
+                    color: active ? '#f5f4f0' : '#6a6a6a',
+                    textDecoration: 'none',
+                    fontSize: '13px',
+                    letterSpacing: '0.05em',
+                    borderLeft: active ? '2px solid #c8102e' : '2px solid transparent',
+                    background: active ? 'rgba(255,255,255,0.05)' : 'transparent',
+                    position: 'relative',
+                    // Shadow effect on inactive items
+                    boxShadow: active
+                      ? 'none'
+                      : 'inset 0 -1px 0 rgba(255,255,255,0.04), 0 1px 3px rgba(0,0,0,0.25)',
+                    textShadow: active
+                      ? 'none'
+                      : '0 1px 2px rgba(0,0,0,0.4)',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!active) {
+                      const el = e.currentTarget as HTMLAnchorElement;
+                      el.style.color = '#f5f4f0';
+                      el.style.background = 'rgba(255,255,255,0.04)';
+                      el.style.boxShadow = 'inset 0 0 0 rgba(0,0,0,0), 0 2px 8px rgba(0,0,0,0.35)';
+                      el.style.textShadow = 'none';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!active) {
+                      const el = e.currentTarget as HTMLAnchorElement;
+                      el.style.color = '#6a6a6a';
+                      el.style.background = 'transparent';
+                      el.style.boxShadow = 'inset 0 -1px 0 rgba(255,255,255,0.04), 0 1px 3px rgba(0,0,0,0.25)';
+                      el.style.textShadow = '0 1px 2px rgba(0,0,0,0.4)';
+                    }
+                  }}
+                >
+                  <span style={{
+                    display: 'flex',
+                    opacity: active ? 0.9 : 0.5,
+                    width: '16px',
+                    height: '16px',
+                    transition: 'opacity 0.25s ease',
+                    filter: active ? 'none' : 'drop-shadow(0 1px 1px rgba(0,0,0,0.3))',
+                  }}>
+                    {item.icon}
                   </span>
-                )}
-              </Link>
-            ))}
+                  <span>{item.label}</span>
+                  {'badge' in item && (item as any).badge > 0 && (
+                    <span
+                      style={{
+                        marginLeft: 'auto',
+                        minWidth: '18px',
+                        height: '18px',
+                        borderRadius: '9px',
+                        background: '#c8102e',
+                        color: '#fff',
+                        fontSize: '10px',
+                        fontWeight: 700,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: '0 5px',
+                        lineHeight: 1,
+                        animation: 'pulse 2s ease-in-out infinite',
+                        boxShadow: '0 0 6px rgba(200,16,46,0.5)',
+                      }}
+                    >
+                      {(item as any).badge > 9 ? '9+' : (item as any).badge}
+                    </span>
+                  )}
+                </Link>
+              );
+            })}
           </div>
         ))}
       </div>
@@ -205,7 +264,7 @@ const Sidebar: React.FC = () => {
         </div>
       </div>
 
-      {/* Pulse animation */}
+      {/* Animations */}
       <style>{`
         @keyframes pulse {
           0%, 100% { opacity: 1; transform: scale(1); }
