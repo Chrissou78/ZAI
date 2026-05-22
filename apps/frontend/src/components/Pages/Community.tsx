@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAppContext } from '../../context/AppContext';
 import { apiService } from '../../services/api';
 import Button from '../Common/Button';
+import Modal from '../Common/Modal';
 
 // ─── Types ───
 
@@ -10,6 +11,9 @@ interface Member {
   name: string;
   avatar: string;
   wallet?: string;
+  phone?: string;
+  city?: string;
+  country?: string;
   joinedAt: string;
   isPublic: boolean;
   isBlocked?: boolean;
@@ -47,7 +51,6 @@ interface CommunityStats {
   totalPhotos: number;
 }
 
-/** Extend the shape returned by the reactions endpoint */
 interface ReactionResponse {
   success: boolean;
   action: 'added' | 'removed';
@@ -66,49 +69,43 @@ const REACTION_EMOJIS = [
   '😂', '🫶', '🙏', '🎉', '💯', '🚀',
 ];
 
-// ─── Styles ───
+// ─── Design tokens (matching other pages — NO gold) ───
 
-const sectionBorder = '1px solid #e0ddd6';
-const bgMuted = '#f0ede6';
-const textMuted = '#6a6a6a';
-const textDark = '#1a1a1a';
-const accent = '#c8102e';
-const gold = '#b8a06a';
-
-const labelStyle: React.CSSProperties = {
-  fontSize: '10px', letterSpacing: '0.2em', textTransform: 'uppercase', color: textMuted,
-};
-const sectionTitle: React.CSSProperties = {
-  fontSize: '11px', letterSpacing: '0.25em', textTransform: 'uppercase', color: textDark,
-};
-
-const adminBadgeStyle: React.CSSProperties = {
-  display: 'inline-flex', alignItems: 'center', gap: '4px',
-  padding: '2px 8px', borderRadius: '10px', fontSize: '9px',
-  letterSpacing: '0.15em', textTransform: 'uppercase', fontWeight: 600,
-  background: 'rgba(200,16,46,0.08)', color: accent, border: `1px solid rgba(200,16,46,0.2)`,
+const COLORS = {
+  accent: '#c8102e',
+  accentDark: '#7D1E2C',
+  textDark: '#1a1a1a',
+  textMuted: '#6a6a6a',
+  bgMuted: '#f0ede6',
+  bgPage: '#f5f4f0',
+  border: '#e0ddd6',
+  white: '#fff',
+  green: '#4caf7d',
+  blue: '#2563eb',
 };
 
-const adminBtnStyle: React.CSSProperties = {
-  background: 'none', border: 'none', fontSize: '11px', cursor: 'pointer',
-  color: accent, padding: '2px 6px', borderRadius: '3px', transition: 'background 0.15s',
-};
+const sectionBorder = `1px solid ${COLORS.border}`;
 
 // ─── Helpers ───
 
 function timeAgo(d: string) {
+  if (!d) return 'Date unknown';
   const diff = Date.now() - new Date(d).getTime();
+  if (isNaN(diff)) return d;
   const m = Math.floor(diff / 60000);
   if (m < 1) return 'just now';
   if (m < 60) return `${m}m ago`;
   const h = Math.floor(m / 60);
   if (h < 24) return `${h}h ago`;
   const days = Math.floor(h / 24);
-  if (days < 30) return `${days}d ago`;
-  return new Date(d).toLocaleDateString();
+  if (days === 1) return 'yesterday';
+  if (days < 7) return `${days}d ago`;
+  if (days < 30) return `${Math.floor(days / 7)}w ago`;
+  return new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 function fmtDate(d: string) {
+  if (!d) return '—';
   return new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
@@ -123,36 +120,47 @@ function groupReactions(reactions: Reaction[], userId?: string) {
   return map;
 }
 
+function getWhatsAppLink(phone?: string, name?: string): string | null {
+  if (!phone) return null;
+  const cleaned = phone.replace(/[^0-9+]/g, '');
+  if (cleaned.length < 6) return null;
+  const number = cleaned.startsWith('+') ? cleaned.slice(1) : cleaned;
+  const text = encodeURIComponent(`Hi ${name || 'there'}, fellow zai community member here!`);
+  return `https://wa.me/${number}?text=${text}`;
+}
+
 // ─── Component ───
 
 const Community: React.FC = () => {
   const { user } = useAppContext();
   const [activeTab, setActiveTab] = useState<Tab>('feed');
-
   const [isAdmin, setIsAdmin] = useState(false);
 
-  // Members state
+  // Members
   const [members, setMembers] = useState<Member[]>([]);
+  const [memberSearch, setMemberSearch] = useState('');
   const [stats, setStats] = useState<CommunityStats>({ totalMembers: 0, totalPhotos: 0 });
 
-  // Gallery state
+  // Gallery
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
   const [newComment, setNewComment] = useState('');
+
+  // Upload
   const [showUpload, setShowUpload] = useState(false);
   const [uploadCaption, setUploadCaption] = useState('');
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploadPreview, setUploadPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
 
-  // Emoji picker — lifted to component root so the portal works everywhere
+  // Emoji picker
   const [emojiPickerPhotoId, setEmojiPickerPhotoId] = useState<string | null>(null);
   const [emojiPickerPos, setEmojiPickerPos] = useState<{ top: number; left: number } | null>(null);
   const [emojiPickerContext, setEmojiPickerContext] = useState<'grid' | 'overlay'>('grid');
 
   const [isLoading, setIsLoading] = useState(true);
 
-  // Close emoji picker on scroll (prevents stale position)
+  // Close emoji picker on scroll
   useEffect(() => {
     const close = () => { setEmojiPickerPhotoId(null); setEmojiPickerPos(null); };
     window.addEventListener('scroll', close, true);
@@ -221,7 +229,10 @@ const Community: React.FC = () => {
       const res = await apiService.post('/community/gallery', { image: uploadPreview, caption: uploadCaption });
       if (res.data?.success) {
         setPhotos(prev => [res.data.data, ...prev]);
-        setShowUpload(false); setUploadCaption(''); setUploadFile(null); setUploadPreview(null);
+        setShowUpload(false);
+        setUploadCaption('');
+        setUploadFile(null);
+        setUploadPreview(null);
         fetchStats();
       }
     } catch (err: any) { alert(err.response?.data?.error || 'Upload failed'); }
@@ -273,7 +284,7 @@ const Community: React.FC = () => {
     } catch (err: any) { alert(err.response?.data?.error || 'Failed to delete comment'); }
   };
 
-  // ─── Reactions (fixed TS typing) ───
+  // ─── Reactions ───
 
   const toggleReaction = async (photoId: string, emoji: string) => {
     try {
@@ -312,7 +323,7 @@ const Community: React.FC = () => {
     } catch (err: any) { alert(err.response?.data?.error || 'Failed to react'); }
   };
 
-  // ─── Admin: block / unblock member ───
+  // ─── Admin: block / unblock ───
 
   const blockMember = async (memberId: string, memberName: string) => {
     const reason = prompt(`Block "${memberName}"? Enter a reason (optional):`);
@@ -331,7 +342,7 @@ const Community: React.FC = () => {
     } catch (err: any) { alert(err.response?.data?.error || 'Failed to unblock member'); }
   };
 
-  // ─── Emoji picker opener (shared by grid + overlay) ───
+  // ─── Emoji picker ───
 
   const openEmojiPicker = (
     e: React.MouseEvent<HTMLButtonElement>,
@@ -340,7 +351,6 @@ const Community: React.FC = () => {
   ) => {
     e.stopPropagation();
     if (emojiPickerPhotoId === photoId) {
-      // toggle off
       setEmojiPickerPhotoId(null);
       setEmojiPickerPos(null);
       return;
@@ -351,14 +361,13 @@ const Community: React.FC = () => {
     setEmojiPickerContext(context);
   };
 
-  // ─── ReactionBar sub-component ───
+  // ─── ReactionBar ───
 
   const ReactionBar = ({ photo, overlay = false }: { photo: Photo; overlay?: boolean }) => {
     const grouped = groupReactions(photo.reactions || [], user?.id);
     const hasReactions = Object.keys(grouped).length > 0;
     const pickerOpen = emojiPickerPhotoId === photo.id;
 
-    // ── Non-overlay (grid cards) ──
     if (!overlay) {
       return (
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', minHeight: '28px' }}>
@@ -369,24 +378,24 @@ const Community: React.FC = () => {
               title={info.users.join(', ')}
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: '4px',
-                padding: '3px 8px', borderRadius: '12px', fontSize: '13px',
-                border: info.reacted ? `1px solid ${accent}` : '1px solid #e0ddd6',
-                background: info.reacted ? 'rgba(200,16,46,0.06)' : '#fff',
+                padding: '3px 8px', fontSize: '13px',
+                border: info.reacted ? `1px solid ${COLORS.accent}` : sectionBorder,
+                background: info.reacted ? 'rgba(200,16,46,0.06)' : COLORS.white,
                 cursor: 'pointer', transition: 'all 0.15s', lineHeight: 1,
               }}
             >
               <span>{emoji}</span>
-              <span style={{ fontSize: '10px', fontWeight: 600, color: info.reacted ? accent : textMuted }}>{info.count}</span>
+              <span style={{ fontSize: '10px', fontWeight: 600, color: info.reacted ? COLORS.accent : COLORS.textMuted }}>{info.count}</span>
             </button>
           ))}
           <div style={{ marginLeft: 'auto' }}>
             <button
               onClick={(e) => openEmojiPicker(e, photo.id, 'grid')}
               style={{
-                width: 28, height: 28, borderRadius: '50%',
-                border: '1px solid #e0ddd6',
-                background: pickerOpen ? bgMuted : '#fff',
-                fontSize: '16px', color: textMuted, cursor: 'pointer',
+                width: 28, height: 28,
+                border: sectionBorder,
+                background: pickerOpen ? COLORS.bgMuted : COLORS.white,
+                fontSize: '16px', color: COLORS.textMuted, cursor: 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}
               title="Add reaction"
@@ -398,7 +407,6 @@ const Community: React.FC = () => {
       );
     }
 
-    // ── Overlay version (floating on the photo in modal) ──
     return (
       <div
         onClick={(e) => e.stopPropagation()}
@@ -415,7 +423,7 @@ const Community: React.FC = () => {
             title={info.users.join(', ')}
             style={{
               display: 'inline-flex', alignItems: 'center', gap: '4px',
-              padding: '4px 10px', borderRadius: '14px', fontSize: '14px',
+              padding: '4px 10px', fontSize: '14px',
               border: 'none',
               background: info.reacted ? 'rgba(200,16,46,0.85)' : 'rgba(0,0,0,0.55)',
               color: '#fff',
@@ -427,14 +435,13 @@ const Community: React.FC = () => {
             <span style={{ fontSize: '11px', fontWeight: 600 }}>{info.count}</span>
           </button>
         ))}
-
         <div style={{ marginLeft: 'auto' }}>
           <button
             onClick={(e) => openEmojiPicker(e, photo.id, 'overlay')}
             style={{
-              width: 36, height: 36, borderRadius: '50%', border: 'none',
+              width: 36, height: 36, border: 'none',
               background: pickerOpen ? 'rgba(255,255,255,0.95)' : 'rgba(0,0,0,0.5)',
-              color: pickerOpen ? textDark : '#fff',
+              color: pickerOpen ? COLORS.textDark : '#fff',
               cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: '18px', transition: 'all 0.2s',
               backdropFilter: 'blur(8px)',
@@ -449,186 +456,243 @@ const Community: React.FC = () => {
     );
   };
 
+  // ─── Filter members ───
+
+  const filteredMembers = memberSearch
+    ? members.filter(m =>
+        m.name.toLowerCase().includes(memberSearch.toLowerCase()) ||
+        (m.city && m.city.toLowerCase().includes(memberSearch.toLowerCase())) ||
+        (m.country && m.country.toLowerCase().includes(memberSearch.toLowerCase()))
+      )
+    : members;
+
   // ─── Render ───
 
   if (isLoading) {
     return (
       <div style={{ padding: '3rem 4rem 5rem', textAlign: 'center' }}>
-        <div style={{ fontSize: '16px', color: textMuted }}>Loading community...</div>
+        <div style={{ fontSize: '16px', color: COLORS.textMuted }}>Loading community...</div>
       </div>
     );
   }
 
   return (
-    <div style={{ padding: '3rem 4rem 5rem' }}>
-      {/* Header */}
-      <div style={{ marginBottom: '2rem', paddingBottom: '1.5rem', borderBottom: sectionBorder }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '0.4rem' }}>
-          <div style={{ fontSize: '11px', letterSpacing: '0.3em', textTransform: 'uppercase', color: accent }}>
-            zai ecosystem
+    <div style={{ padding: '3rem 4rem 5rem', fontFamily: "'Inter', sans-serif" }}>
+
+      {/* ═══════════ PAGE HEADER ═══════════ */}
+      <div style={{
+        marginBottom: '2.5rem', paddingBottom: '2rem', borderBottom: sectionBorder,
+        display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end',
+      }}>
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '0.4rem' }}>
+            <div style={{ fontSize: '11px', letterSpacing: '0.3em', textTransform: 'uppercase', color: COLORS.accent }}>
+              zai ecosystem
+            </div>
+            {isAdmin && (
+              <span style={{
+                display: 'inline-flex', alignItems: 'center', gap: '4px',
+                padding: '2px 8px', fontSize: '9px',
+                letterSpacing: '0.15em', textTransform: 'uppercase', fontWeight: 600,
+                background: 'rgba(200,16,46,0.08)', color: COLORS.accent,
+                border: '1px solid rgba(200,16,46,0.2)',
+              }}>
+                Moderator
+              </span>
+            )}
           </div>
-          {isAdmin && <span style={adminBadgeStyle}>Moderator</span>}
+          <h1 style={{ fontSize: 'clamp(24px, 3.5vw, 40px)', fontWeight: 300, lineHeight: 1.15, margin: '0 0 0.3rem', color: COLORS.textDark }}>
+            Community
+          </h1>
+          <p style={{ color: COLORS.textMuted, fontSize: '13px', maxWidth: '520px', margin: 0 }}>
+            A global family of zai owners — connected by the mountain.
+          </p>
         </div>
-        <h1 style={{ fontSize: 'clamp(24px, 3.5vw, 40px)', fontWeight: 300, lineHeight: 1.15, margin: '0 0 0.3rem' }}>
-          Community
-        </h1>
-        <p style={{ color: textMuted, fontSize: '13px', maxWidth: '520px', margin: 0 }}>
-          A global family of zai owners — connected by the mountain.
-        </p>
-        <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1rem', fontSize: '11px', color: textMuted }}>
-          <span>{stats.totalMembers} members</span>
-          <span>·</span>
-          <span>{stats.totalPhotos} photos</span>
+
+        {/* Stats strip */}
+        <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '20px', fontWeight: 200, color: COLORS.textDark, lineHeight: 1 }}>{stats.totalMembers}</div>
+            <div style={{ fontSize: '9px', letterSpacing: '0.2em', textTransform: 'uppercase', color: COLORS.textMuted, marginTop: '2px' }}>Members</div>
+          </div>
+          <div style={{ width: '1px', height: '28px', background: COLORS.border }} />
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '20px', fontWeight: 200, color: COLORS.textDark, lineHeight: 1 }}>{stats.totalPhotos}</div>
+            <div style={{ fontSize: '9px', letterSpacing: '0.2em', textTransform: 'uppercase', color: COLORS.textMuted, marginTop: '2px' }}>Photos</div>
+          </div>
         </div>
       </div>
 
-      {/* Tabs */}
+      {/* ═══════════ TABS ═══════════ */}
       <div style={{ display: 'flex', gap: 0, marginBottom: '2rem', borderBottom: sectionBorder }}>
         {(['feed', 'members'] as Tab[]).map(tab => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
             style={{
-              padding: '10px 20px', fontSize: '11px', letterSpacing: '0.2em', textTransform: 'uppercase',
+              padding: '10px 24px', fontSize: '11px', letterSpacing: '0.2em', textTransform: 'uppercase',
               background: 'transparent', border: 'none',
-              borderBottom: activeTab === tab ? `2px solid ${accent}` : '2px solid transparent',
-              color: activeTab === tab ? textDark : textMuted,
+              borderBottom: activeTab === tab ? `2px solid ${COLORS.accent}` : '2px solid transparent',
+              color: activeTab === tab ? COLORS.textDark : COLORS.textMuted,
               cursor: 'pointer', fontWeight: activeTab === tab ? 600 : 400, transition: 'all 0.2s',
+              fontFamily: "'Inter', sans-serif",
             }}
           >
-            {tab === 'feed' ? 'Feed' : 'Members'}
+            {tab === 'feed' ? 'Upload & Share' : 'Members'}
           </button>
         ))}
       </div>
 
-      {/* ═══════════ FEED TAB ═══════════ */}
+      {/* ═══════════════════════════════════════════ */}
+      {/* ═══════════ FEED / UPLOAD & SHARE ═══════════ */}
+      {/* ═══════════════════════════════════════════ */}
       {activeTab === 'feed' && (
         <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-            <div style={sectionTitle}>Community Feed</div>
+          {/* Upload bar */}
+          <div style={{
+            display: 'grid', gridTemplateColumns: '1fr auto', gap: '1px',
+            background: COLORS.border, border: sectionBorder, marginBottom: '2rem',
+          }}>
+            <div style={{
+              background: COLORS.white, padding: '1.25rem 1.5rem',
+              display: 'flex', alignItems: 'center', gap: '12px',
+            }}>
+              {/* Camera icon */}
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={COLORS.textDark} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                <circle cx="12" cy="13" r="4" />
+              </svg>
+              <div>
+                <div style={{ fontSize: '13px', fontWeight: 500, color: COLORS.textDark }}>Share a moment</div>
+                <div style={{ fontSize: '11px', color: COLORS.textMuted }}>Upload a photo from your zai experience</div>
+              </div>
+            </div>
             <button
-              onClick={() => setShowUpload(true)}
+              onClick={() => setShowUpload(!showUpload)}
               style={{
-                display: 'inline-flex', alignItems: 'center', gap: '8px',
-                background: accent, color: '#fff', border: 'none',
-                padding: '11px 24px', borderRadius: '4px',
-                fontSize: '12px', fontWeight: 600, letterSpacing: '0.08em',
-                cursor: 'pointer', transition: 'all 0.2s',
-                boxShadow: '0 2px 8px rgba(200,16,46,0.25)',
+                background: COLORS.accentDark, color: '#fff', border: 'none',
+                padding: '0 2rem',
+                fontSize: '11px', letterSpacing: '0.15em', textTransform: 'uppercase',
+                cursor: 'pointer', fontFamily: "'Inter', sans-serif",
+                transition: 'background 0.2s',
               }}
-              onMouseEnter={e => {
-                e.currentTarget.style.background = '#e01232';
-                e.currentTarget.style.boxShadow = '0 4px 14px rgba(200,16,46,0.35)';
-                e.currentTarget.style.transform = 'translateY(-1px)';
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.background = accent;
-                e.currentTarget.style.boxShadow = '0 2px 8px rgba(200,16,46,0.25)';
-                e.currentTarget.style.transform = 'translateY(0)';
-              }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = '#9a2535')}
+              onMouseLeave={(e) => (e.currentTarget.style.background = COLORS.accentDark)}
             >
-              <span style={{ fontSize: '16px', lineHeight: 1 }}>+</span>
-              Share a moment
+              {showUpload ? 'Cancel' : '+ Upload'}
             </button>
           </div>
 
-          {/* Upload form */}
+          {/* Upload form — expandable */}
           {showUpload && (
-            <div style={{ border: sectionBorder, padding: '1.5rem', marginBottom: '1.5rem', background: '#fff' }}>
-              <div style={{ ...sectionTitle, marginBottom: '1rem' }}>Share a photo</div>
-              {!uploadPreview ? (
-                <label style={{
-                  display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                  padding: '2rem', border: '2px dashed #d0cdc5', borderRadius: '4px', cursor: 'pointer',
-                  color: textMuted, fontSize: '13px', marginBottom: '1rem',
-                }}>
-                  Click to select an image (max 4 MB)
-                  <input type="file" accept="image/jpeg,image/png,image/tiff" onChange={handleFileChange} style={{ display: 'none' }} />
-                </label>
-              ) : (
-                <div style={{ marginBottom: '1rem', position: 'relative' }}>
-                  <img src={uploadPreview} alt="Preview" style={{ width: '100%', maxHeight: '300px', objectFit: 'contain', borderRadius: '4px' }} />
-                  <button onClick={() => { setUploadFile(null); setUploadPreview(null); }} style={{
-                    position: 'absolute', top: 8, right: 8, background: 'rgba(0,0,0,0.6)', color: '#fff',
-                    border: 'none', borderRadius: '50%', width: 28, height: 28, cursor: 'pointer', fontSize: '14px',
-                  }}>×</button>
+            <div style={{
+              border: sectionBorder, marginBottom: '2rem',
+              display: 'grid', gridTemplateColumns: uploadPreview ? '1fr 1fr' : '1fr', gap: '1px',
+              background: COLORS.border,
+            }}>
+              {/* Image area */}
+              <div style={{ background: COLORS.white, padding: '1.5rem' }}>
+                {!uploadPreview ? (
+                  <label style={{
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                    padding: '3rem 2rem', border: `2px dashed ${COLORS.border}`, cursor: 'pointer',
+                    color: COLORS.textMuted, fontSize: '13px', textAlign: 'center',
+                    transition: 'border-color 0.2s',
+                  }}>
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke={COLORS.textMuted} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: '12px', opacity: 0.5 }}>
+                      <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                      <circle cx="8.5" cy="8.5" r="1.5" />
+                      <polyline points="21 15 16 10 5 21" />
+                    </svg>
+                    Click to select an image
+                    <span style={{ fontSize: '10px', marginTop: '4px', color: COLORS.textMuted }}>JPG, PNG, or TIFF · Max 4 MB</span>
+                    <input type="file" accept="image/jpeg,image/png,image/tiff" onChange={handleFileChange} style={{ display: 'none' }} />
+                  </label>
+                ) : (
+                  <div style={{ position: 'relative' }}>
+                    <img src={uploadPreview} alt="Preview" style={{ width: '100%', maxHeight: '300px', objectFit: 'contain', display: 'block' }} />
+                    <button onClick={() => { setUploadFile(null); setUploadPreview(null); }} style={{
+                      position: 'absolute', top: 8, right: 8, background: 'rgba(0,0,0,0.6)', color: '#fff',
+                      border: 'none', width: 28, height: 28, cursor: 'pointer', fontSize: '14px',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>×</button>
+                  </div>
+                )}
+              </div>
+
+              {/* Caption + submit (shows when preview exists) */}
+              {uploadPreview && (
+                <div style={{ background: COLORS.white, padding: '1.5rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                  <div>
+                    <div style={{ fontSize: '10px', letterSpacing: '0.2em', textTransform: 'uppercase', color: COLORS.textMuted, marginBottom: '8px' }}>
+                      Caption
+                    </div>
+                    <textarea
+                      placeholder="Describe your moment..."
+                      value={uploadCaption}
+                      onChange={e => setUploadCaption(e.target.value)}
+                      rows={4}
+                      style={{
+                        width: '100%', padding: '10px 12px', border: sectionBorder, fontSize: '13px',
+                        boxSizing: 'border-box', fontFamily: "'Inter', sans-serif", resize: 'vertical',
+                      }}
+                    />
+                  </div>
+                  <div style={{ display: 'flex', gap: '1px', marginTop: '1rem' }}>
+                    <button
+                      onClick={handleUpload}
+                      disabled={!uploadFile || uploading}
+                      style={{
+                        flex: 1,
+                        background: (!uploadFile || uploading) ? '#ccc' : COLORS.accentDark,
+                        color: '#fff', border: 'none',
+                        padding: '13px 28px', fontSize: '11px', letterSpacing: '0.15em', textTransform: 'uppercase',
+                        cursor: (!uploadFile || uploading) ? 'not-allowed' : 'pointer',
+                        fontFamily: "'Inter', sans-serif", transition: 'background 0.2s',
+                      }}
+                    >
+                      {uploading ? 'Uploading to IPFS...' : 'Share'}
+                    </button>
+                    <button
+                      onClick={() => { setShowUpload(false); setUploadFile(null); setUploadPreview(null); setUploadCaption(''); }}
+                      style={{
+                        padding: '13px 28px', fontSize: '11px', letterSpacing: '0.15em', textTransform: 'uppercase',
+                        background: COLORS.white, color: COLORS.textDark, border: sectionBorder,
+                        cursor: 'pointer', fontFamily: "'Inter', sans-serif", transition: 'all 0.2s',
+                      }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
                 </div>
               )}
-              <input type="text" placeholder="Add a caption..." value={uploadCaption} onChange={e => setUploadCaption(e.target.value)}
-                style={{ width: '100%', padding: '10px 12px', border: sectionBorder, fontSize: '13px', marginBottom: '0.75rem', boxSizing: 'border-box' }} />
-              <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
-                <button
-                  onClick={handleUpload}
-                  disabled={!uploadFile || uploading}
-                  style={{
-                    display: 'inline-flex', alignItems: 'center', gap: '8px',
-                    background: (!uploadFile || uploading) ? '#ccc' : accent, color: '#fff', border: 'none',
-                    padding: '12px 32px', borderRadius: '4px',
-                    fontSize: '13px', fontWeight: 600, letterSpacing: '0.08em',
-                    cursor: (!uploadFile || uploading) ? 'not-allowed' : 'pointer',
-                    transition: 'all 0.2s',
-                    boxShadow: (!uploadFile || uploading) ? 'none' : '0 2px 8px rgba(200,16,46,0.25)',
-                  }}
-                  onMouseEnter={e => {
-                    if (uploadFile && !uploading) {
-                      e.currentTarget.style.background = '#e01232';
-                      e.currentTarget.style.boxShadow = '0 4px 14px rgba(200,16,46,0.35)';
-                      e.currentTarget.style.transform = 'translateY(-1px)';
-                    }
-                  }}
-                  onMouseLeave={e => {
-                    if (uploadFile && !uploading) {
-                      e.currentTarget.style.background = accent;
-                      e.currentTarget.style.boxShadow = '0 2px 8px rgba(200,16,46,0.25)';
-                      e.currentTarget.style.transform = 'translateY(0)';
-                    }
-                  }}
-                >
-                  {uploading ? 'Uploading to IPFS...' : 'Share'}
-                </button>
-                <button
-                  onClick={() => {
-                    setShowUpload(false); setUploadFile(null); setUploadPreview(null); setUploadCaption('');
-                  }}
-                  style={{
-                    padding: '12px 32px', borderRadius: '4px',
-                    fontSize: '13px', fontWeight: 600, letterSpacing: '0.08em',
-                    background: 'transparent', color: textDark,
-                    border: `2px solid ${textDark}`,
-                    cursor: 'pointer', transition: 'all 0.2s',
-                  }}
-                  onMouseEnter={e => {
-                    e.currentTarget.style.background = textDark;
-                    e.currentTarget.style.color = '#fff';
-                  }}
-                  onMouseLeave={e => {
-                    e.currentTarget.style.background = 'transparent';
-                    e.currentTarget.style.color = textDark;
-                  }}
-                >
-                  Cancel
-                </button>
-              </div>
             </div>
           )}
 
-          {/* Photo grid */}
+          {/* Photo grid — 1px gap design */}
           {photos.length === 0 ? (
-            <div style={{ padding: '3rem', textAlign: 'center', background: bgMuted, border: sectionBorder }}>
-              <p style={{ color: textMuted, margin: 0 }}>No posts yet. Be the first to share your zai moment!</p>
+            <div style={{ padding: '3.5rem 2rem', textAlign: 'center', background: COLORS.bgMuted, border: sectionBorder }}>
+              <div style={{ fontSize: '48px', marginBottom: '1rem', opacity: 0.2 }}>📷</div>
+              <div style={{ fontSize: '16px', fontWeight: 300, marginBottom: 8, color: COLORS.textDark }}>No posts yet</div>
+              <p style={{ color: COLORS.textMuted, fontSize: '13px', margin: 0 }}>Be the first to share your zai moment!</p>
             </div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '16px' }}>
+            <div style={{
+              display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+              gap: '1px', background: COLORS.border, border: sectionBorder,
+            }}>
               {photos.map(photo => (
-                <div key={photo.id} style={{ border: sectionBorder, borderRadius: '6px', overflow: 'hidden', background: '#fff', transition: 'box-shadow 0.2s', position: 'relative' }}
-                  onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.08)')}
-                  onMouseLeave={e => (e.currentTarget.style.boxShadow = 'none')}>
+                <div key={photo.id} style={{ background: COLORS.white, position: 'relative', transition: 'background 0.2s' }}
+                  onMouseEnter={e => (e.currentTarget.style.background = COLORS.bgMuted)}
+                  onMouseLeave={e => (e.currentTarget.style.background = COLORS.white)}
+                >
+                  {/* Admin delete */}
                   {isAdmin && (
                     <button onClick={(e) => { e.stopPropagation(); deletePhoto(photo.id); }}
                       title="Delete photo (admin)"
                       style={{
                         position: 'absolute', top: 6, right: 6, zIndex: 5,
-                        width: 26, height: 26, borderRadius: '50%', border: 'none',
+                        width: 26, height: 26, border: 'none',
                         background: 'rgba(200,16,46,0.85)', color: '#fff', fontSize: '14px',
                         cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
                         opacity: 0.7, transition: 'opacity 0.2s',
@@ -638,14 +702,15 @@ const Community: React.FC = () => {
                       ×
                     </button>
                   )}
-                  <div onClick={() => openPhoto(photo.id)} style={{ aspectRatio: '1', overflow: 'hidden', background: '#1a1a1a', cursor: 'pointer' }}>
+
+                  <div onClick={() => openPhoto(photo.id)} style={{ aspectRatio: '1', overflow: 'hidden', background: COLORS.textDark, cursor: 'pointer' }}>
                     <img src={photo.url} alt={photo.caption} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                   </div>
                   <div style={{ padding: '10px 12px' }}>
                     <div onClick={() => openPhoto(photo.id)} style={{ cursor: 'pointer' }}>
-                      <div style={{ fontSize: '12px', color: textDark, fontWeight: 500, marginBottom: '4px' }}>{photo.authorName}</div>
+                      <div style={{ fontSize: '12px', color: COLORS.textDark, fontWeight: 500, marginBottom: '4px' }}>{photo.authorName}</div>
                       {photo.caption && (
-                        <div style={{ fontSize: '12px', color: textMuted, marginBottom: '6px' }}>
+                        <div style={{ fontSize: '12px', color: COLORS.textMuted, marginBottom: '6px' }}>
                           {photo.caption.length > 60 ? photo.caption.slice(0, 60) + '...' : photo.caption}
                         </div>
                       )}
@@ -653,7 +718,7 @@ const Community: React.FC = () => {
                     <div style={{ marginTop: '6px', marginBottom: '6px' }}>
                       <ReactionBar photo={photo} />
                     </div>
-                    <div onClick={() => openPhoto(photo.id)} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: textMuted, cursor: 'pointer' }}>
+                    <div onClick={() => openPhoto(photo.id)} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: COLORS.textMuted, cursor: 'pointer' }}>
                       <span>{photo.commentCount} comment{photo.commentCount !== 1 ? 's' : ''}</span>
                       <span>{timeAgo(photo.createdAt)}</span>
                     </div>
@@ -665,11 +730,11 @@ const Community: React.FC = () => {
 
           {/* ── Photo detail modal ── */}
           {selectedPhoto && (
-            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '2rem' }}
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(10,10,10,0.7)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '2rem' }}
               onClick={() => { setSelectedPhoto(null); setEmojiPickerPhotoId(null); setEmojiPickerPos(null); }}>
               <div onClick={e => e.stopPropagation()}
-                style={{ background: '#fff', borderRadius: '4px', maxWidth: '800px', width: '100%', maxHeight: '90vh', overflow: 'visible', display: 'grid', gridTemplateColumns: '1fr 320px' }}>
-                <div style={{ background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '400px', position: 'relative', overflow: 'visible', borderRadius: '4px 0 0 4px' }}>
+                style={{ background: COLORS.white, maxWidth: '800px', width: '100%', maxHeight: '90vh', overflow: 'visible', display: 'grid', gridTemplateColumns: '1fr 320px' }}>
+                <div style={{ background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '400px', position: 'relative', overflow: 'visible' }}>
                   <img src={selectedPhoto.url} alt={selectedPhoto.caption} style={{ maxWidth: '100%', maxHeight: '80vh', objectFit: 'contain' }} />
                   <ReactionBar photo={selectedPhoto} overlay />
                 </div>
@@ -677,42 +742,42 @@ const Community: React.FC = () => {
                   <div style={{ padding: '14px', borderBottom: sectionBorder }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <div>
-                        <div style={{ fontSize: '13px', fontWeight: 600, color: textDark }}>{selectedPhoto.authorName}</div>
-                        <div style={{ fontSize: '10px', color: textMuted }}>{fmtDate(selectedPhoto.createdAt)}</div>
+                        <div style={{ fontSize: '13px', fontWeight: 600, color: COLORS.textDark }}>{selectedPhoto.authorName}</div>
+                        <div style={{ fontSize: '10px', color: COLORS.textMuted }}>{fmtDate(selectedPhoto.createdAt)}</div>
                       </div>
                       {(selectedPhoto.authorId === user?.id || isAdmin) && (
                         <button onClick={() => deletePhoto(selectedPhoto.id)} style={{
-                          ...adminBtnStyle, color: accent, fontSize: '11px',
+                          background: 'none', border: 'none', fontSize: '11px', cursor: 'pointer',
+                          color: COLORS.accent, padding: '2px 6px',
                         }}>
                           {isAdmin && selectedPhoto.authorId !== user?.id ? 'Remove (mod)' : 'Delete'}
                         </button>
                       )}
                     </div>
                     {selectedPhoto.caption && (
-                      <p style={{ fontSize: '13px', color: textDark, margin: '8px 0 0', lineHeight: 1.5 }}>{selectedPhoto.caption}</p>
+                      <p style={{ fontSize: '13px', color: COLORS.textDark, margin: '8px 0 0', lineHeight: 1.5 }}>{selectedPhoto.caption}</p>
                     )}
                   </div>
 
                   <div style={{ flex: 1, overflowY: 'auto', padding: '14px' }}>
                     {(!selectedPhoto.comments || selectedPhoto.comments.length === 0) ? (
-                      <p style={{ fontSize: '12px', color: textMuted, textAlign: 'center' }}>No comments yet</p>
+                      <p style={{ fontSize: '12px', color: COLORS.textMuted, textAlign: 'center' }}>No comments yet</p>
                     ) : (
                       selectedPhoto.comments.map(c => (
                         <div key={c.id} style={{ marginBottom: '12px' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span style={{ fontSize: '12px', fontWeight: 600, color: textDark }}>{c.authorName}</span>
+                            <span style={{ fontSize: '12px', fontWeight: 600, color: COLORS.textDark }}>{c.authorName}</span>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <span style={{ fontSize: '10px', color: textMuted }}>{timeAgo(c.createdAt)}</span>
+                              <span style={{ fontSize: '10px', color: COLORS.textMuted }}>{timeAgo(c.createdAt)}</span>
                               {(c.authorId === user?.id || isAdmin) && (
                                 <button onClick={() => deleteComment(selectedPhoto.id, c.id)}
-                                  title={isAdmin && c.authorId !== user?.id ? 'Remove comment (mod)' : 'Delete comment'}
-                                  style={{ ...adminBtnStyle, fontSize: '12px', padding: '0 4px' }}>
+                                  style={{ background: 'none', border: 'none', fontSize: '12px', cursor: 'pointer', color: COLORS.accent, padding: '0 4px' }}>
                                   ×
                                 </button>
                               )}
                             </div>
                           </div>
-                          <p style={{ fontSize: '12px', color: textDark, margin: '2px 0 0', lineHeight: 1.5 }}>{c.text}</p>
+                          <p style={{ fontSize: '12px', color: COLORS.textDark, margin: '2px 0 0', lineHeight: 1.5 }}>{c.text}</p>
                         </div>
                       ))
                     )}
@@ -722,7 +787,7 @@ const Community: React.FC = () => {
                     <input type="text" placeholder="Add a comment..." value={newComment}
                       onChange={e => setNewComment(e.target.value)}
                       onKeyDown={e => e.key === 'Enter' && addComment()}
-                      style={{ flex: 1, padding: '8px 10px', border: sectionBorder, fontSize: '12px' }} />
+                      style={{ flex: 1, padding: '8px 10px', border: sectionBorder, fontSize: '12px', fontFamily: "'Inter', sans-serif" }} />
                     <Button variant="primary" size="sm" onClick={addComment} disabled={!newComment.trim()}>Post</Button>
                   </div>
                 </div>
@@ -732,109 +797,215 @@ const Community: React.FC = () => {
         </div>
       )}
 
-      {/* ═══════════ MEMBERS TAB ═══════════ */}
+      {/* ═══════════════════════════════════════════ */}
+      {/* ═══════════ MEMBERS TAB ═══════════════════ */}
+      {/* ═══════════════════════════════════════════ */}
       {activeTab === 'members' && (
         <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <div style={sectionTitle}>zai Members</div>
-              {isAdmin && <span style={{ ...adminBadgeStyle, fontSize: '8px' }}>Admin view</span>}
+          {/* Search bar */}
+          <div style={{
+            display: 'grid', gridTemplateColumns: '1fr auto', gap: '1px',
+            background: COLORS.border, border: sectionBorder, marginBottom: '1px',
+          }}>
+            <div style={{ background: COLORS.white, padding: '0.75rem 1rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={COLORS.textMuted} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+              <input
+                type="text"
+                placeholder="Search members by name, city, or country..."
+                value={memberSearch}
+                onChange={e => setMemberSearch(e.target.value)}
+                style={{
+                  border: 'none', outline: 'none', fontSize: '13px', flex: 1,
+                  fontFamily: "'Inter', sans-serif", background: 'transparent',
+                }}
+              />
             </div>
-            <div style={{ fontSize: '11px', color: textMuted }}>{members.length} of {stats.totalMembers} registered</div>
+            <div style={{ background: COLORS.bgMuted, padding: '0.75rem 1.25rem', display: 'flex', alignItems: 'center' }}>
+              <span style={{ fontSize: '11px', color: COLORS.textMuted }}>
+                {filteredMembers.length} of {stats.totalMembers}
+              </span>
+            </div>
           </div>
 
-          <div style={{ border: sectionBorder, borderRadius: '4px', overflow: 'hidden' }}>
+          {/* Member list — 1px gap grid design */}
+          <div style={{
+            display: 'grid', gap: '1px', background: COLORS.border, border: sectionBorder, borderTop: 0,
+          }}>
+            {/* Header row */}
             <div style={{
               display: 'grid',
-              gridTemplateColumns: isAdmin ? '2fr 1fr 100px' : '2fr 1fr',
-              borderBottom: sectionBorder, background: bgMuted,
+              gridTemplateColumns: isAdmin ? '2fr 1fr 1fr 120px 80px' : '2fr 1fr 1fr 120px',
+              background: COLORS.bgMuted,
             }}>
-              {['Member', 'Since', ...(isAdmin ? ['Admin'] : [])].map(h => (
-                <div key={h} style={{ padding: '10px 14px', ...labelStyle }}>{h}</div>
+              {['Member', 'Location', 'Since', 'Contact', ...(isAdmin ? ['Admin'] : [])].map(h => (
+                <div key={h} style={{
+                  padding: '10px 14px', fontSize: '10px', letterSpacing: '0.2em',
+                  textTransform: 'uppercase', color: COLORS.textMuted,
+                }}>
+                  {h}
+                </div>
               ))}
             </div>
 
-            <div style={{ maxHeight: '500px', overflowY: 'auto' }}>
-              {members.length === 0 ? (
-                <div style={{ padding: '2rem', textAlign: 'center', color: textMuted }}>No members found</div>
-              ) : (
-                members.map((m, i) => (
-                  <div key={m.id} style={{
-                    display: 'grid',
-                    gridTemplateColumns: isAdmin ? '2fr 1fr 100px' : '2fr 1fr',
-                    alignItems: 'center',
-                    borderBottom: i < members.length - 1 ? sectionBorder : 'none',
-                    background: m.isBlocked ? 'rgba(200,16,46,0.04)' : (i % 2 === 0 ? '#fff' : '#f9f8f6'),
-                    transition: 'background 0.15s',
-                    opacity: m.isBlocked ? 0.6 : 1,
-                  }}
-                    onMouseEnter={e => { if (!m.isBlocked) e.currentTarget.style.background = bgMuted; }}
-                    onMouseLeave={e => { if (!m.isBlocked) e.currentTarget.style.background = i % 2 === 0 ? '#fff' : '#f9f8f6'; }}
-                  >
-                    <div style={{ padding: '11px 14px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <div style={{
-                        width: 28, height: 28, borderRadius: '50%', background: m.isBlocked ? '#999' : textDark,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: '10px', color: gold, flexShrink: 0, fontWeight: 500,
-                      }}>
-                        {m.avatar}
-                      </div>
-                      <span>{m.name}</span>
-                      {m.isBlocked && (
-                        <span style={{
-                          fontSize: '9px', padding: '1px 6px', borderRadius: '8px',
-                          background: 'rgba(200,16,46,0.1)', color: accent, fontWeight: 600,
-                          letterSpacing: '0.1em', textTransform: 'uppercase',
-                        }}>blocked</span>
-                      )}
+            {/* Member rows */}
+            {filteredMembers.length === 0 ? (
+              <div style={{ background: COLORS.white, padding: '2rem', textAlign: 'center', color: COLORS.textMuted, fontSize: '13px' }}>
+                {memberSearch ? 'No members match your search' : 'No members found'}
+              </div>
+            ) : (
+              filteredMembers.map((m) => (
+                <div key={m.id} style={{
+                  display: 'grid',
+                  gridTemplateColumns: isAdmin ? '2fr 1fr 1fr 120px 80px' : '2fr 1fr 1fr 120px',
+                  alignItems: 'center',
+                  background: m.isBlocked ? 'rgba(200,16,46,0.03)' : COLORS.white,
+                  transition: 'background 0.15s',
+                  opacity: m.isBlocked ? 0.6 : 1,
+                }}
+                  onMouseEnter={e => { if (!m.isBlocked) e.currentTarget.style.background = COLORS.bgMuted; }}
+                  onMouseLeave={e => { if (!m.isBlocked) e.currentTarget.style.background = m.isBlocked ? 'rgba(200,16,46,0.03)' : COLORS.white; }}
+                >
+                  {/* Name + avatar */}
+                  <div style={{ padding: '11px 14px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{
+                      width: 28, height: 28, background: m.isBlocked ? '#999' : COLORS.textDark,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: '10px', color: '#f5f4f0', flexShrink: 0, fontWeight: 500,
+                    }}>
+                      {m.avatar}
                     </div>
-                    <div style={{ padding: '11px 14px', fontSize: '11px', color: textMuted }}>
-                      {fmtDate(m.joinedAt)}
-                    </div>
-                    {isAdmin && (
-                      <div style={{ padding: '11px 14px' }}>
-                        {m.isBlocked ? (
-                          <button onClick={() => unblockMember(m.id)}
-                            style={{
-                              background: 'none', border: `1px solid ${accent}`, borderRadius: '3px',
-                              padding: '4px 10px', fontSize: '10px', color: accent, cursor: 'pointer',
-                              letterSpacing: '0.1em', textTransform: 'uppercase', transition: 'all 0.2s',
-                            }}
-                            onMouseEnter={e => { e.currentTarget.style.background = accent; e.currentTarget.style.color = '#fff'; }}
-                            onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = accent; }}>
-                            Unblock
-                          </button>
-                        ) : (
-                          <button onClick={() => blockMember(m.id, m.name)}
-                            style={{
-                              background: 'none', border: sectionBorder, borderRadius: '3px',
-                              padding: '4px 10px', fontSize: '10px', color: textMuted, cursor: 'pointer',
-                              letterSpacing: '0.1em', textTransform: 'uppercase', transition: 'all 0.2s',
-                            }}
-                            onMouseEnter={e => { e.currentTarget.style.borderColor = accent; e.currentTarget.style.color = accent; }}
-                            onMouseLeave={e => { e.currentTarget.style.borderColor = '#e0ddd6'; e.currentTarget.style.color = textMuted; }}>
-                            Block
-                          </button>
-                        )}
-                      </div>
+                    <span style={{ fontWeight: 500 }}>{m.name}</span>
+                    {m.isBlocked && (
+                      <span style={{
+                        fontSize: '9px', padding: '1px 6px',
+                        background: 'rgba(200,16,46,0.1)', color: COLORS.accent, fontWeight: 600,
+                        letterSpacing: '0.1em', textTransform: 'uppercase',
+                      }}>blocked</span>
                     )}
                   </div>
-                ))
-              )}
+
+                  {/* Location */}
+                  <div style={{ padding: '11px 14px', fontSize: '11px', color: COLORS.textMuted }}>
+                    {m.city && m.country ? `${m.city}, ${m.country}` : m.country || m.city || '—'}
+                  </div>
+
+                  {/* Since */}
+                  <div style={{ padding: '11px 14px', fontSize: '11px', color: COLORS.textMuted }}>
+                    {fmtDate(m.joinedAt)}
+                  </div>
+
+                  {/* Contact — WhatsApp */}
+                  <div style={{ padding: '11px 14px' }}>
+                    {(() => {
+                      const waLink = getWhatsAppLink(m.phone, m.name);
+                      if (!waLink) return <span style={{ fontSize: '10px', color: COLORS.textMuted }}>—</span>;
+                      return (
+                        <a
+                          href={waLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title={`Message ${m.name} on WhatsApp`}
+                          style={{
+                            display: 'inline-flex', alignItems: 'center', gap: '6px',
+                            padding: '4px 10px',
+                            background: '#25D366', color: '#fff',
+                            fontSize: '10px', letterSpacing: '0.1em', textTransform: 'uppercase',
+                            fontWeight: 600, textDecoration: 'none',
+                            transition: 'opacity 0.2s',
+                          }}
+                          onMouseEnter={e => (e.currentTarget.style.opacity = '0.8')}
+                          onMouseLeave={e => (e.currentTarget.style.opacity = '1')}
+                        >
+                          {/* WhatsApp icon */}
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="#fff">
+                            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+                          </svg>
+                          Chat
+                        </a>
+                      );
+                    })()}
+                  </div>
+
+                  {/* Admin actions */}
+                  {isAdmin && (
+                    <div style={{ padding: '11px 14px' }}>
+                      {m.isBlocked ? (
+                        <button onClick={() => unblockMember(m.id)}
+                          style={{
+                            background: 'none', border: `1px solid ${COLORS.accent}`,
+                            padding: '4px 10px', fontSize: '10px', color: COLORS.accent, cursor: 'pointer',
+                            letterSpacing: '0.1em', textTransform: 'uppercase', transition: 'all 0.2s',
+                            fontFamily: "'Inter', sans-serif",
+                          }}
+                          onMouseEnter={e => { e.currentTarget.style.background = COLORS.accent; e.currentTarget.style.color = '#fff'; }}
+                          onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = COLORS.accent; }}>
+                          Unblock
+                        </button>
+                      ) : (
+                        <button onClick={() => blockMember(m.id, m.name)}
+                          style={{
+                            background: 'none', border: sectionBorder,
+                            padding: '4px 10px', fontSize: '10px', color: COLORS.textMuted, cursor: 'pointer',
+                            letterSpacing: '0.1em', textTransform: 'uppercase', transition: 'all 0.2s',
+                            fontFamily: "'Inter', sans-serif",
+                          }}
+                          onMouseEnter={e => { e.currentTarget.style.borderColor = COLORS.accent; e.currentTarget.style.color = COLORS.accent; }}
+                          onMouseLeave={e => { e.currentTarget.style.borderColor = COLORS.border; e.currentTarget.style.color = COLORS.textMuted; }}>
+                          Block
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* WhatsApp community link */}
+          <div style={{
+            marginTop: '1px', border: sectionBorder,
+            display: 'grid', gridTemplateColumns: '1fr auto', gap: '1px', background: COLORS.border,
+          }}>
+            <div style={{ background: COLORS.bgMuted, padding: '1.25rem 1.5rem', display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="#25D366">
+                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+              </svg>
+              <div>
+                <div style={{ fontSize: '13px', fontWeight: 500, color: COLORS.textDark }}>Join the zai WhatsApp Community</div>
+                <div style={{ fontSize: '11px', color: COLORS.textMuted }}>Chat with fellow zai owners, share tips, and stay connected</div>
+              </div>
             </div>
+            <a
+              href="https://chat.whatsapp.com/YOUR_GROUP_INVITE_LINK"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                background: '#25D366', color: '#fff', border: 'none',
+                padding: '0 2rem',
+                fontSize: '11px', letterSpacing: '0.15em', textTransform: 'uppercase',
+                fontWeight: 600, textDecoration: 'none',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontFamily: "'Inter', sans-serif",
+                transition: 'opacity 0.2s',
+              }}
+              onMouseEnter={e => (e.currentTarget.style.opacity = '0.85')}
+              onMouseLeave={e => (e.currentTarget.style.opacity = '1')}
+            >
+              Join Group
+            </a>
           </div>
         </div>
       )}
 
-      {/* ═══════════ PORTAL EMOJI PICKER (renders once, positioned via fixed coords) ═══════════ */}
+      {/* ═══════════ PORTAL EMOJI PICKER ═══════════ */}
       {emojiPickerPhotoId && emojiPickerPos && (
         <>
-          {/* Invisible backdrop to close on outside click */}
           <div
             onClick={() => { setEmojiPickerPhotoId(null); setEmojiPickerPos(null); }}
             style={{ position: 'fixed', inset: 0, zIndex: 9998 }}
           />
-          {/* The picker itself */}
           <div
             onClick={(e) => e.stopPropagation()}
             style={{
@@ -842,9 +1013,8 @@ const Community: React.FC = () => {
               top: emojiPickerPos.top,
               left: emojiPickerPos.left,
               transform: 'translate(-100%, -100%) translate(-8px, -4px)',
-              background: emojiPickerContext === 'overlay' ? 'rgba(255,255,255,0.97)' : '#fff',
-              border: '1px solid #e0ddd6',
-              borderRadius: '12px',
+              background: emojiPickerContext === 'overlay' ? 'rgba(255,255,255,0.97)' : COLORS.white,
+              border: sectionBorder,
               padding: '8px',
               display: 'grid',
               gridTemplateColumns: 'repeat(4, 36px)',
@@ -862,7 +1032,7 @@ const Community: React.FC = () => {
                 onClick={(e) => { e.stopPropagation(); toggleReaction(emojiPickerPhotoId!, em); }}
                 style={{
                   width: 36, height: 36, border: 'none', background: 'transparent',
-                  borderRadius: '50%', cursor: 'pointer', fontSize: '18px',
+                  cursor: 'pointer', fontSize: '18px',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   transition: 'all 0.15s',
                 }}

@@ -163,7 +163,6 @@ const Dashboard: React.FC = () => {
     }
   }, [user, isLoading, navigate]);
 
-  // Fetch dashboard data
   useEffect(() => {
     if (user?.id) {
       fetchDashboardData();
@@ -195,6 +194,7 @@ const Dashboard: React.FC = () => {
             id: product.id,
             type: 'product',
             title: `Product claimed: ${product.name}`,
+            // Use claimedAt from API — never fake it with new Date()
             date: product.claimedAt || product.createdAt || '',
             icon: 'product',
           });
@@ -213,7 +213,11 @@ const Dashboard: React.FC = () => {
         });
       }
 
-      recentActivity.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      recentActivity.sort((a, b) => {
+        const timeA = a.date ? new Date(a.date).getTime() : 0;
+        const timeB = b.date ? new Date(b.date).getTime() : 0;
+        return timeB - timeA;
+      });
 
       setStats({
         productsClaimed: products.length,
@@ -250,9 +254,11 @@ const Dashboard: React.FC = () => {
 
   const formatDate = (dateStr: string) => {
     try {
+      // Handle empty / null / undefined dates gracefully
       if (!dateStr) return 'Date unknown';
       const date = new Date(dateStr);
       if (isNaN(date.getTime())) return dateStr;
+
       const now = new Date();
       const diffMs = now.getTime() - date.getTime();
       const isFuture = diffMs < 0;
@@ -528,7 +534,7 @@ const Dashboard: React.FC = () => {
                     borderBottom: i < activity.length - 1 ? '1px solid #e0ddd6' : 'none',
                   }}
                 >
-                  {/* Red/Blue dot instead of emoji */}
+                  {/* Red/Blue dot */}
                   <div
                     style={{
                       width: '8px',
@@ -552,7 +558,7 @@ const Dashboard: React.FC = () => {
             </div>
           )}
 
-          {/* User Info Section */}
+          {/* Wallet Info */}
           <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid #e0ddd6' }}>
             <div style={{ fontSize: '11px', color: '#6a6a6a', marginBottom: '1rem' }}>
               <strong style={{ color: '#1a1a1a' }}>Wallet Address:</strong>

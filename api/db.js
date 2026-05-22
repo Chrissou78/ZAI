@@ -131,6 +131,16 @@ export async function initDB() {
         updated_at TIMESTAMPTZ DEFAULT NOW()
       );
 
+      CREATE TABLE IF NOT EXISTS product_claims (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        product_id TEXT NOT NULL,
+        wallet TEXT,
+        product_name TEXT DEFAULT '',
+        claimed_at TIMESTAMPTZ DEFAULT NOW(),
+        UNIQUE(user_id, product_id)
+      );
+
       -- Blocked / removed community members
       CREATE TABLE IF NOT EXISTS blocked_members (
         user_id TEXT PRIMARY KEY,
@@ -148,6 +158,8 @@ export async function initDB() {
       CREATE INDEX IF NOT EXISTS idx_event_regs_user ON event_registrations(user_id);
       CREATE INDEX IF NOT EXISTS idx_insurance_user ON insurance_registrations(user_id);
       CREATE INDEX IF NOT EXISTS idx_insurance_product ON insurance_registrations(product_id);
+      CREATE INDEX IF NOT EXISTS idx_claims_user ON product_claims(user_id);
+      CREATE INDEX IF NOT EXISTS idx_claims_product ON product_claims(product_id);
     `);
 
     // Safe ALTER for existing DBs

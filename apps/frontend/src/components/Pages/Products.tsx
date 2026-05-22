@@ -273,7 +273,7 @@ const Products: React.FC = () => {
         </div>
         <div style={{ width: '1px', background: '#e0ddd6' }} />
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          {/* Green dot for insurance */}
+          {/* Green dot with glow for insurance */}
           <div style={{
             width: '12px', height: '12px', borderRadius: '50%',
             background: '#4caf7d',
@@ -316,7 +316,7 @@ const Products: React.FC = () => {
         </div>
       )}
 
-      {/* Product Cards — horizontal scroll carousel like HTML */}
+      {/* Product Cards — horizontal scroll carousel */}
       {products.length > 0 && (
         <div style={{
           display: 'flex',
@@ -403,9 +403,9 @@ const Products: React.FC = () => {
         </div>
       )}
 
-      {/* How to claim — dark background matching HTML */}
+      {/* How to claim — dark background */}
       <div style={{
-        background: '#0a0a0a', padding: '2.5rem', marginBottom: '0',
+        background: '#0a0a0a', padding: '2.5rem',
         border: '1px solid #2a2a2a',
       }}>
         <div style={{ fontSize: '11px', letterSpacing: '0.3em', textTransform: 'uppercase', color: '#c8102e', marginBottom: '0.75rem' }}>
@@ -438,7 +438,7 @@ const Products: React.FC = () => {
         </div>
       </div>
 
-      {/*  PRODUCT DETAIL MODAL  */}
+      {/* ─── PRODUCT DETAIL MODAL ─── */}
       {selectedProduct && (
         <Modal isOpen={true} onClose={() => setSelectedProduct(null)} title={selectedProduct.name}>
           <div style={{ maxWidth: 600 }}>
@@ -504,7 +504,7 @@ const Products: React.FC = () => {
         </Modal>
       )}
 
-      {/*  CLAIM MODAL  */}
+      {/* ─── CLAIM MODAL ─── */}
       <Modal isOpen={showClaimModal} onClose={() => { setShowClaimModal(false); setClaimMethod(null); setSerialInput(''); setClaimError(null); setClaimSuccess(false); }} title="Claim a Product">
         {claimSuccess ? (
           <div style={{ textAlign: 'center', padding: '2rem 0' }}>
@@ -540,7 +540,7 @@ const Products: React.FC = () => {
 
             {claimMethod === 'nfc' && (
               <div style={{ textAlign: 'center', padding: '2rem 0' }}>
-                <div style={{ fontSize: '48px', marginBottom: '1rem' }}>📱</div>
+                <div style={{ fontSize: '48px', marginBottom: '1rem' }}>📡</div>
                 <p style={{ color: '#6a6a6a', fontSize: '13px' }}>Hold your NFC card near your device...</p>
                 <button
                   onClick={() => setClaimMethod(null)}
@@ -581,7 +581,7 @@ const Products: React.FC = () => {
         )}
       </Modal>
 
-      {/*  INSURANCE MODAL  */}
+      {/* ─── INSURANCE MODAL ─── */}
       <Modal isOpen={showInsuranceModal} onClose={() => setShowInsuranceModal(false)} title="Activate Insurance">
         {insuranceStep === 'loading' && (
           <div style={{ textAlign: 'center', padding: '3rem 0' }}>
@@ -603,7 +603,7 @@ const Products: React.FC = () => {
 
         {insuranceStep === 'error' && (
           <div style={{ textAlign: 'center', padding: '2rem 0' }}>
-            <div style={{ fontSize: '48px', marginBottom: '1rem' }}>✕</div>
+            <div style={{ fontSize: '48px', marginBottom: '1rem' }}>⚠</div>
             <div style={{ fontSize: '14px', color: '#c8102e', marginBottom: '1rem' }}>{insuranceError}</div>
             <Button variant="primary" onClick={() => setInsuranceStep('form')}>Try Again</Button>
           </div>
@@ -700,7 +700,7 @@ const Products: React.FC = () => {
         )}
       </Modal>
 
-      {/*  ZOOM IMAGE MODAL  */}
+      {/* ─── ZOOM IMAGE MODAL ─── */}
       {zoomImage && (
         <div
           onClick={() => setZoomImage(null)}

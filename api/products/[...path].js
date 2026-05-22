@@ -14,12 +14,10 @@ let currencyCache = null;
 let currencyCacheTime = 0;
 
 async function getCurrencyMap() {
-  // Cache for 1 hour
   if (currencyCache && Date.now() - currencyCacheTime < 3600000) return currencyCache;
   try {
     const { status, data } = await apiFetch(BLOCKCHAIN_BASE, '/currencies');
     if (status === 200 && data) {
-      // Build UUID → code map from the API response
       const map = {};
       const currencies = Array.isArray(data) ? data : (data.data || data.currencies || []);
       for (const c of currencies) {
@@ -34,11 +32,9 @@ async function getCurrencyMap() {
   } catch (err) {
     console.error('[PRODUCTS] Currency API failed:', err.message);
   }
-  // Fallback
   return { 'b60f590b-2855-4b3c-a78a-8cac203e4768': 'CHF' };
 }
 
-// Cache ZAI contract addresses (1 hour)
 let zaiContractCache = null;
 let zaiContractCacheTime = 0;
 
@@ -106,7 +102,6 @@ async function apiFetch(base, path, opts = {}) {
   }
 }
 
-// Fetch token_uri metadata for NFTs that have null metadata
 async function fetchTokenMetadata(tokenUri) {
   if (!tokenUri) return null;
   const controller = new AbortController();
@@ -122,8 +117,6 @@ async function fetchTokenMetadata(tokenUri) {
   }
 }
 
-// Parse the metadata string and extract product fields
-// The blockchain returns metadata as a JSON string with nested data.{field}.value
 const CURRENCY_MAP = {
   'b60f590b-2855-4b3c-a78a-8cac203e4768': 'CHF',
 };
@@ -134,12 +127,10 @@ function resolveCurrency(raw, currencyMap) {
   return currencyMap[raw] || 'CHF';
 }
 
-
 function formatPrice(raw) {
   if (!raw) return '';
   const num = parseFloat(raw);
   if (isNaN(num)) return raw;
-  // Format with thousands separator and no decimals for whole numbers
   return num % 1 === 0
     ? num.toLocaleString('en-CH')
     : num.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -158,7 +149,6 @@ function parseNftToProduct(nft, currencyMap) {
   const tokenAddress = (nft.token_address || '').toLowerCase();
   const tokenId = nft.token_id || '';
 
-  // Extract from data.{key}.value
   const rawImage = rwaData.image?.value || '';
   const rawDescription = rwaData.description?.value || '';
   const rawPrice = rwaData.price?.value || '';
@@ -167,7 +157,6 @@ function parseNftToProduct(nft, currencyMap) {
   const rawCollection = rwaData.collection?.value || '';
   const rawInsurance = rwaData.insurance?.value || '';
 
-  // Top-level fields
   const name = meta.name || nft.name || 'ZAI Product';
   const type = meta.type || nft.contract_type || '';
   const serial = meta.serial || tokenId;
@@ -194,14 +183,14 @@ function parseNftToProduct(nft, currencyMap) {
     rwaId,
     rwaName,
     chainId: null,
-    claimedAt: nft.last_token_uri_sync || null,
+    // claimedAt will be overridden by DB value in the GET route
+    // Use block_timestamp as fallback for products claimed before DB tracking existed
+    claimedAt: nft.block_timestamp || null,
     isClaimed,
     tokenUri: nft.token_uri || '',
-    // Flatten all data fields for the frontend
     metadata: Object.fromEntries(
       Object.entries(rwaData).map(([k, v]) => {
         const val = v?.value || v;
-        // Resolve currency UUID in the flattened metadata too
         if (k === 'currency') return [k, resolveCurrency(val, currencyMap || CURRENCY_MAP)];
         return [k, val];
       })
@@ -251,9 +240,10 @@ export default async function handler(req, res) {
   // 1. Fetch user's NFTs from blockchain API by wallet
   // 2. Get known ZAI contract addresses from RWA API
   // 3. Filter to ZAI NFTs only
-  // 4. Parse metadata (JSON string with data.{key}.value)
+  // 4. Parse metadata
   // 5. For NFTs with null metadata, fetch from token_uri
   // 6. Enrich with insurance from DB
+  // 7. Enrich with claimedAt from DB (product_claims table)
   // ══════════════════════════════════════════════════════════════
   const userMatch = fullPath.match(/^user\/(.+)$/);
   if (userMatch && req.method === 'GET') {
@@ -297,13 +287,11 @@ export default async function handler(req, res) {
       const products = [];
 
       for (const nft of rawNfts) {
-        // Skip non-ZAI NFTs if we have a contract list
         if (zaiContracts.size > 0) {
           const addr = (nft.token_address || '').toLowerCase();
           if (!zaiContracts.has(addr)) continue;
         }
 
-        // If metadata is null, try fetching from token_uri
         if (!nft.metadata && nft.token_uri) {
           console.log('[PRODUCTS] Fetching metadata from token_uri:', nft.token_uri);
           const fetched = await fetchTokenMetadata(nft.token_uri);
@@ -342,9 +330,28 @@ export default async function handler(req, res) {
         }
       }
 
-      // ── Step 4: Return ──
+      // ── Step 4: Claim dates from DB ──
+      let claimMap = {};
+      if (dbReady && pool && products.length > 0) {
+        try {
+          const productIds = products.map(p => p.id);
+          const claimResult = await pool.query(
+            `SELECT product_id, claimed_at FROM product_claims WHERE user_id = $1 AND product_id = ANY($2)`,
+            [decoded.userId, productIds]
+          );
+          for (const row of claimResult.rows) {
+            claimMap[row.product_id] = row.claimed_at;
+          }
+        } catch (claimErr) {
+          console.error('[PRODUCTS] Claim date query failed:', claimErr.message);
+        }
+      }
+
+      // ── Step 5: Return enriched products ──
+      // DB claimed_at is the source of truth; blockchain timestamp is fallback
       const enriched = products.map(p => ({
         ...p,
+        claimedAt: claimMap[p.id] || p.claimedAt || null,
         insurance: insuranceMap[p.id] || { active: false, status: null, certificateId: null },
       }));
 
@@ -364,6 +371,7 @@ export default async function handler(req, res) {
           zaiContractsLoaded: zaiContracts.size,
           productsFound: enriched.length,
           dbConnected: dbReady,
+          claimDatesFound: Object.keys(claimMap).length,
         },
       });
     } catch (err) {
@@ -450,7 +458,6 @@ export default async function handler(req, res) {
         },
       };
 
-      // Upsert registration
       const regId = existing.rows[0]?.id || genId();
       if (existing.rows[0]) {
         await pool.query(
@@ -465,7 +472,6 @@ export default async function handler(req, res) {
         );
       }
 
-      // Call SAS
       try {
         const sasResult = await callSasApi(sasPayload);
         const certId = sasResult.certificateId || sasResult.certificate_id || null;
@@ -542,6 +548,9 @@ export default async function handler(req, res) {
 
   // ══════════════════════════════════════════════════════════════
   // POST /api/products/claim
+  //
+  // After a successful RWA claim, save the claim date in the DB
+  // so the dashboard shows accurate "claimed X ago" timestamps.
   // ══════════════════════════════════════════════════════════════
   if (fullPath === 'claim' && req.method === 'POST') {
     const decoded = authenticate(req);
@@ -563,6 +572,39 @@ export default async function handler(req, res) {
       });
 
       if (status === 200 && data?.success !== false) {
+        // ── Save claim timestamp in DB ──
+        try {
+          const db = await getDB();
+          if (db) {
+            await db.initDB();
+            const pool = db.getPool();
+            const claimedProducts = data?.data || data?.result || [];
+            for (let i = 0; i < ids.length; i++) {
+              const rwaId = ids[i];
+              // Build the product_id the same way parseNftToProduct does:
+              // contractAddress-tokenId. We may not know the exact contract+tokenId yet
+              // at claim time, so store the rwaId — we'll also try to match by wallet later.
+              // For claimed NFTs returned in the response, use their actual address+tokenId.
+              const claimed = Array.isArray(claimedProducts) ? claimedProducts[i] : null;
+              const productId = claimed?.token_address && claimed?.token_id
+                ? `${claimed.token_address.toLowerCase()}-${claimed.token_id}`
+                : `rwa-${rwaId}`;
+              const productName = claimed?.name || claimed?.metadata?.name || '';
+
+              await pool.query(
+                `INSERT INTO product_claims (id, user_id, product_id, wallet, product_name, claimed_at)
+                 VALUES ($1, $2, $3, $4, $5, NOW())
+                 ON CONFLICT (user_id, product_id) DO NOTHING`,
+                [genId(), decoded.userId, productId, wallet, productName]
+              );
+            }
+            console.log('[PRODUCTS] Claim dates saved for', ids.length, 'product(s)');
+          }
+        } catch (dbErr) {
+          // Non-fatal: claim succeeded on-chain, just DB write failed
+          console.error('[PRODUCTS] Claim DB write failed (non-fatal):', dbErr.message);
+        }
+
         return res.json({ success: true, data });
       } else {
         return res.status(status || 500).json({ success: false, error: data?.error || data?.message || 'Claim failed' });
