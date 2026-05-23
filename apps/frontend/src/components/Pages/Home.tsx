@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { StarIcon, CalendarIcon, LocationIcon, MountainIcon } from '../Icons/BenefitIcons';
-import { ZaiLogo, InstagramIcon, FacebookIcon, LinkedInIcon, YouTubeIcon, WhatsAppIcon } from '../Icons/LogoIcons';
+import { ZaiLogo, ZaiMark, InstagramIcon, FacebookIcon, LinkedInIcon, YouTubeIcon, WhatsAppIcon } from '../Icons/LogoIcons';
 import { WalletConnectButton } from '../Auth/WalletConnectButton';
 import { useAppContext } from '../../context/AppContext';
 
@@ -11,7 +11,7 @@ const Home: React.FC = () => {
 
   return (
     <div style={{ background: '#f5f4f0', minHeight: '100vh' }}>
-      {/* Hero Section — new background image */}
+      {/* Hero Section */}
       <section
         style={{
           minHeight: '100vh',
@@ -23,7 +23,7 @@ const Home: React.FC = () => {
           padding: '5rem 4rem',
         }}
       >
-        {/* Top Bar — 3-column grid: left spacer | center ZaiLogo cross | right wallet */}
+        {/* Top Bar — 3-column grid: left spacer | center ZaiMark | right wallet */}
         <div
           style={{
             position: 'absolute',
@@ -38,13 +38,9 @@ const Home: React.FC = () => {
           }}
         >
           <div />
-          {/* Centered: cross icon + "zai" label */}
+          {/* Centered: Z-mark icon + "zai" label */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', paddingTop: '0.5rem' }}>
-            {/* Cross / plus icon — extracted from ZaiLogo first glyph */}
-            <svg width="40" height="40" viewBox="0 0 35 35" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <rect x="12.5" y="0" width="10" height="35" fill="#ffffff" />
-              <rect x="0" y="12.5" width="35" height="10" fill="#ffffff" />
-            </svg>
+            <ZaiMark size={40} color="#ffffff" />
             <span style={{
               fontSize: '11px',
               letterSpacing: '0.35em',
@@ -126,7 +122,7 @@ const Home: React.FC = () => {
           )}
         </div>
 
-        {/* Hero Stats — ALL gold → #f5f4f0 */}
+        {/* Hero Stats */}
         <div
           style={{
             position: 'absolute',
@@ -165,7 +161,7 @@ const Home: React.FC = () => {
         </div>
       </section>
 
-      {/* Zai Experience Card Section — gold removed from card visual */}
+      {/* Zai Experience Card Section */}
       <section style={{ background: '#f0ede6', padding: '5rem 4rem', borderTop: '1px solid #e0ddd6' }}>
         <div style={{ maxWidth: '900px', margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5rem', alignItems: 'center' }}>
           <div>
@@ -193,11 +189,10 @@ const Home: React.FC = () => {
               ))}
             </div>
           </div>
-          {/* Experience Card — chip silver/grey, text white, no gold */}
+          {/* Experience Card */}
           <div style={{ background: 'linear-gradient(135deg, #1a1a1a, #2a2a2a)', border: '1px solid #333', borderRadius: '14px', padding: '1.4rem 1.6rem', position: 'relative', overflow: 'hidden', color: '#fff', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', aspectRatio: '1.586' }}>
             <div style={{ position: 'absolute', top: '-30px', right: '-30px', width: '100px', height: '100px', background: 'radial-gradient(circle, rgba(200,16,46,0.15), transparent 70%)' }} />
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              {/* Chip — silver/grey instead of gold */}
               <div style={{ width: '36px', height: '26px', background: 'linear-gradient(135deg, #888, #555)', borderRadius: '4px' }} />
               <div style={{ fontSize: '14px', fontWeight: 200, letterSpacing: '0.15em' }}>
                 zai <span style={{ color: '#f5f4f0' }}>experience club</span>

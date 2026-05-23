@@ -1,3 +1,13 @@
+// The Z-mark icon only (left Z-shape + center vertical bar + right square)
+// Used standalone in the hero top bar on the Home page
+export const ZaiMark = ({ size = 40, color = '#ffffff' }: { size?: number; color?: string }) => (
+  <svg width={size} height={size} viewBox="0 0 35 35" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M24.4032 15.5546C24.4032 14.215 25.4329 13.1253 26.7025 13.1253H32.6908C33.9604 13.1253 34.9901 14.215 34.9901 15.5546V19.4435C34.9901 20.7831 33.9604 21.8728 32.6908 21.8728H26.7025C25.4329 21.8728 24.4032 20.7831 24.4032 19.4435V15.5546ZM12.6665 2.29837C12.6665 1.02873 13.6962 -0.000976562 14.9658 -0.000976562H20.0344C21.304 -0.000976562 22.3337 1.02873 22.3337 2.29837V32.6897C22.3337 33.9593 21.304 34.989 20.0344 34.989H14.9658C13.6962 34.989 12.6665 33.9593 12.6665 32.6897V2.29837ZM0.00012207 21.8728L3.00926 16.3144C3.28918 15.8045 3.09924 15.3946 2.58938 15.3946H0.00012207C0.0201164 14.135 1.03983 13.1253 2.29947 13.1253H10.5871V13.1553L7.54797 18.7537C7.26805 19.2635 7.45799 19.6734 7.96785 19.6734H10.5871C10.5271 20.8931 9.5274 21.8728 8.28776 21.8728H0.00012207Z" fill={color}/>
+  </svg>
+);
+
+// Full zai logo: Z-mark icon + "zai" text letterforms
+// Used in the sidebar navigation and footer
 export const ZaiLogo = ({ size = 80, color = '#f5f4f0' }: { size?: number; color?: string }) => (
   <svg width={size} height={size * 0.3125} viewBox="0 0 110 35" fill="none" xmlns="http://www.w3.org/2000/svg">
     <g clipPath="url(#clip-nav-logo)">
