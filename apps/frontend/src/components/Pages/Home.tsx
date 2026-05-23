@@ -32,14 +32,29 @@ const Home: React.FC = () => {
             right: 0,
             display: 'grid',
             gridTemplateColumns: '1fr auto 1fr',
-            alignItems: 'center',
-            padding: '1.5rem 3rem',
+            alignItems: 'start',
+            padding: '2rem 3rem',
             zIndex: 3,
           }}
         >
           <div />
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <ZaiLogo size={80} color="#ffffff" />
+          {/* Centered: cross icon + "zai" label */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', paddingTop: '0.5rem' }}>
+            {/* Cross / plus icon — extracted from ZaiLogo first glyph */}
+            <svg width="40" height="40" viewBox="0 0 35 35" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="12.5" y="0" width="10" height="35" fill="#ffffff" />
+              <rect x="0" y="12.5" width="35" height="10" fill="#ffffff" />
+            </svg>
+            <span style={{
+              fontSize: '11px',
+              letterSpacing: '0.35em',
+              textTransform: 'uppercase',
+              color: '#ffffff',
+              fontFamily: "'Inter', sans-serif",
+              fontWeight: 300,
+            }}>
+              zai
+            </span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
             <WalletConnectButton />
