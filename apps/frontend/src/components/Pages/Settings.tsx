@@ -3,15 +3,30 @@ import { useAppContext } from '../../context/AppContext';
 import { useWalletAuth } from '../../hooks/useWalletAuth';
 import { apiService } from '../../services/api';
 
+/* ── Design tokens ── */
+const C = {
+  black: '#0a0a0a',
+  white: '#f5f4f0',
+  red: '#c8102e',
+  burgundy: '#7D1E2C',
+  gray: '#6a6a6a',
+  mid: '#999',
+  border: '#e0ddd6',
+  borderDark: '#d0cdc6',
+  surface: '#f0ede6',
+  surface2: '#e8e5de',
+  font: "'Inter', sans-serif",
+};
+
 type Panel = 'notifications' | 'card' | 'privacy' | 'region' | 'security';
 
+/* ── Interfaces ── */
 interface SecuritySettings {
   twoFactorEnabled: boolean;
   twoFactorMethod: 'none' | 'authenticator' | 'email';
   lastPasswordChange: string | null;
   sessions: SessionInfo[];
 }
-
 interface SessionInfo {
   id: string;
   device: string;
@@ -21,77 +36,93 @@ interface SessionInfo {
   createdAt: string;
   isCurrent: boolean;
 }
-
 interface NotificationSettings {
-  emailNotifications: boolean;
-  pushNotifications: boolean;
-  productUpdates: boolean;
-  communityAlerts: boolean;
+  eventInvitations: boolean;
+  membershipUpdates: boolean;
+  productLaunches: boolean;
+  partnerOffers: boolean;
+  pushProductUpdates: boolean;
+  pushEventReminders: boolean;
 }
-
 interface PrivacySettings {
   dataSharing: boolean;
   analytics: boolean;
   profileVisibility: boolean;
   communityVisibility: boolean;
 }
-
 interface CardSettings {
   cardId: string;
   isActive: boolean;
   nfcEnabled: boolean;
   autoLogin: boolean;
 }
-
 interface RegionSettings {
   country: string;
+  countryCode: string;
   currency: string;
   language: string;
 }
+
+/* ── Country flags ── */
+const FLAG_MAP: Record<string, string> = {
+  CH: '🇨🇭', DE: '🇩🇪', FR: '🇫🇷', AT: '🇦🇹', IT: '🇮🇹', US: '🇺🇸', GB: '🇬🇧',
+};
+
+const LANG_MAP: Record<string, string> = {
+  en: 'English', fr: 'Français', de: 'Deutsch', it: 'Italiano',
+};
+
+const COUNTRY_MAP: Record<string, string> = {
+  CH: 'Switzerland', DE: 'Germany', FR: 'France', AT: 'Austria', IT: 'Italy', US: 'United States', GB: 'United Kingdom',
+};
 
 const Settings: React.FC = () => {
   const { user } = useAppContext();
   const { logout } = useWalletAuth();
 
-  const [activePanel, setActivePanel] = useState<Panel>('security');
+  const [activePanel, setActivePanel] = useState<Panel>('notifications');
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  // ── Settings state ──
+  /* ── State ── */
   const [notifications, setNotifications] = useState<NotificationSettings>({
-    emailNotifications: true, pushNotifications: false,
-    productUpdates: true, communityAlerts: true,
+    eventInvitations: true,
+    membershipUpdates: true,
+    productLaunches: false,
+    partnerOffers: false,
+    pushProductUpdates: true,
+    pushEventReminders: true,
   });
   const [privacy, setPrivacy] = useState<PrivacySettings>({
     dataSharing: false, analytics: true,
     profileVisibility: true, communityVisibility: true,
   });
   const [card, setCard] = useState<CardSettings>({
-    cardId: '', isActive: false, nfcEnabled: true, autoLogin: false,
+    cardId: '', isActive: false, nfcEnabled: true, autoLogin: true,
   });
   const [region, setRegion] = useState<RegionSettings>({
-    country: 'CH', currency: 'CHF', language: 'en',
+    country: 'Switzerland', countryCode: 'CH', currency: 'CHF', language: 'en',
   });
   const [security, setSecurity] = useState<SecuritySettings>({
     twoFactorEnabled: false, twoFactorMethod: 'none',
     lastPasswordChange: null, sessions: [],
   });
 
-  // ── Modal state ──
+  /* ── Modal state ── */
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showTwoFactorModal, setShowTwoFactorModal] = useState(false);
   const [showSessionsModal, setShowSessionsModal] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showDisable2FAModal, setShowDisable2FAModal] = useState(false);
 
-  // ── Password form ──
+  /* ── Password form ── */
   const [passwordForm, setPasswordForm] = useState({ current: '', newPass: '', confirm: '' });
   const [passwordError, setPasswordError] = useState('');
   const [passwordSaving, setPasswordSaving] = useState(false);
 
-  // ── 2FA state ──
+  /* ── 2FA state ── */
   const [tfaStep, setTfaStep] = useState<'choose' | 'scan' | 'verify' | 'success'>('choose');
   const [tfaMethod, setTfaMethod] = useState<'authenticator' | 'email'>('authenticator');
   const [tfaSecret, setTfaSecret] = useState('');
@@ -100,27 +131,27 @@ const Settings: React.FC = () => {
   const [tfaError, setTfaError] = useState('');
   const [tfaLoading, setTfaLoading] = useState(false);
 
-  // ── Disable 2FA ──
+  /* ── Disable 2FA ── */
   const [disableCode, setDisableCode] = useState('');
   const [disableError, setDisableError] = useState('');
   const [disableLoading, setDisableLoading] = useState(false);
 
-  // ── Sessions state ──
+  /* ── Sessions ── */
   const [sessionsLoading, setSessionsLoading] = useState(false);
   const [sessionsList, setSessionsList] = useState<SessionInfo[]>([]);
 
-  // ── Fetch general settings on mount ──
+  /* ── Fetch settings ── */
   useEffect(() => {
     const fetchSettings = async () => {
       setLoading(true);
       try {
         const res = await apiService.get('/users/me/settings');
-        const payload = res.data as any;
-        if (payload.settings) {
-          if (payload.settings.notifications) setNotifications(prev => ({ ...prev, ...payload.settings.notifications }));
-          if (payload.settings.privacy) setPrivacy(prev => ({ ...prev, ...payload.settings.privacy }));
-          if (payload.settings.card) setCard(prev => ({ ...prev, ...payload.settings.card }));
-          if (payload.settings.region) setRegion(prev => ({ ...prev, ...payload.settings.region }));
+        const p = res.data as any;
+        if (p.settings) {
+          if (p.settings.notifications) setNotifications(prev => ({ ...prev, ...p.settings.notifications }));
+          if (p.settings.privacy) setPrivacy(prev => ({ ...prev, ...p.settings.privacy }));
+          if (p.settings.card) setCard(prev => ({ ...prev, ...p.settings.card }));
+          if (p.settings.region) setRegion(prev => ({ ...prev, ...p.settings.region }));
         }
       } catch (err: any) {
         if (err?.response?.status !== 404) setError('Failed to load settings');
@@ -130,7 +161,6 @@ const Settings: React.FC = () => {
     fetchSettings();
   }, []);
 
-  // ── Fetch security info ──
   useEffect(() => {
     if (activePanel === 'security') fetchSecurityInfo();
   }, [activePanel]);
@@ -138,68 +168,47 @@ const Settings: React.FC = () => {
   const fetchSecurityInfo = async () => {
     try {
       const res = await apiService.get('/users/me/security');
-      const payload = res.data as any;
-      if (payload.security) {
+      const p = res.data as any;
+      if (p.security) {
         setSecurity({
-          twoFactorEnabled: payload.security.twoFactorEnabled,
-          twoFactorMethod: payload.security.twoFactorMethod,
-          lastPasswordChange: payload.security.lastPasswordChange,
-          sessions: payload.sessions || [],
+          twoFactorEnabled: p.security.twoFactorEnabled,
+          twoFactorMethod: p.security.twoFactorMethod,
+          lastPasswordChange: p.security.lastPasswordChange,
+          sessions: p.sessions || [],
         });
       }
-    } catch (err) {
-      console.error('Failed to fetch security info:', err);
-    }
+    } catch { /* silent */ }
   };
 
-  // ── Save general settings ──
   const saveSettings = async () => {
-    setSaving(true);
-    setError('');
-    setSuccess('');
+    setSaving(true); setError(''); setSuccess('');
     try {
-      const res = await apiService.put('/users/me/settings', {
-        notifications, privacy, card, region,
-      });
-      const payload = res.data as any;
-      if (payload.token) localStorage.setItem('token', payload.token);
+      const res = await apiService.put('/users/me/settings', { notifications, privacy, card, region });
+      const p = res.data as any;
+      if (p.token) localStorage.setItem('token', p.token);
       setSuccess('Settings saved');
       setTimeout(() => setSuccess(''), 3000);
-    } catch {
-      setError('Failed to save settings');
-    }
+    } catch { setError('Failed to save settings'); }
     setSaving(false);
   };
 
-  // ── Toggle helpers ──
-  const toggleNotification = (key: keyof NotificationSettings) => {
+  /* ── Toggle helpers ── */
+  const toggleNotif = (key: keyof NotificationSettings) =>
     setNotifications(prev => ({ ...prev, [key]: !prev[key] }));
-  };
-  const togglePrivacy = (key: keyof PrivacySettings) => {
+  const togglePrivacy = (key: keyof PrivacySettings) =>
     setPrivacy(prev => ({ ...prev, [key]: !prev[key] }));
-  };
-  const toggleCard = (key: keyof CardSettings) => {
-    if (key === 'nfcEnabled' || key === 'autoLogin') {
-      setCard(prev => ({ ...prev, [key]: !prev[key] }));
-    }
-  };
+  const toggleCard = (key: 'nfcEnabled' | 'autoLogin') =>
+    setCard(prev => ({ ...prev, [key]: !prev[key] }));
 
-  // ── Password change ──
+  /* ── Password change ── */
   const handlePasswordChange = async () => {
     setPasswordError('');
-    if (passwordForm.newPass.length < 8) {
-      setPasswordError('Password must be at least 8 characters');
-      return;
-    }
-    if (passwordForm.newPass !== passwordForm.confirm) {
-      setPasswordError('Passwords do not match');
-      return;
-    }
+    if (passwordForm.newPass.length < 8) { setPasswordError('Password must be at least 8 characters'); return; }
+    if (passwordForm.newPass !== passwordForm.confirm) { setPasswordError('Passwords do not match'); return; }
     setPasswordSaving(true);
     try {
       await apiService.post('/users/me/change-password', {
-        currentPassword: passwordForm.current,
-        newPassword: passwordForm.newPass,
+        currentPassword: passwordForm.current, newPassword: passwordForm.newPass,
       });
       setShowPasswordModal(false);
       setPasswordForm({ current: '', newPass: '', confirm: '' });
@@ -212,549 +221,580 @@ const Settings: React.FC = () => {
     setPasswordSaving(false);
   };
 
-  // ── 2FA Setup ──
+  /* ── 2FA ── */
   const handleSetup2FA = async () => {
-    setTfaLoading(true);
-    setTfaError('');
+    setTfaLoading(true); setTfaError('');
     try {
       const res = await apiService.post('/users/me/2fa/setup', { method: tfaMethod });
-      const payload = res.data as any;
-      setTfaSecret(payload.secret);
-      setTfaQrUrl(payload.qrCodeUrl);
-      setTfaStep('scan');
-    } catch (err: any) {
-      setTfaError(err?.response?.data?.error || 'Failed to setup 2FA');
-    }
+      const p = res.data as any;
+      setTfaSecret(p.secret); setTfaQrUrl(p.qrCodeUrl); setTfaStep('scan');
+    } catch (err: any) { setTfaError(err?.response?.data?.error || 'Failed to setup 2FA'); }
     setTfaLoading(false);
   };
 
   const handleVerify2FA = async () => {
-    if (tfaCode.length !== 6) {
-      setTfaError('Please enter the 6-digit code');
-      return;
-    }
-    setTfaLoading(true);
-    setTfaError('');
+    if (tfaCode.length !== 6) { setTfaError('Please enter the 6-digit code'); return; }
+    setTfaLoading(true); setTfaError('');
     try {
       await apiService.post('/users/me/2fa/verify', { code: tfaCode });
-      setTfaStep('success');
-      fetchSecurityInfo();
-    } catch (err: any) {
-      setTfaError(err?.response?.data?.error || 'Invalid verification code');
-    }
+      setTfaStep('success'); fetchSecurityInfo();
+    } catch (err: any) { setTfaError(err?.response?.data?.error || 'Invalid verification code'); }
     setTfaLoading(false);
   };
 
   const handleDisable2FA = async () => {
-    if (disableCode.length !== 6) {
-      setDisableError('Please enter your current 6-digit code');
-      return;
-    }
-    setDisableLoading(true);
-    setDisableError('');
+    if (disableCode.length !== 6) { setDisableError('Please enter your current 6-digit code'); return; }
+    setDisableLoading(true); setDisableError('');
     try {
       await apiService.post('/users/me/2fa/disable', { code: disableCode });
-      setShowDisable2FAModal(false);
-      setDisableCode('');
+      setShowDisable2FAModal(false); setDisableCode('');
       setSuccess('Two-factor authentication disabled');
-      setTimeout(() => setSuccess(''), 3000);
-      fetchSecurityInfo();
-    } catch (err: any) {
-      setDisableError(err?.response?.data?.error || 'Failed to disable 2FA');
-    }
+      setTimeout(() => setSuccess(''), 3000); fetchSecurityInfo();
+    } catch (err: any) { setDisableError(err?.response?.data?.error || 'Failed to disable 2FA'); }
     setDisableLoading(false);
   };
 
-  // ── Sessions ──
+  /* ── Sessions ── */
   const openSessionsModal = async () => {
-    setShowSessionsModal(true);
-    setSessionsLoading(true);
+    setShowSessionsModal(true); setSessionsLoading(true);
     try {
       const res = await apiService.get('/users/me/sessions');
-      const payload = res.data as any;
-      setSessionsList(payload.sessions || []);
-    } catch {
-      setSessionsList([]);
-    }
+      setSessionsList((res.data as any)?.sessions || []);
+    } catch { setSessionsList([]); }
     setSessionsLoading(false);
   };
 
-  const revokeSession = async (sessionId: string) => {
+  const revokeSession = async (id: string) => {
     try {
-      await apiService.post('/users/me/sessions/revoke', { sessionId });
-      setSessionsList(prev => prev.filter(s => s.id !== sessionId));
-    } catch (err) {
-      console.error('Failed to revoke session:', err);
-    }
+      await apiService.post('/users/me/sessions/revoke', { sessionId: id });
+      setSessionsList(prev => prev.filter(s => s.id !== id));
+    } catch { /* silent */ }
   };
 
-  const revokeAllOtherSessions = async () => {
+  const revokeAllOther = async () => {
     try {
       await apiService.post('/users/me/sessions/revoke-all', {});
       setSessionsList(prev => prev.filter(s => s.isCurrent));
-    } catch (err) {
-      console.error('Failed to revoke sessions:', err);
-    }
+    } catch { /* silent */ }
   };
 
-  // ── Logout ──
+  /* ── Logout ── */
   const handleLogout = async () => {
-    try {
-      await logout();
-    } catch {
-      localStorage.removeItem('token');
-      window.location.href = '/';
-    }
+    try { await logout(); } catch { localStorage.removeItem('token'); window.location.href = '/'; }
   };
 
-  // ── Toggle switch component ──
-  const ToggleSwitch = ({ checked, onChange }: { checked: boolean; onChange: () => void }) => (
+  /* ── Last password text ── */
+  const lastPasswordText = () => {
+    if (!security.lastPasswordChange) return 'Never changed';
+    const d = new Date(security.lastPasswordChange);
+    const now = new Date();
+    const months = Math.floor((now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24 * 30));
+    if (months < 1) return 'Last updated recently';
+    return `Last updated ${months} month${months > 1 ? 's' : ''} ago`;
+  };
+
+  const sessionCount = security.sessions?.length || 0;
+
+  /* ══════════════════════════════════════════════════════════
+     REUSABLE SUB-COMPONENTS
+  ══════════════════════════════════════════════════════════ */
+
+  /* ── Toggle switch (red when ON) ── */
+  const Toggle = ({ checked, onChange }: { checked: boolean; onChange: () => void }) => (
     <div
       onClick={onChange}
       style={{
-        width: 44, height: 24, borderRadius: 12, cursor: 'pointer',
-        background: checked ? '#7D1E2C' : '#ccc',
-        position: 'relative', transition: 'background 0.2s',
+        width: 42, height: 22, borderRadius: 11, cursor: 'pointer',
+        background: checked ? C.red : '#ccc',
+        position: 'relative', transition: 'background 0.2s', flexShrink: 0,
       }}
     >
       <div style={{
-        width: 20, height: 20, borderRadius: 10,
+        width: 18, height: 18, borderRadius: 9,
         background: '#fff', position: 'absolute', top: 2,
         left: checked ? 22 : 2, transition: 'left 0.2s',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
       }} />
     </div>
   );
 
-  // ── Shared styles (aligned with HTML design) ──
-  const rowStyle: React.CSSProperties = {
-    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-    padding: '1.25rem 0', borderBottom: '1px solid #e0ddd6',
-  };
-  const labelStyle: React.CSSProperties = { fontSize: '13px', color: '#1a1a1a', fontWeight: 400 };
-  const subLabel: React.CSSProperties = { fontSize: '11px', color: '#6a6a6a', marginTop: '3px' };
-  const btnPrimary: React.CSSProperties = {
-    background: '#7D1E2C', color: '#fff', border: 'none', padding: '13px 28px',
-    fontSize: '11px', letterSpacing: '0.15em', textTransform: 'uppercase',
-    cursor: 'pointer', transition: 'background 0.2s', fontFamily: "'Inter', sans-serif",
-  };
-  const btnOutline: React.CSSProperties = {
-    background: 'transparent', color: '#1a1a1a', border: '1px solid #e0ddd6',
-    padding: '13px 28px', fontSize: '11px', letterSpacing: '0.15em',
-    textTransform: 'uppercase', cursor: 'pointer', transition: 'all 0.2s',
-    fontFamily: "'Inter', sans-serif",
-  };
-  const btnDanger: React.CSSProperties = {
-    background: '#c8102e', color: '#fff', border: 'none', padding: '13px 28px',
-    fontSize: '11px', letterSpacing: '0.15em', textTransform: 'uppercase',
-    cursor: 'pointer', fontFamily: "'Inter', sans-serif",
-  };
-  const modalOverlay: React.CSSProperties = {
+  /* ── Setting row ── */
+  const Row = ({
+    title, desc, right, noBorder,
+  }: { title: string; desc?: string; right: React.ReactNode; noBorder?: boolean }) => (
+    <div
+      style={{
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        padding: '1.25rem 0',
+        borderBottom: noBorder ? 'none' : `1px solid ${C.border}`,
+      }}
+    >
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: '13px', color: C.black, fontWeight: 400 }}>{title}</div>
+        {desc && <div style={{ fontSize: '11px', color: C.gray, marginTop: '3px' }}>{desc}</div>}
+      </div>
+      <div style={{ flexShrink: 0, marginLeft: '1.5rem' }}>{right}</div>
+    </div>
+  );
+
+  /* ── Section heading inside panels ── */
+  const SectionHead = ({ text }: { text: string }) => (
+    <div
+      style={{
+        fontSize: '10px', letterSpacing: '0.3em', textTransform: 'uppercase',
+        color: C.black, fontWeight: 500, marginBottom: '0.25rem',
+        fontFamily: C.font,
+      }}
+    >
+      {text}
+    </div>
+  );
+
+  /* ── Text link button ── */
+  const TextLink = ({ text, onClick }: { text: string; onClick: () => void }) => (
+    <span
+      onClick={onClick}
+      style={{
+        fontSize: '10px', letterSpacing: '0.2em', textTransform: 'uppercase',
+        color: C.gray, cursor: 'pointer', fontWeight: 500, fontFamily: C.font,
+        transition: 'color 0.2s',
+      }}
+      onMouseEnter={e => (e.currentTarget.style.color = C.black)}
+      onMouseLeave={e => (e.currentTarget.style.color = C.gray)}
+    >
+      {text}
+    </span>
+  );
+
+  /* ── Shared modal styles ── */
+  const overlay: React.CSSProperties = {
     position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
     background: 'rgba(10,10,10,0.6)', zIndex: 1000,
     display: 'flex', alignItems: 'center', justifyContent: 'center',
     backdropFilter: 'blur(4px)',
   };
-  const modalBox: React.CSSProperties = {
+  const mBox: React.CSSProperties = {
     background: '#fff', padding: '2.5rem', maxWidth: 480, width: '90%',
-    border: '1px solid #e0ddd6',
+    border: `1px solid ${C.border}`,
   };
-  const inputStyle: React.CSSProperties = {
-    width: '100%', padding: '10px 12px', border: '1px solid #e0ddd6',
+  const mTitle: React.CSSProperties = {
+    fontSize: '11px', letterSpacing: '0.3em', textTransform: 'uppercase',
+    color: C.black, marginBottom: '1.5rem', paddingBottom: '0.75rem',
+    borderBottom: `1px solid ${C.border}`, fontFamily: C.font,
+  };
+  const inp: React.CSSProperties = {
+    width: '100%', padding: '10px 12px', border: `1px solid ${C.border}`,
     fontSize: '13px', marginBottom: '1rem', boxSizing: 'border-box',
-    outline: 'none', fontFamily: "'Inter', sans-serif",
+    outline: 'none', fontFamily: C.font,
+  };
+  const btnP: React.CSSProperties = {
+    background: C.burgundy, color: '#fff', border: 'none', padding: '13px 28px',
+    fontSize: '11px', letterSpacing: '0.15em', textTransform: 'uppercase',
+    cursor: 'pointer', fontFamily: C.font, transition: 'background 0.2s',
+  };
+  const btnO: React.CSSProperties = {
+    background: 'transparent', color: C.black, border: `1px solid ${C.border}`,
+    padding: '13px 28px', fontSize: '11px', letterSpacing: '0.15em',
+    textTransform: 'uppercase', cursor: 'pointer', fontFamily: C.font,
+    transition: 'all 0.2s',
+  };
+  const btnD: React.CSSProperties = {
+    background: C.red, color: '#fff', border: 'none', padding: '13px 28px',
+    fontSize: '11px', letterSpacing: '0.15em', textTransform: 'uppercase',
+    cursor: 'pointer', fontFamily: C.font,
   };
 
-  const panelLabels: Record<Panel, { icon: string; label: string }> = {
-    notifications: { icon: '🔔', label: 'Notifications' },
-    card: { icon: '💳', label: 'Experience Card' },
-    privacy: { icon: '🔒', label: 'Privacy' },
-    region: { icon: '🌍', label: 'Region' },
-    security: { icon: '🛡️', label: 'Security' },
-  };
+  /* ── Nav labels (no emoji icons — matches screenshots) ── */
+  const panels: { key: Panel; label: string }[] = [
+    { key: 'notifications', label: 'Notifications' },
+    { key: 'card', label: 'Experience Card' },
+    { key: 'privacy', label: 'Privacy' },
+    { key: 'region', label: 'Region & Currency' },
+    { key: 'security', label: 'Security' },
+  ];
 
   if (loading) {
     return (
-      <div style={{ padding: '3rem 4rem', textAlign: 'center' }}>
-        <div style={{ fontSize: '14px', color: '#6a6a6a' }}>Loading settings...</div>
+      <div style={{ padding: '3rem 4rem', textAlign: 'center', fontFamily: C.font }}>
+        <div style={{ fontSize: '14px', color: C.gray }}>Loading settings...</div>
       </div>
     );
   }
 
+  /* ══════════════════════════════════════════════════════════
+     RENDER
+  ══════════════════════════════════════════════════════════ */
   return (
-    <div style={{ padding: '3rem 4rem 5rem' }}>
-      {/* Page Header — matches all other pages */}
+    <div style={{ padding: '3rem 4rem 5rem', fontFamily: C.font }}>
+
+      {/* ═══ PAGE HEADER ═══ */}
       <div
         style={{
           marginBottom: '2.5rem',
           paddingBottom: '2rem',
-          borderBottom: '1px solid #e0ddd6',
+          borderBottom: `1px solid ${C.border}`,
         }}
       >
         <div
           style={{
-            fontSize: '11px',
-            letterSpacing: '0.3em',
-            textTransform: 'uppercase',
-            color: '#c8102e',
-            marginBottom: '0.4rem',
+            fontSize: '11px', letterSpacing: '0.3em', textTransform: 'uppercase',
+            color: C.red, marginBottom: '0.4rem',
           }}
         >
           account
         </div>
-        <h1 style={{ fontSize: 'clamp(24px, 3.5vw, 40px)', fontWeight: 300, lineHeight: 1.15, margin: '0 0 0.3rem', color: '#1a1a1a' }}>
+        <h1
+          style={{
+            fontSize: 'clamp(24px, 3.5vw, 40px)', fontWeight: 300, lineHeight: 1.15,
+            margin: '0 0 0.3rem', color: C.black,
+          }}
+        >
           Settings
         </h1>
-        <p style={{ color: '#6a6a6a', fontSize: '13px', maxWidth: '520px', margin: '0.4rem 0 0' }}>
-          Manage your notifications, card, privacy, and security preferences.
+        <p style={{ color: C.gray, fontSize: '13px', maxWidth: '520px', margin: '0.4rem 0 0' }}>
+          Manage notifications, privacy, and account preferences.
         </p>
       </div>
 
+      {/* Alerts */}
       {error && (
-        <div style={{ padding: '12px 16px', background: 'rgba(200,16,46,0.06)', border: '1px solid rgba(200,16,46,0.15)', marginBottom: '1.5rem', fontSize: '13px', color: '#c8102e' }}>
-          {error}
-        </div>
+        <div style={{
+          padding: '12px 16px', background: 'rgba(200,16,46,0.06)',
+          border: '1px solid rgba(200,16,46,0.15)', marginBottom: '1.5rem',
+          fontSize: '13px', color: C.red,
+        }}>{error}</div>
       )}
       {success && (
-        <div style={{ padding: '12px 16px', background: 'rgba(42,157,78,0.06)', border: '1px solid rgba(42,157,78,0.15)', marginBottom: '1.5rem', fontSize: '13px', color: '#2a9d4e' }}>
-          {success}
-        </div>
+        <div style={{
+          padding: '12px 16px', background: 'rgba(42,157,78,0.06)',
+          border: '1px solid rgba(42,157,78,0.15)', marginBottom: '1.5rem',
+          fontSize: '13px', color: '#2a9d4e',
+        }}>{success}</div>
       )}
 
-      {/* Layout — grid matching the HTML design with 1px gap borders */}
+      {/* ═══ MAIN CARD — 2 columns ═══ */}
       <div
         style={{
           display: 'grid',
           gridTemplateColumns: '220px 1fr',
           gap: '1px',
-          background: '#e0ddd6',
-          border: '1px solid #e0ddd6',
+          background: C.border,
+          border: `1px solid ${C.border}`,
         }}
       >
-        {/* Side navigation */}
-        <div style={{ background: '#f0ede6', padding: '1.5rem 0' }}>
-          {(Object.keys(panelLabels) as Panel[]).map((p) => (
+        {/* ── LEFT NAV ── */}
+        <div style={{ background: C.surface, padding: '1.5rem 0' }}>
+          {panels.map(p => (
             <div
-              key={p}
-              onClick={() => setActivePanel(p)}
+              key={p.key}
+              onClick={() => setActivePanel(p.key)}
               style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '10px',
                 padding: '12px 1.5rem',
                 cursor: 'pointer',
-                fontSize: '12px',
-                letterSpacing: '0.05em',
-                color: activePanel === p ? '#c8102e' : '#1a1a1a',
-                fontWeight: activePanel === p ? 500 : 400,
-                borderLeft: activePanel === p ? '3px solid #c8102e' : '3px solid transparent',
-                background: activePanel === p ? 'rgba(200,16,46,0.04)' : 'transparent',
-                transition: 'all 0.2s',
+                fontSize: '13px',
+                color: activePanel === p.key ? C.red : C.black,
+                fontWeight: activePanel === p.key ? 500 : 400,
+                borderLeft: activePanel === p.key
+                  ? `3px solid ${C.red}`
+                  : '3px solid transparent',
+                background: activePanel === p.key
+                  ? 'rgba(200,16,46,0.04)'
+                  : 'transparent',
+                transition: 'all 0.15s',
+                fontFamily: C.font,
               }}
-              onMouseEnter={(e) => {
-                if (activePanel !== p) e.currentTarget.style.background = 'rgba(0,0,0,0.02)';
+              onMouseEnter={e => {
+                if (activePanel !== p.key) e.currentTarget.style.background = 'rgba(0,0,0,0.02)';
               }}
-              onMouseLeave={(e) => {
-                if (activePanel !== p) e.currentTarget.style.background = 'transparent';
+              onMouseLeave={e => {
+                if (activePanel !== p.key) e.currentTarget.style.background = 'transparent';
               }}
             >
-              <span style={{ fontSize: '14px' }}>{panelLabels[p].icon}</span>
-              {panelLabels[p].label}
+              {p.label}
             </div>
           ))}
         </div>
 
-        {/* Panel content */}
-        <div style={{ background: '#fff', padding: '2rem' }}>
-          {/* Panel title */}
-          <div
-            style={{
-              fontSize: '11px',
-              letterSpacing: '0.3em',
-              textTransform: 'uppercase',
-              color: '#1a1a1a',
-              marginBottom: '1.5rem',
-              paddingBottom: '0.75rem',
-              borderBottom: '1px solid #e0ddd6',
-            }}
-          >
-            {panelLabels[activePanel].label}
-          </div>
+        {/* ── RIGHT CONTENT ── */}
+        <div style={{ background: '#fff', padding: '2rem 2.5rem' }}>
 
-          {/* ═══ NOTIFICATIONS ═══ */}
+          {/* ══════ NOTIFICATIONS ══════ */}
           {activePanel === 'notifications' && (
             <div>
-              {([
-                ['emailNotifications', 'Email Notifications', 'Receive updates via email'],
-                ['pushNotifications', 'Push Notifications', 'Browser push notifications'],
-                ['productUpdates', 'Product Updates', 'Updates about your products'],
-                ['communityAlerts', 'Community Alerts', 'Community activity alerts'],
-              ] as const).map(([key, label, desc]) => (
-                <div key={key} style={rowStyle}>
-                  <div>
-                    <div style={labelStyle}>{label}</div>
-                    <div style={subLabel}>{desc}</div>
-                  </div>
-                  <ToggleSwitch checked={notifications[key]} onChange={() => toggleNotification(key)} />
-                </div>
-              ))}
-              <div style={{ marginTop: '2rem' }}>
-                <button
-                  onClick={saveSettings}
-                  disabled={saving}
-                  style={btnPrimary}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = '#9a2535')}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = '#7D1E2C')}
-                >
-                  {saving ? 'Saving...' : 'Save Changes'}
-                </button>
+              <SectionHead text="Email Notifications" />
+              <Row
+                title="Event invitations"
+                desc="Upcoming events and exclusive invitations"
+                right={<Toggle checked={notifications.eventInvitations} onChange={() => toggleNotif('eventInvitations')} />}
+              />
+              <Row
+                title="Membership updates"
+                desc="When your membership status changes"
+                right={<Toggle checked={notifications.membershipUpdates} onChange={() => toggleNotif('membershipUpdates')} />}
+              />
+              <Row
+                title="Product launches"
+                desc="New zai products before public release"
+                right={<Toggle checked={notifications.productLaunches} onChange={() => toggleNotif('productLaunches')} />}
+              />
+              <Row
+                title="Partner offers"
+                desc="Exclusive offers from our ecosystem partners"
+                right={<Toggle checked={notifications.partnerOffers} onChange={() => toggleNotif('partnerOffers')} />}
+                noBorder
+              />
+
+              <div style={{ marginTop: '2rem', marginBottom: '0.25rem' }}>
+                <SectionHead text="Push Notifications" />
               </div>
+              <Row
+                title="Product updates"
+                desc="Notifications about your registered products"
+                right={<Toggle checked={notifications.pushProductUpdates} onChange={() => toggleNotif('pushProductUpdates')} />}
+              />
+              <Row
+                title="Event reminders"
+                desc="48 hours before registered events"
+                right={<Toggle checked={notifications.pushEventReminders} onChange={() => toggleNotif('pushEventReminders')} />}
+                noBorder
+              />
             </div>
           )}
 
-          {/* ═══ CARD ═══ */}
+          {/* ══════ EXPERIENCE CARD ══════ */}
           {activePanel === 'card' && (
             <div>
-              <div style={rowStyle}>
-                <div>
-                  <div style={labelStyle}>Card ID</div>
-                  <div style={subLabel}>{card.cardId || 'Not assigned'}</div>
+              <SectionHead text="NFC Experience Card" />
+
+              {/* Card preview */}
+              <div
+                style={{
+                  background: C.black, borderRadius: '12px', padding: '2rem 2rem 1.75rem',
+                  marginTop: '1rem', marginBottom: '2rem', position: 'relative',
+                  overflow: 'hidden',
+                }}
+              >
+                {/* Chip icon */}
+                <div
+                  style={{
+                    width: '36px', height: '28px', borderRadius: '4px',
+                    border: '1px solid rgba(255,255,255,0.25)',
+                    background: 'linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05))',
+                    marginBottom: '1.25rem',
+                  }}
+                />
+                <div style={{
+                  fontSize: '16px', fontWeight: 400, color: '#fff',
+                  letterSpacing: '0.2em', fontFamily: "'Courier New', monospace',",
+                }}>
+                  {card.cardId
+                    ? `ZAI-${card.cardId.slice(0, 4)} ···· ${card.cardId.slice(-4)}`
+                    : 'ZAI-2024 ···· 0000'
+                  }
                 </div>
                 <div style={{
-                  fontSize: '10px', letterSpacing: '0.2em', textTransform: 'uppercase',
-                  padding: '4px 12px',
-                  background: card.isActive ? 'rgba(42,157,78,0.06)' : '#f0ede6',
-                  border: card.isActive ? '1px solid rgba(42,157,78,0.2)' : '1px solid #e0ddd6',
-                  color: card.isActive ? '#2a9d4e' : '#6a6a6a',
+                  fontSize: '10px', letterSpacing: '0.15em', textTransform: 'uppercase',
+                  color: card.isActive ? '#2a9d4e' : C.gray, marginTop: '6px',
                 }}>
-                  {card.isActive ? 'Active' : 'Inactive'}
+                  {card.isActive ? '● Active' : '● Inactive'}
                 </div>
               </div>
-              <div style={rowStyle}>
-                <div>
-                  <div style={labelStyle}>NFC</div>
-                  <div style={subLabel}>Enable near-field communication</div>
-                </div>
-                <ToggleSwitch checked={card.nfcEnabled} onChange={() => toggleCard('nfcEnabled')} />
-              </div>
-              <div style={rowStyle}>
-                <div>
-                  <div style={labelStyle}>Auto Login</div>
-                  <div style={subLabel}>Log in automatically with your card</div>
-                </div>
-                <ToggleSwitch checked={card.autoLogin} onChange={() => toggleCard('autoLogin')} />
-              </div>
-              <div style={{ marginTop: '2rem', display: 'flex', gap: '0.75rem' }}>
-                <button
-                  onClick={saveSettings}
-                  disabled={saving}
-                  style={btnPrimary}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = '#9a2535')}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = '#7D1E2C')}
-                >
-                  {saving ? 'Saving...' : 'Save Changes'}
-                </button>
-                <button
-                  style={btnOutline}
-                  onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#1a1a1a')}
-                  onMouseLeave={(e) => (e.currentTarget.style.borderColor = '#e0ddd6')}
-                >
-                  Request Replacement
-                </button>
-              </div>
+
+              <Row
+                title="NFC card active"
+                desc="Enables contactless product claim and access"
+                right={
+                  <span style={{
+                    fontSize: '10px', letterSpacing: '0.2em', textTransform: 'uppercase',
+                    color: card.nfcEnabled ? '#2a9d4e' : C.gray, fontWeight: 500,
+                  }}>
+                    {card.nfcEnabled ? 'Active' : 'Inactive'}
+                  </span>
+                }
+              />
+              <Row
+                title="Auto-login on tap"
+                desc="Tap card to log in without password"
+                right={<Toggle checked={card.autoLogin} onChange={() => toggleCard('autoLogin')} />}
+              />
+              <Row
+                title="Replace card"
+                desc="Request a new card if yours is lost or damaged"
+                right={<TextLink text="Request" onClick={() => alert('Card replacement requested')} />}
+                noBorder
+              />
             </div>
           )}
 
-          {/* ═══ PRIVACY ═══ */}
+          {/* ══════ PRIVACY ══════ */}
           {activePanel === 'privacy' && (
             <div>
-              {([
-                ['dataSharing', 'Data Sharing', 'Share usage data to improve ZAI'],
-                ['analytics', 'Analytics', 'Allow analytics tracking'],
-                ['profileVisibility', 'Profile Visibility', 'Make your profile visible to others'],
-                ['communityVisibility', 'Community Visibility', 'Appear in community lists'],
-              ] as const).map(([key, label, desc]) => (
-                <div key={key} style={rowStyle}>
-                  <div>
-                    <div style={labelStyle}>{label}</div>
-                    <div style={subLabel}>{desc}</div>
-                  </div>
-                  <ToggleSwitch checked={privacy[key]} onChange={() => togglePrivacy(key)} />
-                </div>
-              ))}
-              <div style={{ marginTop: '2rem' }}>
-                <button
-                  onClick={saveSettings}
-                  disabled={saving}
-                  style={btnPrimary}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = '#9a2535')}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = '#7D1E2C')}
-                >
-                  {saving ? 'Saving...' : 'Save Changes'}
-                </button>
-              </div>
+              <SectionHead text="Privacy Settings" />
+              <Row
+                title="Data sharing"
+                desc="Share usage data to improve ZAI"
+                right={<Toggle checked={privacy.dataSharing} onChange={() => togglePrivacy('dataSharing')} />}
+              />
+              <Row
+                title="Analytics"
+                desc="Allow analytics tracking"
+                right={<Toggle checked={privacy.analytics} onChange={() => togglePrivacy('analytics')} />}
+              />
+              <Row
+                title="Profile visibility"
+                desc="Make your profile visible to other members"
+                right={<Toggle checked={privacy.profileVisibility} onChange={() => togglePrivacy('profileVisibility')} />}
+              />
+              <Row
+                title="Community visibility"
+                desc="Appear in community member lists"
+                right={<Toggle checked={privacy.communityVisibility} onChange={() => togglePrivacy('communityVisibility')} />}
+                noBorder
+              />
             </div>
           )}
 
-          {/* ═══ REGION ═══ */}
+          {/* ══════ REGION & CURRENCY ══════ */}
           {activePanel === 'region' && (
             <div>
-              {[
-                { label: 'Country', value: region.country },
-                { label: 'Currency', value: region.currency },
-                { label: 'Language', value: region.language },
-              ].map((item, i) => (
-                <div key={i} style={rowStyle}>
-                  <div style={labelStyle}>{item.label}</div>
-                  <div style={{ fontSize: '13px', color: '#1a1a1a' }}>{item.value}</div>
-                </div>
-              ))}
+              <SectionHead text="Region & Currency" />
+              <Row
+                title="Account region"
+                desc={COUNTRY_MAP[region.countryCode] || region.country}
+                right={
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '18px' }}>
+                      {FLAG_MAP[region.countryCode] || '🏳️'}
+                    </span>
+                    <span style={{ fontSize: '13px', color: C.black, fontWeight: 500 }}>
+                      {region.countryCode}
+                    </span>
+                  </div>
+                }
+              />
+              <Row
+                title="Currency"
+                desc="Used for pricing and reward values"
+                right={
+                  <span style={{ fontSize: '13px', color: C.black, fontWeight: 500 }}>
+                    {region.currency}
+                  </span>
+                }
+              />
+              <Row
+                title="Language"
+                desc="Portal display language"
+                right={
+                  <span style={{ fontSize: '13px', color: C.black, fontWeight: 500 }}>
+                    {LANG_MAP[region.language] || region.language}
+                  </span>
+                }
+                noBorder
+              />
             </div>
           )}
 
-          {/* ═══ SECURITY ═══ */}
+          {/* ══════ SECURITY ══════ */}
           {activePanel === 'security' && (
             <div>
-              {/* Password */}
-              <div style={rowStyle}>
-                <div>
-                  <div style={labelStyle}>Password</div>
-                  <div style={subLabel}>
-                    {security.lastPasswordChange
-                      ? `Last changed ${new Date(security.lastPasswordChange).toLocaleDateString()}`
-                      : 'Never changed'}
-                  </div>
-                </div>
-                <button
-                  onClick={() => { setShowPasswordModal(true); setPasswordError(''); setPasswordForm({ current: '', newPass: '', confirm: '' }); }}
-                  style={btnPrimary}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = '#9a2535')}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = '#7D1E2C')}
-                >
-                  Change
-                </button>
-              </div>
-
-              {/* Two-Factor Authentication */}
-              <div style={rowStyle}>
-                <div>
-                  <div style={labelStyle}>Two-Factor Authentication</div>
-                  <div style={subLabel}>
-                    {security.twoFactorEnabled
-                      ? `Enabled via ${security.twoFactorMethod}`
-                      : 'Add an extra layer of security'}
-                  </div>
-                </div>
-                {security.twoFactorEnabled ? (
-                  <button
-                    onClick={() => { setShowDisable2FAModal(true); setDisableCode(''); setDisableError(''); }}
-                    style={btnOutline}
-                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#c8102e'; e.currentTarget.style.color = '#c8102e'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#e0ddd6'; e.currentTarget.style.color = '#1a1a1a'; }}
-                  >
-                    Disable
-                  </button>
-                ) : (
-                  <button
+              <SectionHead text="Account Security" />
+              <Row
+                title="Change password"
+                desc={lastPasswordText()}
+                right={
+                  <TextLink
+                    text="Update"
                     onClick={() => {
-                      setShowTwoFactorModal(true);
-                      setTfaStep('choose');
-                      setTfaCode('');
-                      setTfaError('');
-                      setTfaSecret('');
-                      setTfaQrUrl('');
+                      setShowPasswordModal(true);
+                      setPasswordError('');
+                      setPasswordForm({ current: '', newPass: '', confirm: '' });
                     }}
-                    style={btnPrimary}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = '#9a2535')}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = '#7D1E2C')}
-                  >
-                    Enable
-                  </button>
-                )}
-              </div>
-
-              {/* Active Sessions */}
-              <div style={rowStyle}>
-                <div>
-                  <div style={labelStyle}>Active Sessions</div>
-                  <div style={subLabel}>Manage your logged-in devices</div>
-                </div>
-                <button
-                  onClick={openSessionsModal}
-                  style={btnOutline}
-                  onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#1a1a1a')}
-                  onMouseLeave={(e) => (e.currentTarget.style.borderColor = '#e0ddd6')}
-                >
-                  View
-                </button>
-              </div>
-
-              {/* Logout */}
-              <div style={{ ...rowStyle, borderBottom: 'none' }}>
-                <div>
-                  <div style={labelStyle}>Sign Out</div>
-                  <div style={subLabel}>Log out of your current session</div>
-                </div>
-                <button onClick={() => setShowLogoutModal(true)} style={btnDanger}>
-                  Logout
-                </button>
-              </div>
+                  />
+                }
+              />
+              <Row
+                title="Two-factor authentication"
+                desc={
+                  security.twoFactorEnabled
+                    ? `Enabled via ${security.twoFactorMethod}`
+                    : 'Add an extra layer of security'
+                }
+                right={
+                  <Toggle
+                    checked={security.twoFactorEnabled}
+                    onChange={() => {
+                      if (security.twoFactorEnabled) {
+                        setShowDisable2FAModal(true);
+                        setDisableCode(''); setDisableError('');
+                      } else {
+                        setShowTwoFactorModal(true);
+                        setTfaStep('choose'); setTfaCode(''); setTfaError('');
+                        setTfaSecret(''); setTfaQrUrl('');
+                      }
+                    }}
+                  />
+                }
+              />
+              <Row
+                title="Active sessions"
+                desc={`${sessionCount} device${sessionCount !== 1 ? 's' : ''} logged in`}
+                right={<TextLink text="Sign out others" onClick={openSessionsModal} />}
+                noBorder
+              />
             </div>
           )}
         </div>
       </div>
 
-      {/* ═══════════════════════ MODALS ═══════════════════════ */}
+      {/* ═══════════════════════════════════════════════════════
+          MODALS
+      ═══════════════════════════════════════════════════════ */}
 
       {/* ── Password Modal ── */}
       {showPasswordModal && (
-        <div style={modalOverlay} onClick={() => setShowPasswordModal(false)}>
-          <div style={modalBox} onClick={e => e.stopPropagation()}>
-            <div style={{
-              fontSize: '11px', letterSpacing: '0.3em', textTransform: 'uppercase',
-              color: '#1a1a1a', marginBottom: '1.5rem', paddingBottom: '0.75rem',
-              borderBottom: '1px solid #e0ddd6',
-            }}>
-              Change Password
-            </div>
+        <div style={overlay} onClick={() => setShowPasswordModal(false)}>
+          <div style={mBox} onClick={e => e.stopPropagation()}>
+            <div style={mTitle}>Change Password</div>
             {passwordError && (
-              <div style={{ background: 'rgba(200,16,46,0.06)', color: '#c8102e', padding: '10px 14px', marginBottom: '1rem', fontSize: '12px', border: '1px solid rgba(200,16,46,0.15)' }}>
-                {passwordError}
-              </div>
+              <div style={{
+                background: 'rgba(200,16,46,0.06)', color: C.red,
+                padding: '10px 14px', marginBottom: '1rem', fontSize: '12px',
+                border: '1px solid rgba(200,16,46,0.15)',
+              }}>{passwordError}</div>
             )}
-            <label style={{ fontSize: '10px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#6a6a6a', display: 'block', marginBottom: '6px' }}>Current Password</label>
-            <input
-              type="password" style={inputStyle}
+            <label style={{
+              fontSize: '10px', letterSpacing: '0.2em', textTransform: 'uppercase',
+              color: C.gray, display: 'block', marginBottom: '6px',
+            }}>Current Password</label>
+            <input type="password" style={inp}
               value={passwordForm.current}
               onChange={e => setPasswordForm(p => ({ ...p, current: e.target.value }))}
             />
-            <label style={{ fontSize: '10px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#6a6a6a', display: 'block', marginBottom: '6px' }}>New Password</label>
-            <input
-              type="password" style={inputStyle}
+            <label style={{
+              fontSize: '10px', letterSpacing: '0.2em', textTransform: 'uppercase',
+              color: C.gray, display: 'block', marginBottom: '6px',
+            }}>New Password</label>
+            <input type="password" style={inp}
               value={passwordForm.newPass}
               onChange={e => setPasswordForm(p => ({ ...p, newPass: e.target.value }))}
             />
-            <label style={{ fontSize: '10px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#6a6a6a', display: 'block', marginBottom: '6px' }}>Confirm New Password</label>
-            <input
-              type="password" style={inputStyle}
+            <label style={{
+              fontSize: '10px', letterSpacing: '0.2em', textTransform: 'uppercase',
+              color: C.gray, display: 'block', marginBottom: '6px',
+            }}>Confirm New Password</label>
+            <input type="password" style={inp}
               value={passwordForm.confirm}
               onChange={e => setPasswordForm(p => ({ ...p, confirm: e.target.value }))}
             />
             <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
-              <button
-                onClick={handlePasswordChange} disabled={passwordSaving}
-                style={btnPrimary}
-                onMouseEnter={(e) => (e.currentTarget.style.background = '#9a2535')}
-                onMouseLeave={(e) => (e.currentTarget.style.background = '#7D1E2C')}
-              >
+              <button onClick={handlePasswordChange} disabled={passwordSaving} style={btnP}
+                onMouseEnter={e => (e.currentTarget.style.background = '#9a2535')}
+                onMouseLeave={e => (e.currentTarget.style.background = C.burgundy)}>
                 {passwordSaving ? 'Saving...' : 'Update Password'}
               </button>
-              <button
-                onClick={() => setShowPasswordModal(false)}
-                style={btnOutline}
-                onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#1a1a1a')}
-                onMouseLeave={(e) => (e.currentTarget.style.borderColor = '#e0ddd6')}
-              >
+              <button onClick={() => setShowPasswordModal(false)} style={btnO}
+                onMouseEnter={e => (e.currentTarget.style.borderColor = C.black)}
+                onMouseLeave={e => (e.currentTarget.style.borderColor = C.border)}>
                 Cancel
               </button>
             </div>
@@ -764,160 +804,154 @@ const Settings: React.FC = () => {
 
       {/* ── 2FA Enable Modal ── */}
       {showTwoFactorModal && (
-        <div style={modalOverlay} onClick={() => setShowTwoFactorModal(false)}>
-          <div style={modalBox} onClick={e => e.stopPropagation()}>
-            <div style={{
-              fontSize: '11px', letterSpacing: '0.3em', textTransform: 'uppercase',
-              color: '#1a1a1a', marginBottom: '1.5rem', paddingBottom: '0.75rem',
-              borderBottom: '1px solid #e0ddd6',
-            }}>
+        <div style={overlay} onClick={() => setShowTwoFactorModal(false)}>
+          <div style={mBox} onClick={e => e.stopPropagation()}>
+            <div style={mTitle}>
               {tfaStep === 'choose' && 'Enable Two-Factor Authentication'}
               {tfaStep === 'scan' && 'Scan QR Code'}
               {tfaStep === 'verify' && 'Verify Code'}
               {tfaStep === 'success' && '2FA Enabled'}
             </div>
-
             {tfaError && (
-              <div style={{ background: 'rgba(200,16,46,0.06)', color: '#c8102e', padding: '10px 14px', marginBottom: '1rem', fontSize: '12px', border: '1px solid rgba(200,16,46,0.15)' }}>
-                {tfaError}
-              </div>
+              <div style={{
+                background: 'rgba(200,16,46,0.06)', color: C.red,
+                padding: '10px 14px', marginBottom: '1rem', fontSize: '12px',
+                border: '1px solid rgba(200,16,46,0.15)',
+              }}>{tfaError}</div>
             )}
 
-            {/* Step 1: Choose method */}
             {tfaStep === 'choose' && (
               <div>
-                <div style={{ marginBottom: '1.5rem', fontSize: '13px', color: '#6a6a6a' }}>
+                <div style={{ marginBottom: '1.5rem', fontSize: '13px', color: C.gray }}>
                   Choose your preferred verification method.
                 </div>
-                <div
-                  onClick={() => setTfaMethod('authenticator')}
-                  style={{
-                    padding: '1.25rem', border: `1px solid ${tfaMethod === 'authenticator' ? '#c8102e' : '#e0ddd6'}`,
-                    marginBottom: '0.75rem', cursor: 'pointer', transition: 'border 0.2s',
-                    background: tfaMethod === 'authenticator' ? 'rgba(200,16,46,0.03)' : '#fff',
-                  }}
-                >
-                  <div style={{ fontWeight: 500, fontSize: '13px', color: '#1a1a1a' }}>Authenticator App</div>
-                  <div style={{ fontSize: '11px', color: '#6a6a6a', marginTop: '4px' }}>
-                    Use Google Authenticator, Authy, or any TOTP app
+                {(['authenticator', 'email'] as const).map(m => (
+                  <div key={m} onClick={() => setTfaMethod(m)} style={{
+                    padding: '1.25rem',
+                    border: `1px solid ${tfaMethod === m ? C.red : C.border}`,
+                    marginBottom: '0.75rem', cursor: 'pointer',
+                    background: tfaMethod === m ? 'rgba(200,16,46,0.03)' : '#fff',
+                    transition: 'border 0.2s',
+                  }}>
+                    <div style={{ fontWeight: 500, fontSize: '13px', color: C.black }}>
+                      {m === 'authenticator' ? 'Authenticator App' : 'Email Verification'}
+                    </div>
+                    <div style={{ fontSize: '11px', color: C.gray, marginTop: '4px' }}>
+                      {m === 'authenticator'
+                        ? 'Use Google Authenticator, Authy, or any TOTP app'
+                        : 'Receive a code via email each time you log in'}
+                    </div>
                   </div>
-                </div>
-                <div
-                  onClick={() => setTfaMethod('email')}
-                  style={{
-                    padding: '1.25rem', border: `1px solid ${tfaMethod === 'email' ? '#c8102e' : '#e0ddd6'}`,
-                    marginBottom: '1.5rem', cursor: 'pointer', transition: 'border 0.2s',
-                    background: tfaMethod === 'email' ? 'rgba(200,16,46,0.03)' : '#fff',
-                  }}
-                >
-                  <div style={{ fontWeight: 500, fontSize: '13px', color: '#1a1a1a' }}>Email Verification</div>
-                  <div style={{ fontSize: '11px', color: '#6a6a6a', marginTop: '4px' }}>
-                    Receive a code via email each time you log in
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: '0.75rem' }}>
-                  <button onClick={handleSetup2FA} disabled={tfaLoading} style={btnPrimary}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = '#9a2535')}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = '#7D1E2C')}>
+                ))}
+                <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.75rem' }}>
+                  <button onClick={handleSetup2FA} disabled={tfaLoading} style={btnP}
+                    onMouseEnter={e => (e.currentTarget.style.background = '#9a2535')}
+                    onMouseLeave={e => (e.currentTarget.style.background = C.burgundy)}>
                     {tfaLoading ? 'Setting up...' : 'Continue'}
                   </button>
-                  <button onClick={() => setShowTwoFactorModal(false)} style={btnOutline}
-                    onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#1a1a1a')}
-                    onMouseLeave={(e) => (e.currentTarget.style.borderColor = '#e0ddd6')}>
+                  <button onClick={() => setShowTwoFactorModal(false)} style={btnO}
+                    onMouseEnter={e => (e.currentTarget.style.borderColor = C.black)}
+                    onMouseLeave={e => (e.currentTarget.style.borderColor = C.border)}>
                     Cancel
                   </button>
                 </div>
               </div>
             )}
 
-            {/* Step 2: Scan QR / view secret */}
             {tfaStep === 'scan' && (
               <div>
                 {tfaMethod === 'authenticator' ? (
                   <>
-                    <div style={{ fontSize: '13px', color: '#6a6a6a', marginBottom: '1.5rem' }}>
-                      Scan this QR code with your authenticator app (Google Authenticator, Authy, etc.).
+                    <div style={{ fontSize: '13px', color: C.gray, marginBottom: '1.5rem' }}>
+                      Scan this QR code with your authenticator app.
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem' }}>
-                      <img src={tfaQrUrl} alt="2FA QR Code" style={{ width: 200, height: 200 }} />
+                      <img src={tfaQrUrl} alt="2FA QR" style={{ width: 200, height: 200 }} />
                     </div>
-                    <div style={{ background: '#f0ede6', padding: '1rem', marginBottom: '1.5rem', textAlign: 'center', border: '1px solid #e0ddd6' }}>
-                      <div style={{ fontSize: '10px', color: '#6a6a6a', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.15em' }}>
-                        Or enter this code manually
-                      </div>
-                      <div style={{ fontFamily: 'monospace', fontSize: '16px', fontWeight: 600, letterSpacing: '0.2em', wordBreak: 'break-all', color: '#1a1a1a' }}>
-                        {tfaSecret}
-                      </div>
+                    <div style={{
+                      background: C.surface, padding: '1rem', marginBottom: '1.5rem',
+                      textAlign: 'center', border: `1px solid ${C.border}`,
+                    }}>
+                      <div style={{
+                        fontSize: '10px', color: C.gray, marginBottom: '4px',
+                        textTransform: 'uppercase', letterSpacing: '0.15em',
+                      }}>Or enter this code manually</div>
+                      <div style={{
+                        fontFamily: 'monospace', fontSize: '16px', fontWeight: 600,
+                        letterSpacing: '0.2em', wordBreak: 'break-all', color: C.black,
+                      }}>{tfaSecret}</div>
                     </div>
                   </>
                 ) : (
-                  <div style={{ fontSize: '13px', color: '#6a6a6a', marginBottom: '1.5rem' }}>
-                    A verification code has been generated. In a production setup, this would be emailed to you.
-                    For now, enter the code from your authenticator app using the secret below:
-                    <div style={{ background: '#f0ede6', padding: '1rem', marginTop: '1rem', textAlign: 'center', fontFamily: 'monospace', fontSize: '16px', fontWeight: 600, border: '1px solid #e0ddd6' }}>
-                      {tfaSecret}
-                    </div>
+                  <div style={{ fontSize: '13px', color: C.gray, marginBottom: '1.5rem' }}>
+                    A verification code has been sent to your email.
+                    <div style={{
+                      background: C.surface, padding: '1rem', marginTop: '1rem',
+                      textAlign: 'center', fontFamily: 'monospace', fontSize: '16px',
+                      fontWeight: 600, border: `1px solid ${C.border}`,
+                    }}>{tfaSecret}</div>
                   </div>
                 )}
                 <div style={{ display: 'flex', gap: '0.75rem' }}>
-                  <button onClick={() => setTfaStep('verify')} style={btnPrimary}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = '#9a2535')}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = '#7D1E2C')}>
+                  <button onClick={() => setTfaStep('verify')} style={btnP}
+                    onMouseEnter={e => (e.currentTarget.style.background = '#9a2535')}
+                    onMouseLeave={e => (e.currentTarget.style.background = C.burgundy)}>
                     I've scanned it
                   </button>
-                  <button onClick={() => setShowTwoFactorModal(false)} style={btnOutline}
-                    onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#1a1a1a')}
-                    onMouseLeave={(e) => (e.currentTarget.style.borderColor = '#e0ddd6')}>
+                  <button onClick={() => setShowTwoFactorModal(false)} style={btnO}
+                    onMouseEnter={e => (e.currentTarget.style.borderColor = C.black)}
+                    onMouseLeave={e => (e.currentTarget.style.borderColor = C.border)}>
                     Cancel
                   </button>
                 </div>
               </div>
             )}
 
-            {/* Step 3: Verify code */}
             {tfaStep === 'verify' && (
               <div>
-                <div style={{ fontSize: '13px', color: '#6a6a6a', marginBottom: '1.5rem' }}>
-                  Enter the 6-digit code from your authenticator app to complete setup.
+                <div style={{ fontSize: '13px', color: C.gray, marginBottom: '1.5rem' }}>
+                  Enter the 6-digit code from your authenticator app.
                 </div>
-                <input
-                  type="text" maxLength={6} placeholder="000000"
+                <input type="text" maxLength={6} placeholder="000000"
                   value={tfaCode}
                   onChange={e => setTfaCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                   style={{
-                    ...inputStyle,
-                    textAlign: 'center', fontSize: '24px', fontFamily: 'monospace',
-                    letterSpacing: '0.5em', fontWeight: 600,
+                    ...inp, textAlign: 'center', fontSize: '24px',
+                    fontFamily: 'monospace', letterSpacing: '0.5em', fontWeight: 600,
                   }}
                 />
                 <div style={{ display: 'flex', gap: '0.75rem' }}>
-                  <button onClick={handleVerify2FA} disabled={tfaLoading} style={btnPrimary}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = '#9a2535')}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = '#7D1E2C')}>
+                  <button onClick={handleVerify2FA} disabled={tfaLoading} style={btnP}
+                    onMouseEnter={e => (e.currentTarget.style.background = '#9a2535')}
+                    onMouseLeave={e => (e.currentTarget.style.background = C.burgundy)}>
                     {tfaLoading ? 'Verifying...' : 'Verify & Enable'}
                   </button>
-                  <button onClick={() => setTfaStep('scan')} style={btnOutline}
-                    onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#1a1a1a')}
-                    onMouseLeave={(e) => (e.currentTarget.style.borderColor = '#e0ddd6')}>
+                  <button onClick={() => setTfaStep('scan')} style={btnO}
+                    onMouseEnter={e => (e.currentTarget.style.borderColor = C.black)}
+                    onMouseLeave={e => (e.currentTarget.style.borderColor = C.border)}>
                     Back
                   </button>
                 </div>
               </div>
             )}
 
-            {/* Step 4: Success */}
             {tfaStep === 'success' && (
               <div style={{ textAlign: 'center', padding: '1rem 0' }}>
-                <div style={{ width: '48px', height: '48px', margin: '0 auto 1rem', border: '2px solid #2a9d4e', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', color: '#2a9d4e' }}>✓</div>
-                <div style={{ fontSize: '16px', fontWeight: 300, marginBottom: '0.5rem', color: '#1a1a1a' }}>
+                <div style={{
+                  width: 48, height: 48, margin: '0 auto 1rem',
+                  border: '2px solid #2a9d4e', borderRadius: '50%',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: '24px', color: '#2a9d4e',
+                }}>✓</div>
+                <div style={{ fontSize: '16px', fontWeight: 300, marginBottom: '0.5rem', color: C.black }}>
                   Two-Factor Authentication Enabled
                 </div>
-                <div style={{ fontSize: '13px', color: '#6a6a6a', marginBottom: '1.5rem' }}>
+                <div style={{ fontSize: '13px', color: C.gray, marginBottom: '1.5rem' }}>
                   Your account is now protected with an additional layer of security.
                 </div>
-                <button onClick={() => setShowTwoFactorModal(false)} style={btnPrimary}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = '#9a2535')}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = '#7D1E2C')}>
+                <button onClick={() => setShowTwoFactorModal(false)} style={btnP}
+                  onMouseEnter={e => (e.currentTarget.style.background = '#9a2535')}
+                  onMouseLeave={e => (e.currentTarget.style.background = C.burgundy)}>
                   Done
                 </button>
               </div>
@@ -928,40 +962,34 @@ const Settings: React.FC = () => {
 
       {/* ── 2FA Disable Modal ── */}
       {showDisable2FAModal && (
-        <div style={modalOverlay} onClick={() => setShowDisable2FAModal(false)}>
-          <div style={modalBox} onClick={e => e.stopPropagation()}>
-            <div style={{
-              fontSize: '11px', letterSpacing: '0.3em', textTransform: 'uppercase',
-              color: '#1a1a1a', marginBottom: '1.5rem', paddingBottom: '0.75rem',
-              borderBottom: '1px solid #e0ddd6',
-            }}>
-              Disable Two-Factor Authentication
-            </div>
+        <div style={overlay} onClick={() => setShowDisable2FAModal(false)}>
+          <div style={mBox} onClick={e => e.stopPropagation()}>
+            <div style={mTitle}>Disable Two-Factor Authentication</div>
             {disableError && (
-              <div style={{ background: 'rgba(200,16,46,0.06)', color: '#c8102e', padding: '10px 14px', marginBottom: '1rem', fontSize: '12px', border: '1px solid rgba(200,16,46,0.15)' }}>
-                {disableError}
-              </div>
+              <div style={{
+                background: 'rgba(200,16,46,0.06)', color: C.red,
+                padding: '10px 14px', marginBottom: '1rem', fontSize: '12px',
+                border: '1px solid rgba(200,16,46,0.15)',
+              }}>{disableError}</div>
             )}
-            <div style={{ fontSize: '13px', color: '#6a6a6a', marginBottom: '1.5rem' }}>
-              Enter your current 6-digit verification code to disable 2FA.
+            <div style={{ fontSize: '13px', color: C.gray, marginBottom: '1.5rem' }}>
+              Enter your current 6-digit code to disable 2FA.
             </div>
-            <input
-              type="text" maxLength={6} placeholder="000000"
+            <input type="text" maxLength={6} placeholder="000000"
               value={disableCode}
               onChange={e => setDisableCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
               style={{
-                ...inputStyle,
-                textAlign: 'center', fontSize: '24px', fontFamily: 'monospace',
-                letterSpacing: '0.5em', fontWeight: 600,
+                ...inp, textAlign: 'center', fontSize: '24px',
+                fontFamily: 'monospace', letterSpacing: '0.5em', fontWeight: 600,
               }}
             />
             <div style={{ display: 'flex', gap: '0.75rem' }}>
-              <button onClick={handleDisable2FA} disabled={disableLoading} style={btnDanger}>
+              <button onClick={handleDisable2FA} disabled={disableLoading} style={btnD}>
                 {disableLoading ? 'Disabling...' : 'Disable 2FA'}
               </button>
-              <button onClick={() => setShowDisable2FAModal(false)} style={btnOutline}
-                onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#1a1a1a')}
-                onMouseLeave={(e) => (e.currentTarget.style.borderColor = '#e0ddd6')}>
+              <button onClick={() => setShowDisable2FAModal(false)} style={btnO}
+                onMouseEnter={e => (e.currentTarget.style.borderColor = C.black)}
+                onMouseLeave={e => (e.currentTarget.style.borderColor = C.border)}>
                 Cancel
               </button>
             </div>
@@ -971,58 +999,54 @@ const Settings: React.FC = () => {
 
       {/* ── Sessions Modal ── */}
       {showSessionsModal && (
-        <div style={modalOverlay} onClick={() => setShowSessionsModal(false)}>
-          <div style={{ ...modalBox, maxWidth: 560 }} onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', paddingBottom: '0.75rem', borderBottom: '1px solid #e0ddd6' }}>
-              <div style={{
-                fontSize: '11px', letterSpacing: '0.3em', textTransform: 'uppercase', color: '#1a1a1a',
-              }}>
-                Active Sessions
-              </div>
-              <button
-                onClick={() => setShowSessionsModal(false)}
-                style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: '#6a6a6a' }}
-              >✕</button>
+        <div style={overlay} onClick={() => setShowSessionsModal(false)}>
+          <div style={{ ...mBox, maxWidth: 560 }} onClick={e => e.stopPropagation()}>
+            <div style={{
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              ...mTitle,
+            }}>
+              <span>Active Sessions</span>
+              <button onClick={() => setShowSessionsModal(false)} style={{
+                background: 'none', border: 'none', fontSize: '18px',
+                cursor: 'pointer', color: C.gray,
+              }}>✕</button>
             </div>
             {sessionsLoading ? (
-              <div style={{ textAlign: 'center', padding: '2rem', color: '#6a6a6a', fontSize: '13px' }}>
+              <div style={{ textAlign: 'center', padding: '2rem', color: C.gray, fontSize: '13px' }}>
                 Loading sessions...
               </div>
             ) : sessionsList.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '2rem', color: '#6a6a6a', fontSize: '13px' }}>
+              <div style={{ textAlign: 'center', padding: '2rem', color: C.gray, fontSize: '13px' }}>
                 No active sessions found
               </div>
             ) : (
               <>
-                {sessionsList.map(session => (
-                  <div key={session.id} style={{
+                {sessionsList.map(s => (
+                  <div key={s.id} style={{
                     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    padding: '1rem 0', borderBottom: '1px solid #e0ddd6',
+                    padding: '1rem 0', borderBottom: `1px solid ${C.border}`,
                   }}>
                     <div>
-                      <div style={{ fontSize: '13px', fontWeight: session.isCurrent ? 500 : 400, color: '#1a1a1a' }}>
-                        {session.device} — {session.browser}
-                        {session.isCurrent && (
+                      <div style={{ fontSize: '13px', fontWeight: s.isCurrent ? 500 : 400, color: C.black }}>
+                        {s.device} — {s.browser}
+                        {s.isCurrent && (
                           <span style={{
                             background: 'rgba(42,157,78,0.06)', color: '#2a9d4e', fontSize: '9px',
                             padding: '2px 8px', marginLeft: '8px', textTransform: 'uppercase',
                             letterSpacing: '0.15em', border: '1px solid rgba(42,157,78,0.2)',
-                          }}>
-                            Current
-                          </span>
+                          }}>Current</span>
                         )}
                       </div>
-                      <div style={{ fontSize: '11px', color: '#6a6a6a', marginTop: '4px' }}>
-                        {session.ipAddress} · Last active {new Date(session.lastActive).toLocaleString()}
+                      <div style={{ fontSize: '11px', color: C.gray, marginTop: '4px' }}>
+                        {s.ipAddress} · Last active {new Date(s.lastActive).toLocaleString()}
                       </div>
                     </div>
-                    {!session.isCurrent && (
-                      <button
-                        onClick={() => revokeSession(session.id)}
-                        style={{ ...btnOutline, padding: '6px 14px', fontSize: '10px' }}
-                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#c8102e'; e.currentTarget.style.color = '#c8102e'; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#e0ddd6'; e.currentTarget.style.color = '#1a1a1a'; }}
-                      >
+                    {!s.isCurrent && (
+                      <button onClick={() => revokeSession(s.id)} style={{
+                        ...btnO, padding: '6px 14px', fontSize: '10px',
+                      }}
+                        onMouseEnter={e => { e.currentTarget.style.borderColor = C.red; e.currentTarget.style.color = C.red; }}
+                        onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.black; }}>
                         Revoke
                       </button>
                     )}
@@ -1030,9 +1054,7 @@ const Settings: React.FC = () => {
                 ))}
                 {sessionsList.filter(s => !s.isCurrent).length > 0 && (
                   <div style={{ marginTop: '1.5rem' }}>
-                    <button onClick={revokeAllOtherSessions} style={btnDanger}>
-                      Revoke All Other Sessions
-                    </button>
+                    <button onClick={revokeAllOther} style={btnD}>Revoke All Other Sessions</button>
                   </div>
                 )}
               </>
@@ -1043,17 +1065,19 @@ const Settings: React.FC = () => {
 
       {/* ── Logout Modal ── */}
       {showLogoutModal && (
-        <div style={modalOverlay} onClick={() => setShowLogoutModal(false)}>
-          <div style={{ ...modalBox, textAlign: 'center' }} onClick={e => e.stopPropagation()}>
-            <div style={{ fontSize: '16px', fontWeight: 300, marginBottom: '0.75rem', color: '#1a1a1a' }}>Sign Out</div>
-            <div style={{ fontSize: '13px', color: '#6a6a6a', marginBottom: '1.5rem' }}>
+        <div style={overlay} onClick={() => setShowLogoutModal(false)}>
+          <div style={{ ...mBox, textAlign: 'center' }} onClick={e => e.stopPropagation()}>
+            <div style={{ fontSize: '16px', fontWeight: 300, marginBottom: '0.75rem', color: C.black }}>
+              Sign Out
+            </div>
+            <div style={{ fontSize: '13px', color: C.gray, marginBottom: '1.5rem' }}>
               Are you sure you want to log out of your account?
             </div>
             <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
-              <button onClick={handleLogout} style={btnDanger}>Logout</button>
-              <button onClick={() => setShowLogoutModal(false)} style={btnOutline}
-                onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#1a1a1a')}
-                onMouseLeave={(e) => (e.currentTarget.style.borderColor = '#e0ddd6')}>
+              <button onClick={handleLogout} style={btnD}>Logout</button>
+              <button onClick={() => setShowLogoutModal(false)} style={btnO}
+                onMouseEnter={e => (e.currentTarget.style.borderColor = C.black)}
+                onMouseLeave={e => (e.currentTarget.style.borderColor = C.border)}>
                 Cancel
               </button>
             </div>
