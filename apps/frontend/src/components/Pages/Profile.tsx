@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAppContext } from '../../context/AppContext';
 import { apiService } from '../../services/api';
 
-/* ── Design tokens (matching HTML reference) ── */
+/* ── Design tokens ── */
 const C = {
   black: '#0a0a0a',
   white: '#f5f4f0',
@@ -10,7 +10,6 @@ const C = {
   burgundy: '#7D1E2C',
   gray: '#6a6a6a',
   mid: '#999',
-  muted: '#b0ada6',
   border: '#e0ddd6',
   borderDark: '#d0cdc6',
   surface: '#f0ede6',
@@ -32,7 +31,7 @@ interface UserStats {
 }
 
 const Profile: React.FC = () => {
-  const { user } = useAppContext();
+  const { user, setUser } = useAppContext();
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [stats, setStats] = useState<UserStats>({ productsClaimed: 0, eventsAttended: 0 });
@@ -67,29 +66,78 @@ const Profile: React.FC = () => {
     }
   }, [user]);
 
-  /* ── Fetch stats ── */
+  /* ── Fetch fresh profile from DB on mount ── */
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const res = await apiService.get('/users/me');
+        const d = (res.data as any)?.data;
+        if (d) {
+          setFormData({
+            givenName: d.givenName || '',
+            familyName: d.familyName || '',
+            email: d.email || '',
+            phoneNumber: d.phoneNumber || '',
+            address: d.address || '',
+            city: d.city || '',
+            country: d.country || '',
+            postalCode: d.postalCode || '',
+            birthdate: d.birthdate || '',
+            isPublic: d.isPublic || false,
+          });
+        }
+      } catch {
+        /* fall back to context user */
+      }
+    };
+    fetchProfile();
+  }, []);
+
+   /* ── Fetch stats from dedicated endpoint ── */
   useEffect(() => {
     if (!user?.id) return;
     const fetchStats = async () => {
       try {
-        const [prodRes, evtRes] = await Promise.all([
-          apiService.get(`/products/user/${user.id}`),
-          apiService.get('/events'),
-        ]);
-        const products = (prodRes.data as any)?.products || prodRes.data || [];
-        const events = (evtRes.data as any)?.events || evtRes.data || [];
-        const attended = Array.isArray(events)
-          ? events.filter((e: any) =>
-              e.registrations?.some((r: any) => r.userId === user.id || r.walletAddress === user.walletAddress)
-            ).length
-          : 0;
-        setStats({
-          productsClaimed: Array.isArray(products) ? products.length : 0,
-          eventsAttended: attended,
-        });
+        // Prefer the dedicated stats endpoint that queries DB tables directly
+        const res = await apiService.get('/users/me/stats');
+        const s = (res.data as any)?.stats;
+        if (s) {
+          setStats({
+            productsClaimed: s.productsClaimed || 0,
+            eventsAttended: s.eventsAttended || 0,
+          });
+          return;
+        }
       } catch {
-        /* silent */
+        /* silent — fall through to fallback */
       }
+
+      // Fallback: try the old approach
+      try {
+        const [prodRes, evtRes] = await Promise.all([
+          apiService.get(`/products/user/${user.id}`).catch(() => ({ data: { products: [] } })),
+          apiService.get('/events').catch(() => ({ data: [] })),
+        ]);
+
+        const prodData = (prodRes.data as any);
+        let productCount = 0;
+        if (Array.isArray(prodData?.products)) productCount = prodData.products.length;
+        else if (Array.isArray(prodData)) productCount = prodData.length;
+
+        const events = (evtRes.data as any)?.events || evtRes.data || [];
+        let eventCount = 0;
+        if (Array.isArray(events)) {
+          eventCount = events.filter((e: any) => {
+            const regs = e.registrations || [];
+            return regs.some((r: any) =>
+              r.userId === user.id || r.user_id === user.id ||
+              r.walletAddress === user.walletAddress || r.wallet === user.walletAddress
+            );
+          }).length;
+        }
+
+        setStats({ productsClaimed: productCount, eventsAttended: eventCount });
+      } catch { /* silent */ }
     };
     fetchStats();
   }, [user?.id]);
@@ -105,19 +153,51 @@ const Profile: React.FC = () => {
     setIsLoading(true);
     try {
       const res = await apiService.put('/users/me', {
-        firstName: formData.givenName,
-        lastName: formData.familyName,
+        name: `${formData.givenName} ${formData.familyName}`.trim(),
+        givenName: formData.givenName,
+        familyName: formData.familyName,
         email: formData.email,
-        phone: formData.phoneNumber,
+        phoneNumber: formData.phoneNumber,
         address: formData.address,
         city: formData.city,
         country: formData.country,
         postalCode: formData.postalCode,
-        birthdate: formData.birthdate,
+        birthdate: formData.birthdate || null,
         isPublic: formData.isPublic,
       });
-      if ((res.data as any)?.success) setIsEditing(false);
-    } catch {
+
+      const data = res.data as any;
+
+      if (data?.success) {
+        // Store the fresh JWT so phone number etc. survive page reload
+        if (data.jwtToken) {
+          localStorage.setItem('token', data.jwtToken);
+          localStorage.setItem('zai_token', data.jwtToken);
+        }
+
+        // Build the updated User object and set it directly (not as a callback)
+        const updatedUser: typeof user = {
+          ...user,
+          givenName: formData.givenName,
+          familyName: formData.familyName,
+          name: `${formData.givenName} ${formData.familyName}`.trim(),
+          email: formData.email,
+          phoneNumber: formData.phoneNumber,
+          address: formData.address,
+          city: formData.city,
+          country: formData.country,
+          postalCode: formData.postalCode,
+          birthdate: formData.birthdate,
+          isPublic: formData.isPublic,
+          ...(data.user || {}),
+        };
+        setUser(updatedUser);
+        localStorage.setItem('zai_user', JSON.stringify(updatedUser));
+
+        setIsEditing(false);
+      }
+    } catch (err) {
+      console.error('Failed to update profile:', err);
       alert('Failed to update profile');
     } finally {
       setIsLoading(false);
@@ -174,14 +254,14 @@ const Profile: React.FC = () => {
 
   if (!user) {
     return (
-      <div style={{ padding: '3rem 4rem', color: C.gray, fontSize: '14px' }}>
+      <div style={{ padding: '3rem 4rem', color: C.gray, fontSize: '14px', fontFamily: C.font }}>
         Loading profile...
       </div>
     );
   }
 
-  const firstName = user.givenName || 'User';
-  const lastName = user.familyName || '';
+  const firstName = formData.givenName || user.givenName || 'User';
+  const lastName = formData.familyName || user.familyName || '';
   const initials = `${firstName[0] || ''}${lastName[0] || ''}`.toUpperCase();
 
   /* ── Sidebar bullet items ── */
@@ -227,7 +307,7 @@ const Profile: React.FC = () => {
           </p>
         </div>
 
-        {/* Save Changes button — always visible, dark style */}
+        {/* ── Button: "Edit" when not editing, "Save Changes" when editing ── */}
         <button
           onClick={() => {
             if (isEditing) {
@@ -245,17 +325,18 @@ const Profile: React.FC = () => {
             fontSize: '10px',
             letterSpacing: '0.2em',
             textTransform: 'uppercase',
-            cursor: 'pointer',
+            cursor: isLoading ? 'wait' : 'pointer',
             fontFamily: C.font,
             fontWeight: 500,
             transition: 'background 0.2s',
             whiteSpace: 'nowrap',
             marginTop: '0.5rem',
+            opacity: isLoading ? 0.7 : 1,
           }}
-          onMouseEnter={e => (e.currentTarget.style.background = '#1a1a1a')}
+          onMouseEnter={e => { if (!isLoading) e.currentTarget.style.background = '#1a1a1a'; }}
           onMouseLeave={e => (e.currentTarget.style.background = C.black)}
         >
-          {isLoading ? 'Saving...' : isEditing ? 'Save Changes' : 'Save Changes'}
+          {isLoading ? 'Saving...' : isEditing ? 'Save Changes' : 'Edit'}
         </button>
       </div>
 
@@ -460,10 +541,9 @@ const Profile: React.FC = () => {
               onChange={handleChange}
             />
 
-            {/* Row 4: Home Address (full width) */}
+            {/* Row 4: Home Address */}
             {isEditing ? (
               <>
-                {/* When editing, show separate fields */}
                 <FieldCell
                   label="Street Address"
                   name="address"

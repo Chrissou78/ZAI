@@ -553,6 +553,42 @@ export default async function handler(req, res) {
     }
   }
 
+    // ─── GET /api/users/me/stats ───
+  if (path === 'me/stats' && method === 'GET') {
+    const decoded = authenticate(req);
+    if (!decoded) return res.status(401).json({ error: 'No token provided' });
+    try {
+      await initDB();
+      const pool = getPool();
+      
+      // Count claimed products from product_claims table
+      const prodResult = await pool.query(
+        'SELECT COUNT(*) as count FROM product_claims WHERE user_id = $1',
+        [decoded.userId]
+      );
+      
+      // Count event registrations from event_registrations table
+      const evtResult = await pool.query(
+        'SELECT COUNT(*) as count FROM event_registrations WHERE user_id = $1',
+        [decoded.userId]
+      );
+      
+      return res.json({
+        success: true,
+        stats: {
+          productsClaimed: parseInt(prodResult.rows[0]?.count || '0'),
+          eventsAttended: parseInt(evtResult.rows[0]?.count || '0'),
+        },
+      });
+    } catch (err) {
+      console.error('Stats fetch error:', err);
+      return res.json({
+        success: true,
+        stats: { productsClaimed: 0, eventsAttended: 0 },
+      });
+    }
+  }
+
   // ─── POST /api/users/me/sessions/revoke-all ───
   if (path === 'me/sessions/revoke-all' && method === 'POST') {
     const decoded = authenticate(req);
