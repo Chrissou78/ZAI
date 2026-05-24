@@ -355,9 +355,24 @@ export default async function handler(req, res) {
         insurance: insuranceMap[p.id] || { active: false, status: null, certificateId: null },
       }));
 
+      // Separate the experience card from regular products
+      const EXPERIENCE_CARD_NAMES = ['experience card', 'nfc card', 'loyalty card'];
+      const experienceCard = enriched.find(p => {
+        const n = (p.name || '').toLowerCase();
+        const rn = (p.rwaName || '').toLowerCase();
+        return EXPERIENCE_CARD_NAMES.some(ex => n.includes(ex) || rn.includes(ex));
+      }) || null;
+
+      const regularProducts = enriched.filter(p => {
+        const n = (p.name || '').toLowerCase();
+        const rn = (p.rwaName || '').toLowerCase();
+        return !EXPERIENCE_CARD_NAMES.some(ex => n.includes(ex) || rn.includes(ex));
+      });
+
       return res.json({
         success: true,
-        data: enriched,
+        data: regularProducts,
+        experienceCard,
         stats: {
           totalProducts: enriched.length,
           activeInsurance: Object.values(insuranceMap).filter(i => i.active).length,
@@ -821,6 +836,6 @@ export default async function handler(req, res) {
   if (fullPath && !fullPath.includes('/') && req.method === 'GET') {
     return res.json({ success: true, data: { id: fullPath } });
   }
-  
+
   return res.status(404).json({ error: 'Route not found' });
 }

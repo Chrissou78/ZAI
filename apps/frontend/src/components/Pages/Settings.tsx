@@ -140,6 +140,50 @@ const Settings: React.FC = () => {
   const [sessionsLoading, setSessionsLoading] = useState(false);
   const [sessionsList, setSessionsList] = useState<SessionInfo[]>([]);
 
+  useEffect(() => {
+    const loadCardFromStorage = () => {
+      try {
+        const stored = localStorage.getItem('zai_experience_card');
+        if (stored) {
+          const ec = JSON.parse(stored);
+          setCard(prev => ({
+            ...prev,
+            cardId: ec.serialNumber || ec.tokenId || '',
+            isActive: true,
+            nfcEnabled: true,
+          }));
+        }
+      } catch { /* silent */ }
+    };
+
+    // Load from localStorage first (instant)
+    loadCardFromStorage();
+
+    // Then fetch fresh data from API
+    const fetchCard = async () => {
+      if (!user?.id) return;
+      try {
+        const res = await apiService.get(`/products/user/${user.id}`);
+        const ec = (res.data as any)?.experienceCard;
+        if (ec) {
+          setCard(prev => ({
+            ...prev,
+            cardId: ec.serialNumber || ec.tokenId || '',
+            isActive: true,
+            nfcEnabled: true,
+          }));
+          localStorage.setItem('zai_experience_card', JSON.stringify(ec));
+        }
+      } catch { /* silent */ }
+    };
+    fetchCard();
+
+    // Listen for updates from Products page
+    const handler = () => loadCardFromStorage();
+    window.addEventListener('zai:experience-card-updated', handler);
+    return () => window.removeEventListener('zai:experience-card-updated', handler);
+  }, [user?.id]);
+  
   /* ── Fetch settings ── */
   useEffect(() => {
     const fetchSettings = async () => {

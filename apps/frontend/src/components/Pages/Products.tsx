@@ -167,6 +167,14 @@ const Products: React.FC = () => {
       const response = await apiService.get(`/products/user/${user?.id}`);
       if (response.data?.success) {
         setProducts(response.data.data || []);
+        // Store experience card globally for Settings/Profile pages
+        const ecCard = (response.data as any).experienceCard;
+        if (ecCard) {
+          localStorage.setItem('zai_experience_card', JSON.stringify(ecCard));
+          window.dispatchEvent(new CustomEvent('zai:experience-card-updated'));
+        } else {
+          localStorage.removeItem('zai_experience_card');
+        }
       }
     } catch (err: any) {
       console.error('Error fetching products:', err);
