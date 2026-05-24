@@ -356,7 +356,7 @@ export default async function handler(req, res) {
       }));
 
       // Separate the experience card from regular products
-      const EXPERIENCE_CARD_NAMES = ['experience card', 'nfc card', 'loyalty card'];
+      const EXPERIENCE_CARD_NAMES = ['experience card', 'experience club', 'club card', 'nfc card', 'loyalty card'];
       const experienceCard = enriched.find(p => {
         const n = (p.name || '').toLowerCase();
         const rn = (p.rwaName || '').toLowerCase();
@@ -675,7 +675,7 @@ export default async function handler(req, res) {
       const rwas = data.rwas || data.data || [];
 
       // 2. Filter out the experience card (by name or type)
-      const EXCLUDED_NAMES = ['experience card', 'nfc card', 'loyalty card'];
+      const EXCLUDED_NAMES = ['experience card', 'experience club', 'club card', 'nfc card', 'loyalty card'];
       const claimable = rwas.filter(rwa => {
         const name = (rwa.name || '').toLowerCase();
         return !EXCLUDED_NAMES.some(ex => name.includes(ex));
