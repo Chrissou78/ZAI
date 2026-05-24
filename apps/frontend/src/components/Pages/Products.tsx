@@ -215,11 +215,13 @@ const Products: React.FC = () => {
         smartContractAddress: rwa.smartContractAddress,
       });
 
-      if (!response.data?.success) {
-        throw new Error(response.data?.error || 'Claim request failed');
+      const payload = response.data as any;
+
+      if (!payload?.success) {
+        throw new Error(payload?.error || 'Claim request failed');
       }
 
-      const nftId = response.data.nftId || rwa.nft.id;
+      const nftId: string = payload.nftId || rwa.nft.id;
       setMintedNftId(nftId);
       setMintProgress('Transaction queued. Waiting for on-chain confirmation...');
 
@@ -231,7 +233,7 @@ const Products: React.FC = () => {
         attempts++;
         try {
           const pollRes = await apiService.get(`/products/nft/${nftId}`);
-          const nftData = pollRes.data?.data;
+          const nftData = (pollRes.data as any)?.data;
 
           if (nftData?.isClaimed || nftData?.mintedTx) {
             // Minting complete!
@@ -245,12 +247,10 @@ const Products: React.FC = () => {
           } else if (attempts >= maxAttempts) {
             if (pollRef.current) clearInterval(pollRef.current);
             pollRef.current = null;
-            // Still pending but took too long — show success anyway, it'll appear eventually
             setMintProgress('Minting is taking longer than expected. Your product will appear in your collection shortly.');
             setClaimStep('success');
             fetchUserProducts();
           } else {
-            // Update progress message
             if (attempts > 5) setMintProgress('Confirming on-chain transaction...');
             if (attempts > 15) setMintProgress('Almost there, waiting for block confirmation...');
             if (attempts > 30) setMintProgress('Still processing — this can take a minute...');
@@ -262,7 +262,8 @@ const Products: React.FC = () => {
 
     } catch (err: any) {
       console.error('Claim failed:', err);
-      setClaimError(err.response?.data?.error || err.message || 'Failed to claim product');
+      const errMsg = err.response?.data?.error || err.message || 'Failed to claim product';
+      setClaimError(errMsg);
       setClaimStep('error');
       if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
     }
