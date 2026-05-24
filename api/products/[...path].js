@@ -648,5 +648,179 @@ export default async function handler(req, res) {
     return res.json({ success: true, data: { id: fullPath } });
   }
 
+    // ══════════════════════════════════════════════════════════════
+  // GET /api/products/claimable
+  // Returns all claimable RWAs (excluding experience card) with
+  // their unclaimed NFT count and images
+  // ══════════════════════════════════════════════════════════════
+  if (fullPath === 'claimable' && req.method === 'GET') {
+    const decoded = authenticate(req);
+    if (!decoded) return res.status(401).json({ error: 'No token provided' });
+
+    try {
+      // 1. Fetch all claimable RWAs
+      const { status, data } = await apiFetch(RWA_BASE, '/rwa?isClaimable=true&limit=200');
+      if (status !== 200 || !data) {
+        return res.status(502).json({ success: false, error: 'Failed to fetch RWAs' });
+      }
+
+      const rwas = data.rwas || data.data || [];
+
+      // 2. Filter out the experience card (by name or type)
+      const EXCLUDED_NAMES = ['experience card', 'nfc card', 'loyalty card'];
+      const claimable = rwas.filter(rwa => {
+        const name = (rwa.name || '').toLowerCase();
+        return !EXCLUDED_NAMES.some(ex => name.includes(ex));
+      });
+
+      // 3. For each RWA, get unclaimed NFT count and extract image from data
+      const results = await Promise.all(claimable.map(async (rwa) => {
+        // Get unclaimed NFTs for this RWA
+        const { data: nftData } = await apiFetch(RWA_BASE, `/rwa/${rwa.id}/nfts?claimed=false&limit=1`);
+        const unclaimedCount = nftData?.total ?? 0;
+        const firstNft = (nftData?.nfts || [])[0] || null;
+
+        // Extract image from RWA data
+        const rwaData = rwa.data || {};
+        const image = rwaData.image?.value || '';
+        const description = rwaData.description?.value || '';
+        const price = rwaData.price?.value || '';
+        const currency = rwaData.currency?.value || 'CHF';
+        const collection = rwaData.collection?.value || '';
+        const materials = rwaData.materials?.value || '';
+
+        return {
+          rwaId: rwa.id,
+          name: rwa.name,
+          smartContractAddress: rwa.smartContractAddress,
+          chainId: rwa.chainId,
+          image,
+          description,
+          price: formatPrice(price),
+          priceRaw: price,
+          currency: resolveCurrency(currency, await getCurrencyMap()),
+          collection,
+          materials,
+          unclaimedCount,
+          available: unclaimedCount > 0,
+          // Include first unclaimed NFT id+secret for immediate claim
+          nft: firstNft ? { id: firstNft.id, secret: firstNft.secret } : null,
+        };
+      }));
+
+      return res.json({
+        success: true,
+        data: results.filter(r => r.available),
+        all: results,
+      });
+    } catch (err) {
+      console.error('[PRODUCTS] Claimable fetch error:', err);
+      return res.status(500).json({ success: false, error: err.message });
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // POST /api/products/claim-nft
+  // Proxies the WalletTwo RWA claim endpoint
+  // Body: { rwaId, nftId, secret }
+  // ══════════════════════════════════════════════════════════════
+  if (fullPath === 'claim-nft' && req.method === 'POST') {
+    const decoded = authenticate(req);
+    if (!decoded) return res.status(401).json({ error: 'No token provided' });
+
+    const wallet = decoded.wallet;
+    if (!wallet) return res.status(400).json({ success: false, error: 'No wallet address found' });
+
+    try {
+      const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+      const { rwaId, nftId, secret } = body;
+
+      if (!nftId || !secret) {
+        return res.status(400).json({ success: false, error: 'nftId and secret are required' });
+      }
+
+      // Call WalletTwo RWA claim endpoint
+      const { status, data } = await apiFetch(RWA_BASE, '/nft/claim', {
+        method: 'POST',
+        body: JSON.stringify({
+          ids: [nftId],
+          secrets: [secret],
+          wallet: wallet,
+        }),
+      });
+
+      if (status !== 200 || !data) {
+        const errMsg = data?.message || data?.error || 'Claim failed';
+        return res.status(status || 502).json({ success: false, error: errMsg });
+      }
+
+      // Record claim in DB
+      try {
+        const db = await getDB();
+        if (db) {
+          await db.initDB();
+          const pool = db.getPool();
+          const claimedNft = (data.nfts || [])[0];
+          const productId = claimedNft
+            ? `${(body.smartContractAddress || '').toLowerCase()}-${claimedNft.serial || ''}`
+            : `rwa-${rwaId}-${nftId}`;
+          await pool.query(
+            `INSERT INTO product_claims (id, user_id, product_id, rwa_id, nft_id, claimed_at)
+             VALUES ($1, $2, $3, $4, $5, NOW())
+             ON CONFLICT (user_id, product_id) DO NOTHING`,
+            [genId(), decoded.userId, productId, rwaId || null, nftId]
+          );
+        }
+      } catch (dbErr) {
+        console.error('[PRODUCTS] DB claim record failed:', dbErr.message);
+      }
+
+      return res.json({
+        success: true,
+        message: 'NFT queued for minting',
+        nftId: nftId,
+        nfts: data.nfts || [],
+      });
+    } catch (err) {
+      console.error('[PRODUCTS] claim-nft error:', err);
+      return res.status(500).json({ success: false, error: err.message });
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // GET /api/products/nft/:nftId
+  // Polls WalletTwo for NFT minting status
+  // ══════════════════════════════════════════════════════════════
+  const nftPollMatch = fullPath.match(/^nft\/(.+)$/);
+  if (nftPollMatch && req.method === 'GET') {
+    const decoded = authenticate(req);
+    if (!decoded) return res.status(401).json({ error: 'No token provided' });
+
+    try {
+      const nftId = nftPollMatch[1];
+      const { status, data } = await apiFetch(RWA_BASE, `/nft/${nftId}`);
+
+      if (status !== 200 || !data) {
+        return res.status(status || 502).json({ success: false, error: 'Failed to fetch NFT status' });
+      }
+
+      return res.json({
+        success: true,
+        data: {
+          id: data.id,
+          serial: data.serial,
+          rwaId: data.rwaId,
+          mintedAt: data.mintedAt,
+          mintedTx: data.mintedTx,
+          mintedBlock: data.mintedBlock,
+          isClaimed: data.isClaimed || !!data.mintedTx,
+        },
+      });
+    } catch (err) {
+      console.error('[PRODUCTS] NFT poll error:', err);
+      return res.status(500).json({ success: false, error: err.message });
+    }
+  }
+
   return res.status(404).json({ error: 'Route not found' });
 }
