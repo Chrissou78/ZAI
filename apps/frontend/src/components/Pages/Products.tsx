@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAppContext } from '../../context/AppContext';
 import { apiService } from '../../services/api';
 import Button from '../Common/Button';
@@ -138,6 +138,17 @@ const Products: React.FC = () => {
 
   const [zoomImage, setZoomImage] = useState<{ src: string; alt: string } | null>(null);
 
+  /* ───── Inject spin keyframe once ───── */
+  useEffect(() => {
+    const id = 'zai-spin-keyframe';
+    if (!document.getElementById(id)) {
+      const style = document.createElement('style');
+      style.id = id;
+      style.textContent = '@keyframes zai-spin { 100% { transform: rotate(360deg); } }';
+      document.head.appendChild(style);
+    }
+  }, []);
+
   /* ───── Data fetching ───── */
 
   useEffect(() => {
@@ -168,16 +179,21 @@ const Products: React.FC = () => {
   const fetchClaimableRwas = async () => {
     setClaimableLoading(true);
     setClaimableError(null);
+    setClaimableRwas([]);
     try {
       const response = await apiService.get('/products/claimable');
-      if (response.data?.success) {
-        setClaimableRwas(response.data.data || []);
+      const payload = response.data as any;
+      if (payload?.success) {
+        setClaimableRwas(payload.data || []);
       } else {
-        setClaimableError('Failed to load claimable products');
+        setClaimableError(payload?.error || 'Failed to load claimable products');
       }
     } catch (err: any) {
       console.error('Error fetching claimable RWAs:', err);
-      setClaimableError(err.response?.data?.error || 'Failed to load claimable products');
+      const msg = err?.response?.data?.error
+        || err?.message
+        || 'Failed to load claimable products. Please try again.';
+      setClaimableError(msg);
     } finally {
       setClaimableLoading(false);
     }
@@ -191,7 +207,11 @@ const Products: React.FC = () => {
     setClaimError(null);
     setClaimingRwaId(null);
     setMintedNftId(null);
-    fetchClaimableRwas();
+    setClaimableError(null);
+    setClaimableRwas([]);
+    setClaimableLoading(true);
+    // Fetch after state reset
+    setTimeout(() => fetchClaimableRwas(), 0);
   };
 
   const handleClaim = async (rwa: ClaimableRwa) => {
@@ -207,7 +227,6 @@ const Products: React.FC = () => {
     setClaimError(null);
 
     try {
-      // 1. Call our backend which proxies to POST /v1/api/nft/claim
       const response = await apiService.post('/products/claim-nft', {
         rwaId: rwa.rwaId,
         nftId: rwa.nft.id,
@@ -225,9 +244,8 @@ const Products: React.FC = () => {
       setMintedNftId(nftId);
       setMintProgress('Transaction queued. Waiting for on-chain confirmation...');
 
-      // 2. Poll GET /api/products/nft/:nftId until minted
       let attempts = 0;
-      const maxAttempts = 60; // ~2 minutes at 2s intervals
+      const maxAttempts = 60;
 
       pollRef.current = setInterval(async () => {
         attempts++;
@@ -236,12 +254,10 @@ const Products: React.FC = () => {
           const nftData = (pollRes.data as any)?.data;
 
           if (nftData?.isClaimed || nftData?.mintedTx) {
-            // Minting complete!
             if (pollRef.current) clearInterval(pollRef.current);
             pollRef.current = null;
             setMintProgress('NFT minted successfully!');
             setClaimStep('success');
-            // Refresh products list
             window.dispatchEvent(new CustomEvent('zai:product-claimed'));
             fetchUserProducts();
           } else if (attempts >= maxAttempts) {
@@ -256,13 +272,13 @@ const Products: React.FC = () => {
             if (attempts > 30) setMintProgress('Still processing — this can take a minute...');
           }
         } catch {
-          // Polling errors are non-fatal, keep trying
+          // Polling errors are non-fatal
         }
       }, 2000);
 
     } catch (err: any) {
       console.error('Claim failed:', err);
-      const errMsg = err.response?.data?.error || err.message || 'Failed to claim product';
+      const errMsg = err?.response?.data?.error || err?.message || 'Failed to claim product';
       setClaimError(errMsg);
       setClaimStep('error');
       if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
@@ -412,7 +428,7 @@ const Products: React.FC = () => {
           <div style={{
             width: '12px', height: '12px', borderRadius: '50%',
             background: C.green,
-            boxShadow: `0 0 0 3px rgba(76,175,125,0.2)`,
+            boxShadow: '0 0 0 3px rgba(76,175,125,0.2)',
           }} />
           <div>
             <div style={{ fontSize: '20px', fontWeight: 200, color: C.black, lineHeight: 1 }}>
@@ -460,18 +476,21 @@ const Products: React.FC = () => {
           {products.map((product) => (
             <div
               key={product.id}
-              onClick={() => setSelectedProduct(product)}
               style={{
-                background: '#fff', cursor: 'pointer', minWidth: '280px', flex: '0 0 280px',
+                background: '#fff', minWidth: '280px', flex: '0 0 280px',
                 transition: 'background 0.2s',
               }}
               onMouseEnter={(e) => (e.currentTarget.style.background = C.surface)}
               onMouseLeave={(e) => (e.currentTarget.style.background = '#fff')}
             >
-              <div style={{
-                background: C.surface, height: 200, display: 'flex', alignItems: 'center',
-                justifyContent: 'center', overflow: 'hidden', position: 'relative',
-              }}>
+              {/* Thumbnail — clickable to open detail */}
+              <div
+                onClick={() => setSelectedProduct(product)}
+                style={{
+                  background: C.surface, height: 200, display: 'flex', alignItems: 'center',
+                  justifyContent: 'center', overflow: 'hidden', position: 'relative', cursor: 'pointer',
+                }}
+              >
                 {product.image ? (
                   <img src={product.image} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 ) : (
@@ -494,7 +513,9 @@ const Products: React.FC = () => {
                   </div>
                 )}
               </div>
-              <div style={{ padding: '1rem 1.25rem' }}>
+
+              {/* Card info — clickable to open detail */}
+              <div onClick={() => setSelectedProduct(product)} style={{ padding: '1rem 1.25rem', cursor: 'pointer' }}>
                 {product.collection && (
                   <div style={{ fontSize: '9px', letterSpacing: '0.25em', textTransform: 'uppercase', color: C.red, marginBottom: '0.3rem' }}>
                     {product.collection}
@@ -507,6 +528,39 @@ const Products: React.FC = () => {
                   <div style={{ fontSize: '12px', color: C.gray }}>
                     {product.price} {product.currency || 'CHF'}
                   </div>
+                )}
+              </div>
+
+              {/* Insurance action row — always visible on card */}
+              <div style={{
+                padding: '0.75rem 1.25rem', borderTop: `1px solid ${C.border}`,
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              }}>
+                {product.insurance?.active ? (
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: '6px',
+                    fontSize: '10px', letterSpacing: '0.1em', textTransform: 'uppercase', color: C.green,
+                  }}>
+                    <div style={{
+                      width: '8px', height: '8px', borderRadius: '50%', background: C.green,
+                      boxShadow: '0 0 0 2px rgba(76,175,125,0.2)',
+                    }} />
+                    Insurance Active
+                  </div>
+                ) : (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); openInsuranceModal(product); }}
+                    style={{
+                      background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+                      fontSize: '10px', letterSpacing: '0.1em', textTransform: 'uppercase',
+                      color: C.red, fontFamily: C.font, fontWeight: 500,
+                      transition: 'opacity 0.2s',
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.7')}
+                    onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
+                  >
+                    Activate Insurance →
+                  </button>
                 )}
               </div>
             </div>
@@ -609,7 +663,7 @@ const Products: React.FC = () => {
         </Modal>
       )}
 
-      {/* ─── CLAIM MODAL (new flow) ─── */}
+      {/* ─── CLAIM MODAL ─── */}
       <Modal isOpen={showClaimModal} onClose={closeClaimModal} title="Claim a Product">
         {/* Step 1: List of claimable products */}
         {claimStep === 'list' && (
@@ -620,7 +674,7 @@ const Products: React.FC = () => {
               </div>
             )}
 
-            {claimableError && (
+            {!claimableLoading && claimableError && (
               <div style={{ textAlign: 'center', padding: '2rem 0' }}>
                 <div style={{ fontSize: '14px', color: C.red, marginBottom: '1rem' }}>{claimableError}</div>
                 <Button variant="primary" onClick={fetchClaimableRwas}>Retry</Button>
@@ -634,7 +688,7 @@ const Products: React.FC = () => {
               </div>
             )}
 
-            {!claimableLoading && claimableRwas.length > 0 && (
+            {!claimableLoading && !claimableError && claimableRwas.length > 0 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', background: C.border }}>
                 {claimableRwas.map((rwa) => (
                   <div
@@ -647,7 +701,6 @@ const Products: React.FC = () => {
                     onMouseEnter={(e) => (e.currentTarget.style.background = C.surface)}
                     onMouseLeave={(e) => (e.currentTarget.style.background = '#fff')}
                   >
-                    {/* Product image */}
                     <div style={{
                       width: '100px', height: '80px', background: C.surface,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -660,7 +713,6 @@ const Products: React.FC = () => {
                       )}
                     </div>
 
-                    {/* Product info */}
                     <div style={{ minWidth: 0 }}>
                       {rwa.collection && (
                         <div style={{ fontSize: '9px', letterSpacing: '0.25em', textTransform: 'uppercase', color: C.red, marginBottom: '2px' }}>
@@ -680,7 +732,6 @@ const Products: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Claim button */}
                     <button
                       onClick={() => handleClaim(rwa)}
                       disabled={claimingRwaId !== null}
@@ -706,14 +757,12 @@ const Products: React.FC = () => {
         {/* Step 2: Minting in progress */}
         {claimStep === 'minting' && (
           <div style={{ textAlign: 'center', padding: '3rem 1rem' }}>
-            {/* Spinning animation */}
             <div style={{ marginBottom: '1.5rem' }}>
-              <svg width="48" height="48" viewBox="0 0 48 48" style={{ animation: 'spin 1.2s linear infinite' }}>
+              <svg width="48" height="48" viewBox="0 0 48 48" style={{ animation: 'zai-spin 1.2s linear infinite' }}>
                 <circle cx="24" cy="24" r="20" fill="none" stroke={C.border} strokeWidth="3" />
                 <circle cx="24" cy="24" r="20" fill="none" stroke={C.red} strokeWidth="3"
                   strokeDasharray="80" strokeDashoffset="60" strokeLinecap="round" />
               </svg>
-              <style>{`@keyframes spin { 100% { transform: rotate(360deg); } }`}</style>
             </div>
             <div style={{ fontSize: '16px', fontWeight: 300, color: C.black, marginBottom: '0.75rem' }}>
               Minting your NFT
@@ -764,7 +813,7 @@ const Products: React.FC = () => {
             </div>
             <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
               <button
-                onClick={() => { setClaimStep('list'); setClaimError(null); setClaimingRwaId(null); }}
+                onClick={() => { setClaimStep('list'); setClaimError(null); setClaimingRwaId(null); fetchClaimableRwas(); }}
                 style={{
                   padding: '10px 20px', border: `1px solid ${C.border}`, background: '#fff',
                   cursor: 'pointer', fontFamily: C.font, fontSize: '11px',
