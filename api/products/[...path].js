@@ -642,13 +642,6 @@ export default async function handler(req, res) {
   }
 
   // ══════════════════════════════════════════════════════════════
-  // GET /api/products/:productId
-  // ══════════════════════════════════════════════════════════════
-  if (fullPath && !fullPath.includes('/') && req.method === 'GET') {
-    return res.json({ success: true, data: { id: fullPath } });
-  }
-
-    // ══════════════════════════════════════════════════════════════
   // GET /api/products/claimable
   // Returns all claimable RWAs (excluding experience card) with
   // their unclaimed NFT count and images
@@ -822,5 +815,12 @@ export default async function handler(req, res) {
     }
   }
 
+  // ══════════════════════════════════════════════════════════════
+  // GET /api/products/:productId
+  // ══════════════════════════════════════════════════════════════
+  if (fullPath && !fullPath.includes('/') && req.method === 'GET') {
+    return res.json({ success: true, data: { id: fullPath } });
+  }
+  
   return res.status(404).json({ error: 'Route not found' });
 }
