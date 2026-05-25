@@ -35,7 +35,7 @@ interface Event {
   chainId?: number | null;
 }
 
-// ─── Design tokens from HTML ───
+// ─── Design tokens ───
 
 const C = {
   black: '#0a0a0a', white: '#f5f4f0', red: '#c8102e', burgundy: '#7D1E2C',
@@ -44,7 +44,6 @@ const C = {
 };
 
 const bdr = `1px solid ${C.border}`;
-const bdrDark = `1px solid ${C.borderDark}`;
 
 const lbl: React.CSSProperties = {
   fontSize: '10px', letterSpacing: '0.2em', textTransform: 'uppercase',
@@ -86,12 +85,6 @@ function parseDate(dateStr: string) {
   } catch {
     return { day: '?', month: '?', year: '', full: dateStr, short: dateStr };
   }
-}
-
-function formatPrice(event: Event) {
-  if (event.price === undefined || event.price === null) return null;
-  if (event.price === 0) return 'Free';
-  return `${event.price} ${event.currency || 'EUR'}`;
 }
 
 function getTagLabel(tag: string) {
@@ -143,7 +136,6 @@ const Events: React.FC = () => {
   const [events, setEvents] = useState<Event[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [typeFilter, setTypeFilter] = useState<EventType>('all');
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [registering, setRegistering] = useState(false);
 
@@ -162,17 +154,7 @@ const Events: React.FC = () => {
     } finally { setIsLoading(false); }
   };
 
-  const upcomingEvents = useMemo(() => {
-    return events.filter(e => {
-      if (e.status !== 'upcoming') return false;
-      if (typeFilter !== 'all') {
-        const t = e.tag?.toLowerCase().split(' ')[0];
-        if (t !== typeFilter) return false;
-      }
-      return true;
-    });
-  }, [typeFilter, events]);
-
+  const upcomingEvents = useMemo(() => events.filter(e => e.status === 'upcoming'), [events]);
   const pastEvents = useMemo(() => events.filter(e => e.status === 'past'), [events]);
 
   const handleRegister = async () => {
@@ -211,10 +193,10 @@ const Events: React.FC = () => {
         <Sk w="120px" h="10px" s={{ marginBottom: 10 }} />
         <Sk w="320px" h="38px" s={{ marginBottom: 8 }} />
         <Sk w="400px" h="13px" s={{ marginBottom: 36 }} />
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 1, background: C.border }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 0, border: bdr, overflow: 'hidden', borderRadius: 8 }}>
           {[0,1,2].map(i => (
-            <div key={i} style={{ background: C.pureWhite }}>
-              <div style={{ ...shimmer, width: '100%', height: 180 }} />
+            <div key={i} style={{ background: C.pureWhite, borderRight: i < 2 ? bdr : 'none' }}>
+              <div style={{ ...shimmer, width: '100%', height: 160 }} />
               <div style={{ padding: 20 }}>
                 <Sk w="60%" h="10px" s={{ marginBottom: 8 }} />
                 <Sk w="80%" h="14px" s={{ marginBottom: 6 }} />
@@ -235,114 +217,121 @@ const Events: React.FC = () => {
     <div style={{ maxWidth: 1100, margin: '0 auto', padding: '48px 40px 80px', fontFamily: "'Inter',sans-serif", color: C.gray }}>
 
       {/* ══════ HEADER ══════ */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 36 }}>
-        <div>
-          <div style={{ ...lbl, color: C.red, letterSpacing: '0.3em', marginBottom: 8 }}>UPCOMING EVENTS</div>
-          <h1 style={{ fontSize: 'clamp(28px, 3.5vw, 44px)', fontWeight: 300, lineHeight: 1.1, margin: '0 0 8px', color: C.black }}>
-            Exclusive zai experiences
-          </h1>
-          <p style={{ color: C.muted, fontSize: '13px', margin: 0, fontWeight: 300, maxWidth: 480 }}>
-            Experience card holders receive priority access to exclusive events.
-          </p>
+      <div style={{ marginBottom: 32 }}>
+        <div style={{ ...lbl, color: C.red, letterSpacing: '0.3em', marginBottom: 8, fontSize: '10px' }}>
+          UPCOMING EVENTS
         </div>
-
-        {/* Filter pills */}
-        <div style={{ display: 'flex', gap: 0, border: bdr, marginTop: 8 }}>
-          {(['all', 'demo', 'factory', 'partner'] as const).map((f, i, arr) => {
-            const active = typeFilter === f;
-            const labels: Record<string, string> = { all: 'All', demo: 'Demo Days', factory: 'Factory', partner: 'Partner' };
-            return (
-              <button key={f} onClick={() => setTypeFilter(f)}
-                style={{
-                  padding: '8px 18px', fontSize: '11px', letterSpacing: '0.12em', textTransform: 'uppercase',
-                  background: active ? C.gray : C.pureWhite,
-                  color: active ? C.pureWhite : C.muted,
-                  border: 'none', borderRight: i < arr.length - 1 ? bdr : 'none',
-                  cursor: 'pointer', fontFamily: "'Inter',sans-serif", fontWeight: active ? 500 : 400,
-                  transition: 'all .2s',
-                }}>
-                {labels[f]}
-              </button>
-            );
-          })}
-        </div>
+        <h1 style={{ fontSize: 'clamp(28px, 3.5vw, 44px)', fontWeight: 300, lineHeight: 1.1, margin: '0 0 8px', color: C.black }}>
+          Exclusive zai experiences
+        </h1>
+        <p style={{ color: C.muted, fontSize: '13px', margin: 0, fontWeight: 300, maxWidth: 520 }}>
+          Experience card holders receive priority access to exclusive events.
+        </p>
       </div>
 
       {error && (
-        <div style={{ padding: '12px 16px', background: 'rgba(200,16,46,0.06)', border: '1px solid rgba(200,16,46,0.15)', marginBottom: 20, fontSize: '13px', color: C.red }}>
+        <div style={{ padding: '12px 16px', background: 'rgba(200,16,46,0.06)', border: '1px solid rgba(200,16,46,0.15)', marginBottom: 20, fontSize: '13px', color: C.red, borderRadius: 6 }}>
           {error}
         </div>
       )}
 
-      {/* ══════ UPCOMING EVENTS GRID ══════ */}
+      {/* ══════ UPCOMING EVENTS — HORIZONTAL CARDS ══════ */}
       {upcomingEvents.length === 0 ? (
-        <div style={{ padding: '48px 24px', textAlign: 'center', background: C.surface, border: bdr, marginBottom: 24 }}>
+        <div style={{ padding: '48px 24px', textAlign: 'center', background: C.surface, border: bdr, marginBottom: 48, borderRadius: 8 }}>
           <div style={{ fontSize: '15px', fontWeight: 300, color: C.black, marginBottom: 4 }}>No upcoming events</div>
           <p style={{ color: C.muted, fontSize: '12px', margin: 0 }}>Check back soon for new experiences.</p>
         </div>
       ) : (
         <div style={{
-          display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
-          gap: '1px', background: C.border, border: bdr, marginBottom: 24,
+          display: 'grid',
+          gridTemplateColumns: `repeat(${Math.min(upcomingEvents.length, 3)}, 1fr)`,
+          border: bdr, borderRadius: 8, overflow: 'hidden', marginBottom: 48,
         }}>
-          {upcomingEvents.map(event => {
+          {upcomingEvents.slice(0, 6).map((event, idx) => {
             const d = parseDate(event.startDate || event.date);
+            const isLast = idx === Math.min(upcomingEvents.length, 3) - 1 || idx === upcomingEvents.length - 1;
             return (
               <div key={event.id} onClick={() => setSelectedEvent(event)}
-                style={{ background: C.pureWhite, cursor: 'pointer', overflow: 'hidden', display: 'flex', flexDirection: 'column', transition: 'background .15s' }}
+                style={{
+                  background: C.pureWhite, cursor: 'pointer', overflow: 'hidden',
+                  display: 'flex', flexDirection: 'column',
+                  borderRight: isLast ? 'none' : bdr,
+                  transition: 'background .15s',
+                }}
                 onMouseEnter={e => (e.currentTarget.style.background = C.surface)}
                 onMouseLeave={e => (e.currentTarget.style.background = C.pureWhite)}>
 
-                {/* Cover image */}
-                <div style={{ position: 'relative', height: 180, background: C.black, overflow: 'hidden' }}>
+                {/* Cover image area */}
+                <div style={{ position: 'relative', height: 160, background: C.black, overflow: 'hidden' }}>
                   {event.coverImage ? (
-                    <img src={event.coverImage} alt={event.title} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                    <img src={event.coverImage} alt={event.title}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                   ) : (
-                    <div style={{ width: '100%', height: '100%', background: C.surface, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <span style={{ fontSize: '11px', color: C.muted, letterSpacing: '0.2em', textTransform: 'uppercase' }}>{getTagLabel(event.tag)}</span>
+                    <div style={{
+                      width: '100%', height: '100%',
+                      background: `linear-gradient(135deg, ${C.gray} 0%, ${C.mid} 100%)`,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>
+                      <span style={{ fontSize: '11px', color: '#555', letterSpacing: '0.2em', textTransform: 'uppercase' }}>
+                        {getTagLabel(event.tag)}
+                      </span>
                     </div>
                   )}
-                  {/* Date badge */}
+
+                  {/* Date badge — top left */}
                   <div style={{
                     position: 'absolute', top: 12, left: 12,
-                    background: C.red, padding: '6px 10px', textAlign: 'center', minWidth: 42,
+                    background: C.red, padding: '6px 10px', textAlign: 'center',
+                    minWidth: 38, borderRadius: 4,
                   }}>
-                    <div style={{ fontSize: '18px', fontWeight: 300, lineHeight: 1, color: '#fff' }}>{d.day}</div>
-                    <div style={{ fontSize: '8px', letterSpacing: '0.2em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.85)' }}>{d.month}</div>
+                    <div style={{ fontSize: '18px', fontWeight: 600, lineHeight: 1, color: '#fff' }}>{d.day}</div>
+                    <div style={{ fontSize: '8px', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.85)', marginTop: 2 }}>{d.month}</div>
                   </div>
+
                   {/* Registered badge */}
                   {event.registered && (
                     <div style={{
                       position: 'absolute', top: 12, right: 12,
                       background: 'rgba(42,157,78,0.9)', color: '#fff',
-                      fontSize: '9px', fontWeight: 600, letterSpacing: '0.1em',
-                      padding: '4px 10px', textTransform: 'uppercase',
+                      fontSize: '8px', fontWeight: 600, letterSpacing: '0.1em',
+                      padding: '4px 8px', textTransform: 'uppercase', borderRadius: 3,
                     }}>Registered</div>
                   )}
                 </div>
 
-                {/* Info */}
+                {/* Card body */}
                 <div style={{ padding: '18px 20px', flex: 1, display: 'flex', flexDirection: 'column' }}>
+                  {/* Tag */}
                   <div style={{
-                    fontSize: '10px', letterSpacing: '0.25em', textTransform: 'uppercase',
-                    color: getTagColor(event.tag), marginBottom: 6, fontWeight: 600,
+                    fontSize: '9px', letterSpacing: '0.25em', textTransform: 'uppercase',
+                    color: getTagColor(event.tag), marginBottom: 8, fontWeight: 600,
                   }}>
                     {getTagLabel(event.tag)}
                   </div>
-                  <h3 style={{ fontSize: '14px', fontWeight: 500, margin: '0 0 6px', lineHeight: 1.35, color: C.black }}>
+
+                  {/* Title */}
+                  <h3 style={{ fontSize: '14px', fontWeight: 500, margin: '0 0 8px', lineHeight: 1.35, color: C.black }}>
                     {event.title}
                   </h3>
-                  <div style={{ fontSize: '11px', color: C.muted, marginBottom: 6, display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <span style={{ color: C.red }}>●</span> {event.location}
+
+                  {/* Location */}
+                  <div style={{ fontSize: '11px', color: C.muted, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <span style={{ color: C.red, fontSize: '6px' }}>●</span>
+                    {event.location}
                   </div>
+
+                  {/* Description — clamped */}
                   <p style={{
-                    fontSize: '11px', color: C.muted, lineHeight: 1.6, flex: 1, margin: 0,
+                    fontSize: '11px', color: C.muted, lineHeight: 1.65, flex: 1, margin: 0,
+                    fontWeight: 300,
                     display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden',
                   }}>
                     {event.description}
                   </p>
-                  <div style={{ marginTop: 12, paddingTop: 10, borderTop: bdr, fontSize: '11px', color: C.muted, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span>→</span>
+
+                  {/* Arrow */}
+                  <div style={{ marginTop: 14, paddingTop: 12, borderTop: bdr }}>
+                    <span style={{ fontSize: '14px', color: C.muted, transition: 'color .2s' }}>→</span>
                   </div>
                 </div>
               </div>
@@ -351,50 +340,20 @@ const Events: React.FC = () => {
         </div>
       )}
 
-      {/* ══════ CTA BANNER ══════ */}
-      <div style={{
-        padding: '28px 32px', background: C.gray, border: bdrDark,
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        marginBottom: 40,
-      }}>
-        <div>
-          <div style={{ fontSize: '10px', letterSpacing: '0.25em', textTransform: 'uppercase', color: '#555', marginBottom: 6 }}>
-            UNLOCK MORE EVENTS
-          </div>
-          <div style={{ fontSize: '17px', fontWeight: 300, color: C.white }}>
-            Reach <span style={{ color: C.white }}>Atelier</span> for factory visits & private sessions
-          </div>
-        </div>
-        <div style={{ textAlign: 'right', flexShrink: 0 }}>
-          <div style={{ fontSize: '10px', color: '#555', marginBottom: 8 }}>Discover what's next</div>
-          <button onClick={() => navigate('/events')}
-            style={{
-              padding: '10px 24px', background: C.red, color: '#fff', border: 'none',
-              fontSize: '11px', letterSpacing: '0.12em', textTransform: 'uppercase',
-              cursor: 'pointer', fontFamily: "'Inter',sans-serif", fontWeight: 500,
-              transition: 'background .2s',
-            }}
-            onMouseEnter={e => (e.currentTarget.style.background = C.burgundy)}
-            onMouseLeave={e => (e.currentTarget.style.background = C.red)}>
-            SEE EVENTS
-          </button>
-        </div>
-      </div>
-
       {/* ══════ PAST EVENTS ATTENDED ══════ */}
       {pastEvents.length > 0 && (
         <div>
           <div style={{ ...lbl, fontSize: '11px', letterSpacing: '0.25em', color: C.gray, fontWeight: 600, marginBottom: 16 }}>
             PAST EVENTS ATTENDED
           </div>
-          <div style={{ border: bdr }}>
+          <div style={{ border: bdr, borderRadius: 6, overflow: 'hidden' }}>
             {pastEvents.map((event, idx) => {
               const d = parseDate(event.startDate || event.date);
               return (
                 <div key={event.id} onClick={() => setSelectedEvent(event)}
                   style={{
                     display: 'flex', alignItems: 'center', gap: 14,
-                    padding: '14px 20px',
+                    padding: '16px 20px',
                     borderBottom: idx < pastEvents.length - 1 ? bdr : 'none',
                     cursor: 'pointer', background: C.pureWhite, transition: 'background .15s',
                   }}
@@ -405,9 +364,10 @@ const Events: React.FC = () => {
                     width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
                     background: EVENT_DOT_COLORS[idx % EVENT_DOT_COLORS.length],
                   }} />
+                  {/* Event info */}
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: '13px', fontWeight: 500, color: C.black }}>{event.title}</div>
-                    <div style={{ fontSize: '10px', color: C.muted, marginTop: 2 }}>
+                    <div style={{ fontSize: '10px', color: C.muted, marginTop: 3 }}>
                       {d.short} · {event.location}
                     </div>
                   </div>
@@ -428,13 +388,14 @@ const Events: React.FC = () => {
           <div onClick={e => e.stopPropagation()}
             style={{
               background: C.white, maxWidth: 640, width: '100%', maxHeight: '90vh', overflowY: 'auto',
-              boxShadow: '0 24px 80px rgba(0,0,0,0.5)',
+              boxShadow: '0 24px 80px rgba(0,0,0,0.5)', borderRadius: 8,
             }}>
 
             {/* Cover */}
             {selectedEvent.coverImage && (
-              <div style={{ height: 240, overflow: 'hidden' }}>
-                <img src={selectedEvent.coverImage} alt={selectedEvent.title} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+              <div style={{ height: 240, overflow: 'hidden', borderRadius: '8px 8px 0 0' }}>
+                <img src={selectedEvent.coverImage} alt={selectedEvent.title}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
               </div>
             )}
 
@@ -465,7 +426,7 @@ const Events: React.FC = () => {
 
               {/* Price */}
               {selectedEvent.price !== undefined && (
-                <div style={{ padding: '10px 14px', background: C.surface, border: bdr, marginBottom: 20, fontSize: '13px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ padding: '10px 14px', background: C.surface, border: bdr, marginBottom: 20, fontSize: '13px', display: 'flex', alignItems: 'center', gap: 10, borderRadius: 5 }}>
                   {selectedEvent.price === 0 ? (
                     <span style={{ color: '#2a9d4e', fontWeight: 600 }}>Free Event</span>
                   ) : (
@@ -496,7 +457,7 @@ const Events: React.FC = () => {
                 return (
                   <div style={{ marginBottom: 20 }}>
                     <div style={{ ...lbl, fontSize: '10px', color: C.gray, fontWeight: 600, marginBottom: 8 }}>PROGRAM</div>
-                    <div style={{ border: bdr }}>
+                    <div style={{ border: bdr, borderRadius: 5, overflow: 'hidden' }}>
                       {lines.map((line, idx) => {
                         const match = line.trim().match(timeRegex);
                         return (
@@ -528,14 +489,14 @@ const Events: React.FC = () => {
                   <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
                     {selectedEvent.galleryImages.map((img, idx) => (
                       <img key={idx} src={img} alt={`Gallery ${idx + 1}`}
-                        style={{ width: 140, height: 95, objectFit: 'cover', flexShrink: 0, border: bdr }} />
+                        style={{ width: 140, height: 95, objectFit: 'cover', flexShrink: 0, border: bdr, borderRadius: 4 }} />
                     ))}
                   </div>
                 </div>
               )}
 
               {/* Tier */}
-              <div style={{ padding: '10px 14px', background: C.surface, border: bdr, marginBottom: 20, fontSize: '12px', color: C.muted, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ padding: '10px 14px', background: C.surface, border: bdr, marginBottom: 20, fontSize: '12px', color: C.muted, display: 'flex', alignItems: 'center', gap: 8, borderRadius: 5 }}>
                 <div style={{ width: 4, height: 4, background: C.red, borderRadius: '50%' }} />
                 {selectedEvent.tier === 'all' || !selectedEvent.tier ? 'Open to all members' : `Requires ${selectedEvent.tier} tier`}
               </div>
@@ -545,7 +506,7 @@ const Events: React.FC = () => {
                 <>
                   <div style={{
                     padding: '12px 14px', background: 'rgba(42,157,78,0.08)', border: '1px solid rgba(42,157,78,0.2)',
-                    marginBottom: 12, fontSize: '13px', color: '#2a9d4e', fontWeight: 500, textAlign: 'center',
+                    marginBottom: 12, fontSize: '13px', color: '#2a9d4e', fontWeight: 500, textAlign: 'center', borderRadius: 5,
                   }}>
                     ✓ You are registered for this event
                   </div>
@@ -553,7 +514,7 @@ const Events: React.FC = () => {
                     <button onClick={handleUnregister} disabled={registering}
                       style={{
                         width: '100%', padding: '11px', marginBottom: 12,
-                        background: 'transparent', border: bdr,
+                        background: 'transparent', border: bdr, borderRadius: 5,
                         color: C.muted, fontSize: '11px', letterSpacing: '0.1em', textTransform: 'uppercase',
                         cursor: registering ? 'not-allowed' : 'pointer', fontFamily: "'Inter',sans-serif",
                         transition: 'all .2s',
@@ -571,7 +532,7 @@ const Events: React.FC = () => {
                     background: registering ? C.muted : C.red, color: '#fff', border: 'none',
                     fontSize: '12px', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 600,
                     cursor: registering ? 'not-allowed' : 'pointer', fontFamily: "'Inter',sans-serif",
-                    transition: 'background .2s',
+                    transition: 'background .2s', borderRadius: 5,
                   }}
                   onMouseEnter={e => { if (!registering) e.currentTarget.style.background = C.burgundy; }}
                   onMouseLeave={e => { if (!registering) e.currentTarget.style.background = C.red; }}>
@@ -583,7 +544,7 @@ const Events: React.FC = () => {
                 style={{
                   width: '100%', padding: '11px', background: C.surface, color: C.gray, border: bdr,
                   fontSize: '11px', letterSpacing: '0.1em', textTransform: 'uppercase',
-                  cursor: 'pointer', fontFamily: "'Inter',sans-serif",
+                  cursor: 'pointer', fontFamily: "'Inter',sans-serif", borderRadius: 5,
                 }}>
                 Close
               </button>

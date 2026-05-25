@@ -91,16 +91,23 @@ const SALUTATIONS = [
 const C = {
   black: '#0a0a0a', white: '#f5f4f0', red: '#c8102e', burgundy: '#7D1E2C',
   gray: '#6a6a6a', border: '#e0ddd6', surface: '#f0ede6', green: '#4caf7d',
+  pureWhite: '#ffffff', mid: '#2e2e2e',
   font: "'Inter', sans-serif",
 };
 
+const bdr = `1px solid ${C.border}`;
+
 const inputStyle: React.CSSProperties = {
-  width: '100%', padding: '10px 12px', border: `1px solid ${C.border}`, fontSize: '13px',
-  boxSizing: 'border-box', fontFamily: C.font,
+  width: '100%', padding: '10px 12px', border: bdr, fontSize: '13px',
+  boxSizing: 'border-box', fontFamily: C.font, borderRadius: 4,
 };
 const labelStyle: React.CSSProperties = {
   fontSize: '10px', letterSpacing: '0.15em', textTransform: 'uppercase',
   color: C.gray, marginBottom: '6px', display: 'block',
+};
+const lbl: React.CSSProperties = {
+  fontSize: '10px', letterSpacing: '0.2em', textTransform: 'uppercase',
+  color: C.gray, fontWeight: 500,
 };
 
 /* ───── Component ───── */
@@ -112,6 +119,11 @@ const Products: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+
+  // Carousel state
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [scrollPage, setScrollPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
 
   // ── Claim modal state ──
   const [showClaimModal, setShowClaimModal] = useState(false);
@@ -138,7 +150,7 @@ const Products: React.FC = () => {
 
   const [zoomImage, setZoomImage] = useState<{ src: string; alt: string } | null>(null);
 
-  /* ───── Inject spin keyframe once ───── */
+  /* ───── Inject keyframes ───── */
   useEffect(() => {
     const id = 'zai-spin-keyframe';
     if (!document.getElementById(id)) {
@@ -149,13 +161,46 @@ const Products: React.FC = () => {
     }
   }, []);
 
+  /* ───── Carousel scroll tracking ───── */
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const updatePages = () => {
+      const cardWidth = 220 + 1; // card min-width + gap
+      const visible = Math.floor(el.clientWidth / cardWidth);
+      const totalCards = products.length + 1; // +1 for claim card
+      const pages = Math.max(1, Math.ceil(totalCards / Math.max(1, visible)));
+      setTotalPages(pages);
+    };
+    const handleScroll = () => {
+      const cardWidth = 220 + 1;
+      const visible = Math.floor(el.clientWidth / cardWidth);
+      const page = Math.round(el.scrollLeft / (visible * cardWidth));
+      setScrollPage(page);
+    };
+    updatePages();
+    el.addEventListener('scroll', handleScroll, { passive: true });
+    window.addEventListener('resize', updatePages);
+    return () => {
+      el.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('resize', updatePages);
+    };
+  }, [products.length]);
+
+  const scrollToPage = (page: number) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const cardWidth = 220 + 1;
+    const visible = Math.floor(el.clientWidth / cardWidth);
+    el.scrollTo({ left: page * visible * cardWidth, behavior: 'smooth' });
+  };
+
   /* ───── Data fetching ───── */
 
   useEffect(() => {
     if (user?.id) fetchUserProducts();
   }, [user?.id]);
 
-  // Cleanup polling on unmount
   useEffect(() => {
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, []);
@@ -167,7 +212,6 @@ const Products: React.FC = () => {
       const response = await apiService.get(`/products/user/${user?.id}`);
       if (response.data?.success) {
         setProducts(response.data.data || []);
-        // Store experience card globally for Settings/Profile pages
         const ecCard = (response.data as any).experienceCard;
         if (ecCard) {
           localStorage.setItem('zai_experience_card', JSON.stringify(ecCard));
@@ -198,9 +242,7 @@ const Products: React.FC = () => {
       }
     } catch (err: any) {
       console.error('Error fetching claimable RWAs:', err);
-      const msg = err?.response?.data?.error
-        || err?.message
-        || 'Failed to load claimable products. Please try again.';
+      const msg = err?.response?.data?.error || err?.message || 'Failed to load claimable products. Please try again.';
       setClaimableError(msg);
     } finally {
       setClaimableLoading(false);
@@ -218,7 +260,6 @@ const Products: React.FC = () => {
     setClaimableError(null);
     setClaimableRwas([]);
     setClaimableLoading(true);
-    // Fetch after state reset
     setTimeout(() => fetchClaimableRwas(), 0);
   };
 
@@ -243,10 +284,7 @@ const Products: React.FC = () => {
       });
 
       const payload = response.data as any;
-
-      if (!payload?.success) {
-        throw new Error(payload?.error || 'Claim request failed');
-      }
+      if (!payload?.success) throw new Error(payload?.error || 'Claim request failed');
 
       const nftId: string = payload.nftId || rwa.nft.id;
       setMintedNftId(nftId);
@@ -384,66 +422,79 @@ const Products: React.FC = () => {
 
   if (isLoading && products.length === 0) {
     return (
-      <div style={{ padding: '3rem 4rem 5rem', textAlign: 'center' }}>
-        <div style={{ fontSize: '16px', color: C.gray }}>Loading your products...</div>
+      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '48px 40px 80px', fontFamily: C.font, textAlign: 'center' }}>
+        <div style={{ fontSize: '14px', color: C.gray }}>Loading your products...</div>
       </div>
     );
   }
 
   return (
-    <div style={{ padding: '3rem 4rem 5rem' }}>
-      {/* Header */}
+    <div style={{ maxWidth: 1100, margin: '0 auto', padding: '48px 40px 80px', fontFamily: C.font, color: C.black }}>
+
+      {/* ══════ HEADER ══════ */}
       <div style={{
-        marginBottom: '2.5rem', paddingBottom: '2rem', borderBottom: `1px solid ${C.border}`,
-        display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end',
+        display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
+        marginBottom: 32,
       }}>
         <div>
-          <div style={{ fontSize: '11px', letterSpacing: '0.3em', textTransform: 'uppercase', color: C.red, marginBottom: '0.4rem' }}>
-            my collection
+          <div style={{ ...lbl, color: C.red, letterSpacing: '0.3em', marginBottom: 8, fontSize: '10px' }}>
+            MY COLLECTION
           </div>
-          <h1 style={{ fontSize: 'clamp(24px, 3.5vw, 40px)', fontWeight: 300, lineHeight: 1.15, margin: '0 0 0.3rem' }}>
+          <h1 style={{ fontSize: 'clamp(28px, 3.5vw, 44px)', fontWeight: 300, lineHeight: 1.1, margin: '0 0 8px', color: C.black }}>
             Your zai products
           </h1>
-          <p style={{ color: C.gray, fontSize: '13px', maxWidth: '520px', margin: 0 }}>
-            Claim products using your experience card or serial number to access exclusive benefits.
+          <p style={{ color: C.gray, fontSize: '13px', margin: 0, fontWeight: 300, maxWidth: 480 }}>
+            Claim products using your experience card or serial number to activate warranty and access exclusive benefits.
           </p>
         </div>
-        <Button variant="primary" onClick={openClaimModal}>+ Claim Product</Button>
+        <button onClick={openClaimModal}
+          style={{
+            padding: '11px 24px', background: C.black, color: '#fff', border: 'none',
+            fontSize: '11px', letterSpacing: '0.1em', textTransform: 'uppercase',
+            cursor: 'pointer', fontFamily: C.font, fontWeight: 500, borderRadius: 5,
+            transition: 'background .2s', flexShrink: 0, marginTop: 8,
+          }}
+          onMouseEnter={e => (e.currentTarget.style.background = C.mid)}
+          onMouseLeave={e => (e.currentTarget.style.background = C.black)}>
+          + CLAIM PRODUCT
+        </button>
       </div>
 
-      {/* Stats */}
+      {/* ══════ STATS BAR ══════ */}
       <div style={{
-        display: 'flex', gap: '2rem', marginBottom: '2rem',
-        padding: '1.25rem 0', borderBottom: `1px solid ${C.border}`,
+        display: 'flex', border: bdr, borderRadius: 6, overflow: 'hidden', marginBottom: 28,
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+        <div style={{
+          flex: 1, padding: '20px 28px', display: 'flex', alignItems: 'center', gap: 12,
+          borderRight: bdr,
+        }}>
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" style={{ flexShrink: 0 }}>
             <rect x="1" y="2" width="4" height="14" rx="1" fill={C.black} />
             <rect x="7" y="5" width="4" height="11" rx="1" fill={C.black} />
             <rect x="13" y="8" width="4" height="8" rx="1" fill={C.black} />
           </svg>
           <div>
-            <div style={{ fontSize: '20px', fontWeight: 200, color: C.black, lineHeight: 1 }}>
+            <div style={{ fontSize: '24px', fontWeight: 300, color: C.black, lineHeight: 1 }}>
               {products.length}
             </div>
-            <div style={{ fontSize: '10px', letterSpacing: '0.2em', textTransform: 'uppercase', color: C.gray, marginTop: '2px' }}>
-              Products claimed
+            <div style={{ fontSize: '10px', letterSpacing: '0.2em', textTransform: 'uppercase', color: C.gray, marginTop: 3 }}>
+              PRODUCTS CLAIMED
             </div>
           </div>
         </div>
-        <div style={{ width: '1px', background: C.border }} />
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <div style={{
+          flex: 1, padding: '20px 28px', display: 'flex', alignItems: 'center', gap: 12,
+        }}>
           <div style={{
-            width: '12px', height: '12px', borderRadius: '50%',
-            background: C.green,
+            width: 12, height: 12, borderRadius: '50%', background: C.green, flexShrink: 0,
             boxShadow: '0 0 0 3px rgba(76,175,125,0.2)',
           }} />
           <div>
-            <div style={{ fontSize: '20px', fontWeight: 200, color: C.black, lineHeight: 1 }}>
+            <div style={{ fontSize: '24px', fontWeight: 300, color: C.black, lineHeight: 1 }}>
               {activeInsurance}
             </div>
-            <div style={{ fontSize: '10px', letterSpacing: '0.2em', textTransform: 'uppercase', color: C.gray, marginTop: '2px' }}>
-              Insurance active
+            <div style={{ fontSize: '10px', letterSpacing: '0.2em', textTransform: 'uppercase', color: C.gray, marginTop: 3 }}>
+              INSURANCE ACTIVE
             </div>
           </div>
         </div>
@@ -451,106 +502,133 @@ const Products: React.FC = () => {
 
       {error && (
         <div style={{
-          padding: '12px', background: '#fff5f5', border: '1px solid #ffdddd',
-          color: C.red, marginBottom: '1.5rem', fontSize: '12px',
+          padding: '12px 16px', background: 'rgba(200,16,46,0.06)', border: '1px solid rgba(200,16,46,0.15)',
+          marginBottom: 20, fontSize: '13px', color: C.red, borderRadius: 6,
         }}>
           {error}
         </div>
       )}
 
-      {/* Empty State */}
-      {products.length === 0 && (
-        <div style={{
-          padding: '3.5rem 2rem', textAlign: 'center', border: `1px dashed ${C.border}`,
-          background: C.surface, marginBottom: '2rem',
-        }}>
-          <div style={{ fontSize: '48px', marginBottom: '1rem', opacity: 0.3 }}>⛷</div>
-          <div style={{ fontSize: '16px', fontWeight: 300, marginBottom: 8, color: C.black }}>
-            No products claimed yet
+      {/* ══════ PRODUCT CAROUSEL ══════ */}
+      <div style={{ marginBottom: 40 }}>
+        <div
+          ref={scrollRef}
+          style={{
+            display: 'flex', gap: '1px', background: C.border, border: bdr,
+            borderRadius: 8, overflow: 'hidden', overflowX: 'auto',
+            scrollSnapType: 'x mandatory',
+            scrollbarWidth: 'none',
+          }}
+        >
+          {/* Claim a Product card — first card */}
+          <div
+            onClick={openClaimModal}
+            style={{
+              background: C.pureWhite, minWidth: 180, flex: '0 0 180px',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer', transition: 'background .15s', scrollSnapAlign: 'start',
+              padding: '2rem 1rem',
+            }}
+            onMouseEnter={e => (e.currentTarget.style.background = C.surface)}
+            onMouseLeave={e => (e.currentTarget.style.background = C.pureWhite)}
+          >
+            <div style={{
+              width: 44, height: 44, borderRadius: '50%', border: bdr,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              marginBottom: 12, fontSize: '20px', color: C.gray, fontWeight: 300,
+            }}>
+              +
+            </div>
+            <div style={{ fontSize: '11px', fontWeight: 500, color: C.black, textAlign: 'center', letterSpacing: '0.02em' }}>
+              CLAIM A PRODUCT
+            </div>
+            <div style={{ fontSize: '10px', color: C.gray, textAlign: 'center', marginTop: 4, fontWeight: 300 }}>
+              NFC scan or serial number
+            </div>
           </div>
-          <p style={{ fontSize: '13px', color: C.gray, maxWidth: 360, margin: '0 auto 1.5rem', lineHeight: 1.8 }}>
-            Tap your zai Experience Card or enter a serial number to register your first product.
-          </p>
-          <Button variant="primary" onClick={openClaimModal}>Claim your first product</Button>
-        </div>
-      )}
 
-      {/* Product Cards */}
-      {products.length > 0 && (
-        <div style={{
-          display: 'flex', gap: '1px', background: C.border, border: `1px solid ${C.border}`,
-          overflowX: 'auto', marginBottom: '3rem',
-        }}>
+          {/* Product cards */}
           {products.map((product) => (
             <div
               key={product.id}
               style={{
-                background: '#fff', minWidth: '280px', flex: '0 0 280px',
-                transition: 'background 0.2s',
+                background: C.pureWhite, minWidth: 220, flex: '0 0 220px',
+                display: 'flex', flexDirection: 'column',
+                transition: 'background .15s', scrollSnapAlign: 'start',
               }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = C.surface)}
-              onMouseLeave={(e) => (e.currentTarget.style.background = '#fff')}
+              onMouseEnter={e => (e.currentTarget.style.background = C.surface)}
+              onMouseLeave={e => (e.currentTarget.style.background = C.pureWhite)}
             >
-              {/* Thumbnail — clickable to open detail */}
+              {/* Image */}
               <div
                 onClick={() => setSelectedProduct(product)}
                 style={{
-                  background: C.surface, height: 200, display: 'flex', alignItems: 'center',
-                  justifyContent: 'center', overflow: 'hidden', position: 'relative', cursor: 'pointer',
+                  height: 180, background: C.black, overflow: 'hidden',
+                  position: 'relative', cursor: 'pointer',
                 }}
               >
                 {product.image ? (
-                  <img src={product.image} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <img src={product.image} alt={product.name}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                 ) : (
-                  <div style={{ fontSize: '48px', opacity: 0.15 }}>⛷</div>
+                  <div style={{
+                    width: '100%', height: '100%', background: C.surface,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <span style={{ fontSize: '36px', opacity: 0.15 }}>⛷</span>
+                  </div>
                 )}
+                {/* Claimed badge */}
                 <div style={{
-                  position: 'absolute', top: '0.5rem', left: '0.5rem',
-                  background: C.black, color: '#fff', fontSize: 9,
+                  position: 'absolute', top: 10, left: 10,
+                  background: C.black, color: '#fff', fontSize: '8px',
                   letterSpacing: '0.2em', textTransform: 'uppercase', padding: '3px 8px',
+                  borderRadius: 3, fontWeight: 600,
                 }}>
-                  Claimed
+                  CLAIMED
                 </div>
+                {/* Insured badge */}
                 {product.insurance?.active && (
                   <div style={{
-                    position: 'absolute', top: '0.5rem', right: '0.5rem',
-                    background: C.green, color: '#fff', fontSize: 9,
+                    position: 'absolute', top: 10, right: 10,
+                    background: C.green, color: '#fff', fontSize: '8px',
                     letterSpacing: '0.1em', textTransform: 'uppercase', padding: '3px 8px',
+                    borderRadius: 3, fontWeight: 600,
                   }}>
-                    Insured
+                    INSURED
                   </div>
                 )}
               </div>
 
-              {/* Card info — clickable to open detail */}
-              <div onClick={() => setSelectedProduct(product)} style={{ padding: '1rem 1.25rem', cursor: 'pointer' }}>
+              {/* Info */}
+              <div onClick={() => setSelectedProduct(product)} style={{ padding: '14px 16px', cursor: 'pointer', flex: 1 }}>
                 {product.collection && (
-                  <div style={{ fontSize: '9px', letterSpacing: '0.25em', textTransform: 'uppercase', color: C.red, marginBottom: '0.3rem' }}>
+                  <div style={{ fontSize: '9px', letterSpacing: '0.22em', textTransform: 'uppercase', color: C.red, marginBottom: 4, fontWeight: 600 }}>
                     {product.collection}
                   </div>
                 )}
-                <div style={{ fontSize: '14px', fontWeight: 500, color: C.black, marginBottom: '0.3rem' }}>
+                <div style={{ fontSize: '13px', fontWeight: 500, color: C.black, marginBottom: 4, lineHeight: 1.3 }}>
                   {product.name}
                 </div>
                 {product.price && (
-                  <div style={{ fontSize: '12px', color: C.gray }}>
+                  <div style={{ fontSize: '11px', color: C.gray }}>
                     {product.price} {product.currency || 'CHF'}
                   </div>
                 )}
               </div>
 
-              {/* Insurance action row — always visible on card */}
+              {/* Insurance action */}
               <div style={{
-                padding: '0.75rem 1.25rem', borderTop: `1px solid ${C.border}`,
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '10px 16px', borderTop: bdr,
+                display: 'flex', alignItems: 'center',
               }}>
                 {product.insurance?.active ? (
                   <div style={{
-                    display: 'flex', alignItems: 'center', gap: '6px',
-                    fontSize: '10px', letterSpacing: '0.1em', textTransform: 'uppercase', color: C.green,
+                    display: 'flex', alignItems: 'center', gap: 5,
+                    fontSize: '10px', letterSpacing: '0.1em', textTransform: 'uppercase', color: C.green, fontWeight: 500,
                   }}>
                     <div style={{
-                      width: '8px', height: '8px', borderRadius: '50%', background: C.green,
+                      width: 7, height: 7, borderRadius: '50%', background: C.green,
                       boxShadow: '0 0 0 2px rgba(76,175,125,0.2)',
                     }} />
                     Insurance Active
@@ -560,44 +638,62 @@ const Products: React.FC = () => {
                     onClick={(e) => { e.stopPropagation(); openInsuranceModal(product); }}
                     style={{
                       background: 'none', border: 'none', padding: 0, cursor: 'pointer',
-                      fontSize: '10px', letterSpacing: '0.1em', textTransform: 'uppercase',
-                      color: C.red, fontFamily: C.font, fontWeight: 500,
-                      transition: 'opacity 0.2s',
+                      fontSize: '10px', letterSpacing: '0.08em', textTransform: 'uppercase',
+                      color: C.gray, fontFamily: C.font, fontWeight: 500,
+                      transition: 'color 0.2s',
                     }}
-                    onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.7')}
-                    onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
+                    onMouseEnter={e => (e.currentTarget.style.color = C.red)}
+                    onMouseLeave={e => (e.currentTarget.style.color = C.gray)}
                   >
-                    Activate Insurance →
+                    ACTIVATE INSURANCE →
                   </button>
                 )}
               </div>
             </div>
           ))}
         </div>
-      )}
 
-      {/* How to claim */}
-      <div style={{ background: C.black, padding: '2.5rem', border: '1px solid #2a2a2a' }}>
-        <div style={{ fontSize: '11px', letterSpacing: '0.3em', textTransform: 'uppercase', color: C.red, marginBottom: '0.75rem' }}>
-          how to claim
+        {/* Scroll dots */}
+        {totalPages > 1 && (
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginTop: 16 }}>
+            {Array.from({ length: totalPages }).map((_, i) => (
+              <button
+                key={i}
+                onClick={() => scrollToPage(i)}
+                style={{
+                  width: scrollPage === i ? 24 : 8, height: 8,
+                  borderRadius: 4, border: 'none', cursor: 'pointer',
+                  background: scrollPage === i ? C.black : C.border,
+                  transition: 'all .25s ease', padding: 0,
+                }}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ══════ HOW TO CLAIM ══════ */}
+      <div style={{ background: C.black, padding: '2.5rem', borderRadius: 10, overflow: 'hidden' }}>
+        <div style={{ fontSize: '10px', letterSpacing: '0.3em', textTransform: 'uppercase', color: C.gray, marginBottom: 8 }}>
+          HOW TO CLAIM
         </div>
         <div style={{ fontSize: 'clamp(18px, 2.5vw, 24px)', fontWeight: 300, color: '#fff', marginBottom: '2rem', lineHeight: 1.3 }}>
           Register your zai product
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1px', background: '#2a2a2a' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1px', background: '#2a2a2a', borderRadius: 6, overflow: 'hidden' }}>
           {[
             { step: '01', title: 'Get your card', desc: 'Receive your zai Experience Card with your product purchase over CHF 500.' },
             { step: '02', title: 'Tap or enter serial', desc: 'Use NFC tap or manually enter the serial number from your experience card.' },
             { step: '03', title: 'Enjoy benefits', desc: 'Access free ski insurance, exclusive events, and community features.' },
           ].map((item) => (
-            <div key={item.step} style={{ background: '#1a1a1a', padding: '1.5rem' }}>
-              <div style={{ fontSize: '11px', letterSpacing: '0.2em', color: C.red, marginBottom: '0.75rem', fontWeight: 500 }}>
-                Step {item.step}
+            <div key={item.step} style={{ background: '#1a1a1a', padding: '1.75rem' }}>
+              <div style={{ fontSize: '10px', letterSpacing: '0.2em', color: C.red, marginBottom: 10, fontWeight: 600 }}>
+                STEP {item.step}
               </div>
-              <div style={{ fontSize: '13px', fontWeight: 500, color: '#fff', marginBottom: '0.5rem', lineHeight: 1.4 }}>
+              <div style={{ fontSize: '14px', fontWeight: 500, color: '#fff', marginBottom: 8, lineHeight: 1.4 }}>
                 {item.title}
               </div>
-              <div style={{ fontSize: '12px', color: '#666', lineHeight: 1.7 }}>
+              <div style={{ fontSize: '12px', color: '#666', lineHeight: 1.7, fontWeight: 300 }}>
                 {item.desc}
               </div>
             </div>
@@ -615,7 +711,7 @@ const Products: React.FC = () => {
                 style={{
                   background: C.surface, marginBottom: '1.5rem', cursor: 'zoom-in',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  maxHeight: 360, overflow: 'hidden',
+                  maxHeight: 360, overflow: 'hidden', borderRadius: 6,
                 }}
               >
                 <img src={selectedProduct.image} alt={selectedProduct.name} style={{ width: '100%', objectFit: 'contain', maxHeight: 360 }} />
@@ -639,7 +735,7 @@ const Products: React.FC = () => {
                 <div style={{ fontSize: '10px', letterSpacing: '0.2em', textTransform: 'uppercase', color: C.gray, marginBottom: '0.75rem' }}>
                   Specifications
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1px', background: C.border, border: `1px solid ${C.border}` }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1px', background: C.border, border: bdr, borderRadius: 5, overflow: 'hidden' }}>
                   {getSpecs(selectedProduct).map((spec, i) => (
                     <div key={i} style={{ background: C.surface, padding: '0.75rem 1rem' }}>
                       <div style={{ fontSize: '9px', letterSpacing: '0.15em', textTransform: 'uppercase', color: '#999', marginBottom: 2 }}>
@@ -657,7 +753,7 @@ const Products: React.FC = () => {
                 <div style={{
                   padding: '10px 20px', background: '#f0faf4', border: `1px solid ${C.green}`,
                   color: '#2e7d4f', fontSize: '12px', letterSpacing: '0.1em', textTransform: 'uppercase',
-                  display: 'flex', alignItems: 'center', gap: 6,
+                  display: 'flex', alignItems: 'center', gap: 6, borderRadius: 5,
                 }}>
                   ✓ Insurance Active
                 </div>
@@ -673,7 +769,6 @@ const Products: React.FC = () => {
 
       {/* ─── CLAIM MODAL ─── */}
       <Modal isOpen={showClaimModal} onClose={closeClaimModal} title="Claim a Product">
-        {/* Step 1: List of claimable products */}
         {claimStep === 'list' && (
           <div>
             {claimableLoading && (
@@ -697,7 +792,7 @@ const Products: React.FC = () => {
             )}
 
             {!claimableLoading && !claimableError && claimableRwas.length > 0 && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', background: C.border }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', background: C.border, borderRadius: 5, overflow: 'hidden' }}>
                 {claimableRwas.map((rwa) => (
                   <div
                     key={rwa.rwaId}
@@ -712,7 +807,7 @@ const Products: React.FC = () => {
                     <div style={{
                       width: '100px', height: '80px', background: C.surface,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      overflow: 'hidden', flexShrink: 0,
+                      overflow: 'hidden', flexShrink: 0, borderRadius: 4,
                     }}>
                       {rwa.image ? (
                         <img src={rwa.image} alt={rwa.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -748,7 +843,7 @@ const Products: React.FC = () => {
                         padding: '10px 20px', fontSize: '10px', letterSpacing: '0.15em',
                         textTransform: 'uppercase', cursor: claimingRwaId ? 'not-allowed' : 'pointer',
                         fontFamily: C.font, opacity: claimingRwaId ? 0.5 : 1,
-                        transition: 'all 0.2s', whiteSpace: 'nowrap',
+                        transition: 'all 0.2s', whiteSpace: 'nowrap', borderRadius: 4,
                       }}
                       onMouseEnter={(e) => { if (!claimingRwaId) e.currentTarget.style.background = '#9a2535'; }}
                       onMouseLeave={(e) => { e.currentTarget.style.background = C.burgundy; }}
@@ -762,7 +857,6 @@ const Products: React.FC = () => {
           </div>
         )}
 
-        {/* Step 2: Minting in progress */}
         {claimStep === 'minting' && (
           <div style={{ textAlign: 'center', padding: '3rem 1rem' }}>
             <div style={{ marginBottom: '1.5rem' }}>
@@ -781,7 +875,6 @@ const Products: React.FC = () => {
           </div>
         )}
 
-        {/* Step 3: Success */}
         {claimStep === 'success' && (
           <div style={{ textAlign: 'center', padding: '2rem 0' }}>
             <div style={{
@@ -803,7 +896,6 @@ const Products: React.FC = () => {
           </div>
         )}
 
-        {/* Step 4: Error */}
         {claimStep === 'error' && (
           <div style={{ textAlign: 'center', padding: '2rem 0' }}>
             <div style={{
@@ -823,9 +915,9 @@ const Products: React.FC = () => {
               <button
                 onClick={() => { setClaimStep('list'); setClaimError(null); setClaimingRwaId(null); fetchClaimableRwas(); }}
                 style={{
-                  padding: '10px 20px', border: `1px solid ${C.border}`, background: '#fff',
+                  padding: '10px 20px', border: bdr, background: '#fff',
                   cursor: 'pointer', fontFamily: C.font, fontSize: '11px',
-                  letterSpacing: '0.1em', textTransform: 'uppercase',
+                  letterSpacing: '0.1em', textTransform: 'uppercase', borderRadius: 4,
                 }}
               >
                 Back to Products
