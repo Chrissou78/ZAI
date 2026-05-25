@@ -682,6 +682,7 @@ export default async function handler(req, res) {
       });
 
       // 3. For each RWA, get unclaimed NFT count and extract image from data
+      const currencyMap = await getCurrencyMap();
       const results = await Promise.all(claimable.map(async (rwa) => {
         // Get unclaimed NFTs for this RWA
         const { data: nftData } = await apiFetch(RWA_BASE, `/rwa/${rwa.id}/nfts?claimed=false&limit=1`);
@@ -706,7 +707,7 @@ export default async function handler(req, res) {
           description,
           price: formatPrice(price),
           priceRaw: price,
-          currency: resolveCurrency(currency, await getCurrencyMap()),
+          currency: resolveCurrency(currency, currencyMap),
           collection,
           materials,
           unclaimedCount,
@@ -718,8 +719,12 @@ export default async function handler(req, res) {
 
       return res.json({
         success: true,
-        data: results.filter(r => r.available),
-        all: results,
+        data: results,           // ← ALL claimable products (was: results.filter(r => r.available))
+        stats: {
+          total: results.length,
+          available: results.filter(r => r.available).length,
+          outOfStock: results.filter(r => !r.available).length,
+        },
       });
     } catch (err) {
       console.error('[PRODUCTS] Claimable fetch error:', err);
