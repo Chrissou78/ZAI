@@ -1,11 +1,9 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppContext } from '../../context/AppContext';
 import { apiService } from '../../services/api';
 
 // ─── Types ───
-
-type EventType = 'all' | 'demo' | 'factory' | 'partner' | 'community';
 
 interface Event {
   id: string;
@@ -139,9 +137,35 @@ const Events: React.FC = () => {
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [registering, setRegistering] = useState(false);
 
-  useEffect(() => { ensureShimmer(); }, []);
+  // Carousel state
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [scrollPage, setScrollPage] = useState(0);
+  const totalUpcomingPages = useMemo(() => {
+    const upcoming = events.filter(e => e.status === 'upcoming');
+    return Math.max(1, Math.ceil(upcoming.length / 3));
+  }, [events]);
 
+  useEffect(() => { ensureShimmer(); }, []);
   useEffect(() => { fetchEvents(); }, []);
+
+  // Scroll tracking
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const handleScroll = () => {
+      const pageWidth = el.clientWidth;
+      const page = Math.round(el.scrollLeft / pageWidth);
+      setScrollPage(page);
+    };
+    el.addEventListener('scroll', handleScroll, { passive: true });
+    return () => el.removeEventListener('scroll', handleScroll);
+  }, [events]);
+
+  const scrollToPage = (page: number) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollTo({ left: page * el.clientWidth, behavior: 'smooth' });
+  };
 
   const fetchEvents = async () => {
     try {
@@ -185,6 +209,89 @@ const Events: React.FC = () => {
     }
   };
 
+  // ─── Event Card ───
+  const EventCard = ({ event, isLast }: { event: Event; isLast: boolean }) => {
+    const d = parseDate(event.startDate || event.date);
+    return (
+      <div
+        onClick={() => setSelectedEvent(event)}
+        style={{
+          flex: '0 0 calc(100% / 3)',
+          background: C.pureWhite, cursor: 'pointer', overflow: 'hidden',
+          display: 'flex', flexDirection: 'column',
+          borderRight: isLast ? 'none' : bdr,
+          transition: 'background .15s',
+          boxSizing: 'border-box',
+        }}
+        onMouseEnter={e => (e.currentTarget.style.background = C.surface)}
+        onMouseLeave={e => (e.currentTarget.style.background = C.pureWhite)}
+      >
+        {/* Cover image */}
+        <div style={{ position: 'relative', height: 160, background: C.black, overflow: 'hidden' }}>
+          {event.coverImage ? (
+            <img src={event.coverImage} alt={event.title}
+              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+          ) : (
+            <div style={{
+              width: '100%', height: '100%',
+              background: `linear-gradient(135deg, ${C.gray} 0%, ${C.mid} 100%)`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <span style={{ fontSize: '11px', color: '#555', letterSpacing: '0.2em', textTransform: 'uppercase' }}>
+                {getTagLabel(event.tag)}
+              </span>
+            </div>
+          )}
+          {/* Date badge */}
+          <div style={{
+            position: 'absolute', top: 12, left: 12,
+            background: C.red, padding: '6px 10px', textAlign: 'center',
+            minWidth: 38, borderRadius: 4,
+          }}>
+            <div style={{ fontSize: '18px', fontWeight: 600, lineHeight: 1, color: '#fff' }}>{d.day}</div>
+            <div style={{ fontSize: '8px', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.85)', marginTop: 2 }}>{d.month}</div>
+          </div>
+          {/* Registered badge */}
+          {event.registered && (
+            <div style={{
+              position: 'absolute', top: 12, right: 12,
+              background: 'rgba(42,157,78,0.9)', color: '#fff',
+              fontSize: '8px', fontWeight: 600, letterSpacing: '0.1em',
+              padding: '4px 8px', textTransform: 'uppercase', borderRadius: 3,
+            }}>Registered</div>
+          )}
+        </div>
+
+        {/* Card body */}
+        <div style={{ padding: '18px 20px', flex: 1, display: 'flex', flexDirection: 'column' }}>
+          <div style={{
+            fontSize: '9px', letterSpacing: '0.25em', textTransform: 'uppercase',
+            color: getTagColor(event.tag), marginBottom: 8, fontWeight: 600,
+          }}>
+            {getTagLabel(event.tag)}
+          </div>
+          <h3 style={{ fontSize: '14px', fontWeight: 500, margin: '0 0 8px', lineHeight: 1.35, color: C.black }}>
+            {event.title}
+          </h3>
+          <div style={{ fontSize: '11px', color: C.muted, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 5 }}>
+            <span style={{ color: C.red, fontSize: '6px' }}>●</span>
+            {event.location}
+          </div>
+          <p style={{
+            fontSize: '11px', color: C.muted, lineHeight: 1.65, flex: 1, margin: 0,
+            fontWeight: 300,
+            display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+          }}>
+            {event.description}
+          </p>
+          <div style={{ marginTop: 14, paddingTop: 12, borderTop: bdr }}>
+            <span style={{ fontSize: '14px', color: C.muted }}>→</span>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   // ─── Loading ───
 
   if (isLoading) {
@@ -193,9 +300,9 @@ const Events: React.FC = () => {
         <Sk w="120px" h="10px" s={{ marginBottom: 10 }} />
         <Sk w="320px" h="38px" s={{ marginBottom: 8 }} />
         <Sk w="400px" h="13px" s={{ marginBottom: 36 }} />
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 0, border: bdr, overflow: 'hidden', borderRadius: 8 }}>
+        <div style={{ display: 'flex', border: bdr, borderRadius: 8, overflow: 'hidden' }}>
           {[0,1,2].map(i => (
-            <div key={i} style={{ background: C.pureWhite, borderRight: i < 2 ? bdr : 'none' }}>
+            <div key={i} style={{ flex: '0 0 calc(100% / 3)', borderRight: i < 2 ? bdr : 'none' }}>
               <div style={{ ...shimmer, width: '100%', height: 160 }} />
               <div style={{ padding: 20 }}>
                 <Sk w="60%" h="10px" s={{ marginBottom: 8 }} />
@@ -207,6 +314,12 @@ const Events: React.FC = () => {
         </div>
       </div>
     );
+  }
+
+  // ─── Group upcoming into pages of 3 ───
+  const upcomingPages: Event[][] = [];
+  for (let i = 0; i < upcomingEvents.length; i += 3) {
+    upcomingPages.push(upcomingEvents.slice(i, i + 3));
   }
 
   // ═══════════════════════════════
@@ -235,108 +348,63 @@ const Events: React.FC = () => {
         </div>
       )}
 
-      {/* ══════ UPCOMING EVENTS — HORIZONTAL CARDS ══════ */}
+      {/* ══════ UPCOMING EVENTS CAROUSEL ══════ */}
       {upcomingEvents.length === 0 ? (
         <div style={{ padding: '48px 24px', textAlign: 'center', background: C.surface, border: bdr, marginBottom: 48, borderRadius: 8 }}>
           <div style={{ fontSize: '15px', fontWeight: 300, color: C.black, marginBottom: 4 }}>No upcoming events</div>
           <p style={{ color: C.muted, fontSize: '12px', margin: 0 }}>Check back soon for new experiences.</p>
         </div>
       ) : (
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: `repeat(${Math.min(upcomingEvents.length, 3)}, 1fr)`,
-          border: bdr, borderRadius: 8, overflow: 'hidden', marginBottom: 48,
-        }}>
-          {upcomingEvents.slice(0, 6).map((event, idx) => {
-            const d = parseDate(event.startDate || event.date);
-            const isLast = idx === Math.min(upcomingEvents.length, 3) - 1 || idx === upcomingEvents.length - 1;
-            return (
-              <div key={event.id} onClick={() => setSelectedEvent(event)}
+        <div style={{ marginBottom: 48 }}>
+          {/* Carousel container */}
+          <div
+            ref={scrollRef}
+            style={{
+              display: 'flex', overflow: 'hidden', overflowX: upcomingEvents.length > 3 ? 'auto' : 'hidden',
+              border: bdr, borderRadius: 8,
+              scrollSnapType: 'x mandatory',
+              scrollbarWidth: 'none',
+            }}
+          >
+            {upcomingPages.map((page, pageIdx) => (
+              <div
+                key={pageIdx}
                 style={{
-                  background: C.pureWhite, cursor: 'pointer', overflow: 'hidden',
-                  display: 'flex', flexDirection: 'column',
-                  borderRight: isLast ? 'none' : bdr,
-                  transition: 'background .15s',
+                  display: 'flex', flex: '0 0 100%', scrollSnapAlign: 'start',
                 }}
-                onMouseEnter={e => (e.currentTarget.style.background = C.surface)}
-                onMouseLeave={e => (e.currentTarget.style.background = C.pureWhite)}>
-
-                {/* Cover image area */}
-                <div style={{ position: 'relative', height: 160, background: C.black, overflow: 'hidden' }}>
-                  {event.coverImage ? (
-                    <img src={event.coverImage} alt={event.title}
-                      style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                  ) : (
-                    <div style={{
-                      width: '100%', height: '100%',
-                      background: `linear-gradient(135deg, ${C.gray} 0%, ${C.mid} 100%)`,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    }}>
-                      <span style={{ fontSize: '11px', color: '#555', letterSpacing: '0.2em', textTransform: 'uppercase' }}>
-                        {getTagLabel(event.tag)}
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Date badge — top left */}
-                  <div style={{
-                    position: 'absolute', top: 12, left: 12,
-                    background: C.red, padding: '6px 10px', textAlign: 'center',
-                    minWidth: 38, borderRadius: 4,
-                  }}>
-                    <div style={{ fontSize: '18px', fontWeight: 600, lineHeight: 1, color: '#fff' }}>{d.day}</div>
-                    <div style={{ fontSize: '8px', letterSpacing: '0.15em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.85)', marginTop: 2 }}>{d.month}</div>
-                  </div>
-
-                  {/* Registered badge */}
-                  {event.registered && (
-                    <div style={{
-                      position: 'absolute', top: 12, right: 12,
-                      background: 'rgba(42,157,78,0.9)', color: '#fff',
-                      fontSize: '8px', fontWeight: 600, letterSpacing: '0.1em',
-                      padding: '4px 8px', textTransform: 'uppercase', borderRadius: 3,
-                    }}>Registered</div>
-                  )}
-                </div>
-
-                {/* Card body */}
-                <div style={{ padding: '18px 20px', flex: 1, display: 'flex', flexDirection: 'column' }}>
-                  {/* Tag */}
-                  <div style={{
-                    fontSize: '9px', letterSpacing: '0.25em', textTransform: 'uppercase',
-                    color: getTagColor(event.tag), marginBottom: 8, fontWeight: 600,
-                  }}>
-                    {getTagLabel(event.tag)}
-                  </div>
-
-                  {/* Title */}
-                  <h3 style={{ fontSize: '14px', fontWeight: 500, margin: '0 0 8px', lineHeight: 1.35, color: C.black }}>
-                    {event.title}
-                  </h3>
-
-                  {/* Location */}
-                  <div style={{ fontSize: '11px', color: C.muted, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 5 }}>
-                    <span style={{ color: C.red, fontSize: '6px' }}>●</span>
-                    {event.location}
-                  </div>
-
-                  {/* Description — clamped */}
-                  <p style={{
-                    fontSize: '11px', color: C.muted, lineHeight: 1.65, flex: 1, margin: 0,
-                    fontWeight: 300,
-                    display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden',
-                  }}>
-                    {event.description}
-                  </p>
-
-                  {/* Arrow */}
-                  <div style={{ marginTop: 14, paddingTop: 12, borderTop: bdr }}>
-                    <span style={{ fontSize: '14px', color: C.muted, transition: 'color .2s' }}>→</span>
-                  </div>
-                </div>
+              >
+                {page.map((event, idx) => {
+                  // Determine if this is the last card in the visible row
+                  const isLastInPage = idx === page.length - 1;
+                  return (
+                    <EventCard key={event.id} event={event} isLast={isLastInPage} />
+                  );
+                })}
+                {/* Fill remaining slots if page has <3 cards */}
+                {page.length < 3 && Array.from({ length: 3 - page.length }).map((_, i) => (
+                  <div key={`empty-${i}`} style={{ flex: '0 0 calc(100% / 3)', background: C.pureWhite }} />
+                ))}
               </div>
-            );
-          })}
+            ))}
+          </div>
+
+          {/* Carousel dots — only show if more than 3 events */}
+          {upcomingPages.length > 1 && (
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginTop: 16 }}>
+              {upcomingPages.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => scrollToPage(i)}
+                  style={{
+                    width: scrollPage === i ? 24 : 8, height: 8,
+                    borderRadius: 4, border: 'none', cursor: 'pointer',
+                    background: scrollPage === i ? C.black : C.border,
+                    transition: 'all .25s ease', padding: 0,
+                  }}
+                />
+              ))}
+            </div>
+          )}
         </div>
       )}
 
