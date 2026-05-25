@@ -43,10 +43,10 @@ async function getZaiContracts() {
   try {
     const { status, data } = await apiFetch(RWA_BASE, '/rwa?limit=200');
     if (status === 200 && data) {
-      const rwas = Array.isArray(data) ? data : (data.data || data.result || []);
+      const rwas = Array.isArray(data) ? data : (data.rwas || data.data || data.result || []);
       const contracts = new Set();
       for (const rwa of rwas) {
-        if (rwa.contractAddress) contracts.add(rwa.contractAddress.toLowerCase());
+        if (rwa.smartContractAddress) contracts.add(rwa.smartContractAddress.toLowerCase());
       }
       zaiContractCache = contracts;
       zaiContractCacheTime = Date.now();
@@ -637,12 +637,12 @@ export default async function handler(req, res) {
     try {
       const { status, data } = await apiFetch(RWA_BASE, '/rwa?limit=200');
       if (status === 200 && data) {
-        const rwas = Array.isArray(data) ? data : (data.data || data.result || []);
+        const rwas = Array.isArray(data) ? data : (data.rwas || data.data || data.result || []);
         const catalog = rwas.map(r => ({
           id: r.id,
           name: r.name,
           type: r.type,
-          contractAddress: r.contractAddress,
+          contractAddress: r.smartContractAddress,   // <-- was r.contractAddress
           chainId: r.chainId,
           isBuyable: r.isBuyable || false,
           isClaimable: r.isClaimable || false,
@@ -748,7 +748,7 @@ export default async function handler(req, res) {
       }
 
       // Call WalletTwo RWA claim endpoint
-      const { status, data } = await apiFetch(RWA_BASE, '/nft/claim', {
+      const { status, data } = await apiFetch(RWA_BASE, '/nft/mint', {
         method: 'POST',
         body: JSON.stringify({
           ids: [nftId],
