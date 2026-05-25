@@ -98,46 +98,26 @@ const Profile: React.FC = () => {
     if (!user?.id) return;
     const fetchStats = async () => {
       try {
-        // Prefer the dedicated stats endpoint that queries DB tables directly
-        const res = await apiService.get('/users/me/stats');
-        const s = (res.data as any)?.stats;
-        if (s) {
-          setStats({
-            productsClaimed: s.productsClaimed || 0,
-            eventsAttended: s.eventsAttended || 0,
-          });
-          return;
-        }
-      } catch {
-        /* silent — fall through to fallback */
-      }
-
-      // Fallback: try the old approach
-      try {
         const [prodRes, evtRes] = await Promise.all([
-          apiService.get(`/products/user/${user.id}`).catch(() => ({ data: { products: [] } })),
-          apiService.get('/events').catch(() => ({ data: [] })),
+          apiService.get(`/products/user/${user.id}`).catch(() => ({ data: { success: true, data: [] } })),
+          apiService.get('/events').catch(() => ({ data: { success: true, data: [] } })),
         ]);
 
-        const prodData = (prodRes.data as any);
-        let productCount = 0;
-        if (Array.isArray(prodData?.products)) productCount = prodData.products.length;
-        else if (Array.isArray(prodData)) productCount = prodData.length;
+        const prodData = prodRes.data as any;
+        const products = prodData?.data || prodData?.products || [];
+        const productCount = Array.isArray(products) ? products.length : 0;
 
-        const events = (evtRes.data as any)?.events || evtRes.data || [];
-        let eventCount = 0;
-        if (Array.isArray(events)) {
-          eventCount = events.filter((e: any) => {
-            const regs = e.registrations || [];
-            return regs.some((r: any) =>
-              r.userId === user.id || r.user_id === user.id ||
-              r.walletAddress === user.walletAddress || r.wallet === user.walletAddress
-            );
-          }).length;
-        }
+        const evtData = evtRes.data as any;
+        const events = evtData?.data || evtData?.events || [];
+        const eventCount = Array.isArray(events) ? events.filter((e: any) => e.status === 'upcoming').length : 0;
 
-        setStats({ productsClaimed: productCount, eventsAttended: eventCount });
-      } catch { /* silent */ }
+        setStats({
+          productsClaimed: productCount,
+          eventsAttended: eventCount,
+        });
+      } catch {
+        /* silent */
+      }
     };
     fetchStats();
   }, [user?.id]);
