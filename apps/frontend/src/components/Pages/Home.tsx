@@ -40,7 +40,7 @@ const Home: React.FC = () => {
           <div />
           {/* Centered: Z-mark icon + "zai" label */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', paddingTop: '0.5rem' }}>
-            <ZaiMark size={40} color="#ffffff" />
+            <ZaiMark size={72} color="#ffffff" />
             <span style={{
               fontSize: '11px',
               letterSpacing: '0.35em',
