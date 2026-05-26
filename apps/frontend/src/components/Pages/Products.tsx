@@ -119,6 +119,15 @@ const sectionLabel: React.CSSProperties = {
   color: C.red, fontWeight: 500, fontFamily: C.font,
 };
 
+/* ───── Helpers ───── */
+
+const formatClaimedDate = (d?: string | null): string => {
+  if (!d) return 'Unknown';
+  const dt = new Date(d);
+  if (isNaN(dt.getTime())) return 'Unknown';
+  return dt.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+};
+
 /* ───── Component ───── */
 
 const Products: React.FC = () => {
@@ -388,8 +397,8 @@ const Products: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div style={{ padding: '48px 32px', fontFamily: C.font }}>
-        <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+      <div style={{ padding: '48px 48px 80px', fontFamily: C.font }}>
+        <div style={{ maxWidth: 1060, margin: '0 auto' }}>
           <div style={{ height: 28, width: 200, background: C.surface, borderRadius: 4, marginBottom: 32, animation: 'zai-pulse 1.5s ease-in-out infinite' }} />
           <div style={{ display: 'flex', gap: 16, overflow: 'hidden' }}>
             {[1, 2, 3].map(i => (
@@ -409,8 +418,8 @@ const Products: React.FC = () => {
 
   if (error) {
     return (
-      <div style={{ padding: '48px 32px', fontFamily: C.font }}>
-        <div style={{ maxWidth: 1200, margin: '0 auto', textAlign: 'center', paddingTop: 80 }}>
+      <div style={{ padding: '48px 48px 80px', fontFamily: C.font }}>
+        <div style={{ maxWidth: 1060, margin: '0 auto', textAlign: 'center', paddingTop: 80 }}>
           <div style={{ fontSize: 48, marginBottom: 16 }}>!</div>
           <p style={{ fontSize: 15, color: C.gray, marginBottom: 24 }}>{error}</p>
           <Button onClick={fetchUserProducts}>Retry</Button>
@@ -422,13 +431,13 @@ const Products: React.FC = () => {
   /* ───── Render ───── */
 
   return (
-    <div style={{ padding: '48px 32px', fontFamily: C.font, color: C.black }}>
-      <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+    <div style={{ padding: '48px 48px 80px', fontFamily: C.font, color: C.black }}>
+      <div style={{ maxWidth: 1060, margin: '0 auto' }}>
 
         {/* ══════ HEADER ══════ */}
         <div style={{
           display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
-          marginBottom: 32, paddingBottom: 24, borderBottom: bdr,
+          marginBottom: '2.5rem', paddingBottom: '2rem', borderBottom: bdr,
         }}>
           <div>
             <div style={sectionLabel}>collection</div>
@@ -485,7 +494,7 @@ const Products: React.FC = () => {
           </div>
         )}
 
-        {/* ══════ STATS BAR (before carousel) ══════ */}
+        {/* ══════ STATS BAR ══════ */}
         <div style={{
           display: 'grid', gridTemplateColumns: '1fr 1fr',
           border: bdr, marginBottom: 32,
@@ -500,7 +509,7 @@ const Products: React.FC = () => {
           </div>
         </div>
 
-        {/* ══════ COLLECTION SECTION LABEL ══════ */}
+        {/* ══════ COLLECTION LABEL ══════ */}
         <div style={{ ...sectionLabel, marginBottom: 16 }}>your collection</div>
 
         {/* ══════ PRODUCT CAROUSEL ══════ */}
@@ -601,7 +610,7 @@ const Products: React.FC = () => {
           </div>
         )}
 
-        {/* ══════ PRODUCT INFO ROW (selected product quick-view) ══════ */}
+        {/* ══════ PRODUCT INFO ROW ══════ */}
         {selectedProduct === null && products.length > 0 && (
           <div style={{
             display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
@@ -694,12 +703,10 @@ const Products: React.FC = () => {
                     <div style={{ fontSize: 13, fontFamily: 'monospace' }}>{selectedProduct.serialNumber}</div>
                   </div>
                 )}
-                {selectedProduct.claimedAt && (
-                  <div>
-                    <div style={lbl}>Claimed</div>
-                    <div style={{ fontSize: 13 }}>{new Date(selectedProduct.claimedAt).toLocaleDateString()}</div>
-                  </div>
-                )}
+                <div>
+                  <div style={lbl}>Claimed</div>
+                  <div style={{ fontSize: 13 }}>{formatClaimedDate(selectedProduct.claimedAt)}</div>
+                </div>
               </div>
 
               <div style={{
