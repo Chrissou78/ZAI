@@ -119,6 +119,19 @@ const sectionLabel: React.CSSProperties = {
   color: C.red, fontWeight: 500, fontFamily: C.font,
 };
 
+/* ───── Arrow button style ───── */
+const arrowBtnStyle: React.CSSProperties = {
+  width: 40, height: 40, borderRadius: '50%',
+  border: bdr, background: C.pureWhite,
+  display: 'flex', alignItems: 'center', justifyContent: 'center',
+  cursor: 'pointer', transition: 'all 0.2s',
+  fontSize: 18, color: C.mid, flexShrink: 0,
+};
+const arrowBtnDisabled: React.CSSProperties = {
+  ...arrowBtnStyle,
+  opacity: 0.35, cursor: 'default',
+};
+
 /* ───── Helpers ───── */
 
 const formatClaimedDate = (d?: string | null): string => {
@@ -186,7 +199,7 @@ const Products: React.FC = () => {
     const updatePages = () => {
       const cardWidth = 220 + 16;
       const visible = Math.max(1, Math.floor(el.clientWidth / cardWidth));
-      const totalCards = products.length + 1;
+      const totalCards = products.length + 1; // +1 for ClaimCard
       const pages = Math.max(1, Math.ceil(totalCards / visible));
       setTotalPages(pages);
     };
@@ -410,7 +423,6 @@ const Products: React.FC = () => {
     </div>
   );
 
-  /* ── FIX #3: ProductCard now includes "ACTIVATE INSURANCE →" link at bottom ── */
   const ProductCard = ({ product, style: extraStyle }: { product: Product; style?: React.CSSProperties }) => (
     <div
       style={{
@@ -422,7 +434,7 @@ const Products: React.FC = () => {
       onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)'; }}
       onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'none'; }}
     >
-      {/* Image — clickable to open detail */}
+      {/* Image */}
       <div
         onClick={() => setSelectedProduct(product)}
         style={{ height: 160, background: C.surface, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', cursor: 'pointer', position: 'relative' }}
@@ -432,7 +444,6 @@ const Products: React.FC = () => {
         ) : (
           <span style={{ fontSize: 40, color: C.border }}>&#x2B21;</span>
         )}
-        {/* CLAIMED badge overlay */}
         {product.insurance?.active && (
           <div style={{
             position: 'absolute', top: 8, left: 8,
@@ -443,7 +454,7 @@ const Products: React.FC = () => {
         )}
       </div>
 
-      {/* Card body — clickable to open detail */}
+      {/* Card body */}
       <div onClick={() => setSelectedProduct(product)} style={{ padding: '12px 14px', flex: 1, cursor: 'pointer' }}>
         {product.collection && (
           <div style={{ ...lbl, marginBottom: 4 }}>{product.collection}</div>
@@ -468,7 +479,7 @@ const Products: React.FC = () => {
         </div>
       </div>
 
-      {/* FIX #3: "Activate Insurance" link at bottom of every uninsured card */}
+      {/* Insurance link at bottom */}
       <div style={{ padding: '0 14px 12px' }}>
         {!product.insurance?.active ? (
           <div
@@ -583,8 +594,32 @@ const Products: React.FC = () => {
           </div>
         </div>
 
-        {/* ══════ COLLECTION LABEL ══════ */}
-        <div style={{ ...sectionLabel, marginBottom: 16 }}>your collection</div>
+        {/* ══════ COLLECTION LABEL + CAROUSEL ARROWS ══════ */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <div style={sectionLabel}>your collection</div>
+          {needsCarousel && (
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                onClick={() => scrollToPage(Math.max(0, scrollPage - 1))}
+                disabled={scrollPage === 0}
+                style={scrollPage === 0 ? arrowBtnDisabled : arrowBtnStyle}
+                onMouseEnter={e => { if (scrollPage !== 0) { e.currentTarget.style.background = C.surface; e.currentTarget.style.borderColor = C.mid; } }}
+                onMouseLeave={e => { e.currentTarget.style.background = C.pureWhite; e.currentTarget.style.borderColor = C.border; }}
+              >
+                ←
+              </button>
+              <button
+                onClick={() => scrollToPage(Math.min(totalPages - 1, scrollPage + 1))}
+                disabled={scrollPage >= totalPages - 1}
+                style={scrollPage >= totalPages - 1 ? arrowBtnDisabled : arrowBtnStyle}
+                onMouseEnter={e => { if (scrollPage < totalPages - 1) { e.currentTarget.style.background = C.surface; e.currentTarget.style.borderColor = C.mid; } }}
+                onMouseLeave={e => { e.currentTarget.style.background = C.pureWhite; e.currentTarget.style.borderColor = C.border; }}
+              >
+                →
+              </button>
+            </div>
+          )}
+        </div>
 
         {/* ══════ PRODUCT CARDS — grid or carousel ══════ */}
         {!needsCarousel ? (
@@ -616,6 +651,7 @@ const Products: React.FC = () => {
                 />
               ))}
             </div>
+            {/* Pagination dots */}
             {totalPages > 1 && (
               <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginTop: 16 }}>
                 {Array.from({ length: totalPages }).map((_, i) => (
@@ -626,7 +662,7 @@ const Products: React.FC = () => {
                       width: scrollPage === i ? 24 : 8, height: 8,
                       borderRadius: 4, border: 'none', cursor: 'pointer',
                       background: scrollPage === i ? C.red : C.border,
-                      transition: 'all 0.3s',
+                      transition: 'all 0.3s', padding: 0,
                     }}
                   />
                 ))}
@@ -635,68 +671,68 @@ const Products: React.FC = () => {
           </>
         )}
 
-        {/* FIX #1: REMOVED the duplicate "PRODUCT INFO ROW" — it was redundant with cards above */}
-        {/* ══════ FIX #4: BLACK FOOTER — "How to claim" with 3 steps ══════ */}
+        {/* ══════ BLACK FOOTER — "How to claim" — INSIDE the 1060 container ══════ */}
         <div style={{
-          marginTop: 48, background: C.black, color: '#fff',
-          padding: '48px 0 56px',
+          marginTop: 48,
+          background: C.black,
+          color: '#fff',
+          padding: '48px 40px 56px',
+          borderRadius: 8,
         }}>
-          <div style={{ maxWidth: 1060, margin: '0 auto', padding: '0 48px' }}>
-            <div style={{
-              fontSize: '10px', letterSpacing: '0.3em', textTransform: 'uppercase',
-              color: C.gray, marginBottom: 8,
-            }}>
-              how to claim
-            </div>
-            <h2 style={{ fontSize: 26, fontWeight: 300, margin: '0 0 40px', color: '#fff' }}>
-              Register your zai product
-            </h2>
+          <div style={{
+            fontSize: '10px', letterSpacing: '0.3em', textTransform: 'uppercase',
+            color: C.gray, marginBottom: 8,
+          }}>
+            how to claim
+          </div>
+          <h2 style={{ fontSize: 26, fontWeight: 300, margin: '0 0 40px', color: '#fff' }}>
+            Register your zai product
+          </h2>
 
-            <div style={{
-              display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
-              gap: '1px', background: '#2a2a2a',
-            }}>
-              {[
-                {
-                  step: '01',
-                  title: 'Get your card',
-                  desc: 'Receive your zai Experience Card with your product purchase over CHF 500.',
-                },
-                {
-                  step: '02',
-                  title: 'Tap or enter serial',
-                  desc: 'Use NFC tap or manually enter the serial number from your experience card.',
-                },
-                {
-                  step: '03',
-                  title: 'Enjoy benefits',
-                  desc: 'Access free ski insurance, exclusive events, and community features.',
-                },
-              ].map((item) => (
-                <div key={item.step} style={{
-                  background: C.black, padding: '32px 28px',
+          <div style={{
+            display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
+            gap: '1px', background: '#2a2a2a',
+          }}>
+            {[
+              {
+                step: '01',
+                title: 'Get your card',
+                desc: 'Receive your zai Experience Card with your product purchase over CHF 500.',
+              },
+              {
+                step: '02',
+                title: 'Tap or enter serial',
+                desc: 'Use NFC tap or manually enter the serial number from your experience card.',
+              },
+              {
+                step: '03',
+                title: 'Enjoy benefits',
+                desc: 'Access free ski insurance, exclusive events, and community features.',
+              },
+            ].map((item) => (
+              <div key={item.step} style={{
+                background: C.black, padding: '32px 28px',
+              }}>
+                <div style={{
+                  fontSize: '10px', letterSpacing: '0.3em', textTransform: 'uppercase',
+                  color: C.red, marginBottom: 12, fontWeight: 600,
                 }}>
-                  <div style={{
-                    fontSize: '10px', letterSpacing: '0.3em', textTransform: 'uppercase',
-                    color: C.red, marginBottom: 12, fontWeight: 600,
-                  }}>
-                    step {item.step}
-                  </div>
-                  <div style={{ fontSize: 16, fontWeight: 500, color: '#fff', marginBottom: 8 }}>
-                    {item.title}
-                  </div>
-                  <p style={{ fontSize: 12, color: '#888', margin: 0, lineHeight: 1.6 }}>
-                    {item.desc}
-                  </p>
+                  step {item.step}
                 </div>
-              ))}
-            </div>
+                <div style={{ fontSize: 16, fontWeight: 500, color: '#fff', marginBottom: 8 }}>
+                  {item.title}
+                </div>
+                <p style={{ fontSize: 12, color: '#888', margin: 0, lineHeight: 1.6 }}>
+                  {item.desc}
+                </p>
+              </div>
+            ))}
           </div>
         </div>
-      </div>{/* end maxWidth container */}
+
+      </div>{/* end maxWidth: 1060 container */}
 
       {/* ════════════ PRODUCT DETAIL MODAL ════════════ */}
-      {/* FIX #2: Image now shows fully contained (square), no maxHeight crop */}
       {selectedProduct && (
         <Modal isOpen onClose={() => setSelectedProduct(null)} title={selectedProduct.name}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
