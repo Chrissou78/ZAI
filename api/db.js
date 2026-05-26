@@ -168,6 +168,8 @@ export async function initDB() {
       ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS language TEXT DEFAULT 'en';
     `);
 
+    await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_product_claims_user_product ON product_claims(user_id, product_id)`);
+
     dbReady = true;
   } finally {
     client.release();

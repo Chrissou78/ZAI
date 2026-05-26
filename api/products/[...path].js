@@ -355,6 +355,25 @@ export default async function handler(req, res) {
         insurance: insuranceMap[p.id] || { active: false, status: null, certificateId: null },
       }));
 
+       // ── Step 5b: Auto-backfill claim dates from blockchain timestamps ──
+      if (dbReady && pool) {
+        for (const p of enriched) {
+          // If product has a blockchain timestamp but no DB claim record, persist it
+          if (p.claimedAt && !claimMap[p.id]) {
+            try {
+              await pool.query(
+                `INSERT INTO product_claims (id, user_id, product_id, claimed_at, created_at)
+                 VALUES ($1, $2, $3, $4, NOW())
+                 ON CONFLICT (user_id, product_id) DO NOTHING`,
+                [genId(), decoded.userId, p.id, new Date(p.claimedAt)]
+              );
+            } catch (bfErr) {
+              console.error('[PRODUCTS] Backfill claim date failed for', p.id, ':', bfErr.message);
+            }
+          }
+        }
+      }
+
       // Separate the experience card from regular products
       const EXPERIENCE_CARD_NAMES = ['experience card', 'experience club', 'club card', 'nfc card', 'loyalty card'];
       const experienceCard = enriched.find(p => {

@@ -183,6 +183,7 @@ const Dashboard: React.FC = () => {
       const recentActivity: Activity[] = [];
 
       if (products.length > 0) {
+        // ── CHANGED: sort products with unknown dates last instead of first ──
         const sortedProducts = [...products].sort((a: any, b: any) => {
           const dateA = a.claimedAt ? new Date(a.claimedAt).getTime() : 0;
           const dateB = b.claimedAt ? new Date(b.claimedAt).getTime() : 0;
@@ -252,12 +253,12 @@ const Dashboard: React.FC = () => {
 
   const memberSince = user.createdAt ? new Date(user.createdAt).getFullYear() : new Date().getFullYear();
 
+  // ── CHANGED: formatDate now returns "Claimed" (no date) for unknown product dates ──
   const formatDate = (dateStr: string) => {
     try {
-      // Handle empty / null / undefined dates gracefully
-      if (!dateStr) return 'Date unknown';
+      if (!dateStr) return 'Claimed';
       const date = new Date(dateStr);
-      if (isNaN(date.getTime())) return dateStr;
+      if (isNaN(date.getTime())) return 'Claimed';
 
       const now = new Date();
       const diffMs = now.getTime() - date.getTime();
@@ -290,7 +291,7 @@ const Dashboard: React.FC = () => {
 
       return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     } catch {
-      return dateStr || 'Date unknown';
+      return dateStr || 'Claimed';
     }
   };
 
