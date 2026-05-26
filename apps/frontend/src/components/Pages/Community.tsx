@@ -626,7 +626,7 @@ const Community: React.FC = () => {
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             <MapPinIcon size={11} color={C.muted} />
             <span style={{ fontSize: '10px', color: C.muted, letterSpacing: '0.02em' }}>
-              {photo.location || 'Alps, Switzerland'}
+              {photo.location || ''}
             </span>
           </div>
 
