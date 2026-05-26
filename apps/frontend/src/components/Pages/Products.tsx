@@ -636,66 +636,64 @@ const Products: React.FC = () => {
         )}
 
         {/* FIX #1: REMOVED the duplicate "PRODUCT INFO ROW" — it was redundant with cards above */}
+        {/* ══════ FIX #4: BLACK FOOTER — "How to claim" with 3 steps ══════ */}
+        <div style={{
+          marginTop: 48, background: C.black, color: '#fff',
+          padding: '48px 0 56px',
+        }}>
+          <div style={{ maxWidth: 1060, margin: '0 auto', padding: '0 48px' }}>
+            <div style={{
+              fontSize: '10px', letterSpacing: '0.3em', textTransform: 'uppercase',
+              color: C.gray, marginBottom: 8,
+            }}>
+              how to claim
+            </div>
+            <h2 style={{ fontSize: 26, fontWeight: 300, margin: '0 0 40px', color: '#fff' }}>
+              Register your zai product
+            </h2>
 
-      </div>{/* end maxWidth container */}
-
-      {/* ══════ FIX #4: BLACK FOOTER — "How to claim" with 3 steps ══════ */}
-      <div style={{
-        marginTop: 48, background: C.black, color: '#fff',
-        padding: '48px 0 56px',
-      }}>
-        <div style={{ maxWidth: 1060, margin: '0 auto', padding: '0 48px' }}>
-          <div style={{
-            fontSize: '10px', letterSpacing: '0.3em', textTransform: 'uppercase',
-            color: C.gray, marginBottom: 8,
-          }}>
-            how to claim
-          </div>
-          <h2 style={{ fontSize: 26, fontWeight: 300, margin: '0 0 40px', color: '#fff' }}>
-            Register your zai product
-          </h2>
-
-          <div style={{
-            display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
-            gap: '1px', background: '#2a2a2a',
-          }}>
-            {[
-              {
-                step: '01',
-                title: 'Get your card',
-                desc: 'Receive your zai Experience Card with your product purchase over CHF 500.',
-              },
-              {
-                step: '02',
-                title: 'Tap or enter serial',
-                desc: 'Use NFC tap or manually enter the serial number from your experience card.',
-              },
-              {
-                step: '03',
-                title: 'Enjoy benefits',
-                desc: 'Access free ski insurance, exclusive events, and community features.',
-              },
-            ].map((item) => (
-              <div key={item.step} style={{
-                background: C.black, padding: '32px 28px',
-              }}>
-                <div style={{
-                  fontSize: '10px', letterSpacing: '0.3em', textTransform: 'uppercase',
-                  color: C.red, marginBottom: 12, fontWeight: 600,
+            <div style={{
+              display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
+              gap: '1px', background: '#2a2a2a',
+            }}>
+              {[
+                {
+                  step: '01',
+                  title: 'Get your card',
+                  desc: 'Receive your zai Experience Card with your product purchase over CHF 500.',
+                },
+                {
+                  step: '02',
+                  title: 'Tap or enter serial',
+                  desc: 'Use NFC tap or manually enter the serial number from your experience card.',
+                },
+                {
+                  step: '03',
+                  title: 'Enjoy benefits',
+                  desc: 'Access free ski insurance, exclusive events, and community features.',
+                },
+              ].map((item) => (
+                <div key={item.step} style={{
+                  background: C.black, padding: '32px 28px',
                 }}>
-                  step {item.step}
+                  <div style={{
+                    fontSize: '10px', letterSpacing: '0.3em', textTransform: 'uppercase',
+                    color: C.red, marginBottom: 12, fontWeight: 600,
+                  }}>
+                    step {item.step}
+                  </div>
+                  <div style={{ fontSize: 16, fontWeight: 500, color: '#fff', marginBottom: 8 }}>
+                    {item.title}
+                  </div>
+                  <p style={{ fontSize: 12, color: '#888', margin: 0, lineHeight: 1.6 }}>
+                    {item.desc}
+                  </p>
                 </div>
-                <div style={{ fontSize: 16, fontWeight: 500, color: '#fff', marginBottom: 8 }}>
-                  {item.title}
-                </div>
-                <p style={{ fontSize: 12, color: '#888', margin: 0, lineHeight: 1.6 }}>
-                  {item.desc}
-                </p>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
-      </div>
+      </div>{/* end maxWidth container */}
 
       {/* ════════════ PRODUCT DETAIL MODAL ════════════ */}
       {/* FIX #2: Image now shows fully contained (square), no maxHeight crop */}
