@@ -119,17 +119,26 @@ const sectionLabel: React.CSSProperties = {
   color: C.red, fontWeight: 500, fontFamily: C.font,
 };
 
-/* ───── Arrow button style ───── */
-const arrowBtnStyle: React.CSSProperties = {
-  width: 40, height: 40, borderRadius: '50%',
-  border: bdr, background: C.pureWhite,
-  display: 'flex', alignItems: 'center', justifyContent: 'center',
-  cursor: 'pointer', transition: 'all 0.2s',
-  fontSize: 18, color: C.mid, flexShrink: 0,
-};
-const arrowBtnDisabled: React.CSSProperties = {
-  ...arrowBtnStyle,
-  opacity: 0.35, cursor: 'default',
+/* ── Carousel side-arrow styles ── */
+const sideArrowBase: React.CSSProperties = {
+  position: 'absolute',
+  top: '50%',
+  transform: 'translateY(-50%)',
+  zIndex: 10,
+  width: 36,
+  height: 36,
+  borderRadius: '50%',
+  border: 'none',
+  background: 'rgba(255,255,255,0.92)',
+  boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  cursor: 'pointer',
+  fontSize: 18,
+  color: C.mid,
+  transition: 'all 0.2s',
+  padding: 0,
 };
 
 /* ───── Helpers ───── */
@@ -156,6 +165,8 @@ const Products: React.FC = () => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [scrollPage, setScrollPage] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
 
   const [showClaimModal, setShowClaimModal] = useState(false);
   const [claimableRwas, setClaimableRwas] = useState<ClaimableRwa[]>([]);
@@ -192,22 +203,33 @@ const Products: React.FC = () => {
     }
   }, []);
 
+  /* ── Scroll tracking for carousel ── */
+  const updateScrollButtons = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    setCanScrollLeft(el.scrollLeft > 5);
+    setCanScrollRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 5);
+  }, []);
+
   useEffect(() => {
     if (!needsCarousel) return;
     const el = scrollRef.current;
     if (!el) return;
+
     const updatePages = () => {
       const cardWidth = 220 + 16;
       const visible = Math.max(1, Math.floor(el.clientWidth / cardWidth));
-      const totalCards = products.length + 1; // +1 for ClaimCard
+      const totalCards = products.length + 1;
       const pages = Math.max(1, Math.ceil(totalCards / visible));
       setTotalPages(pages);
+      updateScrollButtons();
     };
     const handleScroll = () => {
       const cardWidth = 220 + 16;
       const visible = Math.max(1, Math.floor(el.clientWidth / cardWidth));
       const page = Math.round(el.scrollLeft / (visible * cardWidth));
       setScrollPage(page);
+      updateScrollButtons();
     };
     updatePages();
     el.addEventListener('scroll', handleScroll, { passive: true });
@@ -216,7 +238,7 @@ const Products: React.FC = () => {
       el.removeEventListener('scroll', handleScroll);
       window.removeEventListener('resize', updatePages);
     };
-  }, [products.length, needsCarousel]);
+  }, [products.length, needsCarousel, updateScrollButtons]);
 
   const scrollToPage = (page: number) => {
     const el = scrollRef.current;
@@ -224,6 +246,13 @@ const Products: React.FC = () => {
     const cardWidth = 220 + 16;
     const visible = Math.max(1, Math.floor(el.clientWidth / cardWidth));
     el.scrollTo({ left: page * visible * cardWidth, behavior: 'smooth' });
+  };
+
+  const scrollByCards = (direction: -1 | 1) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const cardWidth = 220 + 16;
+    el.scrollBy({ left: direction * cardWidth * 2, behavior: 'smooth' });
   };
 
   useEffect(() => {
@@ -434,7 +463,6 @@ const Products: React.FC = () => {
       onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)'; }}
       onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'none'; }}
     >
-      {/* Image */}
       <div
         onClick={() => setSelectedProduct(product)}
         style={{ height: 160, background: C.surface, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', cursor: 'pointer', position: 'relative' }}
@@ -454,7 +482,6 @@ const Products: React.FC = () => {
         )}
       </div>
 
-      {/* Card body */}
       <div onClick={() => setSelectedProduct(product)} style={{ padding: '12px 14px', flex: 1, cursor: 'pointer' }}>
         {product.collection && (
           <div style={{ ...lbl, marginBottom: 4 }}>{product.collection}</div>
@@ -479,7 +506,6 @@ const Products: React.FC = () => {
         </div>
       </div>
 
-      {/* Insurance link at bottom */}
       <div style={{ padding: '0 14px 12px' }}>
         {!product.insurance?.active ? (
           <div
@@ -594,32 +620,9 @@ const Products: React.FC = () => {
           </div>
         </div>
 
-        {/* ══════ COLLECTION LABEL + CAROUSEL ARROWS ══════ */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-          <div style={sectionLabel}>your collection</div>
-          {needsCarousel && (
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button
-                onClick={() => scrollToPage(Math.max(0, scrollPage - 1))}
-                disabled={scrollPage === 0}
-                style={scrollPage === 0 ? arrowBtnDisabled : arrowBtnStyle}
-                onMouseEnter={e => { if (scrollPage !== 0) { e.currentTarget.style.background = C.surface; e.currentTarget.style.borderColor = C.mid; } }}
-                onMouseLeave={e => { e.currentTarget.style.background = C.pureWhite; e.currentTarget.style.borderColor = C.border; }}
-              >
-                ←
-              </button>
-              <button
-                onClick={() => scrollToPage(Math.min(totalPages - 1, scrollPage + 1))}
-                disabled={scrollPage >= totalPages - 1}
-                style={scrollPage >= totalPages - 1 ? arrowBtnDisabled : arrowBtnStyle}
-                onMouseEnter={e => { if (scrollPage < totalPages - 1) { e.currentTarget.style.background = C.surface; e.currentTarget.style.borderColor = C.mid; } }}
-                onMouseLeave={e => { e.currentTarget.style.background = C.pureWhite; e.currentTarget.style.borderColor = C.border; }}
-              >
-                →
-              </button>
-            </div>
-          )}
-        </div>
+        {/* ══════ COLLECTION LABEL ══════ */}
+        <div style={sectionLabel}>your collection</div>
+        <div style={{ height: 16 }} />
 
         {/* ══════ PRODUCT CARDS — grid or carousel ══════ */}
         {!needsCarousel ? (
@@ -634,7 +637,36 @@ const Products: React.FC = () => {
             ))}
           </div>
         ) : (
-          <>
+          /* ── Carousel with side arrows ── */
+          <div style={{ position: 'relative' }}>
+
+            {/* LEFT ARROW */}
+            {canScrollLeft && (
+              <button
+                onClick={() => scrollByCards(-1)}
+                style={{ ...sideArrowBase, left: -18 }}
+                onMouseEnter={e => { e.currentTarget.style.background = C.pureWhite; e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.22)'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.92)'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)'; }}
+                aria-label="Scroll left"
+              >
+                ‹
+              </button>
+            )}
+
+            {/* RIGHT ARROW */}
+            {canScrollRight && (
+              <button
+                onClick={() => scrollByCards(1)}
+                style={{ ...sideArrowBase, right: -18 }}
+                onMouseEnter={e => { e.currentTarget.style.background = C.pureWhite; e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.22)'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.92)'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)'; }}
+                aria-label="Scroll right"
+              >
+                ›
+              </button>
+            )}
+
+            {/* SCROLLABLE TRACK */}
             <div
               ref={scrollRef}
               style={{
@@ -651,6 +683,7 @@ const Products: React.FC = () => {
                 />
               ))}
             </div>
+
             {/* Pagination dots */}
             {totalPages > 1 && (
               <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginTop: 16 }}>
@@ -668,7 +701,7 @@ const Products: React.FC = () => {
                 ))}
               </div>
             )}
-          </>
+          </div>
         )}
 
         {/* ══════ BLACK FOOTER — "How to claim" — INSIDE the 1060 container ══════ */}
