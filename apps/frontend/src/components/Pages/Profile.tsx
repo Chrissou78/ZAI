@@ -30,78 +30,83 @@ interface UserStats {
   eventsAttended: number;
 }
 
+/* ── Helper to build formData from any user-shaped object ── */
+const toFormData = (src: any) => ({
+  givenName: src?.givenName || '',
+  familyName: src?.familyName || '',
+  email: src?.email || '',
+  phoneNumber: src?.phoneNumber || '',
+  address: src?.address || '',
+  city: src?.city || '',
+  country: src?.country || '',
+  postalCode: src?.postalCode || '',
+  birthdate: src?.birthdate || '',
+  isPublic: src?.isPublic || false,
+});
+
 const Profile: React.FC = () => {
   const { user, setUser } = useAppContext();
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [stats, setStats] = useState<UserStats>({ productsClaimed: 0, eventsAttended: 0 });
-  const [formData, setFormData] = useState({
-    givenName: '',
-    familyName: '',
-    email: '',
-    phoneNumber: '',
-    address: '',
-    city: '',
-    country: '',
-    postalCode: '',
-    birthdate: '',
-    isPublic: false,
-  });
+  const [formData, setFormData] = useState(toFormData(user));
 
-  /* ── Sync user into form ── */
+  /* ── Sync user into form + fetch fresh profile from DB ──
+     Merged into a single effect with cancellation guard.
+     1. Immediately populate from context (instant, no flash)
+     2. Then fetch /users/me and overwrite ONLY if the response
+        actually has data AND the effect hasn't been cancelled.
+  */
   useEffect(() => {
+    let cancelled = false;
+
+    // Step 1: instant populate from context
     if (user) {
-      setFormData({
-        givenName: user.givenName || '',
-        familyName: user.familyName || '',
-        email: user.email || '',
-        phoneNumber: user.phoneNumber || '',
-        address: user.address || '',
-        city: user.city || '',
-        country: user.country || '',
-        postalCode: user.postalCode || '',
-        birthdate: user.birthdate || '',
-        isPublic: user.isPublic || false,
-      });
+      setFormData(toFormData(user));
     }
-  }, [user]);
 
-  /* ── Fetch fresh profile from DB on mount ── */
-  useEffect(() => {
+    // Step 2: fetch fresh data from DB
     const fetchProfile = async () => {
       try {
         const res = await apiService.get('/users/me');
         const d = (res.data as any)?.data;
-        if (d) {
-          setFormData({
-            givenName: d.givenName || '',
-            familyName: d.familyName || '',
-            email: d.email || '',
-            phoneNumber: d.phoneNumber || '',
-            address: d.address || '',
-            city: d.city || '',
-            country: d.country || '',
-            postalCode: d.postalCode || '',
-            birthdate: d.birthdate || '',
-            isPublic: d.isPublic || false,
-          });
+        // Only overwrite if we got real data AND component is still mounted
+        if (d && !cancelled) {
+          // Merge: keep context values as fallback for any field the API didn't return
+          setFormData(prev => ({
+            givenName: d.givenName || prev.givenName,
+            familyName: d.familyName || prev.familyName,
+            email: d.email || prev.email,
+            phoneNumber: d.phoneNumber || prev.phoneNumber,
+            address: d.address || prev.address,
+            city: d.city || prev.city,
+            country: d.country || prev.country,
+            postalCode: d.postalCode || prev.postalCode,
+            birthdate: d.birthdate || prev.birthdate,
+            isPublic: d.isPublic ?? prev.isPublic,
+          }));
         }
       } catch {
-        /* fall back to context user */
+        /* fall back to context user — already populated in step 1 */
       }
     };
     fetchProfile();
-  }, []);
 
-   /* ── Fetch stats from dedicated endpoint ── */
+    return () => { cancelled = true; };
+  }, [user]);
+
+  /* ── Fetch stats from dedicated endpoint ── */
   useEffect(() => {
     if (!user?.id) return;
+    let cancelled = false;
     const fetchStats = async () => {
       try {
         const [prodRes, evtRes] = await Promise.all([
           apiService.get(`/products/user/${user.id}`).catch(() => ({ data: { success: true, data: [] } })),
           apiService.get('/events').catch(() => ({ data: { success: true, data: [] } })),
         ]);
+
+        if (cancelled) return;
 
         const prodData = prodRes.data as any;
         const products = prodData?.data || prodData?.products || [];
@@ -120,6 +125,7 @@ const Profile: React.FC = () => {
       }
     };
     fetchStats();
+    return () => { cancelled = true; };
   }, [user?.id]);
 
   /* ── Handlers ── */
@@ -149,13 +155,11 @@ const Profile: React.FC = () => {
       const data = res.data as any;
 
       if (data?.success) {
-        // Store the fresh JWT so phone number etc. survive page reload
         if (data.jwtToken) {
           localStorage.setItem('token', data.jwtToken);
           localStorage.setItem('zai_token', data.jwtToken);
         }
 
-        // Build the updated User object and set it directly (not as a callback)
         const updatedUser: typeof user = {
           ...user,
           givenName: formData.givenName,
@@ -186,18 +190,7 @@ const Profile: React.FC = () => {
 
   const handleCancel = () => {
     if (user) {
-      setFormData({
-        givenName: user.givenName || '',
-        familyName: user.familyName || '',
-        email: user.email || '',
-        phoneNumber: user.phoneNumber || '',
-        address: user.address || '',
-        city: user.city || '',
-        country: user.country || '',
-        postalCode: user.postalCode || '',
-        birthdate: user.birthdate || '',
-        isPublic: user.isPublic || false,
-      });
+      setFormData(toFormData(user));
     }
     setIsEditing(false);
   };
@@ -287,7 +280,6 @@ const Profile: React.FC = () => {
           </p>
         </div>
 
-        {/* ── Button: "Edit" when not editing, "Save Changes" when editing ── */}
         <button
           onClick={() => {
             if (isEditing) {
@@ -340,7 +332,6 @@ const Profile: React.FC = () => {
             alignItems: 'center',
           }}
         >
-          {/* Avatar */}
           <div
             style={{
               width: '80px',
@@ -361,7 +352,6 @@ const Profile: React.FC = () => {
             {initials}
           </div>
 
-          {/* Name */}
           <div style={{ fontSize: '16px', fontWeight: 400, color: C.black, marginBottom: '2px' }}>
             {firstName} {lastName}
           </div>
@@ -369,7 +359,6 @@ const Profile: React.FC = () => {
             @{(firstName + '.' + lastName).toLowerCase().replace(/\s+/g, '')}
           </div>
 
-          {/* Stats row */}
           <div
             style={{
               display: 'grid',
@@ -404,7 +393,6 @@ const Profile: React.FC = () => {
             </div>
           </div>
 
-          {/* Bullet list */}
           <div style={{ width: '100%' }}>
             {bulletItems.map((item, i) => (
               <div
@@ -449,7 +437,6 @@ const Profile: React.FC = () => {
             Personal Information
           </div>
 
-          {/* Form grid with 1px gap borders */}
           <div
             style={{
               display: 'flex',
@@ -459,7 +446,6 @@ const Profile: React.FC = () => {
               border: `1px solid ${C.border}`,
             }}
           >
-            {/* Row 1: First Name | Family Name */}
             <div
               style={{
                 display: 'grid',
@@ -484,7 +470,6 @@ const Profile: React.FC = () => {
               />
             </div>
 
-            {/* Row 2: Date of Birth | Phone Number */}
             <div
               style={{
                 display: 'grid',
@@ -511,7 +496,6 @@ const Profile: React.FC = () => {
               />
             </div>
 
-            {/* Row 3: Email Address (full width) */}
             <FieldCell
               label="Email Address"
               name="email"
@@ -521,7 +505,6 @@ const Profile: React.FC = () => {
               onChange={handleChange}
             />
 
-            {/* Row 4: Home Address */}
             {isEditing ? (
               <>
                 <FieldCell
@@ -573,7 +556,6 @@ const Profile: React.FC = () => {
             )}
           </div>
 
-          {/* Cancel button when editing */}
           {isEditing && (
             <div style={{ marginTop: '1.5rem' }}>
               <button
