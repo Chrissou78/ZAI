@@ -48,6 +48,11 @@ const lbl: React.CSSProperties = {
   color: C.muted, fontWeight: 500,
 };
 
+const sectionLabel: React.CSSProperties = {
+  fontSize: '11px', letterSpacing: '0.3em', textTransform: 'uppercase',
+  fontWeight: 600,
+};
+
 const EVENT_DOT_COLORS = ['#c8102e', '#f59e0b', '#2563eb', '#10b981', '#8b5cf6', '#ec4899'];
 
 // ─── Shimmer ───
@@ -296,7 +301,7 @@ const Events: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '48px 40px 80px', fontFamily: "'Inter',sans-serif" }}>
+      <div style={{ maxWidth: 1060, margin: '0 auto', padding: '48px 48px 80px', fontFamily: "'Inter',sans-serif" }}>
         <Sk w="120px" h="10px" s={{ marginBottom: 10 }} />
         <Sk w="320px" h="38px" s={{ marginBottom: 8 }} />
         <Sk w="400px" h="13px" s={{ marginBottom: 36 }} />
@@ -327,12 +332,14 @@ const Events: React.FC = () => {
   // ═══════════════════════════════
 
   return (
-    <div style={{ maxWidth: 1100, margin: '0 auto', padding: '48px 40px 80px', fontFamily: "'Inter',sans-serif", color: C.gray }}>
+    <div style={{ maxWidth: 1060, margin: '0 auto', padding: '48px 48px 80px', fontFamily: "'Inter',sans-serif", color: C.gray }}>
 
       {/* ══════ HEADER ══════ */}
-      <div style={{ marginBottom: 32 }}>
-        <div style={{ ...lbl, color: C.red, letterSpacing: '0.3em', marginBottom: 8, fontSize: '10px' }}>
-          UPCOMING EVENTS
+      <div style={{
+        marginBottom: '2.5rem', paddingBottom: '2rem', borderBottom: bdr,
+      }}>
+        <div style={{ ...sectionLabel, color: C.red, letterSpacing: '0.3em', marginBottom: 8, fontSize: '10px' }}>
+          experiences
         </div>
         <h1 style={{ fontSize: 'clamp(28px, 3.5vw, 44px)', fontWeight: 300, lineHeight: 1.1, margin: '0 0 8px', color: C.black }}>
           Exclusive zai experiences
@@ -348,7 +355,11 @@ const Events: React.FC = () => {
         </div>
       )}
 
-      {/* ══════ UPCOMING EVENTS CAROUSEL ══════ */}
+      {/* ══════ UPCOMING EVENTS ══════ */}
+      <div style={{ ...sectionLabel, color: C.black, marginBottom: 16, fontSize: '11px' }}>
+        upcoming events
+      </div>
+
       {upcomingEvents.length === 0 ? (
         <div style={{ padding: '48px 24px', textAlign: 'center', background: C.surface, border: bdr, marginBottom: 48, borderRadius: 8 }}>
           <div style={{ fontSize: '15px', fontWeight: 300, color: C.black, marginBottom: 4 }}>No upcoming events</div>
@@ -374,7 +385,6 @@ const Events: React.FC = () => {
                 }}
               >
                 {page.map((event, idx) => {
-                  // Determine if this is the last card in the visible row
                   const isLastInPage = idx === page.length - 1;
                   return (
                     <EventCard key={event.id} event={event} isLast={isLastInPage} />
@@ -388,7 +398,7 @@ const Events: React.FC = () => {
             ))}
           </div>
 
-          {/* Carousel dots — only show if more than 3 events */}
+          {/* Carousel dots */}
           {upcomingPages.length > 1 && (
             <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginTop: 16 }}>
               {upcomingPages.map((_, i) => (
@@ -408,41 +418,62 @@ const Events: React.FC = () => {
         </div>
       )}
 
-      {/* ══════ PAST EVENTS ATTENDED ══════ */}
-      {pastEvents.length > 0 && (
-        <div>
-          <div style={{ ...lbl, fontSize: '11px', letterSpacing: '0.25em', color: C.gray, fontWeight: 600, marginBottom: 16 }}>
-            PAST EVENTS ATTENDED
+      {/* ══════ PAST EVENTS — always visible ══════ */}
+      <div style={{ ...sectionLabel, color: C.black, marginBottom: 16, fontSize: '11px' }}>
+        past events
+      </div>
+
+      {pastEvents.length === 0 ? (
+        <div style={{
+          border: bdr, borderRadius: 6, overflow: 'hidden',
+        }}>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 14,
+            padding: '16px 20px', background: C.pureWhite,
+          }}>
+            <div style={{
+              width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
+              background: C.border,
+            }} />
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: '13px', fontWeight: 400, color: C.muted, fontStyle: 'italic' }}>
+                No past events yet
+              </div>
+              <div style={{ fontSize: '10px', color: C.border, marginTop: 3 }}>
+                Events you attend will appear here
+              </div>
+            </div>
           </div>
-          <div style={{ border: bdr, borderRadius: 6, overflow: 'hidden' }}>
-            {pastEvents.map((event, idx) => {
-              const d = parseDate(event.startDate || event.date);
-              return (
-                <div key={event.id} onClick={() => setSelectedEvent(event)}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 14,
-                    padding: '16px 20px',
-                    borderBottom: idx < pastEvents.length - 1 ? bdr : 'none',
-                    cursor: 'pointer', background: C.pureWhite, transition: 'background .15s',
-                  }}
-                  onMouseEnter={e => (e.currentTarget.style.background = C.surface)}
-                  onMouseLeave={e => (e.currentTarget.style.background = C.pureWhite)}>
-                  {/* Colored dot */}
-                  <div style={{
-                    width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
-                    background: EVENT_DOT_COLORS[idx % EVENT_DOT_COLORS.length],
-                  }} />
-                  {/* Event info */}
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: '13px', fontWeight: 500, color: C.black }}>{event.title}</div>
-                    <div style={{ fontSize: '10px', color: C.muted, marginTop: 3 }}>
-                      {d.short} · {event.location}
-                    </div>
+        </div>
+      ) : (
+        <div style={{ border: bdr, borderRadius: 6, overflow: 'hidden' }}>
+          {pastEvents.map((event, idx) => {
+            const d = parseDate(event.startDate || event.date);
+            return (
+              <div key={event.id} onClick={() => setSelectedEvent(event)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 14,
+                  padding: '16px 20px',
+                  borderBottom: idx < pastEvents.length - 1 ? bdr : 'none',
+                  cursor: 'pointer', background: C.pureWhite, transition: 'background .15s',
+                }}
+                onMouseEnter={e => (e.currentTarget.style.background = C.surface)}
+                onMouseLeave={e => (e.currentTarget.style.background = C.pureWhite)}>
+                {/* Colored dot */}
+                <div style={{
+                  width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
+                  background: EVENT_DOT_COLORS[idx % EVENT_DOT_COLORS.length],
+                }} />
+                {/* Event info */}
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: '13px', fontWeight: 500, color: C.black }}>{event.title}</div>
+                  <div style={{ fontSize: '10px', color: C.muted, marginTop: 3 }}>
+                    {d.short} · {event.location}
                   </div>
                 </div>
-              );
-            })}
-          </div>
+              </div>
+            );
+          })}
         </div>
       )}
 
