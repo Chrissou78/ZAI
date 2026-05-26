@@ -31,7 +31,7 @@ interface Product {
   tokenAddress?: string;
   tokenId?: string;
   symbol?: string;
-  rwaNam?: string;
+  rwaName?: string;
   chainId?: string | null;
   metadata?: Record<string, any>;
   insurance: InsuranceInfo;
@@ -49,9 +49,8 @@ interface ClaimableRwa {
   currency: string;
   collection: string;
   materials: string;
-  unclaimedCount: number;
   available: boolean;
-  nft: { id: string; secret: string } | null;
+  nft: { id: string; secret: string } | null; // kept for compat, always null with new mint endpoint
 }
 
 interface InsuranceFormData {
@@ -175,7 +174,7 @@ const Products: React.FC = () => {
     const updatePages = () => {
       const cardWidth = 220 + 1;
       const visible = Math.floor(el.clientWidth / cardWidth);
-      const totalCards = products.length + 1; // +1 for claim card
+      const totalCards = products.length + 1;
       const pages = Math.max(1, Math.ceil(totalCards / Math.max(1, visible)));
       setTotalPages(pages);
     };
@@ -234,7 +233,6 @@ const Products: React.FC = () => {
   /* ───── Background mint polling ───── */
 
   useEffect(() => {
-    // Clear any previous interval
     if (mintPollRef.current) {
       clearInterval(mintPollRef.current);
       mintPollRef.current = null;
@@ -252,23 +250,22 @@ const Products: React.FC = () => {
           const nftData = (pollRes.data as any)?.data;
 
           if (nftData?.isClaimed || nftData?.mintedTx) {
-            anyCompleted = true; // completed
+            anyCompleted = true;
           } else {
-            // Check timeout (5 min)
             if (Date.now() - mint.startedAt > 300000) {
               console.warn(`Mint timeout for ${mint.rwaName}`);
-              anyCompleted = true; // timed out, still refresh
+              anyCompleted = true;
             } else {
               stillPending.push(mint);
             }
           }
         } catch {
-          stillPending.push(mint); // keep polling on error
+          stillPending.push(mint);
         }
       }
 
       if (anyCompleted) {
-        fetchUserProducts(); // refresh the product list
+        fetchUserProducts();
       }
 
       setPendingMints(stillPending);
@@ -305,7 +302,7 @@ const Products: React.FC = () => {
     }
   };
 
-  /* ───── Claim flow (background minting) ───── */
+  /* ───── Claim flow (background minting via POST /rwa/{id}/mint) ───── */
 
   const openClaimModal = () => {
     setShowClaimModal(true);
@@ -316,27 +313,18 @@ const Products: React.FC = () => {
   };
 
   const handleClaim = async (rwa: ClaimableRwa) => {
-    if (!rwa.nft) {
-      return; // shouldn't happen if button is disabled
-    }
-
-    // Immediately close modal and start background minting
     setShowClaimModal(false);
 
     try {
       const response = await apiService.post('/products/claim-nft', {
         rwaId: rwa.rwaId,
-        nftId: rwa.nft.id,
-        secret: rwa.nft.secret,
-        smartContractAddress: rwa.smartContractAddress,
       });
 
       const payload = response.data as any;
       if (!payload?.success) throw new Error(payload?.error || 'Claim request failed');
 
-      const nftId: string = payload.nftId || rwa.nft.id;
+      const nftId: string = payload.nftId;
 
-      // Add to pending mints for background polling
       setPendingMints(prev => [...prev, {
         nftId,
         rwaName: rwa.name,
@@ -344,7 +332,6 @@ const Products: React.FC = () => {
       }]);
     } catch (err: any) {
       console.error('Claim failed:', err);
-      // Re-open modal with error
       setShowClaimModal(true);
       setClaimableError(err?.message || 'Claim failed. Please try again.');
     }
@@ -376,7 +363,7 @@ const Products: React.FC = () => {
       if (!payload?.success) throw new Error(payload?.error || 'Insurance activation failed');
       setInsuranceResult({ certificateId: payload.certificateId, transactionId: payload.transactionId });
       setInsuranceStep('success');
-      fetchUserProducts(); // refresh to show updated insurance status
+      fetchUserProducts();
     } catch (err: any) {
       console.error('Insurance activation error:', err);
       setInsuranceError(err?.response?.data?.error || err?.message || 'Failed to activate insurance');
@@ -399,9 +386,7 @@ const Products: React.FC = () => {
     return (
       <div style={{ padding: '48px 32px', fontFamily: C.font }}>
         <div style={{ maxWidth: 1200, margin: '0 auto' }}>
-          {/* Shimmer header */}
           <div style={{ height: 28, width: 200, background: C.surface, borderRadius: 4, marginBottom: 32, animation: 'zai-pulse 1.5s ease-in-out infinite' }} />
-          {/* Shimmer cards */}
           <div style={{ display: 'flex', gap: 16, overflow: 'hidden' }}>
             {[1, 2, 3].map(i => (
               <div key={i} style={{
@@ -457,11 +442,11 @@ const Products: React.FC = () => {
             <div style={{ flex: 1 }}>
               {pendingMints.length === 1 ? (
                 <span style={{ fontSize: 14, fontWeight: 500 }}>
-                  Minting "{pendingMints[0].rwaName}"… This may take a moment.
+                  Minting &ldquo;{pendingMints[0].rwaName}&rdquo;&hellip; This may take a moment.
                 </span>
               ) : (
                 <span style={{ fontSize: 14, fontWeight: 500 }}>
-                  Minting {pendingMints.length} products… This may take a moment.
+                  Minting {pendingMints.length} products&hellip; This may take a moment.
                 </span>
               )}
             </div>
@@ -474,7 +459,7 @@ const Products: React.FC = () => {
           style={{
             display: 'flex', gap: 16, overflowX: 'auto', paddingBottom: 8,
             scrollSnapType: 'x mandatory',
-            scrollbarWidth: 'none', /* Firefox */
+            scrollbarWidth: 'none',
           }}
         >
           {/* Claim-a-Product card */}
@@ -514,15 +499,13 @@ const Products: React.FC = () => {
               onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)'; }}
               onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'none'; }}
             >
-              {/* Image */}
               <div style={{ height: 160, background: C.surface, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
                 {product.image ? (
                   <img src={product.image} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 ) : (
-                  <span style={{ fontSize: 40, color: C.border }}>⬡</span>
+                  <span style={{ fontSize: 40, color: C.border }}>&#x2B21;</span>
                 )}
               </div>
-              {/* Info */}
               <div style={{ padding: '12px 14px' }}>
                 {product.collection && (
                   <div style={{ ...lbl, marginBottom: 4 }}>{product.collection}</div>
@@ -535,7 +518,6 @@ const Products: React.FC = () => {
                     {product.currency || 'CHF'} {product.price}
                   </div>
                 )}
-                {/* Insurance badge */}
                 <div style={{
                   display: 'inline-flex', alignItems: 'center', gap: 4,
                   padding: '3px 8px', borderRadius: 12,
@@ -589,7 +571,6 @@ const Products: React.FC = () => {
         {selectedProduct && (
           <Modal isOpen onClose={() => setSelectedProduct(null)} title={selectedProduct.name}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-              {/* Image */}
               {selectedProduct.image && (
                 <div
                   style={{ borderRadius: 8, overflow: 'hidden', cursor: 'zoom-in', maxHeight: 280 }}
@@ -599,19 +580,16 @@ const Products: React.FC = () => {
                 </div>
               )}
 
-              {/* Collection */}
               {selectedProduct.collection && (
                 <div style={lbl}>{selectedProduct.collection}</div>
               )}
 
-              {/* Description */}
               {selectedProduct.description && (
                 <p style={{ fontSize: 13, lineHeight: 1.6, color: C.mid, margin: 0 }}>
                   {selectedProduct.description}
                 </p>
               )}
 
-              {/* Specs grid */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 {selectedProduct.price && (
                   <div>
@@ -639,7 +617,6 @@ const Products: React.FC = () => {
                 )}
               </div>
 
-              {/* Insurance section */}
               <div style={{
                 padding: '14px 16px', borderRadius: 8, border: bdr,
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',
@@ -673,7 +650,7 @@ const Products: React.FC = () => {
           </Modal>
         )}
 
-        {/* ────────── CLAIM MODAL (simplified — list + error only) ────────── */}
+        {/* ────────── CLAIM MODAL ────────── */}
         {showClaimModal && (
           <Modal isOpen onClose={() => setShowClaimModal(false)} title="Claim a Product">
             <div style={{ minHeight: 200 }}>
@@ -684,7 +661,7 @@ const Products: React.FC = () => {
                     borderTopColor: C.red, borderRadius: '50%',
                     animation: 'zai-spin 0.8s linear infinite', marginBottom: 16,
                   }} />
-                  <span style={{ fontSize: 13, color: C.gray }}>Loading claimable products…</span>
+                  <span style={{ fontSize: 13, color: C.gray }}>Loading claimable products&hellip;</span>
                 </div>
               ) : claimableError ? (
                 <div style={{ textAlign: 'center', padding: 32 }}>
@@ -697,66 +674,70 @@ const Products: React.FC = () => {
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxHeight: 420, overflowY: 'auto' }}>
-                  {claimableRwas.map(rwa => (
-                    <div
-                      key={rwa.rwaId}
-                      style={{
-                        display: 'flex', gap: 14, padding: 12,
-                        border: bdr, borderRadius: 8,
-                        opacity: rwa.available ? 1 : 0.55,
-                        background: C.pureWhite,
-                      }}
-                    >
-                      {/* Thumbnail */}
-                      <div style={{
-                        width: 64, height: 64, borderRadius: 6, overflow: 'hidden',
-                        background: C.surface, flexShrink: 0,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      }}>
-                        {rwa.image ? (
-                          <img src={rwa.image} alt={rwa.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                        ) : (
-                          <span style={{ fontSize: 24, color: C.border }}>⬡</span>
-                        )}
-                      </div>
-
-                      {/* Info */}
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {rwa.name}
-                        </div>
-                        {rwa.collection && (
-                          <div style={{ fontSize: 11, color: C.gray, marginBottom: 4 }}>{rwa.collection}</div>
-                        )}
-                        <div style={{ fontSize: 12, color: C.mid }}>
-                          {rwa.available ? (
-                            <span style={{ color: C.green }}>{rwa.unclaimedCount} available</span>
+                  {claimableRwas.map(rwa => {
+                    const isMinting = pendingMints.some(m => m.rwaName === rwa.name);
+                    return (
+                      <div
+                        key={rwa.rwaId}
+                        style={{
+                          display: 'flex', gap: 14, padding: 12,
+                          border: bdr, borderRadius: 8,
+                          opacity: rwa.available ? 1 : 0.55,
+                          background: C.pureWhite,
+                        }}
+                      >
+                        {/* Thumbnail */}
+                        <div style={{
+                          width: 64, height: 64, borderRadius: 6, overflow: 'hidden',
+                          background: C.surface, flexShrink: 0,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}>
+                          {rwa.image ? (
+                            <img src={rwa.image} alt={rwa.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                           ) : (
-                            <span style={{ color: C.gray }}>Out of stock</span>
+                            <span style={{ fontSize: 24, color: C.border }}>&#x2B21;</span>
                           )}
-                          {rwa.price && <span style={{ marginLeft: 8 }}>{rwa.currency || 'CHF'} {rwa.price}</span>}
+                        </div>
+
+                        {/* Info */}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {rwa.name}
+                          </div>
+                          {rwa.collection && (
+                            <div style={{ fontSize: 11, color: C.gray, marginBottom: 4 }}>{rwa.collection}</div>
+                          )}
+                          <div style={{ fontSize: 12, color: C.mid }}>
+                            {rwa.available ? (
+                              <span style={{ color: C.green }}>Available</span>
+                            ) : (
+                              <span style={{ color: C.gray }}>Out of stock</span>
+                            )}
+                            {rwa.price && <span style={{ marginLeft: 8 }}>{rwa.currency || 'CHF'} {rwa.price}</span>}
+                          </div>
+                        </div>
+
+                        {/* Claim button */}
+                        <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                          <button
+                            disabled={!rwa.available || isMinting}
+                            onClick={() => handleClaim(rwa)}
+                            style={{
+                              padding: '8px 16px', fontSize: 12, fontWeight: 600,
+                              border: 'none', borderRadius: 6,
+                              cursor: rwa.available && !isMinting ? 'pointer' : 'default',
+                              background: rwa.available ? C.red : C.border,
+                              color: rwa.available ? C.pureWhite : C.gray,
+                              opacity: isMinting ? 0.5 : 1,
+                              fontFamily: C.font, letterSpacing: '0.05em',
+                            }}
+                          >
+                            {isMinting ? 'Minting\u2026' : rwa.available ? 'Claim' : 'Unavailable'}
+                          </button>
                         </div>
                       </div>
-
-                      {/* Claim button */}
-                      <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
-                        <button
-                          disabled={!rwa.available || pendingMints.some(m => m.rwaName === rwa.name)}
-                          onClick={() => handleClaim(rwa)}
-                          style={{
-                            padding: '8px 16px', fontSize: 12, fontWeight: 600,
-                            border: 'none', borderRadius: 6, cursor: rwa.available ? 'pointer' : 'default',
-                            background: rwa.available ? C.red : C.border,
-                            color: rwa.available ? C.pureWhite : C.gray,
-                            opacity: pendingMints.some(m => m.rwaName === rwa.name) ? 0.5 : 1,
-                            fontFamily: C.font, letterSpacing: '0.05em',
-                          }}
-                        >
-                          {pendingMints.some(m => m.rwaName === rwa.name) ? 'Minting…' : rwa.available ? 'Claim' : 'Unavailable'}
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -772,7 +753,6 @@ const Products: React.FC = () => {
                   Fill in the details below to activate insurance for <strong>{insuranceProduct.name}</strong>.
                 </p>
 
-                {/* Personal info */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                   <div>
                     <label style={labelStyle}>Salutation</label>
@@ -789,7 +769,7 @@ const Products: React.FC = () => {
                     <select value={insuranceForm.language} onChange={e => updateInsuranceField('language', e.target.value)} style={inputStyle}>
                       <option value="en">English</option>
                       <option value="de">Deutsch</option>
-                      <option value="fr">Français</option>
+                      <option value="fr">Fran&ccedil;ais</option>
                       <option value="it">Italiano</option>
                     </select>
                   </div>
@@ -837,7 +817,6 @@ const Products: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Device info */}
                 <div style={{ borderTop: bdr, paddingTop: 16, marginTop: 4 }}>
                   <div style={{ ...lbl, marginBottom: 12 }}>Device Information</div>
                 </div>
@@ -895,14 +874,14 @@ const Products: React.FC = () => {
                   borderTopColor: C.red, borderRadius: '50%',
                   animation: 'zai-spin 0.8s linear infinite', marginBottom: 16,
                 }} />
-                <span style={{ fontSize: 14, color: C.mid }}>Activating insurance…</span>
+                <span style={{ fontSize: 14, color: C.mid }}>Activating insurance&hellip;</span>
                 <span style={{ fontSize: 12, color: C.gray, marginTop: 8 }}>This may take a moment</span>
               </div>
             )}
 
             {insuranceStep === 'success' && insuranceResult && (
               <div style={{ textAlign: 'center', padding: 32 }}>
-                <div style={{ fontSize: 48, marginBottom: 12 }}>✓</div>
+                <div style={{ fontSize: 48, marginBottom: 12 }}>&#x2713;</div>
                 <p style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Insurance Activated!</p>
                 <div style={{ display: 'inline-flex', flexDirection: 'column', gap: 8, textAlign: 'left', padding: '16px 24px', background: C.surface, borderRadius: 8 }}>
                   <div><span style={lbl}>Certificate ID: </span><span style={{ fontFamily: 'monospace' }}>{insuranceResult.certificateId}</span></div>
@@ -916,7 +895,7 @@ const Products: React.FC = () => {
 
             {insuranceStep === 'error' && (
               <div style={{ textAlign: 'center', padding: 32 }}>
-                <div style={{ fontSize: 48, marginBottom: 12 }}>✕</div>
+                <div style={{ fontSize: 48, marginBottom: 12 }}>&#x2715;</div>
                 <p style={{ color: C.red, fontSize: 14, marginBottom: 16 }}>{insuranceError}</p>
                 <div style={{ display: 'flex', justifyContent: 'center', gap: 12 }}>
                   <Button onClick={() => setInsuranceStep('form')}>Try Again</Button>
