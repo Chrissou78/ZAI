@@ -50,7 +50,7 @@ interface ClaimableRwa {
   collection: string;
   materials: string;
   available: boolean;
-  nft: { id: string; secret: string } | null; // kept for compat, always null with new mint endpoint
+  nft: { id: string; secret: string } | null;
 }
 
 interface InsuranceFormData {
@@ -114,6 +114,10 @@ const lbl: React.CSSProperties = {
   fontSize: '10px', letterSpacing: '0.2em', textTransform: 'uppercase',
   color: C.gray, fontWeight: 500,
 };
+const sectionLabel: React.CSSProperties = {
+  fontSize: '11px', letterSpacing: '0.3em', textTransform: 'uppercase',
+  color: C.red, fontWeight: 500, fontFamily: C.font,
+};
 
 /* ───── Component ───── */
 
@@ -172,15 +176,15 @@ const Products: React.FC = () => {
     const el = scrollRef.current;
     if (!el) return;
     const updatePages = () => {
-      const cardWidth = 220 + 1;
-      const visible = Math.floor(el.clientWidth / cardWidth);
+      const cardWidth = 220 + 16;
+      const visible = Math.max(1, Math.floor(el.clientWidth / cardWidth));
       const totalCards = products.length + 1;
-      const pages = Math.max(1, Math.ceil(totalCards / Math.max(1, visible)));
+      const pages = Math.max(1, Math.ceil(totalCards / visible));
       setTotalPages(pages);
     };
     const handleScroll = () => {
-      const cardWidth = 220 + 1;
-      const visible = Math.floor(el.clientWidth / cardWidth);
+      const cardWidth = 220 + 16;
+      const visible = Math.max(1, Math.floor(el.clientWidth / cardWidth));
       const page = Math.round(el.scrollLeft / (visible * cardWidth));
       setScrollPage(page);
     };
@@ -196,8 +200,8 @@ const Products: React.FC = () => {
   const scrollToPage = (page: number) => {
     const el = scrollRef.current;
     if (!el) return;
-    const cardWidth = 220 + 1;
-    const visible = Math.floor(el.clientWidth / cardWidth);
+    const cardWidth = 220 + 16;
+    const visible = Math.max(1, Math.floor(el.clientWidth / cardWidth));
     el.scrollTo({ left: page * visible * cardWidth, behavior: 'smooth' });
   };
 
@@ -302,7 +306,7 @@ const Products: React.FC = () => {
     }
   };
 
-  /* ───── Claim flow (background minting via POST /rwa/{id}/mint) ───── */
+  /* ───── Claim flow ───── */
 
   const openClaimModal = () => {
     setShowClaimModal(true);
@@ -421,12 +425,40 @@ const Products: React.FC = () => {
     <div style={{ padding: '48px 32px', fontFamily: C.font, color: C.black }}>
       <div style={{ maxWidth: 1200, margin: '0 auto' }}>
 
-        {/* ── Header ── */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 }}>
-          <h1 style={{ fontSize: 22, fontWeight: 600, margin: 0 }}>My Products</h1>
+        {/* ══════ HEADER ══════ */}
+        <div style={{
+          display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
+          marginBottom: 32, paddingBottom: 24, borderBottom: bdr,
+        }}>
+          <div>
+            <div style={sectionLabel}>collection</div>
+            <h1 style={{
+              fontSize: 'clamp(24px, 3.5vw, 36px)', fontWeight: 300,
+              lineHeight: 1.15, margin: '6px 0 6px', color: C.black,
+            }}>
+              My Products
+            </h1>
+            <p style={{ color: C.gray, fontSize: '13px', margin: 0, maxWidth: 480 }}>
+              View and manage your claimed zai products, activate insurance, and track your collection.
+            </p>
+          </div>
+          <button
+            onClick={openClaimModal}
+            style={{
+              background: C.black, color: '#fff', border: 'none',
+              padding: '14px 28px', fontSize: '10px', letterSpacing: '0.2em',
+              textTransform: 'uppercase', cursor: 'pointer', fontFamily: C.font,
+              fontWeight: 500, transition: 'background 0.2s', whiteSpace: 'nowrap',
+              marginTop: '0.5rem',
+            }}
+            onMouseEnter={e => (e.currentTarget.style.background = '#1a1a1a')}
+            onMouseLeave={e => (e.currentTarget.style.background = C.black)}
+          >
+            + Claim Product
+          </button>
         </div>
 
-        {/* ── Pending Mints Banner ── */}
+        {/* ══════ PENDING MINTS BANNER ══════ */}
         {pendingMints.length > 0 && (
           <div style={{
             display: 'flex', alignItems: 'center', gap: 12,
@@ -453,7 +485,25 @@ const Products: React.FC = () => {
           </div>
         )}
 
-        {/* ── Product Carousel ── */}
+        {/* ══════ STATS BAR (before carousel) ══════ */}
+        <div style={{
+          display: 'grid', gridTemplateColumns: '1fr 1fr',
+          border: bdr, marginBottom: 32,
+        }}>
+          <div style={{ padding: '20px 24px', borderRight: bdr }}>
+            <div style={lbl}>Products Claimed</div>
+            <div style={{ fontSize: 28, fontWeight: 300, marginTop: 6, color: C.black }}>{totalClaimed}</div>
+          </div>
+          <div style={{ padding: '20px 24px' }}>
+            <div style={lbl}>Active Insurances</div>
+            <div style={{ fontSize: 28, fontWeight: 300, marginTop: 6, color: C.black }}>{activeInsurances}</div>
+          </div>
+        </div>
+
+        {/* ══════ COLLECTION SECTION LABEL ══════ */}
+        <div style={{ ...sectionLabel, marginBottom: 16 }}>your collection</div>
+
+        {/* ══════ PRODUCT CAROUSEL ══════ */}
         <div
           ref={scrollRef}
           style={{
@@ -533,7 +583,7 @@ const Products: React.FC = () => {
           ))}
         </div>
 
-        {/* ── Carousel dots ── */}
+        {/* ══════ CAROUSEL DOTS ══════ */}
         {totalPages > 1 && (
           <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginTop: 16 }}>
             {Array.from({ length: totalPages }).map((_, i) => (
@@ -551,23 +601,58 @@ const Products: React.FC = () => {
           </div>
         )}
 
-        {/* ── Stats bar ── */}
+        {/* ══════ PRODUCT INFO ROW (selected product quick-view) ══════ */}
+        {selectedProduct === null && products.length > 0 && (
+          <div style={{
+            display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+            gap: '1px', background: C.border, border: bdr, marginTop: 32,
+          }}>
+            {products.slice(0, 4).map(p => (
+              <div key={p.id} style={{
+                background: C.pureWhite, padding: '20px 24px', cursor: 'pointer',
+              }} onClick={() => setSelectedProduct(p)}>
+                <div style={lbl}>{p.collection || 'Product'}</div>
+                <div style={{ fontSize: 14, fontWeight: 500, marginTop: 6 }}>{p.name}</div>
+                {p.price && (
+                  <div style={{ fontSize: 13, color: C.gray, marginTop: 4 }}>{p.currency || 'CHF'} {p.price}</div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ══════ REGISTER YOUR ZAI PRODUCT ══════ */}
         <div style={{
-          display: 'flex', gap: 24, marginTop: 32, padding: '16px 20px',
-          background: C.surface, borderRadius: 8,
+          marginTop: 48, padding: '40px 32px', border: bdr,
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          gap: 32, flexWrap: 'wrap',
         }}>
-          <div>
-            <div style={lbl}>Products Claimed</div>
-            <div style={{ fontSize: 20, fontWeight: 700, marginTop: 4 }}>{totalClaimed}</div>
+          <div style={{ flex: 1, minWidth: 240 }}>
+            <div style={sectionLabel}>register</div>
+            <h2 style={{ fontSize: 22, fontWeight: 300, margin: '8px 0 8px', color: C.black }}>
+              Register your zai product
+            </h2>
+            <p style={{ fontSize: 13, color: C.gray, margin: 0, maxWidth: 420, lineHeight: 1.6 }}>
+              Have a zai product with an NFC tag? Claim it here to unlock your digital certificate,
+              insurance eligibility, and exclusive experience club benefits.
+            </p>
           </div>
-          <div style={{ width: 1, background: C.border }} />
-          <div>
-            <div style={lbl}>Active Insurances</div>
-            <div style={{ fontSize: 20, fontWeight: 700, marginTop: 4 }}>{activeInsurances}</div>
-          </div>
+          <button
+            onClick={openClaimModal}
+            style={{
+              background: C.red, color: '#fff', border: 'none',
+              padding: '16px 32px', fontSize: '10px', letterSpacing: '0.2em',
+              textTransform: 'uppercase', cursor: 'pointer', fontFamily: C.font,
+              fontWeight: 500, transition: 'background 0.2s', whiteSpace: 'nowrap',
+            }}
+            onMouseEnter={e => (e.currentTarget.style.background = C.burgundy)}
+            onMouseLeave={e => (e.currentTarget.style.background = C.red)}
+          >
+            Claim with NFC
+          </button>
         </div>
 
-        {/* ────────── PRODUCT DETAIL MODAL ────────── */}
+        {/* ════════════ PRODUCT DETAIL MODAL ════════════ */}
         {selectedProduct && (
           <Modal isOpen onClose={() => setSelectedProduct(null)} title={selectedProduct.name}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -650,7 +735,7 @@ const Products: React.FC = () => {
           </Modal>
         )}
 
-        {/* ────────── CLAIM MODAL ────────── */}
+        {/* ════════════ CLAIM MODAL ════════════ */}
         {showClaimModal && (
           <Modal isOpen onClose={() => setShowClaimModal(false)} title="Claim a Product">
             <div style={{ minHeight: 200 }}>
@@ -686,7 +771,6 @@ const Products: React.FC = () => {
                           background: C.pureWhite,
                         }}
                       >
-                        {/* Thumbnail */}
                         <div style={{
                           width: 64, height: 64, borderRadius: 6, overflow: 'hidden',
                           background: C.surface, flexShrink: 0,
@@ -699,7 +783,6 @@ const Products: React.FC = () => {
                           )}
                         </div>
 
-                        {/* Info */}
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {rwa.name}
@@ -717,7 +800,6 @@ const Products: React.FC = () => {
                           </div>
                         </div>
 
-                        {/* Claim button */}
                         <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
                           <button
                             disabled={!rwa.available || isMinting}
@@ -744,7 +826,7 @@ const Products: React.FC = () => {
           </Modal>
         )}
 
-        {/* ────────── INSURANCE MODAL ────────── */}
+        {/* ════════════ INSURANCE MODAL ════════════ */}
         {showInsuranceModal && insuranceProduct && (
           <Modal isOpen onClose={() => setShowInsuranceModal(false)} title="Activate Insurance">
             {insuranceStep === 'form' && (
@@ -906,7 +988,7 @@ const Products: React.FC = () => {
           </Modal>
         )}
 
-        {/* ────────── ZOOM IMAGE MODAL ────────── */}
+        {/* ════════════ ZOOM IMAGE MODAL ════════════ */}
         {zoomImage && (
           <Modal isOpen onClose={() => setZoomImage(null)} title="">
             <div style={{ display: 'flex', justifyContent: 'center' }}>
