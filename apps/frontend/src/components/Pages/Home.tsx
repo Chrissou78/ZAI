@@ -65,7 +65,7 @@ const Home: React.FC = () => {
         {/* Hero Content */}
         <div style={{ position: 'relative', zIndex: 2, maxWidth: '700px' }}>
           <div style={{ fontSize: '13px', letterSpacing: '0.4em', color: '#fdfdfd', marginBottom: '1.5rem' }}>
-            zai experience club
+            zai Experience Club
           </div>
           <h1 style={{ fontSize: 'clamp(52px, 6.5vw, 96px)', fontWeight: 200, lineHeight: 1.05, letterSpacing: '-0.02em', marginBottom: '1.5rem', color: '#fff' }}>
             Your world.<br />Beyond the<br /><span style={{ color: '#f5f4f0' }}>mountain.</span>
