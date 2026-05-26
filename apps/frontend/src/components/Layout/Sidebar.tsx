@@ -96,11 +96,11 @@ const Sidebar: React.FC = () => {
           <path d="M106.279 3.39661C106.279 0.887328 109.978 0.887328 109.978 3.39661C109.978 5.90589 106.279 5.86591 106.279 3.39661ZM108.129 31.2687C107.339 31.2687 106.679 30.6088 106.679 29.8191V13.7437H100.161C99.2413 13.7437 98.5715 13.3438 98.4015 12.644C98.1316 11.5443 98.9713 10.7545 99.7211 10.7545C99.7211 10.7545 107.739 10.7145 108.129 10.7145C108.918 10.7145 109.578 11.4143 109.578 12.2141V29.8291C109.578 30.6188 108.918 31.2786 108.129 31.2786" fill="#f5f4f0"/>
         </svg>
         <div style={{
-          fontSize: '11px',
+          fontSize: '9px',
           letterSpacing: '0.35em',
           textTransform: 'uppercase',
           color: '#6a6a6a',
-          marginTop: '4px',
+          marginTop: '2px',
         }}>
           experience club
         </div>
@@ -109,7 +109,7 @@ const Sidebar: React.FC = () => {
       {/* User Profile — kept, but role/member label removed, avatar icon white not gold */}
       {user && (
         <div style={{
-          padding: '1rem 1.5rem',
+          padding: '0.6rem 1.5rem',
           borderBottom: '1px solid #2a2a2a',
           display: 'flex',
           alignItems: 'center',
@@ -130,16 +130,16 @@ const Sidebar: React.FC = () => {
       )}
 
       {/* Navigation */}
-      <div style={{ flex: 1, padding: '1.5rem 0' }}>
+      <div style={{ flex: 1, padding: '0.75rem 0' }}>
         {navSections.map((section, idx) => (
-          <div key={idx} style={{ marginBottom: idx < navSections.length - 1 ? '1.5rem' : '0' }}>
+          <div key={idx} style={{ marginBottom: idx < navSections.length - 1 ? '0.75rem' : '0' }}>
             <div style={{
-              padding: '0.5rem 1.5rem',
+              padding: '0.25rem 1.5rem',
               fontSize: '10px',
               letterSpacing: '0.3em',
               textTransform: 'uppercase',
               color: '#555',
-              marginBottom: '0.75rem',
+              marginBottom: '0.3rem',
             }}>
               {section.section}
             </div>
@@ -153,7 +153,7 @@ const Sidebar: React.FC = () => {
                     display: 'flex',
                     alignItems: 'center',
                     gap: '0.85rem',
-                    padding: '0.75rem 1.5rem',
+                    padding: '0.5rem 1.5rem',
                     cursor: 'pointer',
                     transition: 'all 0.25s ease',
                     color: active ? '#f5f4f0' : '#6a6a6a',
