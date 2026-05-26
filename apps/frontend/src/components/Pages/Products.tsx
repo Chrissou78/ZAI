@@ -128,6 +128,9 @@ const formatClaimedDate = (d?: string | null): string => {
   return dt.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
 };
 
+/* ── How many product cards fit before we need a carousel ── */
+const MAX_GRID_CARDS = 3; // product cards (+ 1 claim card = 4 total fit in the row)
+
 /* ───── Component ───── */
 
 const Products: React.FC = () => {
@@ -166,6 +169,9 @@ const Products: React.FC = () => {
 
   const [zoomImage, setZoomImage] = useState<{ src: string; alt: string } | null>(null);
 
+  /* ── CHANGED: detect carousel vs grid mode ── */
+  const needsCarousel = products.length > MAX_GRID_CARDS;
+
   /* ───── Inject keyframes ───── */
   useEffect(() => {
     const id = 'zai-spin-keyframe';
@@ -180,8 +186,9 @@ const Products: React.FC = () => {
     }
   }, []);
 
-  /* ───── Carousel scroll tracking ───── */
+  /* ───── Carousel scroll tracking (only active when needsCarousel) ───── */
   useEffect(() => {
+    if (!needsCarousel) return;
     const el = scrollRef.current;
     if (!el) return;
     const updatePages = () => {
@@ -204,7 +211,7 @@ const Products: React.FC = () => {
       el.removeEventListener('scroll', handleScroll);
       window.removeEventListener('resize', updatePages);
     };
-  }, [products.length]);
+  }, [products.length, needsCarousel]);
 
   const scrollToPage = (page: number) => {
     const el = scrollRef.current;
@@ -403,7 +410,7 @@ const Products: React.FC = () => {
           <div style={{ display: 'flex', gap: 16, overflow: 'hidden' }}>
             {[1, 2, 3].map(i => (
               <div key={i} style={{
-                minWidth: 220, height: 300, borderRadius: 8, background: C.surface,
+                flex: '1 1 0%', height: 300, borderRadius: 8, background: C.surface,
                 animation: 'zai-pulse 1.5s ease-in-out infinite',
                 animationDelay: `${i * 0.2}s`,
               }} />
@@ -427,6 +434,77 @@ const Products: React.FC = () => {
       </div>
     );
   }
+
+  /* ─── Shared card component for both grid and carousel modes ─── */
+  const ClaimCard = ({ style: extraStyle }: { style?: React.CSSProperties }) => (
+    <div
+      onClick={openClaimModal}
+      style={{
+        height: 300,
+        border: `2px dashed ${C.border}`, borderRadius: 8,
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        cursor: 'pointer',
+        transition: 'border-color 0.2s, background 0.2s',
+        ...extraStyle,
+      }}
+      onMouseEnter={e => { e.currentTarget.style.borderColor = C.red; e.currentTarget.style.background = C.surface; }}
+      onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.background = 'transparent'; }}
+    >
+      <div style={{
+        width: 48, height: 48, borderRadius: '50%', border: `2px solid ${C.red}`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12,
+      }}>
+        <span style={{ fontSize: 24, color: C.red, lineHeight: 1 }}>+</span>
+      </div>
+      <span style={{ fontSize: 13, fontWeight: 600, color: C.mid }}>Claim a Product</span>
+      <span style={{ fontSize: 11, color: C.gray, marginTop: 4 }}>Redeem your NFC tag</span>
+    </div>
+  );
+
+  const ProductCard = ({ product, style: extraStyle }: { product: Product; style?: React.CSSProperties }) => (
+    <div
+      onClick={() => setSelectedProduct(product)}
+      style={{
+        borderRadius: 8, border: bdr, overflow: 'hidden', cursor: 'pointer',
+        background: C.pureWhite, transition: 'transform 0.2s, box-shadow 0.2s',
+        display: 'flex', flexDirection: 'column',
+        ...extraStyle,
+      }}
+      onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)'; }}
+      onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'none'; }}
+    >
+      <div style={{ height: 160, background: C.surface, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+        {product.image ? (
+          <img src={product.image} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        ) : (
+          <span style={{ fontSize: 40, color: C.border }}>&#x2B21;</span>
+        )}
+      </div>
+      <div style={{ padding: '12px 14px', flex: 1 }}>
+        {product.collection && (
+          <div style={{ ...lbl, marginBottom: 4 }}>{product.collection}</div>
+        )}
+        <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 6, lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {product.name}
+        </div>
+        {product.price && (
+          <div style={{ fontSize: 13, color: C.mid, marginBottom: 8 }}>
+            {product.currency || 'CHF'} {product.price}
+          </div>
+        )}
+        <div style={{
+          display: 'inline-flex', alignItems: 'center', gap: 4,
+          padding: '3px 8px', borderRadius: 12,
+          fontSize: 10, fontWeight: 600, letterSpacing: '0.05em',
+          background: product.insurance?.active ? '#e8f5e9' : C.surface,
+          color: product.insurance?.active ? C.green : C.gray,
+        }}>
+          <span style={{ width: 6, height: 6, borderRadius: '50%', background: product.insurance?.active ? C.green : C.gray }} />
+          {product.insurance?.active ? 'INSURED' : 'NOT INSURED'}
+        </div>
+      </div>
+    </div>
+  );
 
   /* ───── Render ───── */
 
@@ -512,102 +590,58 @@ const Products: React.FC = () => {
         {/* ══════ COLLECTION LABEL ══════ */}
         <div style={{ ...sectionLabel, marginBottom: 16 }}>your collection</div>
 
-        {/* ══════ PRODUCT CAROUSEL ══════ */}
-        <div
-          ref={scrollRef}
-          style={{
-            display: 'flex', gap: 16, overflowX: 'auto', paddingBottom: 8,
-            scrollSnapType: 'x mandatory',
-            scrollbarWidth: 'none',
-          }}
-        >
-          {/* Claim-a-Product card */}
-          <div
-            onClick={openClaimModal}
-            style={{
-              minWidth: 220, maxWidth: 220, height: 300,
-              border: `2px dashed ${C.border}`, borderRadius: 8,
-              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-              cursor: 'pointer', scrollSnapAlign: 'start',
-              transition: 'border-color 0.2s, background 0.2s',
-            }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = C.red; e.currentTarget.style.background = C.surface; }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.background = 'transparent'; }}
-          >
-            <div style={{
-              width: 48, height: 48, borderRadius: '50%', border: `2px solid ${C.red}`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12,
-            }}>
-              <span style={{ fontSize: 24, color: C.red, lineHeight: 1 }}>+</span>
-            </div>
-            <span style={{ fontSize: 13, fontWeight: 600, color: C.mid }}>Claim a Product</span>
-            <span style={{ fontSize: 11, color: C.gray, marginTop: 4 }}>Redeem your NFC tag</span>
-          </div>
-
-          {/* Product cards */}
-          {products.map(product => (
-            <div
-              key={product.id}
-              onClick={() => setSelectedProduct(product)}
-              style={{
-                minWidth: 220, maxWidth: 220, borderRadius: 8,
-                border: bdr, overflow: 'hidden', cursor: 'pointer',
-                scrollSnapAlign: 'start', background: C.pureWhite,
-                transition: 'transform 0.2s, box-shadow 0.2s',
-              }}
-              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)'; }}
-              onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'none'; }}
-            >
-              <div style={{ height: 160, background: C.surface, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                {product.image ? (
-                  <img src={product.image} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                ) : (
-                  <span style={{ fontSize: 40, color: C.border }}>&#x2B21;</span>
-                )}
-              </div>
-              <div style={{ padding: '12px 14px' }}>
-                {product.collection && (
-                  <div style={{ ...lbl, marginBottom: 4 }}>{product.collection}</div>
-                )}
-                <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 6, lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {product.name}
-                </div>
-                {product.price && (
-                  <div style={{ fontSize: 13, color: C.mid, marginBottom: 8 }}>
-                    {product.currency || 'CHF'} {product.price}
-                  </div>
-                )}
-                <div style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 4,
-                  padding: '3px 8px', borderRadius: 12,
-                  fontSize: 10, fontWeight: 600, letterSpacing: '0.05em',
-                  background: product.insurance?.active ? '#e8f5e9' : C.surface,
-                  color: product.insurance?.active ? C.green : C.gray,
-                }}>
-                  <span style={{ width: 6, height: 6, borderRadius: '50%', background: product.insurance?.active ? C.green : C.gray }} />
-                  {product.insurance?.active ? 'INSURED' : 'NOT INSURED'}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* ══════ CAROUSEL DOTS ══════ */}
-        {totalPages > 1 && (
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginTop: 16 }}>
-            {Array.from({ length: totalPages }).map((_, i) => (
-              <button
-                key={i}
-                onClick={() => scrollToPage(i)}
-                style={{
-                  width: scrollPage === i ? 24 : 8, height: 8,
-                  borderRadius: 4, border: 'none', cursor: 'pointer',
-                  background: scrollPage === i ? C.red : C.border,
-                  transition: 'all 0.3s',
-                }}
-              />
+        {/* ══════ PRODUCT CARDS — grid or carousel ══════ */}
+        {!needsCarousel ? (
+          /* ── CHANGED: ≤3 products → stretch cards to fill the row ── */
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: `repeat(${products.length + 1}, 1fr)`,
+            gap: 16,
+          }}>
+            <ClaimCard />
+            {products.map(product => (
+              <ProductCard key={product.id} product={product} />
             ))}
           </div>
+        ) : (
+          /* ── >3 products → scrollable carousel ── */
+          <>
+            <div
+              ref={scrollRef}
+              style={{
+                display: 'flex', gap: 16, overflowX: 'auto', paddingBottom: 8,
+                scrollSnapType: 'x mandatory',
+                scrollbarWidth: 'none',
+              }}
+            >
+              <ClaimCard style={{ minWidth: 220, maxWidth: 220, scrollSnapAlign: 'start', flexShrink: 0 }} />
+              {products.map(product => (
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  style={{ minWidth: 220, maxWidth: 220, scrollSnapAlign: 'start', flexShrink: 0 }}
+                />
+              ))}
+            </div>
+
+            {/* Carousel dots */}
+            {totalPages > 1 && (
+              <div style={{ display: 'flex', justifyContent: 'center', gap: 6, marginTop: 16 }}>
+                {Array.from({ length: totalPages }).map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => scrollToPage(i)}
+                    style={{
+                      width: scrollPage === i ? 24 : 8, height: 8,
+                      borderRadius: 4, border: 'none', cursor: 'pointer',
+                      background: scrollPage === i ? C.red : C.border,
+                      transition: 'all 0.3s',
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+          </>
         )}
 
         {/* ══════ PRODUCT INFO ROW ══════ */}

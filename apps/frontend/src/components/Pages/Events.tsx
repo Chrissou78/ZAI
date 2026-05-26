@@ -39,6 +39,7 @@ const C = {
   black: '#0a0a0a', white: '#f5f4f0', red: '#c8102e', burgundy: '#7D1E2C',
   gray: '#1a1a1a', mid: '#2e2e2e', muted: '#6a6a6a', border: '#e0ddd6',
   borderDark: '#2a2a2a', surface: '#f0ede6', surface2: '#e8e5de', pureWhite: '#ffffff',
+  cardBody: '#f7f7f5',
 };
 
 const bdr = `1px solid ${C.border}`;
@@ -186,6 +187,9 @@ const Events: React.FC = () => {
   const upcomingEvents = useMemo(() => events.filter(e => e.status === 'upcoming'), [events]);
   const pastEvents = useMemo(() => events.filter(e => e.status === 'past'), [events]);
 
+  /* ── CHANGED: detect whether we need a carousel ── */
+  const needsCarousel = upcomingEvents.length > 3;
+
   const handleRegister = async () => {
     if (selectedEvent && user?.id) {
       setRegistering(true);
@@ -215,13 +219,15 @@ const Events: React.FC = () => {
   };
 
   // ─── Event Card ───
-  const EventCard = ({ event, isLast }: { event: Event; isLast: boolean }) => {
+  // CHANGED: accepts `stretch` prop — when true, card uses flex:1 to fill available width
+  const EventCard = ({ event, isLast, stretch }: { event: Event; isLast: boolean; stretch?: boolean }) => {
     const d = parseDate(event.startDate || event.date);
     return (
       <div
         onClick={() => setSelectedEvent(event)}
         style={{
-          flex: '0 0 calc(100% / 3)',
+          flex: stretch ? '1 1 0%' : '0 0 calc(100% / 3)',
+          minWidth: 0,
           background: C.pureWhite, cursor: 'pointer', overflow: 'hidden',
           display: 'flex', flexDirection: 'column',
           borderRight: isLast ? 'none' : bdr,
@@ -267,8 +273,8 @@ const Events: React.FC = () => {
           )}
         </div>
 
-        {/* Card body */}
-        <div style={{ padding: '18px 20px', flex: 1, display: 'flex', flexDirection: 'column' }}>
+        {/* Card body — CHANGED: light grey background */}
+        <div style={{ padding: '18px 20px', flex: 1, display: 'flex', flexDirection: 'column', background: C.cardBody }}>
           <div style={{
             fontSize: '9px', letterSpacing: '0.25em', textTransform: 'uppercase',
             color: getTagColor(event.tag), marginBottom: 8, fontWeight: 600,
@@ -307,7 +313,7 @@ const Events: React.FC = () => {
         <Sk w="400px" h="13px" s={{ marginBottom: 36 }} />
         <div style={{ display: 'flex', border: bdr, borderRadius: 8, overflow: 'hidden' }}>
           {[0,1,2].map(i => (
-            <div key={i} style={{ flex: '0 0 calc(100% / 3)', borderRight: i < 2 ? bdr : 'none' }}>
+            <div key={i} style={{ flex: '1 1 0%', borderRight: i < 2 ? bdr : 'none' }}>
               <div style={{ ...shimmer, width: '100%', height: 160 }} />
               <div style={{ padding: 20 }}>
                 <Sk w="60%" h="10px" s={{ marginBottom: 8 }} />
@@ -321,7 +327,7 @@ const Events: React.FC = () => {
     );
   }
 
-  // ─── Group upcoming into pages of 3 ───
+  // ─── Group upcoming into pages of 3 (only used for carousel mode) ───
   const upcomingPages: Event[][] = [];
   for (let i = 0; i < upcomingEvents.length; i += 3) {
     upcomingPages.push(upcomingEvents.slice(i, i + 3));
@@ -365,13 +371,29 @@ const Events: React.FC = () => {
           <div style={{ fontSize: '15px', fontWeight: 300, color: C.black, marginBottom: 4 }}>No upcoming events</div>
           <p style={{ color: C.muted, fontSize: '12px', margin: 0 }}>Check back soon for new experiences.</p>
         </div>
-      ) : (
+      ) : !needsCarousel ? (
+        /* ── CHANGED: ≤3 events → stretch to fill, no carousel ── */
         <div style={{ marginBottom: 48 }}>
-          {/* Carousel container */}
+          <div style={{
+            display: 'flex', border: bdr, borderRadius: 8, overflow: 'hidden',
+          }}>
+            {upcomingEvents.map((event, idx) => (
+              <EventCard
+                key={event.id}
+                event={event}
+                isLast={idx === upcomingEvents.length - 1}
+                stretch
+              />
+            ))}
+          </div>
+        </div>
+      ) : (
+        /* ── >3 events → carousel as before ── */
+        <div style={{ marginBottom: 48 }}>
           <div
             ref={scrollRef}
             style={{
-              display: 'flex', overflow: 'hidden', overflowX: upcomingEvents.length > 3 ? 'auto' : 'hidden',
+              display: 'flex', overflow: 'hidden', overflowX: 'auto',
               border: bdr, borderRadius: 8,
               scrollSnapType: 'x mandatory',
               scrollbarWidth: 'none',
@@ -392,7 +414,7 @@ const Events: React.FC = () => {
                 })}
                 {/* Fill remaining slots if page has <3 cards */}
                 {page.length < 3 && Array.from({ length: 3 - page.length }).map((_, i) => (
-                  <div key={`empty-${i}`} style={{ flex: '0 0 calc(100% / 3)', background: C.pureWhite }} />
+                  <div key={`empty-${i}`} style={{ flex: '0 0 calc(100% / 3)', background: C.cardBody }} />
                 ))}
               </div>
             ))}
@@ -459,12 +481,10 @@ const Events: React.FC = () => {
                 }}
                 onMouseEnter={e => (e.currentTarget.style.background = C.surface)}
                 onMouseLeave={e => (e.currentTarget.style.background = C.pureWhite)}>
-                {/* Colored dot */}
                 <div style={{
                   width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
                   background: EVENT_DOT_COLORS[idx % EVENT_DOT_COLORS.length],
                 }} />
-                {/* Event info */}
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: '13px', fontWeight: 500, color: C.black }}>{event.title}</div>
                   <div style={{ fontSize: '10px', color: C.muted, marginTop: 3 }}>
@@ -498,52 +518,30 @@ const Events: React.FC = () => {
               </div>
             )}
 
-            <div style={{ padding: '28px 32px' }}>
-              {/* Tag */}
+            {/* Content */}
+            <div style={{ padding: '28px 32px 32px' }}>
               <div style={{
-                fontSize: '10px', letterSpacing: '0.25em', textTransform: 'uppercase',
-                color: getTagColor(selectedEvent.tag), marginBottom: 8, fontWeight: 600,
+                fontSize: '9px', letterSpacing: '0.25em', textTransform: 'uppercase',
+                color: getTagColor(selectedEvent.tag), marginBottom: 6, fontWeight: 600,
               }}>
                 {getTagLabel(selectedEvent.tag)}
               </div>
 
-              <h2 style={{ fontSize: '24px', fontWeight: 300, margin: '0 0 12px', color: C.black }}>
+              <h2 style={{ fontSize: 22, fontWeight: 400, margin: '0 0 12px', color: C.black, lineHeight: 1.3 }}>
                 {selectedEvent.title}
               </h2>
 
-              {/* Meta */}
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, fontSize: '12px', color: C.muted, marginBottom: 20 }}>
-                <span>📅 {parseDate(selectedEvent.startDate || selectedEvent.date).full}</span>
-                {selectedEvent.endDate && selectedEvent.endDate !== (selectedEvent.startDate || selectedEvent.date) && (
-                  <span>→ {new Date(selectedEvent.endDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</span>
-                )}
-                <span>📍 {selectedEvent.location}</span>
-                {selectedEvent.totalAttendees !== undefined && (
-                  <span>👥 {selectedEvent.totalAttendees}{selectedEvent.maxAttendees ? `/${selectedEvent.maxAttendees}` : ''}</span>
-                )}
+              <div style={{ display: 'flex', gap: 24, marginBottom: 20, flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ color: C.red, fontSize: '8px' }}>●</span>
+                  <span style={{ fontSize: 12, color: C.muted }}>
+                    {parseDate(selectedEvent.startDate || selectedEvent.date).full}
+                  </span>
+                </div>
+                <div style={{ fontSize: 12, color: C.muted }}>{selectedEvent.location}</div>
               </div>
 
-              {/* Price */}
-              {selectedEvent.price !== undefined && (
-                <div style={{ padding: '10px 14px', background: C.surface, border: bdr, marginBottom: 20, fontSize: '13px', display: 'flex', alignItems: 'center', gap: 10, borderRadius: 5 }}>
-                  {selectedEvent.price === 0 ? (
-                    <span style={{ color: '#2a9d4e', fontWeight: 600 }}>Free Event</span>
-                  ) : (
-                    <>
-                      <span style={{ fontWeight: 600 }}>{selectedEvent.price} {selectedEvent.currency || 'EUR'}</span>
-                      {selectedEvent.discountPrice != null && (
-                        <span style={{ color: C.red, fontSize: '11px' }}>
-                          Discount: {selectedEvent.discountPrice} {selectedEvent.currency || 'EUR'}
-                          {selectedEvent.discountPercentage ? ` (-${selectedEvent.discountPercentage}%)` : ''}
-                        </span>
-                      )}
-                    </>
-                  )}
-                </div>
-              )}
-
-              {/* Description */}
-              <p style={{ fontSize: '13px', lineHeight: 1.8, color: C.muted, marginBottom: 20, fontWeight: 300 }}>
+              <p style={{ fontSize: 13, lineHeight: 1.7, color: C.mid, margin: '0 0 20px', fontWeight: 300 }}>
                 {selectedEvent.description}
               </p>
 
@@ -551,107 +549,102 @@ const Events: React.FC = () => {
               {(() => {
                 const lines = parseProgramLines(selectedEvent.program);
                 if (lines.length === 0) return null;
-                const timeRegex = /^(\d{1,2}[.:h]\d{2})\s+(.+)$/;
-                const hasTime = lines.some(l => timeRegex.test(l.trim()));
                 return (
                   <div style={{ marginBottom: 20 }}>
-                    <div style={{ ...lbl, fontSize: '10px', color: C.gray, fontWeight: 600, marginBottom: 8 }}>PROGRAM</div>
-                    <div style={{ border: bdr, borderRadius: 5, overflow: 'hidden' }}>
-                      {lines.map((line, idx) => {
-                        const match = line.trim().match(timeRegex);
-                        return (
-                          <div key={idx} style={{
-                            display: 'flex', gap: 14, padding: '11px 14px',
-                            borderBottom: idx < lines.length - 1 ? bdr : 'none',
-                            background: idx % 2 === 0 ? C.pureWhite : C.surface,
-                          }}>
-                            {hasTime && match ? (
-                              <>
-                                <div style={{ minWidth: 50, fontSize: '12px', fontWeight: 600, color: C.red, flexShrink: 0 }}>{match[1]}</div>
-                                <div style={{ fontSize: '12px', color: C.gray, lineHeight: 1.5 }}>{match[2]}</div>
-                              </>
-                            ) : (
-                              <div style={{ fontSize: '12px', color: C.gray, lineHeight: 1.5 }}>{line.trim()}</div>
-                            )}
-                          </div>
-                        );
-                      })}
+                    <div style={{ ...lbl, marginBottom: 10 }}>Program</div>
+                    <div style={{ background: C.surface, borderRadius: 6, padding: '14px 18px' }}>
+                      {lines.map((line, i) => (
+                        <div key={i} style={{
+                          fontSize: 12, lineHeight: 1.6, color: C.mid,
+                          padding: '4px 0', borderBottom: i < lines.length - 1 ? `1px solid ${C.border}` : 'none',
+                        }}>
+                          {line}
+                        </div>
+                      ))}
                     </div>
                   </div>
                 );
               })()}
 
-              {/* Gallery */}
-              {selectedEvent.galleryImages && selectedEvent.galleryImages.length > 0 && (
-                <div style={{ marginBottom: 20 }}>
-                  <div style={{ ...lbl, fontSize: '10px', color: C.gray, fontWeight: 600, marginBottom: 8 }}>GALLERY</div>
-                  <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
-                    {selectedEvent.galleryImages.map((img, idx) => (
-                      <img key={idx} src={img} alt={`Gallery ${idx + 1}`}
-                        style={{ width: 140, height: 95, objectFit: 'cover', flexShrink: 0, border: bdr, borderRadius: 4 }} />
-                    ))}
+              {/* Price section */}
+              {selectedEvent.price != null && selectedEvent.price > 0 && (
+                <div style={{
+                  padding: '16px 20px', background: C.surface, borderRadius: 6, marginBottom: 20,
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                }}>
+                  <div>
+                    <div style={lbl}>Price</div>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginTop: 4 }}>
+                      {selectedEvent.discountPrice != null ? (
+                        <>
+                          <span style={{ fontSize: 18, fontWeight: 600, color: C.red }}>
+                            {selectedEvent.currency || 'CHF'} {selectedEvent.discountPrice}
+                          </span>
+                          <span style={{ fontSize: 13, color: C.muted, textDecoration: 'line-through' }}>
+                            {selectedEvent.currency || 'CHF'} {selectedEvent.price}
+                          </span>
+                        </>
+                      ) : (
+                        <span style={{ fontSize: 18, fontWeight: 600, color: C.black }}>
+                          {selectedEvent.currency || 'CHF'} {selectedEvent.price}
+                        </span>
+                      )}
+                    </div>
                   </div>
+                  {selectedEvent.discountPercentage != null && (
+                    <div style={{
+                      background: C.red, color: '#fff', padding: '4px 10px',
+                      fontSize: 11, fontWeight: 600, borderRadius: 4,
+                    }}>
+                      -{selectedEvent.discountPercentage}%
+                    </div>
+                  )}
                 </div>
               )}
 
-              {/* Tier */}
-              <div style={{ padding: '10px 14px', background: C.surface, border: bdr, marginBottom: 20, fontSize: '12px', color: C.muted, display: 'flex', alignItems: 'center', gap: 8, borderRadius: 5 }}>
-                <div style={{ width: 4, height: 4, background: C.red, borderRadius: '50%' }} />
-                {selectedEvent.tier === 'all' || !selectedEvent.tier ? 'Open to all members' : `Requires ${selectedEvent.tier} tier`}
+              {/* Attendees */}
+              {selectedEvent.maxAttendees && (
+                <div style={{ fontSize: 12, color: C.muted, marginBottom: 20 }}>
+                  {selectedEvent.totalAttendees || 0} / {selectedEvent.maxAttendees} attendees
+                </div>
+              )}
+
+              {/* Register / Unregister */}
+              <div style={{ display: 'flex', gap: 12 }}>
+                {selectedEvent.registered ? (
+                  <button
+                    onClick={handleUnregister}
+                    disabled={registering}
+                    style={{
+                      flex: 1, padding: '14px 24px', background: C.surface, border: bdr,
+                      fontSize: 12, fontWeight: 600, cursor: registering ? 'wait' : 'pointer',
+                      fontFamily: "'Inter',sans-serif", letterSpacing: '0.1em', textTransform: 'uppercase',
+                      transition: 'all .15s',
+                    }}
+                  >
+                    {registering ? 'Processing…' : 'Cancel Registration'}
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleRegister}
+                    disabled={registering}
+                    style={{
+                      flex: 1, padding: '14px 24px', background: C.red, color: '#fff', border: 'none',
+                      fontSize: 12, fontWeight: 600, cursor: registering ? 'wait' : 'pointer',
+                      fontFamily: "'Inter',sans-serif", letterSpacing: '0.1em', textTransform: 'uppercase',
+                      borderRadius: 4, transition: 'background .15s',
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.background = C.burgundy)}
+                    onMouseLeave={e => (e.currentTarget.style.background = C.red)}
+                  >
+                    {registering ? 'Processing…' : 'Register'}
+                  </button>
+                )}
               </div>
-
-              {/* Registration */}
-              {selectedEvent.registered ? (
-                <>
-                  <div style={{
-                    padding: '12px 14px', background: 'rgba(42,157,78,0.08)', border: '1px solid rgba(42,157,78,0.2)',
-                    marginBottom: 12, fontSize: '13px', color: '#2a9d4e', fontWeight: 500, textAlign: 'center', borderRadius: 5,
-                  }}>
-                    ✓ You are registered for this event
-                  </div>
-                  {selectedEvent.status === 'upcoming' && (
-                    <button onClick={handleUnregister} disabled={registering}
-                      style={{
-                        width: '100%', padding: '11px', marginBottom: 12,
-                        background: 'transparent', border: bdr, borderRadius: 5,
-                        color: C.muted, fontSize: '11px', letterSpacing: '0.1em', textTransform: 'uppercase',
-                        cursor: registering ? 'not-allowed' : 'pointer', fontFamily: "'Inter',sans-serif",
-                        transition: 'all .2s',
-                      }}
-                      onMouseEnter={e => { e.currentTarget.style.borderColor = C.red; e.currentTarget.style.color = C.red; }}
-                      onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.muted; }}>
-                      {registering ? 'Processing...' : 'Cancel Registration'}
-                    </button>
-                  )}
-                </>
-              ) : selectedEvent.status === 'upcoming' ? (
-                <button onClick={handleRegister} disabled={registering}
-                  style={{
-                    width: '100%', padding: '13px', marginBottom: 12,
-                    background: registering ? C.muted : C.red, color: '#fff', border: 'none',
-                    fontSize: '12px', letterSpacing: '0.1em', textTransform: 'uppercase', fontWeight: 600,
-                    cursor: registering ? 'not-allowed' : 'pointer', fontFamily: "'Inter',sans-serif",
-                    transition: 'background .2s', borderRadius: 5,
-                  }}
-                  onMouseEnter={e => { if (!registering) e.currentTarget.style.background = C.burgundy; }}
-                  onMouseLeave={e => { if (!registering) e.currentTarget.style.background = C.red; }}>
-                  {registering ? 'Registering...' : 'Register Interest'}
-                </button>
-              ) : null}
-
-              <button onClick={() => setSelectedEvent(null)}
-                style={{
-                  width: '100%', padding: '11px', background: C.surface, color: C.gray, border: bdr,
-                  fontSize: '11px', letterSpacing: '0.1em', textTransform: 'uppercase',
-                  cursor: 'pointer', fontFamily: "'Inter',sans-serif", borderRadius: 5,
-                }}>
-                Close
-              </button>
             </div>
           </div>
         </div>
       )}
-
     </div>
   );
 };
