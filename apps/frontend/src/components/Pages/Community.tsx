@@ -831,16 +831,30 @@ const Community: React.FC = () => {
                       }} />
                       {/* Name + location */}
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: '12px', fontWeight: 500, color: C.black, display: 'flex', alignItems: 'center', gap: 6 }}>
-                          {m.name}
+                        <div style={{ fontSize: '12px', fontWeight: 500, color: C.black, display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                          <span style={{
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            maxWidth: 140,
+                            display: 'inline-block',
+                            flexShrink: 1,
+                          }}>
+                            {m.name}
+                          </span>
                           {m.isBlocked && (
                             <span style={{
                               fontSize: '7px', padding: '1px 4px', letterSpacing: '0.1em', textTransform: 'uppercase',
-                              background: 'rgba(200,16,46,0.08)', color: C.red, fontWeight: 600,
+                              background: 'rgba(200,16,46,0.08)', color: C.red, fontWeight: 600, flexShrink: 0,
                             }}>blocked</span>
                           )}
                         </div>
-                        <div style={{ fontSize: '10px', color: C.muted, marginTop: 1 }}>{getMemberLocation(m)}</div>
+                        <div style={{
+                          fontSize: '10px', color: C.muted, marginTop: 1,
+                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                        }}>
+                          {getMemberLocation(m)}
+                        </div>
                       </div>
                       {/* Joined */}
                       <div style={{ fontSize: '10px', color: C.muted, flexShrink: 0, textAlign: 'right' }}>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppContext } from '../../context/AppContext';
 import { apiService } from '../../services/api';
@@ -55,6 +55,28 @@ const sectionLabel: React.CSSProperties = {
 };
 
 const EVENT_DOT_COLORS = ['#c8102e', '#f59e0b', '#2563eb', '#10b981', '#8b5cf6', '#ec4899'];
+
+/* ── Carousel side-arrow style ── */
+const sideArrowBase: React.CSSProperties = {
+  position: 'absolute',
+  top: '50%',
+  transform: 'translateY(-50%)',
+  zIndex: 10,
+  width: 36,
+  height: 36,
+  borderRadius: '50%',
+  border: 'none',
+  background: 'rgba(255,255,255,0.92)',
+  boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  cursor: 'pointer',
+  fontSize: 18,
+  color: C.mid,
+  transition: 'all 0.2s',
+  padding: 0,
+};
 
 // ─── Shimmer ───
 
@@ -146,6 +168,8 @@ const Events: React.FC = () => {
   // Carousel state
   const scrollRef = useRef<HTMLDivElement>(null);
   const [scrollPage, setScrollPage] = useState(0);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
   const totalUpcomingPages = useMemo(() => {
     const upcoming = events.filter(e => e.status === 'upcoming');
     return Math.max(1, Math.ceil(upcoming.length / 3));
@@ -155,6 +179,13 @@ const Events: React.FC = () => {
   useEffect(() => { fetchEvents(); }, []);
 
   // Scroll tracking
+  const updateScrollButtons = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    setCanScrollLeft(el.scrollLeft > 5);
+    setCanScrollRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 5);
+  }, []);
+
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
@@ -162,15 +193,24 @@ const Events: React.FC = () => {
       const pageWidth = el.clientWidth;
       const page = Math.round(el.scrollLeft / pageWidth);
       setScrollPage(page);
+      updateScrollButtons();
     };
+    // Initial check
+    updateScrollButtons();
     el.addEventListener('scroll', handleScroll, { passive: true });
     return () => el.removeEventListener('scroll', handleScroll);
-  }, [events]);
+  }, [events, updateScrollButtons]);
 
   const scrollToPage = (page: number) => {
     const el = scrollRef.current;
     if (!el) return;
     el.scrollTo({ left: page * el.clientWidth, behavior: 'smooth' });
+  };
+
+  const scrollByPage = (direction: -1 | 1) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollBy({ left: direction * el.clientWidth, behavior: 'smooth' });
   };
 
   const fetchEvents = async () => {
@@ -187,7 +227,6 @@ const Events: React.FC = () => {
   const upcomingEvents = useMemo(() => events.filter(e => e.status === 'upcoming'), [events]);
   const pastEvents = useMemo(() => events.filter(e => e.status === 'past'), [events]);
 
-  /* ── CHANGED: detect whether we need a carousel ── */
   const needsCarousel = upcomingEvents.length > 3;
 
   const handleRegister = async () => {
@@ -219,7 +258,6 @@ const Events: React.FC = () => {
   };
 
   // ─── Event Card ───
-  // CHANGED: accepts `stretch` prop — when true, card uses flex:1 to fill available width
   const EventCard = ({ event, isLast, stretch }: { event: Event; isLast: boolean; stretch?: boolean }) => {
     const d = parseDate(event.startDate || event.date);
     return (
@@ -273,7 +311,7 @@ const Events: React.FC = () => {
           )}
         </div>
 
-        {/* Card body — CHANGED: light grey background */}
+        {/* Card body */}
         <div style={{ padding: '18px 20px', flex: 1, display: 'flex', flexDirection: 'column', background: C.cardBody }}>
           <div style={{
             fontSize: '9px', letterSpacing: '0.25em', textTransform: 'uppercase',
@@ -372,7 +410,7 @@ const Events: React.FC = () => {
           <p style={{ color: C.muted, fontSize: '12px', margin: 0 }}>Check back soon for new experiences.</p>
         </div>
       ) : !needsCarousel ? (
-        /* ── CHANGED: ≤3 events → stretch to fill, no carousel ── */
+        /* ── ≤3 events → stretch to fill, no carousel ── */
         <div style={{ marginBottom: 48 }}>
           <div style={{
             display: 'flex', border: bdr, borderRadius: 8, overflow: 'hidden',
@@ -388,8 +426,35 @@ const Events: React.FC = () => {
           </div>
         </div>
       ) : (
-        /* ── >3 events → carousel as before ── */
-        <div style={{ marginBottom: 48 }}>
+        /* ── >3 events → carousel with side arrows ── */
+        <div style={{ marginBottom: 48, position: 'relative' }}>
+
+          {/* LEFT ARROW */}
+          {canScrollLeft && (
+            <button
+              onClick={() => scrollByPage(-1)}
+              style={{ ...sideArrowBase, left: -18 }}
+              onMouseEnter={e => { e.currentTarget.style.background = C.pureWhite; e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.22)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.92)'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)'; }}
+              aria-label="Scroll left"
+            >
+              ‹
+            </button>
+          )}
+
+          {/* RIGHT ARROW */}
+          {canScrollRight && (
+            <button
+              onClick={() => scrollByPage(1)}
+              style={{ ...sideArrowBase, right: -18 }}
+              onMouseEnter={e => { e.currentTarget.style.background = C.pureWhite; e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.22)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.92)'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)'; }}
+              aria-label="Scroll right"
+            >
+              ›
+            </button>
+          )}
+
           <div
             ref={scrollRef}
             style={{
@@ -440,7 +505,7 @@ const Events: React.FC = () => {
         </div>
       )}
 
-      {/* ══════ PAST EVENTS — always visible ══════ */}
+      {/* ══════ PAST EVENTS ══════ */}
       <div style={{ ...sectionLabel, color: C.black, marginBottom: 16, fontSize: '11px' }}>
         past events
       </div>
