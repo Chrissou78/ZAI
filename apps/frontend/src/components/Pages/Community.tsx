@@ -174,6 +174,169 @@ const SearchIcon = ({ size = 14, color = C.muted }: { size?: number; color?: str
   </svg>
 );
 
+const PhotoZoomContent: React.FC<{
+  selectedPhoto: any;
+  user: any;
+  isAdmin: boolean;
+  deletePhoto: (id: string) => void;
+  fmtFullDate: (d: string) => string;
+  ReactionBar: React.FC<{ photo: any }>;
+  timeAgo: (d: string) => string;
+  deleteComment: (photoId: string, commentId: string) => void;
+  newComment: string;
+  setNewComment: (v: string) => void;
+  addComment: () => void;
+  C: any;
+  bdr: string;
+}> = ({ selectedPhoto, user, isAdmin, deletePhoto, fmtFullDate, ReactionBar, timeAgo, deleteComment, newComment, setNewComment, addComment, C, bdr }) => {
+  const [isLandscape, setIsLandscape] = React.useState<boolean | null>(null);
+
+  const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    const img = e.currentTarget;
+    setIsLandscape(img.naturalWidth >= img.naturalHeight);
+  };
+
+  // Comments panel (shared between both layouts)
+  const commentsPanel = (
+    <div style={{
+      display: 'flex', flexDirection: 'column',
+      borderLeft: isLandscape ? 'none' : bdr,
+      borderTop: isLandscape ? bdr : 'none',
+      maxHeight: isLandscape ? '40vh' : '90vh',
+      width: '100%',
+    }}>
+      {/* Author header */}
+      <div style={{ padding: '18px 20px', borderBottom: bdr }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{
+              width: 32, height: 32, borderRadius: '50%', background: C.mid, flexShrink: 0,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: '12px', color: C.white, fontWeight: 500,
+            }}>
+              {(selectedPhoto.authorName?.charAt(0) || 'M').toUpperCase()}
+            </div>
+            <div>
+              <div style={{ fontSize: '13px', fontWeight: 600, color: C.black }}>{selectedPhoto.authorName}</div>
+              <div style={{ fontSize: '10px', color: C.muted }}>{fmtFullDate(selectedPhoto.createdAt)}</div>
+            </div>
+          </div>
+          {(selectedPhoto.authorId === user?.id || isAdmin) && (
+            <button onClick={() => deletePhoto(selectedPhoto.id)}
+              style={{ background: 'none', border: 'none', fontSize: '11px', cursor: 'pointer', color: C.red }}>
+              {isAdmin && selectedPhoto.authorId !== user?.id ? 'Remove' : 'Delete'}
+            </button>
+          )}
+        </div>
+        {selectedPhoto.caption && (
+          <p style={{ fontSize: '13px', color: C.gray, margin: '12px 0 0', lineHeight: 1.55, fontWeight: 300 }}>{selectedPhoto.caption}</p>
+        )}
+        <div style={{ marginTop: 14 }}>
+          <ReactionBar photo={selectedPhoto} />
+        </div>
+      </div>
+      {/* Comments list */}
+      <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px' }}>
+        {(!selectedPhoto.comments || selectedPhoto.comments.length === 0) ? (
+          <p style={{ fontSize: '12px', color: C.muted, textAlign: 'center', marginTop: 24 }}>No comments yet</p>
+        ) : (
+          selectedPhoto.comments.map((c: any) => (
+            <div key={c.id} style={{ marginBottom: 16 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '12px', fontWeight: 600, color: C.black }}>{c.authorName}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ fontSize: '10px', color: C.muted }}>{timeAgo(c.createdAt)}</span>
+                  {(c.authorId === user?.id || isAdmin) && (
+                    <button onClick={() => deleteComment(selectedPhoto.id, c.id)}
+                      style={{ background: 'none', border: 'none', fontSize: '12px', cursor: 'pointer', color: C.red }}>×</button>
+                  )}
+                </div>
+              </div>
+              <p style={{ fontSize: '12px', color: C.gray, margin: '3px 0 0', lineHeight: 1.55, fontWeight: 300 }}>{c.text}</p>
+            </div>
+          ))
+        )}
+      </div>
+      {/* Comment input */}
+      <div style={{ padding: '14px 20px', borderTop: bdr, display: 'flex', gap: '1px' }}>
+        <input type="text" placeholder="Add a comment..." value={newComment}
+          onChange={e => setNewComment(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && addComment()}
+          style={{ flex: 1, padding: '10px 12px', border: bdr, fontSize: '12px', fontFamily: "'Inter',sans-serif", background: C.pureWhite, color: C.black, outline: 'none', borderRadius: '4px 0 0 4px' }} />
+        <button onClick={addComment} disabled={!newComment.trim()}
+          style={{
+            padding: '10px 18px', fontSize: '10px', letterSpacing: '0.12em', textTransform: 'uppercase',
+            background: newComment.trim() ? C.black : C.muted, color: C.white, border: 'none',
+            cursor: newComment.trim() ? 'pointer' : 'not-allowed', fontFamily: "'Inter',sans-serif", fontWeight: 500,
+            borderRadius: '0 4px 4px 0',
+          }}>Post</button>
+      </div>
+    </div>
+  );
+
+  return (
+    <div onClick={e => e.stopPropagation()}
+      style={{
+        background: C.white,
+        maxWidth: isLandscape ? 960 : 860,
+        width: '100%',
+        maxHeight: '90vh',
+        display: isLandscape === null ? 'flex' : 'grid',
+        gridTemplateColumns: isLandscape ? '1fr' : '1fr 340px',
+        gridTemplateRows: isLandscape ? 'auto auto' : '1fr',
+        boxShadow: '0 24px 80px rgba(0,0,0,0.5)',
+        overflow: 'hidden',
+        borderRadius: 6,
+        alignItems: isLandscape === null ? 'center' : undefined,
+        justifyContent: isLandscape === null ? 'center' : undefined,
+      }}>
+
+      {/* Loading placeholder while we detect orientation */}
+      {isLandscape === null && (
+        <div style={{ padding: 40, textAlign: 'center', color: C.gray, fontSize: 13 }}>
+          Loading…
+          <img
+            src={selectedPhoto.url}
+            alt=""
+            onLoad={handleImageLoad}
+            style={{ display: 'none' }}
+          />
+        </div>
+      )}
+
+      {/* Once orientation is known, render the proper layout */}
+      {isLandscape !== null && (
+        <>
+          {/* Image panel */}
+          <div style={{
+            background: C.black,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            minHeight: isLandscape ? 'auto' : 380,
+            maxHeight: isLandscape ? '55vh' : '90vh',
+            overflow: 'hidden',
+          }}>
+            <img
+              src={selectedPhoto.url}
+              alt={selectedPhoto.caption}
+              onLoad={handleImageLoad}
+              style={{
+                width: isLandscape ? '100%' : 'auto',
+                maxWidth: '100%',
+                maxHeight: isLandscape ? '55vh' : '85vh',
+                objectFit: 'contain',
+              }}
+            />
+          </div>
+          {/* Comments panel */}
+          {commentsPanel}
+        </>
+      )}
+    </div>
+  );
+};
+
 // ═══════════════════════════════════
 //  COMPONENT
 // ═══════════════════════════════════
@@ -866,81 +1029,21 @@ const Community: React.FC = () => {
           display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '2rem',
         }}
           onClick={() => { setSelectedPhoto(null); setEmojiPickerPhotoId(null); setEmojiPickerPos(null); }}>
-          <div onClick={e => e.stopPropagation()}
-            style={{
-              background: C.white, maxWidth: 860, width: '100%', maxHeight: '90vh',
-              display: 'grid', gridTemplateColumns: '1fr 340px',
-              boxShadow: '0 24px 80px rgba(0,0,0,0.5)', overflow: 'hidden', borderRadius: 6,
-            }}>
-            <div style={{ background: C.black, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 380 }}>
-              <img src={selectedPhoto.url} alt={selectedPhoto.caption} style={{ maxWidth: '100%', maxHeight: '85vh', objectFit: 'contain' }} />
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', borderLeft: bdr, maxHeight: '90vh' }}>
-              <div style={{ padding: '18px 20px', borderBottom: bdr }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <div style={{
-                      width: 32, height: 32, borderRadius: '50%', background: C.mid, flexShrink: 0,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: '12px', color: C.white, fontWeight: 500,
-                    }}>
-                      {(selectedPhoto.authorName?.charAt(0) || 'M').toUpperCase()}
-                    </div>
-                    <div>
-                      <div style={{ fontSize: '13px', fontWeight: 600, color: C.black }}>{selectedPhoto.authorName}</div>
-                      <div style={{ fontSize: '10px', color: C.muted }}>{fmtFullDate(selectedPhoto.createdAt)}</div>
-                    </div>
-                  </div>
-                  {(selectedPhoto.authorId === user?.id || isAdmin) && (
-                    <button onClick={() => deletePhoto(selectedPhoto.id)}
-                      style={{ background: 'none', border: 'none', fontSize: '11px', cursor: 'pointer', color: C.red }}>
-                      {isAdmin && selectedPhoto.authorId !== user?.id ? 'Remove' : 'Delete'}
-                    </button>
-                  )}
-                </div>
-                {selectedPhoto.caption && (
-                  <p style={{ fontSize: '13px', color: C.gray, margin: '12px 0 0', lineHeight: 1.55, fontWeight: 300 }}>{selectedPhoto.caption}</p>
-                )}
-                <div style={{ marginTop: 14 }}>
-                  <ReactionBar photo={selectedPhoto} />
-                </div>
-              </div>
-              <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px' }}>
-                {(!selectedPhoto.comments || selectedPhoto.comments.length === 0) ? (
-                  <p style={{ fontSize: '12px', color: C.muted, textAlign: 'center', marginTop: 24 }}>No comments yet</p>
-                ) : (
-                  selectedPhoto.comments.map(c => (
-                    <div key={c.id} style={{ marginBottom: 16 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontSize: '12px', fontWeight: 600, color: C.black }}>{c.authorName}</span>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <span style={{ fontSize: '10px', color: C.muted }}>{timeAgo(c.createdAt)}</span>
-                          {(c.authorId === user?.id || isAdmin) && (
-                            <button onClick={() => deleteComment(selectedPhoto.id, c.id)}
-                              style={{ background: 'none', border: 'none', fontSize: '12px', cursor: 'pointer', color: C.red }}>×</button>
-                          )}
-                        </div>
-                      </div>
-                      <p style={{ fontSize: '12px', color: C.gray, margin: '3px 0 0', lineHeight: 1.55, fontWeight: 300 }}>{c.text}</p>
-                    </div>
-                  ))
-                )}
-              </div>
-              <div style={{ padding: '14px 20px', borderTop: bdr, display: 'flex', gap: '1px' }}>
-                <input type="text" placeholder="Add a comment..." value={newComment}
-                  onChange={e => setNewComment(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && addComment()}
-                  style={{ flex: 1, padding: '10px 12px', border: bdr, fontSize: '12px', fontFamily: "'Inter',sans-serif", background: C.pureWhite, color: C.black, outline: 'none', borderRadius: '4px 0 0 4px' }} />
-                <button onClick={addComment} disabled={!newComment.trim()}
-                  style={{
-                    padding: '10px 18px', fontSize: '10px', letterSpacing: '0.12em', textTransform: 'uppercase',
-                    background: newComment.trim() ? C.black : C.muted, color: C.white, border: 'none',
-                    cursor: newComment.trim() ? 'pointer' : 'not-allowed', fontFamily: "'Inter',sans-serif", fontWeight: 500,
-                    borderRadius: '0 4px 4px 0',
-                  }}>Post</button>
-              </div>
-            </div>
-          </div>
+          <PhotoZoomContent
+            selectedPhoto={selectedPhoto}
+            user={user}
+            isAdmin={isAdmin}
+            deletePhoto={deletePhoto}
+            fmtFullDate={fmtFullDate}
+            ReactionBar={ReactionBar}
+            timeAgo={timeAgo}
+            deleteComment={deleteComment}
+            newComment={newComment}
+            setNewComment={setNewComment}
+            addComment={addComment}
+            C={C}
+            bdr={bdr}
+          />
         </div>
       )}
 
