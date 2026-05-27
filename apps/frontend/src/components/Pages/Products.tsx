@@ -554,10 +554,10 @@ const Products: React.FC = () => {
           <div>
             <div style={sectionLabel}>my collection</div>
             <h1 style={{
-              fontSize: 'clamp(32px, 4vw, 48px)', fontWeight: 300,
+              fontSize: 'clamp(32px, 4vw, 40px)', fontWeight: 300,
               lineHeight: 1.15, margin: '6px 0 6px', color: C.black,
             }}>
-              Your zai products
+              Your zai Collection
             </h1>
             <p style={{ color: C.gray, fontSize: '13px', margin: 0, maxWidth: 480 }}>
               Claim products using your experience card or serial number to activate warranty and access exclusive benefits.

@@ -266,7 +266,7 @@ const Profile: React.FC = () => {
           </div>
           <h1
             style={{
-              fontSize: 'clamp(24px, 3.5vw, 40px)',
+              fontSize: 'clamp(32px, 4vw, 40px)',
               fontWeight: 300,
               lineHeight: 1.15,
               margin: '0 0 0.3rem',
