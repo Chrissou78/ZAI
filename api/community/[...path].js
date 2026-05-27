@@ -171,6 +171,30 @@ export default async function handler(req, res) {
         } catch {}
       }
 
+      // ── Fetch profile names from user_profiles to override WalletTwo's name (which is often the email) ──
+      let profileNames = {};
+      if (dbOk) {
+        try {
+          const userIds = (data.members || []).map(m => m.userId).filter(Boolean);
+          if (userIds.length > 0) {
+            const profileRes = await getPool().query(
+              'SELECT user_id, name, given_name, family_name FROM user_profiles WHERE user_id = ANY($1)',
+              [userIds]
+            );
+            for (const p of profileRes.rows) {
+              const fullName = (p.given_name && p.family_name)
+                ? `${p.given_name} ${p.family_name}`.trim()
+                : (p.name || '').trim();
+              if (fullName) {
+                profileNames[p.user_id] = fullName;
+              }
+            }
+          }
+        } catch (err) {
+          console.error('Profile names lookup failed:', err.message);
+        }
+      }
+
       const decoded = authenticate(req);
       const callerIsAdmin = isAdmin(decoded);
 
@@ -181,12 +205,26 @@ export default async function handler(req, res) {
         })
         .map(m => {
           const user = m.user || {};
-          const displayName = user.isPublic ? (user.name || 'Member') : `Member ${(m.userId || '').slice(0, 6)}`;
+
+          // Priority: 1) user_profiles name, 2) WalletTwo name (only if it doesn't look like an email), 3) fallback
+          let displayName;
+          if (!user.isPublic) {
+            displayName = `Member ${(m.userId || '').slice(0, 6)}`;
+          } else if (profileNames[m.userId]) {
+            displayName = profileNames[m.userId];
+          } else if (user.name && !user.name.includes('@')) {
+            displayName = user.name;
+          } else {
+            displayName = 'Member';
+          }
+
           return {
             id: m.userId,
             name: displayName,
             wallet: user.isPublic ? user.wallet : undefined,
-            avatar: (user.name?.charAt(0) || 'M').toUpperCase(),
+            avatar: (displayName?.charAt(0) || 'M').toUpperCase(),
+            city: user.city || undefined,
+            country: user.country || undefined,
             joinedAt: m.createdAt,
             isPublic: user.isPublic || false,
             isBlocked: blockedIds.has(m.userId),
@@ -218,11 +256,42 @@ export default async function handler(req, res) {
       const member = (data.members || []).find(m => m.userId === memberMatch[1]);
       if (!member) return res.status(404).json({ success: false, error: 'Member not found' });
       const user = member.user || {};
+
+      // Check user_profiles for a real name
+      let profileName = '';
+      const dbOk = await initDB();
+      if (dbOk) {
+        try {
+          const profileRes = await getPool().query(
+            'SELECT name, given_name, family_name FROM user_profiles WHERE user_id = $1',
+            [memberMatch[1]]
+          );
+          if (profileRes.rows[0]) {
+            const p = profileRes.rows[0];
+            profileName = (p.given_name && p.family_name)
+              ? `${p.given_name} ${p.family_name}`.trim()
+              : (p.name || '').trim();
+          }
+        } catch {}
+      }
+
+      let displayName;
+      if (!user.isPublic) {
+        displayName = `Member ${(member.userId || '').slice(0, 6)}`;
+      } else if (profileName) {
+        displayName = profileName;
+      } else if (user.name && !user.name.includes('@')) {
+        displayName = user.name;
+      } else {
+        displayName = 'Member';
+      }
+
       return res.json({
         success: true,
         data: {
-          id: member.userId, name: user.isPublic ? (user.name || 'Member') : `Member ${(member.userId || '').slice(0, 6)}`,
-          wallet: user.isPublic ? user.wallet : undefined, avatar: (user.name?.charAt(0) || 'M').toUpperCase(),
+          id: member.userId, name: displayName,
+          wallet: user.isPublic ? user.wallet : undefined, avatar: (displayName?.charAt(0) || 'M').toUpperCase(),
+          city: user.city || undefined, country: user.country || undefined,
           joinedAt: member.createdAt, isPublic: user.isPublic || false,
         },
       });

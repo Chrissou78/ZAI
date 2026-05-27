@@ -459,7 +459,7 @@ const Settings: React.FC = () => {
 
   if (loading) {
     return (
-      <div style={{ maxWidth: 1060, margin: '0 auto', padding: '48px 48px 80px', textAlign: 'center', fontFamily: C.font }}>
+      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '48px 48px 80px', textAlign: 'center', fontFamily: C.font }}>
         <div style={{ fontSize: '14px', color: C.gray }}>Loading settings...</div>
       </div>
     );
@@ -469,7 +469,7 @@ const Settings: React.FC = () => {
      RENDER
   ══════════════════════════════════════════════════════════ */
   return (
-    <div style={{ maxWidth: 1060, margin: '0 auto', padding: '48px 48px 80px', fontFamily: C.font }}>
+    <div style={{ maxWidth: 1100, margin: '0 auto', padding: '48px 48px 80px', fontFamily: C.font }}>
 
       {/* ═══ PAGE HEADER ═══ */}
       <div

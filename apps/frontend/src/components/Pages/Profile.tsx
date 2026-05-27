@@ -227,7 +227,7 @@ const Profile: React.FC = () => {
 
   if (!user) {
     return (
-      <div style={{ maxWidth: 1060, margin: '0 auto', padding: '48px 48px 80px', color: C.gray, fontSize: '14px', fontFamily: C.font }}>
+      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '48px 48px 80px', color: C.gray, fontSize: '14px', fontFamily: C.font }}>
         Loading profile...
       </div>
     );
@@ -247,7 +247,7 @@ const Profile: React.FC = () => {
   bulletItems.push('CHF · Alpine region');
 
   return (
-    <div style={{ maxWidth: 1060, margin: '0 auto', padding: '48px 48px 80px', fontFamily: C.font }}>
+    <div style={{ maxWidth: 1100, margin: '0 auto', padding: '48px 48px 80px', fontFamily: C.font }}>
 
       {/* ═══ HEADER ═══ */}
       <div

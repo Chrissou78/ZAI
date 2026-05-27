@@ -345,7 +345,7 @@ const Events: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div style={{ maxWidth: 1060, margin: '0 auto', padding: '48px 48px 80px', fontFamily: "'Inter',sans-serif" }}>
+      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '48px 48px 80px', fontFamily: "'Inter',sans-serif" }}>
         <Sk w="120px" h="10px" s={{ marginBottom: 10 }} />
         <Sk w="320px" h="38px" s={{ marginBottom: 8 }} />
         <Sk w="400px" h="13px" s={{ marginBottom: 36 }} />
@@ -376,7 +376,7 @@ const Events: React.FC = () => {
   // ═══════════════════════════════
 
   return (
-    <div style={{ maxWidth: 1060, margin: '0 auto', padding: '48px 48px 80px', fontFamily: "'Inter',sans-serif", color: C.gray }}>
+    <div style={{ maxWidth: 1100, margin: '0 auto', padding: '48px 48px 80px', fontFamily: "'Inter',sans-serif", color: C.gray }}>
 
       {/* ══════ HEADER ══════ */}
       <div style={{
@@ -385,7 +385,7 @@ const Events: React.FC = () => {
         <div style={{ ...sectionLabel, color: C.red, letterSpacing: '0.3em', marginBottom: 8, fontSize: '10px' }}>
           experiences
         </div>
-        <h1 style={{ fontSize: 'clamp(28px, 3.5vw, 44px)', fontWeight: 300, lineHeight: 1.1, margin: '0 0 8px', color: C.black }}>
+        <h1 style={{ fontSize: 'clamp(32px, 4vw, 48px)', fontWeight: 300, lineHeight: 1.1, margin: '0 0 8px', color: C.black }}>
           Exclusive zai experiences
         </h1>
         <p style={{ color: C.muted, fontSize: '13px', margin: 0, fontWeight: 300, maxWidth: 520 }}>

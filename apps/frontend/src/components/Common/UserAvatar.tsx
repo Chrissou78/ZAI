@@ -6,7 +6,7 @@ interface UserAvatarProps {
   size?: 'sm' | 'md' | 'lg';
 }
 
-const UserAvatar: React.FC<UserAvatarProps> = ({ firstName = 'U', lastName = '', size = 'sm' }) => {
+const UserAvatar: React.FC<UserAvatarProps> = ({ firstName = 'U', lastName = '', size = 'md' }) => {
   const initials = `${(firstName || 'U')[0]}${(lastName || '')[0] || ''}`.toUpperCase();
 
   const sizeMap = {
@@ -24,10 +24,12 @@ const UserAvatar: React.FC<UserAvatarProps> = ({ firstName = 'U', lastName = '',
         height: dimensions.height,
         borderRadius: '50%',
         background: 'linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%)',
-        border: '1px solid #555',
+        border: '1px solid #f5f4f0',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
+        lineHeight: 1, 
+        letterSpacing: '0.05em',  
         fontSize: dimensions.fontSize,
         color: '#f5f4f0',
         flexShrink: 0,

@@ -404,7 +404,7 @@ const Products: React.FC = () => {
   if (isLoading) {
     return (
       <div style={{ padding: '48px 48px 80px', fontFamily: C.font }}>
-        <div style={{ maxWidth: 1060, margin: '0 auto' }}>
+        <div style={{ maxWidth: 1100, margin: '0 auto' }}>
           <div style={{ height: 28, width: 200, background: C.surface, borderRadius: 4, marginBottom: 32, animation: 'zai-pulse 1.5s ease-in-out infinite' }} />
           <div style={{ display: 'flex', gap: 16, overflow: 'hidden' }}>
             {[1, 2, 3].map(i => (
@@ -423,7 +423,7 @@ const Products: React.FC = () => {
   if (error) {
     return (
       <div style={{ padding: '48px 48px 80px', fontFamily: C.font }}>
-        <div style={{ maxWidth: 1060, margin: '0 auto', textAlign: 'center', paddingTop: 80 }}>
+        <div style={{ maxWidth: 1100, margin: '0 auto', textAlign: 'center', paddingTop: 80 }}>
           <div style={{ fontSize: 48, marginBottom: 16 }}>!</div>
           <p style={{ fontSize: 15, color: C.gray, marginBottom: 24 }}>{error}</p>
           <Button onClick={fetchUserProducts}>Retry</Button>
@@ -544,7 +544,7 @@ const Products: React.FC = () => {
 
   return (
     <div style={{ padding: '48px 48px 0', fontFamily: C.font, color: C.black }}>
-      <div style={{ maxWidth: 1060, margin: '0 auto' }}>
+      <div style={{ maxWidth: 1100, margin: '0 auto' }}>
 
         {/* ══════ HEADER ══════ */}
         <div style={{
@@ -554,7 +554,7 @@ const Products: React.FC = () => {
           <div>
             <div style={sectionLabel}>my collection</div>
             <h1 style={{
-              fontSize: 'clamp(24px, 3.5vw, 36px)', fontWeight: 300,
+              fontSize: 'clamp(32px, 4vw, 48px)', fontWeight: 300,
               lineHeight: 1.15, margin: '6px 0 6px', color: C.black,
             }}>
               Your zai products
@@ -710,7 +710,7 @@ const Products: React.FC = () => {
           </div>
         )}
 
-        {/* ══════ BLACK FOOTER — "How to claim" — INSIDE the 1060 container ══════ */}
+        {/* ══════ BLACK FOOTER — "How to claim" — INSIDE the 1100 container ══════ */}
         <div style={{
           marginTop: 48,
           background: C.black,
@@ -769,7 +769,7 @@ const Products: React.FC = () => {
           </div>
         </div>
 
-      </div>{/* end maxWidth: 1060 container */}
+      </div>{/* end maxWidth: 1100 container */}
 
       {/* ════════════ PRODUCT DETAIL MODAL ════════════ */}
       {selectedProduct && (

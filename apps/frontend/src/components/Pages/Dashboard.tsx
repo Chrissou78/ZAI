@@ -48,7 +48,7 @@ const SkeletonBlock: React.FC<{ width?: string; height?: string; style?: React.C
 
 /* ── Loading overlay for the whole dashboard content ── */
 const DashboardSkeleton: React.FC = () => (
-  <div style={{ maxWidth: 1060, margin: '0 auto', padding: '48px 48px 80px', fontFamily: "'Inter', sans-serif" }}>
+  <div style={{ maxWidth: 1100, margin: '0 auto', padding: '48px 48px 80px', fontFamily: "'Inter', sans-serif" }}>
     {/* Header skeleton */}
     <div style={{ marginBottom: '2.5rem', paddingBottom: '2rem', borderBottom: '1px solid #e0ddd6' }}>
       <SkeletonBlock width="60px" height="11px" style={{ marginBottom: '0.6rem' }} />
@@ -303,7 +303,7 @@ const Dashboard: React.FC = () => {
   };
 
   return (
-    <div style={{ maxWidth: 1060, margin: '0 auto', padding: '48px 48px 80px', fontFamily: "'Inter', sans-serif" }}>
+    <div style={{ maxWidth: 1100, margin: '0 auto', padding: '48px 48px 80px', fontFamily: "'Inter', sans-serif" }}>
       {/* Page Header */}
       <div
         style={{

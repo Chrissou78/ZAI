@@ -57,7 +57,7 @@ const Sidebar: React.FC = () => {
     {
       section: 'My zai',
       items: [
-        { path: '/products', label: 'My Products', icon: <ProductsIcon /> },
+        { path: '/products', label: 'My Collection', icon: <ProductsIcon /> },
         { path: '/events', label: 'Events', icon: <EventsIcon /> },
         { path: '/community', label: 'Community', icon: <CommunityIcon />, badge: communityNewCount },
       ],
@@ -77,7 +77,7 @@ const Sidebar: React.FC = () => {
         position: 'fixed',
         top: 0,
         left: 0,
-        width: '220px',
+        width: '250px',
         height: '100vh',
         background: '#0a0a0a',
         borderRight: '1px solid #2a2a2a',
@@ -96,7 +96,7 @@ const Sidebar: React.FC = () => {
           <path d="M106.279 3.39661C106.279 0.887328 109.978 0.887328 109.978 3.39661C109.978 5.90589 106.279 5.86591 106.279 3.39661ZM108.129 31.2687C107.339 31.2687 106.679 30.6088 106.679 29.8191V13.7437H100.161C99.2413 13.7437 98.5715 13.3438 98.4015 12.644C98.1316 11.5443 98.9713 10.7545 99.7211 10.7545C99.7211 10.7545 107.739 10.7145 108.129 10.7145C108.918 10.7145 109.578 11.4143 109.578 12.2141V29.8291C109.578 30.6188 108.918 31.2786 108.129 31.2786" fill="#f5f4f0"/>
         </svg>
         <div style={{
-          fontSize: '9px',
+          fontSize: '11px',
           letterSpacing: '0.35em',
           textTransform: 'uppercase',
           color: '#6a6a6a',
@@ -132,14 +132,14 @@ const Sidebar: React.FC = () => {
       {/* Navigation */}
       <div style={{ flex: 1, padding: '0.75rem 0' }}>
         {navSections.map((section, idx) => (
-          <div key={idx} style={{ marginBottom: idx < navSections.length - 1 ? '0.75rem' : '0' }}>
+          <div key={idx} style={{ marginBottom: idx < navSections.length - 1 ? '1rem' : '0' }}>
             <div style={{
-              padding: '0.25rem 1.5rem',
-              fontSize: '10px',
+              padding: '0.7rem 1.5rem',
+              fontSize: '12px',
               letterSpacing: '0.3em',
               textTransform: 'uppercase',
               color: '#555',
-              marginBottom: '0.3rem',
+              marginBottom: '1rem',
             }}>
               {section.section}
             </div>
@@ -152,13 +152,13 @@ const Sidebar: React.FC = () => {
                   style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '0.85rem',
+                    gap: '1rem',
                     padding: '0.5rem 1.5rem',
                     cursor: 'pointer',
                     transition: 'all 0.25s ease',
                     color: active ? '#f5f4f0' : '#6a6a6a',
                     textDecoration: 'none',
-                    fontSize: '13px',
+                    fontSize: '14px',
                     letterSpacing: '0.05em',
                     borderLeft: active ? '2px solid #c8102e' : '2px solid transparent',
                     background: active ? 'rgba(255,255,255,0.05)' : 'transparent',
@@ -238,10 +238,10 @@ const Sidebar: React.FC = () => {
       {/* Footer */}
       <div style={{ padding: '1rem 1rem', borderTop: '1px solid #2a2a2a', textAlign: 'center', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', marginBottom: '0.5rem' }}>
-          <svg width="11" height="9" viewBox="0 0 24 20" fill="none" style={{ flexShrink: 0 }}>
+          <svg width="13" height="13" viewBox="0 0 24 20" fill="none" style={{ flexShrink: 0 }}>
             <polyline points="1,19 7,7 12,13 16,5 23,19" stroke="#555" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
           </svg>
-          <span style={{ fontSize: '9px', color: '#555', letterSpacing: '0.05em' }}>Crafted in the Alps</span>
+          <span style={{ fontSize: '11px', color: '#555', letterSpacing: '0.05em' }}>Crafted in the Alps</span>
         </div>
       </div>
 
