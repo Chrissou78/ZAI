@@ -702,7 +702,7 @@ const Community: React.FC = () => {
       {/* ══════ PAGE HEADER ══════ */}
       <div style={{ marginBottom: 32 }}>
         <div style={{ ...lbl, color: C.red, letterSpacing: '0.3em', marginBottom: 8, fontSize: '10px' }}>ZAI ECOSYSTEM</div>
-        <h1 style={{ fontSize: 'clamp(32px, 4vw, 48px)', fontWeight: 300, lineHeight: 1.05, margin: '0 0 8px', color: C.black }}>
+        <h1 style={{ fontSize: 'clamp(32px, 4vw, 40px)', fontWeight: 300, lineHeight: 1.15, margin: '0 0 8px', color: C.black }}>
           Community
         </h1>
         <p style={{ color: C.muted, fontSize: '14px', margin: 0, fontWeight: 300 }}>

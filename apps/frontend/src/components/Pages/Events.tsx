@@ -385,7 +385,7 @@ const Events: React.FC = () => {
         <div style={{ ...sectionLabel, color: C.red, letterSpacing: '0.3em', marginBottom: 8, fontSize: '10px' }}>
           experiences
         </div>
-        <h1 style={{ fontSize: 'clamp(32px, 4vw, 40px)', fontWeight: 300, lineHeight: 1.1, margin: '0 0 8px', color: C.black }}>
+        <h1 style={{ fontSize: 'clamp(32px, 4vw, 40px)', fontWeight: 300, lineHeight: 1.15, margin: '0 0 8px', color: C.black }}>
           Exclusive zai experiences
         </h1>
         <p style={{ color: C.muted, fontSize: '13px', margin: 0, fontWeight: 300, maxWidth: 520 }}>
