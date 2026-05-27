@@ -279,7 +279,7 @@ const Events: React.FC = () => {
         <div style={{ position: 'relative', aspectRatio: '16 / 9', background: C.black, overflow: 'hidden' }}>
           {event.coverImage ? (
             <img src={event.coverImage} alt={event.title}
-              style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }} />
+              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
           ) : (
             <div style={{
               width: '100%', height: '100%',
@@ -577,9 +577,9 @@ const Events: React.FC = () => {
 
             {/* Cover */}
             {selectedEvent.coverImage && (
-              <div style={{ height: 240, overflow: 'hidden', borderRadius: '8px 8px 0 0' }}>
+              <div style={{ overflow: 'hidden', borderRadius: '8px 8px 0 0', background: C.black }}>
                 <img src={selectedEvent.coverImage} alt={selectedEvent.title}
-                  style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                  style={{ width: '100%', height: 'auto', display: 'block' }} />
               </div>
             )}
 
