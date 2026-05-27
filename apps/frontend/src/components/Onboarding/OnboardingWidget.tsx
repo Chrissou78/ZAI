@@ -10,15 +10,15 @@ interface OnboardingStep {
   id: number;
   name: string;
   hint: string;
-  route: string;           // where to navigate
-  completionRoute: string; // visiting this route fulfils the step
+  route: string;
+  completionRoute: string;
 }
 
 const STEPS: OnboardingStep[] = [
-  { id: 0, name: 'Complete your profile',       hint: 'Add your details & preferences', route: '/profile',   completionRoute: '/profile' },
-  { id: 1, name: 'Claim your product',          hint: 'Register your zai with your card', route: '/products',  completionRoute: '/products' },
-  { id: 2, name: 'Visit your dashboard',        hint: 'See your full experience overview', route: '/dashboard', completionRoute: '/dashboard' },
-  { id: 3, name: 'Connect with the community',  hint: 'Meet members & share photos',     route: '/community', completionRoute: '/community' },
+  { id: 0, name: 'Complete your profile',       hint: 'Add your details & preferences',    route: '/profile',   completionRoute: '/profile' },
+  { id: 1, name: 'Claim your product',          hint: 'Register your zai with your card',  route: '/products',  completionRoute: '/products' },
+  { id: 2, name: 'Visit your dashboard',        hint: 'See your full experience overview',  route: '/dashboard', completionRoute: '/dashboard' },
+  { id: 3, name: 'Connect with the community',  hint: 'Meet members & share photos',       route: '/community', completionRoute: '/community' },
 ];
 
 // ── Page tour definitions ──
@@ -124,8 +124,7 @@ const OnboardingWidget: React.FC = () => {
     // Check if visiting this route completes a step
     STEPS.forEach((step) => {
       if (path === step.completionRoute && !completedSteps.includes(step.id)) {
-        // For "Claim your product" (step 1), we don't auto-complete on visit alone
-        // — it completes when the claim modal is used (handled via event below)
+        // For "Claim your product" (step 1), don't auto-complete on visit alone
         if (step.id === 1) return;
 
         setCompletedSteps((prev) => {
@@ -137,7 +136,6 @@ const OnboardingWidget: React.FC = () => {
 
     // Trigger page tour if first visit
     if (PAGE_TOURS[path] && !seenTours.includes(path)) {
-      // Small delay so the page renders first
       const tourTimer = setTimeout(() => {
         setTourPage(path);
         setTourStopIndex(0);
@@ -148,16 +146,63 @@ const OnboardingWidget: React.FC = () => {
   }, [location.pathname]);
 
   // ── Listen for custom "product claimed" event to complete step 1 ──
+  // Also check on mount & on route change whether the user already has products
   useEffect(() => {
-    const handler = () => {
+    const completeClaimStep = () => {
       setCompletedSteps((prev) => {
         if (prev.includes(1)) return prev;
         return [...prev, 1];
       });
     };
-    window.addEventListener('zai:product-claimed', handler);
-    return () => window.removeEventListener('zai:product-claimed', handler);
+
+    // Listen for explicit claim event (fired after a successful claim)
+    window.addEventListener('zai:product-claimed', completeClaimStep);
+
+    // Listen for products-loaded event (fired when products page fetches existing products)
+    window.addEventListener('zai:products-loaded', completeClaimStep);
+
+    // Also check localStorage for experience card (set by Products page)
+    try {
+      const expCard = localStorage.getItem('zai_experience_card');
+      if (expCard && JSON.parse(expCard)) {
+        completeClaimStep();
+      }
+    } catch { /* ignore */ }
+
+    return () => {
+      window.removeEventListener('zai:product-claimed', completeClaimStep);
+      window.removeEventListener('zai:products-loaded', completeClaimStep);
+    };
   }, []);
+
+  // ── Re-check claim step when route changes to /products ──
+  // (products may have loaded while we weren't listening)
+  useEffect(() => {
+    if (location.pathname !== '/products') return;
+    if (completedSteps.includes(1)) return;
+
+    // Poll briefly for the products to load and fire the event
+    const checkInterval = setInterval(() => {
+      try {
+        const expCard = localStorage.getItem('zai_experience_card');
+        if (expCard && JSON.parse(expCard)) {
+          setCompletedSteps((prev) => {
+            if (prev.includes(1)) return prev;
+            return [...prev, 1];
+          });
+          clearInterval(checkInterval);
+        }
+      } catch { /* ignore */ }
+    }, 1500);
+
+    // Stop polling after 15 seconds
+    const timeout = setTimeout(() => clearInterval(checkInterval), 15000);
+
+    return () => {
+      clearInterval(checkInterval);
+      clearTimeout(timeout);
+    };
+  }, [location.pathname, completedSteps]);
 
   // ── Tour handlers ──
   const currentTour = PAGE_TOURS[tourPage];
@@ -167,7 +212,6 @@ const OnboardingWidget: React.FC = () => {
     if (tourStopIndex < currentTour.stops.length - 1) {
       setTourStopIndex((i) => i + 1);
     } else {
-      // Tour finished
       setSeenTours((prev) => [...prev, tourPage]);
       setShowTour(false);
     }

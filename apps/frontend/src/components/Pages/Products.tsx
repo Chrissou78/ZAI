@@ -266,6 +266,12 @@ const Products: React.FC = () => {
       const response = await apiService.get(`/products/user/${user?.id}`);
       if (response.data?.success) {
         setProducts(response.data.data || []);
+
+        // ★ Signal onboarding widget that products exist
+        if ((response.data.data || []).length > 0) {
+          window.dispatchEvent(new CustomEvent('zai:product-claimed'));
+        }
+
         const ecCard = (response.data as any).experienceCard;
         if (ecCard) {
           localStorage.setItem('zai_experience_card', JSON.stringify(ecCard));
