@@ -276,10 +276,10 @@ const Events: React.FC = () => {
         onMouseLeave={e => (e.currentTarget.style.background = C.pureWhite)}
       >
         {/* Cover image */}
-        <div style={{ position: 'relative', height: 160, background: C.black, overflow: 'hidden' }}>
+        <div style={{ position: 'relative', aspectRatio: '16 / 9', background: C.black, overflow: 'hidden' }}>
           {event.coverImage ? (
             <img src={event.coverImage} alt={event.title}
-              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+              style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }} />
           ) : (
             <div style={{
               width: '100%', height: '100%',
