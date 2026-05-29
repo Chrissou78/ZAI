@@ -162,7 +162,7 @@ const Home: React.FC = () => {
       <section style={{ background: '#f0ede6', padding: '5rem 4rem', borderTop: '1px solid #e0ddd6' }}>
         <div style={{ maxWidth: '900px', margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5rem', alignItems: 'center' }}>
           <div>
-            <div style={{ fontSize: '11px', letterSpacing: '0.3em', textTransform: 'uppercase', color: '#c8102e', marginBottom: '0.75rem' }}>
+            <div style={{ fontSize: '11px', letterSpacing: '0.3em', textTransform: 'uppercase', color: '#7A222E', marginBottom: '0.75rem' }}>
               zai experience card
             </div>
             <div style={{ fontSize: 'clamp(24px, 3.5vw, 40px)', fontWeight: 300, lineHeight: 1.15, marginBottom: '1rem', color: '#1a1a1a' }}>
@@ -178,7 +178,7 @@ const Home: React.FC = () => {
                 { num: 3, text: 'Access your portal and unlock exclusive privileges' },
               ].map((step) => (
                 <div key={step.num} style={{ display: 'flex', gap: '10px' }}>
-                  <div style={{ width: '20px', height: '20px', border: '1px solid #c8102e', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', color: '#c8102e', flexShrink: 0, marginTop: '2px' }}>
+                  <div style={{ width: '20px', height: '20px', border: '1px solid #7A222E', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', color: '#7A222E', flexShrink: 0, marginTop: '2px' }}>
                     {step.num}
                   </div>
                   <div style={{ fontSize: '12px', color: '#6a6a6a' }}>{step.text}</div>
@@ -206,11 +206,11 @@ const Home: React.FC = () => {
                 <div style={{ fontSize: '11px', letterSpacing: '0.12em', textTransform: 'uppercase' }}>ANNA KIRCHNER</div>
               </div>
             </div>
-            <div style={{ position: 'absolute', bottom: '0', left: '0', right: '0', height: '3px', background: 'linear-gradient(90deg, #c8102e, transparent)' }} />
+            <div style={{ position: 'absolute', bottom: '0', left: '0', right: '0', height: '3px', background: 'linear-gradient(90deg, #7A222E, transparent)' }} />
           </div>
         </div>
         <div style={{ marginTop: '0.75rem', fontSize: '10px', color: '#6a6a6a', display: 'flex', alignItems: 'center', gap: '6px', maxWidth: '900px', margin: '0.75rem auto 0' }}>
-          <div style={{ width: '4px', height: '4px', background: '#c8102e', borderRadius: '50%' }} />
+          <div style={{ width: '4px', height: '4px', background: '#7A222E', borderRadius: '50%' }} />
           Available for purchases over CHF 500
         </div>
       </section>
@@ -218,7 +218,7 @@ const Home: React.FC = () => {
       {/* How It Works Section */}
       <section style={{ background: '#0a0a0a', padding: '5rem 4rem' }}>
         <div style={{ maxWidth: '900px', margin: '0 auto' }}>
-          <div style={{ fontSize: '11px', letterSpacing: '0.3em', textTransform: 'uppercase', color: '#c8102e', marginBottom: '0.75rem' }}>
+          <div style={{ fontSize: '11px', letterSpacing: '0.3em', textTransform: 'uppercase', color: '#7A222E', marginBottom: '0.75rem' }}>
             how it works
           </div>
           <h2 style={{ fontSize: 'clamp(24px, 3.5vw, 40px)', fontWeight: 300, lineHeight: 1.15, color: '#fff', marginBottom: '3rem' }}>
@@ -233,7 +233,7 @@ const Home: React.FC = () => {
               { num: 'Step 04', title: 'Experience zai', desc: 'Join us at a zai ski event to test our ski collection or come and visit us in our lab to experience the zai spirit.' },
             ].map((step, i) => (
               <div key={i} style={{ background: '#1a1a1a', padding: '2rem 1.5rem' }}>
-                <div style={{ fontSize: '11px', letterSpacing: '0.2em', color: '#c8102e', marginBottom: '1rem', fontWeight: 500 }}>
+                <div style={{ fontSize: '11px', letterSpacing: '0.2em', color: '#7A222E', marginBottom: '1rem', fontWeight: 500 }}>
                   {step.num}
                 </div>
                 <div style={{ fontSize: '14px', fontWeight: 500, color: '#fff', marginBottom: '0.75rem', lineHeight: 1.4 }}>
@@ -251,7 +251,7 @@ const Home: React.FC = () => {
       {/* Benefits Section */}
       <section style={{ background: '#f0ede6', padding: '5rem 4rem', borderTop: '1px solid #e0ddd6' }}>
         <div style={{ maxWidth: '900px', margin: '0 auto' }}>
-          <div style={{ fontSize: '11px', letterSpacing: '0.3em', textTransform: 'uppercase', color: '#c8102e', marginBottom: '0.75rem' }}>
+          <div style={{ fontSize: '11px', letterSpacing: '0.3em', textTransform: 'uppercase', color: '#7A222E', marginBottom: '0.75rem' }}>
             exclusive benefits
           </div>
           <div style={{ fontSize: 'clamp(24px, 3.5vw, 40px)', fontWeight: 300, lineHeight: 1.15, marginBottom: '1rem', color: '#1a1a1a' }}>
@@ -301,7 +301,7 @@ const Home: React.FC = () => {
       {/* Zai Ecosystem Section */}
       <section style={{ background: '#0a0a0a', padding: '5rem 4rem', borderTop: '1px solid #2a2a2a' }}>
         <div style={{ maxWidth: '900px', margin: '0 auto' }}>
-          <div style={{ fontSize: '11px', letterSpacing: '0.3em', textTransform: 'uppercase', color: '#c8102e', marginBottom: '0.75rem' }}>
+          <div style={{ fontSize: '11px', letterSpacing: '0.3em', textTransform: 'uppercase', color: '#7A222E', marginBottom: '0.75rem' }}>
             zai ecosystem
           </div>
           <h2 style={{ fontSize: 'clamp(24px, 3.5vw, 40px)', fontWeight: 300, lineHeight: 1.15, color: '#fff', marginBottom: '1rem' }}>
@@ -326,7 +326,7 @@ const Home: React.FC = () => {
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '1.25rem 0', borderTop: '1px solid #333' }}>
-            <div style={{ width: '5px', height: '5px', background: '#c8102e', borderRadius: '50%', flexShrink: 0 }} />
+            <div style={{ width: '5px', height: '5px', background: '#7A222E', borderRadius: '50%', flexShrink: 0 }} />
             <span style={{ fontSize: '11px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#555', whiteSpace: 'nowrap' }}>Partners to be announced</span>
             <div style={{ flex: 1, height: '1px', background: 'linear-gradient(90deg, #333, transparent)' }} />
           </div>

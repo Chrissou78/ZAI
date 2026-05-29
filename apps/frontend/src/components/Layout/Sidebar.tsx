@@ -160,7 +160,7 @@ const Sidebar: React.FC = () => {
                     textDecoration: 'none',
                     fontSize: '14px',
                     letterSpacing: '0.05em',
-                    borderLeft: active ? '2px solid #c8102e' : '2px solid transparent',
+                    borderLeft: active ? '2px solid #7A222E' : '2px solid transparent',
                     background: active ? 'rgba(255,255,255,0.05)' : 'transparent',
                     position: 'relative',
                     boxShadow: active
@@ -207,7 +207,7 @@ const Sidebar: React.FC = () => {
                         minWidth: '18px',
                         height: '18px',
                         borderRadius: '9px',
-                        background: '#c8102e',
+                        background: '#7A222E',
                         color: '#fff',
                         fontSize: '10px',
                         fontWeight: 700,

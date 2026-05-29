@@ -124,7 +124,7 @@ export function WalletConnectButton() {
       <button
         onClick={handleOpenModal}
         style={{
-          background: '#c8102e',
+          background: '#7A222E',
           color: '#fff',
           border: 'none',
           padding: '10px 20px',
@@ -211,7 +211,7 @@ export function WalletConnectButton() {
                     width: '40px',
                     height: '40px',
                     border: '4px solid #e0e0e0',
-                    borderTop: '4px solid #c8102e',
+                    borderTop: '4px solid #7A222E',
                     borderRadius: '50%',
                     animation: 'spin 1s linear infinite',
                   }}

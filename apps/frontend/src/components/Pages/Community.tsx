@@ -43,13 +43,13 @@ const REACTION_EMOJIS = [
   '💪','🥇','🏆','⭐','💎','👌','😂','🫶','🙏','🎉','💯','🚀',
 ];
 
-const MEMBER_DOT_COLORS = ['#c8102e','#2563eb','#f59e0b','#10b981','#8b5cf6','#ec4899','#06b6d4','#f97316'];
+const MEMBER_DOT_COLORS = ['#7A222E','#2563eb','#f59e0b','#10b981','#8b5cf6','#ec4899','#06b6d4','#f97316'];
 const MEMBERS_PER_PAGE = 7;
 
 // ─── Design tokens ───
 
 const C = {
-  black: '#0a0a0a', white: '#f5f4f0', red: '#c8102e', burgundy: '#7D1E2C',
+  black: '#0a0a0a', white: '#f5f4f0', red: '#7A222E', burgundy: '#7D1E2C',
   gray: '#1a1a1a', mid: '#2e2e2e', muted: '#6a6a6a', border: '#e0ddd6',
   borderDark: '#2a2a2a', surface: '#f0ede6', surface2: '#e8e5de', pureWhite: '#ffffff',
   green: '#25D366',

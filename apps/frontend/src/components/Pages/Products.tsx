@@ -94,7 +94,7 @@ const SALUTATIONS = [
 /* ───── Styles ───── */
 
 const C = {
-  black: '#0a0a0a', white: '#f5f4f0', red: '#c8102e', burgundy: '#7D1E2C',
+  black: '#0a0a0a', white: '#f5f4f0', red: '#7A222E', burgundy: '#7D1E2C',
   gray: '#6a6a6a', border: '#e0ddd6', surface: '#f0ede6', green: '#4caf7d',
   pureWhite: '#ffffff', mid: '#2e2e2e',
   font: "'Inter', sans-serif",

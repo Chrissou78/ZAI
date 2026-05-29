@@ -41,7 +41,7 @@ const Tabs: React.FC<TabsProps> = ({ tabs, defaultTab, onChange }) => {
               textTransform: 'uppercase',
               cursor: 'pointer',
               color: activeTab === tab.id ? '#1a1a1a' : '#6a6a6a',
-              borderBottom: activeTab === tab.id ? '2px solid #c8102e' : 'none',
+              borderBottom: activeTab === tab.id ? '2px solid #7A222E' : 'none',
               marginBottom: '-1px',
               background: 'none',
               border: 'none',

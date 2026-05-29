@@ -297,7 +297,7 @@ const Dashboard: React.FC = () => {
 
   /* Activity dot color: product = red, event = blue */
   const getActivityDotColor = (type: string) => {
-    if (type === 'product') return '#c8102e';
+    if (type === 'product') return '#7A222E';
     if (type === 'event') return '#2563eb';
     return '#6a6a6a';
   };
@@ -321,7 +321,7 @@ const Dashboard: React.FC = () => {
               fontSize: '11px',
               letterSpacing: '0.3em',
               textTransform: 'uppercase',
-              color: '#c8102e',
+              color: '#7A222E',
               marginBottom: '0.4rem',
             }}
           >
@@ -356,7 +356,7 @@ const Dashboard: React.FC = () => {
       </div>
 
       {error && (
-        <div style={{ padding: '12px', background: '#fff5f5', border: '1px solid #ffdddd', color: '#c8102e', marginBottom: '1rem', fontSize: '12px' }}>
+        <div style={{ padding: '12px', background: '#fff5f5', border: '1px solid #ffdddd', color: '#7A222E', marginBottom: '1rem', fontSize: '12px' }}>
           {error}
         </div>
       )}
@@ -407,7 +407,7 @@ const Dashboard: React.FC = () => {
             {user.email} · {user.city || 'Location not set'} - {user.country || 'Country not set'}
           </div>
           <div style={{ fontSize: '10px', color: '#6a6a6a', display: 'flex', alignItems: 'center', gap: '5px' }}>
-            <div style={{ width: '4px', height: '4px', background: '#c8102e', borderRadius: '50%' }} />
+            <div style={{ width: '4px', height: '4px', background: '#7A222E', borderRadius: '50%' }} />
             Member since {memberSince}
           </div>
         </div>

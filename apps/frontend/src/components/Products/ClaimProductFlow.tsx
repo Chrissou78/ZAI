@@ -130,7 +130,7 @@ export function ClaimProductFlow({
             )}
           </div>
           {nfcError && (
-            <div style={{ color: '#c8102e', marginBottom: '16px' }}>
+            <div style={{ color: '#7A222E', marginBottom: '16px' }}>
               {nfcError}
             </div>
           )}
@@ -238,7 +238,7 @@ export function ClaimProductFlow({
             {isLoading ? 'Processing...' : 'Claim Product'}
           </Button>
           {claimError && (
-            <div style={{ color: '#c8102e', marginBottom: '12px' }}>
+            <div style={{ color: '#7A222E', marginBottom: '12px' }}>
               {claimError}
             </div>
           )}

@@ -7,7 +7,7 @@ import { apiService } from '../../services/api';
 const C = {
   black: '#0a0a0a',
   white: '#f5f4f0',
-  red: '#c8102e',
+  red: '#7A222E',
   burgundy: '#7D1E2C',
   gray: '#6a6a6a',
   mid: '#999',
