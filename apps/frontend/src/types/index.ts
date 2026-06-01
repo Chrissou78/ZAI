@@ -1,3 +1,10 @@
+export interface UserOrganization {
+  id: string;
+  name?: string;
+  role?: string;       // e.g. 'admin', 'member', 'owner'
+  companyId?: string;
+}
+
 export interface User {
   id: string;
   walletAddress: string;
@@ -28,6 +35,7 @@ export interface User {
   dob?: string;
   memberSince?: string;
   nfcCardId?: string;
+  organizations?: UserOrganization[];
 }
 
 export interface WalletState {
@@ -107,3 +115,5 @@ export interface ApiResponse<T = any> {
   _debug?: Record<string, any>;
   _dbOffline?: boolean;
 }
+
+

@@ -39,6 +39,8 @@ async function handleLogin(req, res) {
     const sessionToken = exchangeResponse.data.session?.token;
     const userProfile = exchangeResponse.data.user || {};
 
+    console.log('🔍 WalletTwo full response:', JSON.stringify(exchangeResponse.data, null, 2));
+
     if (!sessionToken) {
       return res.status(400).json({ error: 'Invalid exchange response' });
     }
@@ -64,6 +66,7 @@ async function handleLogin(req, res) {
       role: userProfile.role || 'user',
       banned: userProfile.banned || false,
       isPublic: userProfile.isPublic || false,
+      organizations: userProfile.organizations || exchangeResponse.data.organizations || [],
     };
 
     const jwtToken = jwt.sign(
