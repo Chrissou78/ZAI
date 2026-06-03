@@ -353,6 +353,19 @@ const Admin: React.FC = () => {
             {/* Admin actions (only for pending claims) */}
             {selectedClaim.status === 'pending' && (
               <>
+                {/* User's product name (if provided) */}
+                {selectedClaim.productName && (
+                  <div style={{
+                    padding: '12px 16px', borderRadius: 8,
+                    background: C.surface, border: bdr,
+                  }}>
+                    <div style={{ ...lbl, marginBottom: 4 }}>Product Name (from user)</div>
+                    <div style={{ fontSize: 14, fontWeight: 500, color: C.black }}>
+                      {selectedClaim.productName}
+                    </div>
+                  </div>
+                )}
+
                 {/* Product selection */}
                 <div>
                   <div style={{ ...lbl, marginBottom: 8 }}>Select Product to Mint</div>
