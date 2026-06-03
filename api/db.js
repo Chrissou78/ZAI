@@ -22,13 +22,12 @@ export function getPool() {
   return pool;
 }
 
-// ── Role-based admin check (replaces hardcoded wallet) ──
 export async function isAdmin(decoded) {
-  if (!decoded?.userId) return false;
+  if (!decoded?.userId && !decoded?.wallet) return false;
   try {
     const res = await getPool().query(
-      'SELECT role FROM user_roles WHERE user_id = $1',
-      [decoded.userId]
+      'SELECT role FROM user_roles WHERE user_id = $1 OR LOWER(wallet) = LOWER($2)',
+      [decoded.userId || '', decoded.wallet || '']
     );
     const role = res.rows[0]?.role;
     return role === 'owner' || role === 'admin';
@@ -37,13 +36,11 @@ export async function isAdmin(decoded) {
   }
 }
 
-// ── Get user role (for JWT / profile display) ──
-export async function getUserRole(userId) {
-  if (!userId) return 'member';
+export async function getUserRole(userId, wallet) {
   try {
     const res = await getPool().query(
-      'SELECT role FROM user_roles WHERE user_id = $1',
-      [userId]
+      'SELECT role FROM user_roles WHERE user_id = $1 OR LOWER(wallet) = LOWER($2)',
+      [userId || '', wallet || '']
     );
     return res.rows[0]?.role || 'member';
   } catch {
