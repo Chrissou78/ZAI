@@ -206,6 +206,8 @@ const Products: React.FC = () => {
   const [receiptSuccess, setReceiptSuccess] = useState(false);
   const [pendingClaimRequests, setPendingClaimRequests] = useState<PendingClaimRequest[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [receiptCid, setReceiptCid] = useState<string | null>(null);
+  const [receiptKey, setReceiptKey] = useState<string | null>(null);
 
   const [showQrLink, setShowQrLink] = useState(false);
   const [uploadToken, setUploadToken] = useState<string | null>(null);
@@ -420,8 +422,11 @@ const Products: React.FC = () => {
         const res = await apiService.get(`/products/claim-upload/${uploadToken}/status`);
         const data = (res.data as any)?.data;
         if (data?.status === 'uploaded' && data?.imageUrl) {
-          // Phone uploaded the photo — show it on desktop
-          setReceiptImage(data.imageUrl);
+          // Phone uploaded an encrypted image — store CID + key for submission
+          // Show a placeholder preview (we can't display encrypted blob as image)
+          setReceiptImage(data.imageUrl);        // still set for submission logic
+          setReceiptCid(data.imageCid || null);
+          setReceiptKey(data.encryptionKey || null);
           setShowQrLink(false);
           setQrPolling(false);
           if (uploadPollRef.current) clearInterval(uploadPollRef.current);
@@ -487,6 +492,8 @@ const Products: React.FC = () => {
   const openReceiptModal = () => {
     setShowReceiptModal(true);
     setReceiptImage(null);
+    setReceiptCid(null);
+    setReceiptKey(null);
     setReceiptProductName('');
     setReceiptError(null);
     setReceiptSuccess(false);
@@ -511,14 +518,22 @@ const Products: React.FC = () => {
   };
 
   const handleReceiptSubmit = async () => {
-    if (!receiptImage) return;
+    if (!receiptImage && !receiptCid) return;
     setReceiptSubmitting(true);
     setReceiptError(null);
     try {
-      const res = await apiService.post('/products/claim-request', {
-        proofImage: receiptImage,
-        productName: receiptProductName,
-      });
+      // If uploaded via phone, send the pre-uploaded CID + key
+      // If uploaded directly, send base64
+      const body: any = { productName: receiptProductName };
+
+      if (receiptCid) {
+        body.preUploadedCid = receiptCid;
+        body.preUploadedKey = receiptKey;
+      } else {
+        body.proofImage = receiptImage;
+      }
+
+      const res = await apiService.post('/products/claim-request', body);
       const payload = res.data as any;
       if (payload?.success) {
         setReceiptSuccess(true);
@@ -1312,13 +1327,30 @@ const Products: React.FC = () => {
                     </div>
                   ) : (
                     <div style={{ position: 'relative' }}>
-                      <img
-                        src={receiptImage}
-                        alt="Receipt preview"
-                        style={{ width: '100%', maxHeight: 300, objectFit: 'contain', borderRadius: 8, background: C.surface }}
-                      />
+                      {receiptCid ? (
+                        /* Phone-uploaded (encrypted) — show confirmation instead of broken image */
+                        <div style={{
+                          width: '100%', padding: '32px 20px', borderRadius: 8,
+                          background: C.surface, textAlign: 'center',
+                          border: `1px solid ${C.border}`,
+                        }}>
+                          <div style={{ fontSize: 40, marginBottom: 8 }}>📷</div>
+                          <div style={{ fontSize: 14, fontWeight: 600, color: C.black, marginBottom: 4 }}>
+                            Photo received from phone
+                          </div>
+                          <div style={{ fontSize: 11, color: C.gray }}>
+                            Your receipt photo has been securely uploaded and is ready to submit.
+                          </div>
+                        </div>
+                      ) : (
+                        <img
+                          src={receiptImage!}
+                          alt="Receipt preview"
+                          style={{ width: '100%', maxHeight: 300, objectFit: 'contain', borderRadius: 8, background: C.surface }}
+                        />
+                      )}
                       <button
-                        onClick={() => setReceiptImage(null)}
+                        onClick={() => { setReceiptImage(null); setReceiptCid(null); setReceiptKey(null); }}
                         style={{
                           position: 'absolute', top: 8, right: 8,
                           width: 28, height: 28, borderRadius: '50%',
