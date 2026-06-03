@@ -896,13 +896,6 @@ export default async function handler(req, res) {
   }
 
   // ══════════════════════════════════════════════════════════════
-  // GET /api/products/:productId
-  // ══════════════════════════════════════════════════════════════
-  if (fullPath && !fullPath.includes('/') && req.method === 'GET') {
-    return res.json({ success: true, data: { id: fullPath } });
-  }
-
-  // ══════════════════════════════════════════════════════════════
   // POST /api/products/claim-request
   // User submits a proof-of-purchase image for admin review
   // Body: { proofImage (base64), rwaId?, productName? }
@@ -1606,6 +1599,13 @@ export default async function handler(req, res) {
   </script>
 </body>
 </html>`);
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // GET /api/products/:productId
+  // ══════════════════════════════════════════════════════════════
+  if (fullPath && !fullPath.includes('/') && req.method === 'GET') {
+    return res.json({ success: true, data: { id: fullPath } });
   }
 
   return res.status(404).json({ error: 'Route not found' });
