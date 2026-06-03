@@ -160,6 +160,120 @@ const formatClaimedDate = (d?: string | null): string => {
 
 const MAX_GRID_CARDS = 3;
 
+/* ───── Card sub-components (module scope = stable identity, so background
+   refreshes re-render in place instead of remounting and reloading images) ───── */
+
+const ClaimCard: React.FC<{ onClaim: () => void; style?: React.CSSProperties }> = ({ onClaim, style: extraStyle }) => (
+  <div
+    onClick={onClaim}
+    style={{
+      height: 300,
+      border: `2px dashed ${C.border}`, borderRadius: 8,
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+      cursor: 'pointer', transition: 'border-color 0.2s, background 0.2s',
+      ...extraStyle,
+    }}
+    onMouseEnter={e => { e.currentTarget.style.borderColor = C.red; e.currentTarget.style.background = C.surface; }}
+    onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.background = 'transparent'; }}
+  >
+    <div style={{
+      width: 48, height: 48, borderRadius: '50%', border: `2px solid ${C.red}`,
+      display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12,
+    }}>
+      <span style={{ fontSize: 24, color: C.red, lineHeight: 1 }}>+</span>
+    </div>
+    <span style={{ fontSize: 13, fontWeight: 600, color: C.mid }}>Claim a Product</span>
+    <span style={{ fontSize: 11, color: C.gray, marginTop: 4 }}>Scan or upload your receipt</span>
+  </div>
+);
+
+const ProductCard: React.FC<{
+  product: Product;
+  onSelect: (p: Product) => void;
+  onActivateInsurance: (p: Product) => void;
+  style?: React.CSSProperties;
+}> = ({ product, onSelect, onActivateInsurance, style: extraStyle }) => (
+  <div
+    style={{
+      borderRadius: 8, border: bdr, overflow: 'hidden',
+      background: C.pureWhite, transition: 'transform 0.2s, box-shadow 0.2s',
+      display: 'flex', flexDirection: 'column',
+      ...extraStyle,
+    }}
+    onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)'; }}
+    onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'none'; }}
+  >
+    <div
+      onClick={() => onSelect(product)}
+      style={{ height: 160, background: C.surface, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', cursor: 'pointer', position: 'relative' }}
+    >
+      {product.image ? (
+        <img src={product.image} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+      ) : (
+        <span style={{ fontSize: 40, color: C.border }}>&#x2B21;</span>
+      )}
+      {product.insurance?.active && (
+        <div style={{
+          position: 'absolute', top: 8, left: 8,
+          background: C.black, color: '#fff', fontSize: 8, fontWeight: 700,
+          letterSpacing: '0.15em', textTransform: 'uppercase',
+          padding: '3px 8px', borderRadius: 2,
+        }}>CLAIMED</div>
+      )}
+    </div>
+
+    <div onClick={() => onSelect(product)} style={{ padding: '12px 14px', flex: 1, cursor: 'pointer' }}>
+      {product.collection && (
+        <div style={{ ...lbl, marginBottom: 4 }}>{product.collection}</div>
+      )}
+      <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 6, lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        {product.name}
+      </div>
+      {product.price && (
+        <div style={{ fontSize: 13, color: C.mid, marginBottom: 8 }}>
+          {product.currency || 'CHF'} {product.price}
+        </div>
+      )}
+      <div style={{
+        display: 'inline-flex', alignItems: 'center', gap: 4,
+        padding: '3px 8px', borderRadius: 12,
+        fontSize: 10, fontWeight: 600, letterSpacing: '0.05em',
+        background: product.insurance?.active ? '#e8f5e9' : C.surface,
+        color: product.insurance?.active ? C.green : C.gray,
+      }}>
+        <span style={{ width: 6, height: 6, borderRadius: '50%', background: product.insurance?.active ? C.green : C.gray }} />
+        {product.insurance?.active ? 'INSURED' : 'NOT INSURED'}
+      </div>
+    </div>
+
+    <div style={{ padding: '0 14px 12px' }}>
+      {!product.insurance?.active ? (
+        <div
+          onClick={(e) => { e.stopPropagation(); onActivateInsurance(product); }}
+          style={{
+            paddingTop: 10, borderTop: bdr, cursor: 'pointer',
+            fontSize: 11, fontWeight: 600, letterSpacing: '0.05em',
+            color: C.mid, display: 'flex', alignItems: 'center', gap: 4,
+            transition: 'color 0.15s',
+          }}
+          onMouseEnter={e => (e.currentTarget.style.color = C.red)}
+          onMouseLeave={e => (e.currentTarget.style.color = C.mid)}
+        >
+          ACTIVATE INSURANCE <span style={{ fontSize: 14 }}>→</span>
+        </div>
+      ) : (
+        <div style={{
+          paddingTop: 10, borderTop: bdr,
+          fontSize: 11, fontWeight: 600, letterSpacing: '0.05em', color: C.green,
+          display: 'flex', alignItems: 'center', gap: 4,
+        }}>
+          INSURANCE ACTIVE <span style={{ fontSize: 14 }}>✓</span>
+        </div>
+      )}
+    </div>
+  </div>
+);
+
 /* ───── Component ───── */
 
 const Products: React.FC = () => {
@@ -648,113 +762,7 @@ const Products: React.FC = () => {
     );
   }
 
-  /* ─── Card sub-components ─── */
-
-  const ClaimCard = ({ style: extraStyle }: { style?: React.CSSProperties }) => (
-    <div
-      onClick={openReceiptModal}
-      style={{
-        height: 300,
-        border: `2px dashed ${C.border}`, borderRadius: 8,
-        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-        cursor: 'pointer', transition: 'border-color 0.2s, background 0.2s',
-        ...extraStyle,
-      }}
-      onMouseEnter={e => { e.currentTarget.style.borderColor = C.red; e.currentTarget.style.background = C.surface; }}
-      onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.background = 'transparent'; }}
-    >
-      <div style={{
-        width: 48, height: 48, borderRadius: '50%', border: `2px solid ${C.red}`,
-        display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12,
-      }}>
-        <span style={{ fontSize: 24, color: C.red, lineHeight: 1 }}>+</span>
-      </div>
-      <span style={{ fontSize: 13, fontWeight: 600, color: C.mid }}>Claim a Product</span>
-      <span style={{ fontSize: 11, color: C.gray, marginTop: 4 }}>Scan or upload your receipt</span>
-    </div>
-  );
-
-  const ProductCard = ({ product, style: extraStyle }: { product: Product; style?: React.CSSProperties }) => (
-    <div
-      style={{
-        borderRadius: 8, border: bdr, overflow: 'hidden',
-        background: C.pureWhite, transition: 'transform 0.2s, box-shadow 0.2s',
-        display: 'flex', flexDirection: 'column',
-        ...extraStyle,
-      }}
-      onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.08)'; }}
-      onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'none'; }}
-    >
-      <div
-        onClick={() => setSelectedProduct(product)}
-        style={{ height: 160, background: C.surface, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', cursor: 'pointer', position: 'relative' }}
-      >
-        {product.image ? (
-          <img src={product.image} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-        ) : (
-          <span style={{ fontSize: 40, color: C.border }}>&#x2B21;</span>
-        )}
-        {product.insurance?.active && (
-          <div style={{
-            position: 'absolute', top: 8, left: 8,
-            background: C.black, color: '#fff', fontSize: 8, fontWeight: 700,
-            letterSpacing: '0.15em', textTransform: 'uppercase',
-            padding: '3px 8px', borderRadius: 2,
-          }}>CLAIMED</div>
-        )}
-      </div>
-
-      <div onClick={() => setSelectedProduct(product)} style={{ padding: '12px 14px', flex: 1, cursor: 'pointer' }}>
-        {product.collection && (
-          <div style={{ ...lbl, marginBottom: 4 }}>{product.collection}</div>
-        )}
-        <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 6, lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {product.name}
-        </div>
-        {product.price && (
-          <div style={{ fontSize: 13, color: C.mid, marginBottom: 8 }}>
-            {product.currency || 'CHF'} {product.price}
-          </div>
-        )}
-        <div style={{
-          display: 'inline-flex', alignItems: 'center', gap: 4,
-          padding: '3px 8px', borderRadius: 12,
-          fontSize: 10, fontWeight: 600, letterSpacing: '0.05em',
-          background: product.insurance?.active ? '#e8f5e9' : C.surface,
-          color: product.insurance?.active ? C.green : C.gray,
-        }}>
-          <span style={{ width: 6, height: 6, borderRadius: '50%', background: product.insurance?.active ? C.green : C.gray }} />
-          {product.insurance?.active ? 'INSURED' : 'NOT INSURED'}
-        </div>
-      </div>
-
-      <div style={{ padding: '0 14px 12px' }}>
-        {!product.insurance?.active ? (
-          <div
-            onClick={(e) => { e.stopPropagation(); openInsuranceModal(product); }}
-            style={{
-              paddingTop: 10, borderTop: bdr, cursor: 'pointer',
-              fontSize: 11, fontWeight: 600, letterSpacing: '0.05em',
-              color: C.mid, display: 'flex', alignItems: 'center', gap: 4,
-              transition: 'color 0.15s',
-            }}
-            onMouseEnter={e => (e.currentTarget.style.color = C.red)}
-            onMouseLeave={e => (e.currentTarget.style.color = C.mid)}
-          >
-            ACTIVATE INSURANCE <span style={{ fontSize: 14 }}>→</span>
-          </div>
-        ) : (
-          <div style={{
-            paddingTop: 10, borderTop: bdr,
-            fontSize: 11, fontWeight: 600, letterSpacing: '0.05em', color: C.green,
-            display: 'flex', alignItems: 'center', gap: 4,
-          }}>
-            INSURANCE ACTIVE <span style={{ fontSize: 14 }}>✓</span>
-          </div>
-        )}
-      </div>
-    </div>
-  );
+  /* ─── Card sub-components are defined at module scope (see ClaimCard / ProductCard below the styles) to keep a stable identity across renders ─── */
 
   /* ───── Render ───── */
 
@@ -977,9 +985,14 @@ const Products: React.FC = () => {
             gridTemplateColumns: `repeat(${products.length + 1}, 1fr)`,
             gap: 16,
           }}>
-            <ClaimCard />
+            <ClaimCard onClaim={openReceiptModal} />
             {products.map(product => (
-              <ProductCard key={product.id} product={product} />
+              <ProductCard
+                key={product.id}
+                product={product}
+                onSelect={setSelectedProduct}
+                onActivateInsurance={openInsuranceModal}
+              />
             ))}
           </div>
         ) : (
@@ -1020,11 +1033,13 @@ const Products: React.FC = () => {
                 scrollSnapType: 'x mandatory', scrollbarWidth: 'none',
               }}
             >
-              <ClaimCard style={{ minWidth: 220, maxWidth: 220, scrollSnapAlign: 'start', flexShrink: 0 }} />
+              <ClaimCard onClaim={openReceiptModal} style={{ minWidth: 220, maxWidth: 220, scrollSnapAlign: 'start', flexShrink: 0 }} />
               {products.map(product => (
                 <ProductCard
                   key={product.id}
                   product={product}
+                  onSelect={setSelectedProduct}
+                  onActivateInsurance={openInsuranceModal}
                   style={{ minWidth: 220, maxWidth: 220, scrollSnapAlign: 'start', flexShrink: 0 }}
                 />
               ))}
