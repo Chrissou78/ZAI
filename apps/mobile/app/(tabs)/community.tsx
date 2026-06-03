@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Image,
   ActivityIndicator, RefreshControl, Modal, Pressable, TextInput,
-  Alert, Dimensions, FlatList,
+  Alert, Dimensions,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
@@ -56,7 +56,6 @@ interface CommunityStats { totalMembers: number; totalPhotos: number; }
 
 const REACTION_EMOJIS = ['❤️','🔥','👏','🤩','😍','🙌','⛷️','🏔','🎿','🏂','❄️','🌨️'];
 const MEMBER_DOT_COLORS = ['#7A222E','#2563eb','#f59e0b','#10b981','#8b5cf6','#ec4899','#06b6d4','#f97316'];
-const { width: SCREEN_W } = Dimensions.get('window');
 
 // ─── Helpers ───
 
@@ -119,6 +118,11 @@ export default function CommunityScreen() {
   const [membersLoading, setMembersLoading] = useState(false);
   const [memberSearch, setMemberSearch] = useState('');
 
+  // Caption modal state
+  const [showCaptionModal, setShowCaptionModal] = useState(false);
+  const [captionText, setCaptionText] = useState('');
+  const [captionBase64, setCaptionBase64] = useState('');
+
   // ── Fetch gallery ──
 
   const fetchPhotos = useCallback(async (background = false) => {
@@ -179,15 +183,25 @@ export default function CommunityScreen() {
 
     if (result.canceled || !result.assets?.[0]) return;
 
-    Alert.prompt?.(
+    const base64 = result.assets[0].base64!;
+
+    Alert.alert(
       'Add a caption',
-      'Describe your photo (optional)',
+      'Would you like to add a caption to your photo?',
       [
-        { text: 'Skip', onPress: () => doUpload(result.assets![0].base64!, '') },
-        { text: 'Post', onPress: (caption) => doUpload(result.assets![0].base64!, caption || '') },
-      ],
-      'plain-text'
-    ) || doUpload(result.assets[0].base64!, '');
+        {
+          text: 'Skip',
+          onPress: () => doUpload(base64, ''),
+        },
+        {
+          text: 'Add Caption',
+          onPress: () => {
+            setCaptionBase64(base64);
+            setShowCaptionModal(true);
+          },
+        },
+      ]
+    );
   };
 
   const doUpload = async (base64: string, caption: string) => {
@@ -217,7 +231,6 @@ export default function CommunityScreen() {
     try {
       const res = await apiService.post(`/community/photos/${photoId}/reactions`, { emoji });
       if (res.data?.success) {
-        // Refresh the specific photo's reactions
         fetchPhotos(true);
         if (selectedPhoto?.id === photoId) {
           const photoRes = await apiService.get(`/community/photos/${photoId}`);
@@ -237,7 +250,6 @@ export default function CommunityScreen() {
       });
       if (res.data?.success) {
         setNewComment('');
-        // Refresh the photo to get updated comments
         const photoRes = await apiService.get(`/community/photos/${selectedPhoto.id}`);
         if (photoRes.data?.success) setSelectedPhoto(photoRes.data.data);
         fetchPhotos(true);
@@ -635,6 +647,49 @@ export default function CommunityScreen() {
           </View>
         </Modal>
       )}
+
+      {/* ══════ CAPTION INPUT MODAL ══════ */}
+      {showCaptionModal && (
+        <Modal transparent visible animationType="fade" onRequestClose={() => setShowCaptionModal(false)}>
+          <Pressable style={styles.captionOverlay} onPress={() => setShowCaptionModal(false)}>
+            <View style={styles.captionCard} onStartShouldSetResponder={() => true}>
+              <Text style={styles.captionModalTitle}>Add a caption</Text>
+              <TextInput
+                style={styles.captionModalInput}
+                placeholder="Describe your photo…"
+                placeholderTextColor={DARK_THEME.textSecondary}
+                value={captionText}
+                onChangeText={setCaptionText}
+                multiline
+                autoFocus
+              />
+              <View style={styles.captionModalActions}>
+                <TouchableOpacity
+                  style={styles.captionCancelBtn}
+                  onPress={() => {
+                    setShowCaptionModal(false);
+                    setCaptionText('');
+                    doUpload(captionBase64, '');
+                  }}
+                >
+                  <Text style={styles.captionCancelText}>SKIP</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.captionSubmitBtn}
+                  onPress={() => {
+                    const caption = captionText.trim();
+                    setShowCaptionModal(false);
+                    setCaptionText('');
+                    doUpload(captionBase64, caption);
+                  }}
+                >
+                  <Text style={styles.captionSubmitText}>POST</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Pressable>
+        </Modal>
+      )}
     </ScreenBackground>
   );
 }
@@ -804,5 +859,42 @@ const styles = StyleSheet.create({
   commentSendBtn: {
     width: 40, height: 40, borderRadius: 20, backgroundColor: DARK_THEME.primary,
     justifyContent: 'center', alignItems: 'center',
+  },
+
+  // ── Caption modal ──
+  captionOverlay: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'center', alignItems: 'center', padding: 32,
+  },
+  captionCard: {
+    backgroundColor: DARK_THEME.surface, borderRadius: 16, padding: 24,
+    width: '100%', maxWidth: 340,
+    borderWidth: 1, borderColor: DARK_THEME.border,
+  },
+  captionModalTitle: {
+    fontSize: 16, fontWeight: '600', color: DARK_THEME.text, marginBottom: 16,
+  },
+  captionModalInput: {
+    backgroundColor: DARK_THEME.background, borderRadius: 8,
+    paddingHorizontal: 14, paddingVertical: 12, fontSize: 14,
+    color: DARK_THEME.text, minHeight: 80, textAlignVertical: 'top',
+    borderWidth: 1, borderColor: DARK_THEME.border, marginBottom: 16,
+  },
+  captionModalActions: {
+    flexDirection: 'row', gap: 12,
+  },
+  captionCancelBtn: {
+    flex: 1, paddingVertical: 12, alignItems: 'center', borderRadius: 8,
+    borderWidth: 1, borderColor: DARK_THEME.border,
+  },
+  captionCancelText: {
+    fontSize: 11, fontWeight: '700', letterSpacing: 2, color: DARK_THEME.textSecondary,
+  },
+  captionSubmitBtn: {
+    flex: 1, paddingVertical: 12, alignItems: 'center', borderRadius: 8,
+    backgroundColor: DARK_THEME.primary,
+  },
+  captionSubmitText: {
+    fontSize: 11, fontWeight: '700', letterSpacing: 2, color: '#fff',
   },
 });
