@@ -30,6 +30,20 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   return <>{children}</>;
 };
 
+/* ── Exclusive route guard — experience card holders + admins only ── */
+const ExclusiveRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user } = useAppContext();
+  const isAdminUser = user?.role === 'admin' || user?.role === 'owner';
+  const stored = localStorage.getItem('zai_experience_card');
+  const hasExperienceCard = !!stored && stored !== 'null' && stored !== 'undefined';
+
+  if (!hasExperienceCard && !isAdminUser) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return <>{children}</>;
+};
+
 const Router: React.FC = () => {
   const { user, isLoading } = useAppContext();
 
@@ -46,9 +60,9 @@ const Router: React.FC = () => {
           >
             <Route path="/" element={<Home />} />
             <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/products" element={<Products />} />
-            <Route path="/events" element={<Events />} />
-            <Route path="/community" element={<Community />} />
+            <Route path="/products" element={<ExclusiveRoute><Products /></ExclusiveRoute>} />
+            <Route path="/events" element={<ExclusiveRoute><Events /></ExclusiveRoute>} />
+            <Route path="/community" element={<ExclusiveRoute><Community /></ExclusiveRoute>} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/admin" element={<Admin />} />
@@ -73,9 +87,9 @@ const Router: React.FC = () => {
           }
         >
           <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/products" element={<Products />} />
-          <Route path="/events" element={<Events />} />
-          <Route path="/community" element={<Community />} />
+          <Route path="/products" element={<ExclusiveRoute><Products /></ExclusiveRoute>} />
+          <Route path="/events" element={<ExclusiveRoute><Events /></ExclusiveRoute>} />
+          <Route path="/community" element={<ExclusiveRoute><Community /></ExclusiveRoute>} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/admin" element={<Admin />} />

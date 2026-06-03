@@ -19,12 +19,39 @@ const Sidebar: React.FC = () => {
   const location = useLocation();
   const [communityNewCount, setCommunityNewCount] = useState(0);
   const [adminPendingCount, setAdminPendingCount] = useState(0);
+  const [hasExperienceCard, setHasExperienceCard] = useState(false);
 
   const isActive = (path: string) => location.pathname === path;
   const isAdminUser = user?.role === 'admin' || user?.role === 'owner';
 
+  // ── Experience card detection ──
+  useEffect(() => {
+    const check = () => {
+      const stored = localStorage.getItem('zai_experience_card');
+      setHasExperienceCard(!!stored && stored !== 'null' && stored !== 'undefined');
+    };
+    check();
+
+    // Listen for updates from Products page
+    const handler = () => check();
+    window.addEventListener('zai:experience-card-updated', handler);
+    window.addEventListener('storage', handler);
+
+    // Also poll localStorage in case the event was missed
+    const interval = setInterval(check, 5000);
+
+    return () => {
+      window.removeEventListener('zai:experience-card-updated', handler);
+      window.removeEventListener('storage', handler);
+      clearInterval(interval);
+    };
+  }, []);
+
+  // Admins always see everything
+  const showExclusive = hasExperienceCard || isAdminUser;
+
   const checkCommunityUpdates = useCallback(async () => {
-    if (!user) { setCommunityNewCount(0); return; }
+    if (!user || !showExclusive) { setCommunityNewCount(0); return; }
     try {
       const res = await apiService.get('/community/notifications');
       if (res.data?.success) {
@@ -33,7 +60,7 @@ const Sidebar: React.FC = () => {
     } catch {
       // silently fail
     }
-  }, [user]);
+  }, [user, showExclusive]);
 
   useEffect(() => {
     checkCommunityUpdates();
@@ -81,14 +108,15 @@ const Sidebar: React.FC = () => {
         { path: '/dashboard', label: 'Dashboard', icon: <DashboardIcon /> },
       ],
     },
-    {
-      section: 'My zai',
+    // ── zai Exclusive — only for experience card holders + admins ──
+    ...(showExclusive ? [{
+      section: 'zai Exclusive',
       items: [
         { path: '/products', label: 'My Collection', icon: <ProductsIcon /> },
         { path: '/events', label: 'Events', icon: <EventsIcon /> },
         { path: '/community', label: 'Community', icon: <CommunityIcon />, badge: communityNewCount },
       ],
-    },
+    }] : []),
     {
       section: 'Account',
       items: [
@@ -158,19 +186,17 @@ const Sidebar: React.FC = () => {
             <div style={{ fontSize: '12px', color: '#f5f4f0', fontWeight: 500 }}>
               {user.givenName || user.firstName || ''} {user.familyName || user.lastName || ''}
             </div>
-            {/* Role label — only show for admin/owner */}
-            {isAdminUser && (
-              <div style={{
-                fontSize: '9px',
-                letterSpacing: '0.2em',
-                textTransform: 'uppercase',
-                color: '#7A222E',
-                fontWeight: 600,
-                marginTop: '2px',
-              }}>
-                {user.role}
-              </div>
-            )}
+            {/* Tier label */}
+            <div style={{
+              fontSize: '9px',
+              letterSpacing: '0.2em',
+              textTransform: 'uppercase',
+              color: isAdminUser ? '#7A222E' : hasExperienceCard ? '#c9a84c' : '#555',
+              fontWeight: 600,
+              marginTop: '2px',
+            }}>
+              {isAdminUser ? user.role : hasExperienceCard ? 'exclusive member' : 'member'}
+            </div>
           </div>
         </div>
       )}
