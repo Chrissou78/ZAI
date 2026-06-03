@@ -422,9 +422,7 @@ const Products: React.FC = () => {
         const res = await apiService.get(`/products/claim-upload/${uploadToken}/status`);
         const data = (res.data as any)?.data;
         if (data?.status === 'uploaded' && data?.imageUrl) {
-          // Phone uploaded an encrypted image — store CID + key for submission
-          // Show a placeholder preview (we can't display encrypted blob as image)
-          setReceiptImage(data.imageUrl);        // still set for submission logic
+          setReceiptImage('phone-uploaded');       // truthy flag, not a real URL
           setReceiptCid(data.imageCid || null);
           setReceiptKey(data.encryptionKey || null);
           setShowQrLink(false);
@@ -522,17 +520,13 @@ const Products: React.FC = () => {
     setReceiptSubmitting(true);
     setReceiptError(null);
     try {
-      // If uploaded via phone, send the pre-uploaded CID + key
-      // If uploaded directly, send base64
       const body: any = { productName: receiptProductName };
-
       if (receiptCid) {
         body.preUploadedCid = receiptCid;
         body.preUploadedKey = receiptKey;
       } else {
         body.proofImage = receiptImage;
       }
-
       const res = await apiService.post('/products/claim-request', body);
       const payload = res.data as any;
       if (payload?.success) {
@@ -1374,7 +1368,7 @@ const Products: React.FC = () => {
                   <Button onClick={() => setShowReceiptModal(false)}>Cancel</Button>
                   <button
                     onClick={handleReceiptSubmit}
-                    disabled={!receiptImage || receiptSubmitting}
+                    disabled={(!receiptImage && !receiptCid) || receiptSubmitting}
                     style={{
                       padding: '10px 24px', fontSize: 11, fontWeight: 600,
                       letterSpacing: '0.15em', textTransform: 'uppercase',
