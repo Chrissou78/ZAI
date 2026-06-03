@@ -201,6 +201,7 @@ const Products: React.FC = () => {
   const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [receiptImage, setReceiptImage] = useState<string | null>(null);
   const [receiptProductName, setReceiptProductName] = useState('');
+  const [isCustomProduct, setIsCustomProduct] = useState(false);
   const [receiptSubmitting, setReceiptSubmitting] = useState(false);
   const [receiptError, setReceiptError] = useState<string | null>(null);
   const [receiptSuccess, setReceiptSuccess] = useState(false);
@@ -214,6 +215,7 @@ const Products: React.FC = () => {
   const [qrPolling, setQrPolling] = useState(false);
   const [isMobileDevice] = useState(() => /Android|iPhone|iPad|iPod/i.test(navigator.userAgent));
   const uploadPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const handledValidatedRef = useRef<Set<string>>(new Set());
 
   const [allClaims, setAllClaims] = useState<any[]>([]);
   const [dismissedClaimIds, setDismissedClaimIds] = useState<Set<string>>(() => {
@@ -304,9 +306,10 @@ const Products: React.FC = () => {
     if (user?.id) fetchUserProducts();
   }, [user?.id]);
 
-  const fetchUserProducts = useCallback(async () => {
+  const fetchUserProducts = useCallback(async (opts?: { background?: boolean }) => {
+    const background = opts?.background === true;
     try {
-      setIsLoading(true);
+      if (!background) setIsLoading(true);
       setError(null);
       const response = await apiService.get(`/products/user/${user?.id}`);
       if (response.data?.success) {
@@ -326,9 +329,11 @@ const Products: React.FC = () => {
       }
     } catch (err: any) {
       console.error('Error fetching products:', err);
-      setError(err.response?.data?.error || 'Failed to load products');
+      // On a background refresh, keep showing what is already on screen
+      // instead of replacing the page with an error state.
+      if (!background) setError(err.response?.data?.error || 'Failed to load products');
     } finally {
-      setIsLoading(false);
+      if (!background) setIsLoading(false);
     }
   }, [user?.id]);
 
@@ -359,9 +364,16 @@ const Products: React.FC = () => {
         // All claims → for notification banners
         setAllClaims(claims);
 
-        // If any claim was validated, refresh products to show the new NFT
-        if (claims.some((c: any) => c.status === 'validated')) {
-          fetchUserProducts();
+        // Refresh products only when a claim becomes newly validated,
+        // not on every poll. A background refresh avoids blanking the page.
+        const newlyValidated = claims.some(
+          (c: any) => c.status === 'validated' && !handledValidatedRef.current.has(c.id)
+        );
+        if (newlyValidated) {
+          claims
+            .filter((c: any) => c.status === 'validated')
+            .forEach((c: any) => handledValidatedRef.current.add(c.id));
+          fetchUserProducts({ background: true });
         }
       }
     } catch {
@@ -405,7 +417,7 @@ const Products: React.FC = () => {
           stillPending.push(mint);
         }
       }
-      if (anyCompleted) fetchUserProducts();
+      if (anyCompleted) fetchUserProducts({ background: true });
       setPendingMints(stillPending);
     }, 5000);
     return () => {
@@ -508,9 +520,13 @@ const Products: React.FC = () => {
     setReceiptCid(null);
     setReceiptKey(null);
     setReceiptProductName('');
+    setIsCustomProduct(false);
     setReceiptError(null);
     setReceiptSuccess(false);
     setReceiptSubmitting(false);
+    setClaimableError(null);
+    setClaimableLoading(true);
+    setTimeout(() => fetchClaimableRwas(), 0);
   };
 
   const handleReceiptCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -626,7 +642,7 @@ const Products: React.FC = () => {
         <div style={{ maxWidth: 1100, margin: '0 auto', textAlign: 'center', paddingTop: 80 }}>
           <div style={{ fontSize: 48, marginBottom: 16 }}>!</div>
           <p style={{ fontSize: 15, color: C.gray, marginBottom: 24 }}>{error}</p>
-          <Button onClick={fetchUserProducts}>Retry</Button>
+          <Button onClick={() => fetchUserProducts()}>Retry</Button>
         </div>
       </div>
     );
@@ -1256,15 +1272,51 @@ const Products: React.FC = () => {
                   Take a photo of your purchase receipt or upload an image. An admin will review it and validate your claim.
                 </p>
 
-                {/* Product name (optional) */}
+                {/* Product name (optional) — pick from claimable products */}
                 <div>
                   <label style={labelStyle}>Product Name (optional)</label>
-                  <input
-                    style={inputStyle}
-                    placeholder="e.g. ZAI Zermatt GT"
-                    value={receiptProductName}
-                    onChange={e => setReceiptProductName(e.target.value)}
-                  />
+                  {claimableLoading ? (
+                    <div style={{ fontSize: 12, color: C.gray, padding: '10px 0' }}>Loading products&hellip;</div>
+                  ) : claimableRwas.length > 0 ? (
+                    <>
+                      <select
+                        style={inputStyle}
+                        value={isCustomProduct ? '__other__' : receiptProductName}
+                        onChange={e => {
+                          const v = e.target.value;
+                          if (v === '__other__') {
+                            setIsCustomProduct(true);
+                            setReceiptProductName('');
+                          } else {
+                            setIsCustomProduct(false);
+                            setReceiptProductName(v);
+                          }
+                        }}
+                      >
+                        <option value="">Select a product&hellip;</option>
+                        {claimableRwas.map(rwa => (
+                          <option key={rwa.rwaId} value={rwa.name}>{rwa.name}</option>
+                        ))}
+                        <option value="__other__">Other (not listed)</option>
+                      </select>
+                      {isCustomProduct && (
+                        <input
+                          style={{ ...inputStyle, marginTop: 8 }}
+                          placeholder="Enter product name"
+                          value={receiptProductName}
+                          onChange={e => setReceiptProductName(e.target.value)}
+                        />
+                      )}
+                    </>
+                  ) : (
+                    /* Fallback to free text if the claimable list is empty or failed to load */
+                    <input
+                      style={inputStyle}
+                      placeholder="e.g. ZAI Zermatt GT"
+                      value={receiptProductName}
+                      onChange={e => setReceiptProductName(e.target.value)}
+                    />
+                  )}
                 </div>
 
                 {/* Image capture / upload */}
