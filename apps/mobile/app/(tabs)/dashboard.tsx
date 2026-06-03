@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator,
+  RefreshControl, Modal, Pressable,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,6 +12,41 @@ import { DARK_THEME } from '@/theme/colors';
 
 type Stats = { productsClaimed: number; upcomingEvents: number; insuranceActive: number };
 type Activity = { id: string; type: 'product' | 'event'; title: string; date: string };
+
+/* ── Locked section overlay with info bubble ── */
+function LockedSection({
+  children, locked, message,
+}: { children: React.ReactNode; locked: boolean; message?: string }) {
+  const [showBubble, setShowBubble] = useState(false);
+
+  if (!locked) return <>{children}</>;
+
+  return (
+    <View>
+      <TouchableOpacity activeOpacity={0.8} onPress={() => setShowBubble(true)}>
+        <View style={{ opacity: 0.2 }} pointerEvents="none">{children}</View>
+        <View style={styles.lockedBadge}>
+          <Text style={{ fontSize: 12 }}>🔒</Text>
+          <Text style={styles.lockedBadgeText}>Exclusive</Text>
+        </View>
+      </TouchableOpacity>
+      <Modal transparent visible={showBubble} animationType="fade" onRequestClose={() => setShowBubble(false)}>
+        <Pressable style={styles.bubbleOverlay} onPress={() => setShowBubble(false)}>
+          <View style={styles.bubbleCard}>
+            <Text style={{ fontSize: 24, marginBottom: 10 }}>🔒</Text>
+            <Text style={styles.bubbleTitle}>Exclusive Content</Text>
+            <Text style={styles.bubbleMessage}>
+              {message || 'Access exclusive content with the Experience Card membership.'}
+            </Text>
+            <TouchableOpacity style={styles.bubbleDismiss} onPress={() => setShowBubble(false)}>
+              <Text style={styles.bubbleDismissText}>OK</Text>
+            </TouchableOpacity>
+          </View>
+        </Pressable>
+      </Modal>
+    </View>
+  );
+}
 
 export default function DashboardScreen() {
   const { user, hasExperienceCard, isAdmin } = useAuth();
@@ -104,7 +140,7 @@ export default function DashboardScreen() {
               </TouchableOpacity>
             )}
 
-            {/* Member without card → claim path */}
+            {/* Member without card → upgrade path */}
             {!exclusive && (
               <View style={styles.upgradeCard}>
                 <Text style={styles.upgradeTitle}>Become an Exclusive Member</Text>
@@ -117,17 +153,19 @@ export default function DashboardScreen() {
               </View>
             )}
 
-            {/* Stats */}
-            {exclusive && (
-              <View style={styles.statsRow}>
-                <Stat label="PRODUCTS" value={stats.productsClaimed} />
+            {/* Stats — products always visible, events + insured gated */}
+            <View style={styles.statsRow}>
+              <Stat label="PRODUCTS" value={stats.productsClaimed} />
+              <LockedSection locked={!exclusive} message="Access events tracking with the Experience Card membership.">
                 <Stat label="EVENTS" value={stats.upcomingEvents} />
+              </LockedSection>
+              <LockedSection locked={!exclusive} message="Insurance tracking available with the Experience Card membership.">
                 <Stat label="INSURED" value={stats.insuranceActive} />
-              </View>
-            )}
+              </LockedSection>
+            </View>
 
-            {/* Quick actions */}
-            {exclusive && (
+            {/* Quick actions — gated for non-exclusive */}
+            <LockedSection locked={!exclusive} message="Access exclusive content with the Experience Card membership.">
               <View style={styles.actions}>
                 <TouchableOpacity style={styles.primaryBtn} activeOpacity={0.85} onPress={() => router.push('/products')}>
                   <Text style={styles.primaryBtnText}>VIEW COLLECTION</Text>
@@ -136,10 +174,10 @@ export default function DashboardScreen() {
                   <Text style={styles.secondaryBtnText}>SEE EVENTS</Text>
                 </TouchableOpacity>
               </View>
-            )}
+            </LockedSection>
 
-            {/* Recent activity */}
-            {exclusive && (
+            {/* Recent activity — gated for non-exclusive */}
+            <LockedSection locked={!exclusive} message="Access your activity feed with the Experience Card membership.">
               <View style={styles.section}>
                 <Text style={styles.sectionLabel}>RECENT ACTIVITY</Text>
                 {activity.length === 0 ? (
@@ -158,7 +196,7 @@ export default function DashboardScreen() {
                   ))
                 )}
               </View>
-            )}
+            </LockedSection>
           </>
         )}
       </ScrollView>
@@ -218,4 +256,39 @@ const styles = StyleSheet.create({
   },
   activityTitle: { flex: 1, fontSize: 13, color: DARK_THEME.text },
   activityDate: { fontSize: 11, color: DARK_THEME.textSecondary },
+  // ── Locked badge + bubble styles ──
+  lockedBadge: {
+    position: 'absolute', top: '40%', alignSelf: 'center',
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: 'rgba(0,0,0,0.7)', borderRadius: 8,
+    paddingHorizontal: 14, paddingVertical: 6,
+  },
+  lockedBadgeText: {
+    fontSize: 10, letterSpacing: 1, fontWeight: '700',
+    color: '#c9a84c', textTransform: 'uppercase',
+  },
+  bubbleOverlay: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center', alignItems: 'center', padding: 32,
+  },
+  bubbleCard: {
+    backgroundColor: '#1a1a1a', borderRadius: 16, padding: 28,
+    alignItems: 'center', borderWidth: 1, borderColor: '#c9a84c',
+    maxWidth: 320, width: '100%',
+  },
+  bubbleTitle: {
+    fontSize: 16, fontWeight: '700', color: '#c9a84c',
+    letterSpacing: 1, marginBottom: 8,
+  },
+  bubbleMessage: {
+    fontSize: 13, color: '#bbb', lineHeight: 20,
+    textAlign: 'center', marginBottom: 20,
+  },
+  bubbleDismiss: {
+    backgroundColor: DARK_THEME.primary, borderRadius: 8,
+    paddingHorizontal: 32, paddingVertical: 10,
+  },
+  bubbleDismissText: {
+    color: '#fff', fontSize: 12, fontWeight: '700', letterSpacing: 1,
+  },
 });

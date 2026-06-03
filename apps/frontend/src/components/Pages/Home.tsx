@@ -1,13 +1,150 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { StarIcon, CalendarIcon, LocationIcon, MountainIcon } from '../Icons/BenefitIcons';
 import { ZaiLogo, ZaiMark, InstagramIcon, FacebookIcon, LinkedInIcon, YouTubeIcon, WhatsAppIcon } from '../Icons/LogoIcons';
 import { WalletConnectButton } from '../Auth/WalletConnectButton';
 import { useAppContext } from '../../context/AppContext';
+import { apiService } from '../../services/api';
+
+/* ── Locked-feature tooltip (hover) ── */
+const LockedTooltip: React.FC<{
+  children: React.ReactNode;
+  locked: boolean;
+  message?: string;
+  dark?: boolean;
+}> = ({ children, locked, message, dark = true }) => {
+  const [hover, setHover] = useState(false);
+
+  if (!locked) return <>{children}</>;
+
+  return (
+    <div
+      style={{ position: 'relative', display: 'inline-block' }}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+    >
+      {/* Greyed-out content */}
+      <div style={{ opacity: 0.35, pointerEvents: 'none', filter: 'grayscale(80%)' }}>
+        {children}
+      </div>
+      {/* Lock overlay */}
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'default',
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            background: dark ? 'rgba(0,0,0,0.7)' : 'rgba(255,255,255,0.85)',
+            borderRadius: 8,
+            padding: '6px 14px',
+          }}
+        >
+          <span style={{ fontSize: 14 }}>🔒</span>
+          <span
+            style={{
+              fontSize: 10,
+              letterSpacing: '0.1em',
+              fontWeight: 600,
+              color: '#c9a84c',
+              textTransform: 'uppercase',
+            }}
+          >
+            Exclusive
+          </span>
+        </div>
+      </div>
+      {/* Tooltip bubble */}
+      {hover && (
+        <div
+          style={{
+            position: 'absolute',
+            bottom: 'calc(100% + 10px)',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            background: dark ? '#1a1a1a' : '#fff',
+            border: '1px solid #c9a84c',
+            borderRadius: 8,
+            padding: '10px 16px',
+            zIndex: 100,
+            minWidth: 240,
+            maxWidth: 300,
+            textAlign: 'center',
+            boxShadow: '0 4px 24px rgba(0,0,0,0.4)',
+            pointerEvents: 'none',
+          }}
+        >
+          <div
+            style={{
+              fontSize: 12,
+              color: dark ? '#f5f4f0' : '#1a1a1a',
+              lineHeight: 1.6,
+            }}
+          >
+            {message || 'Access exclusive content with the Experience Card membership.'}
+          </div>
+          {/* Arrow */}
+          <div
+            style={{
+              position: 'absolute',
+              bottom: -6,
+              left: '50%',
+              marginLeft: -6,
+              width: 12,
+              height: 12,
+              background: dark ? '#1a1a1a' : '#fff',
+              border: '1px solid #c9a84c',
+              borderTop: 'none',
+              borderLeft: 'none',
+              transform: 'rotate(45deg)',
+            }}
+          />
+        </div>
+      )}
+    </div>
+  );
+};
 
 const Home: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAppContext();
+  const [hasExperienceCard, setHasExperienceCard] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    const check = async () => {
+      try {
+        const res = await apiService.get(`/products/user/${user.id}`);
+        if (res.data?.success) {
+          const products = res.data.data || [];
+          const EC_NAMES = ['experience card'];
+          setHasExperienceCard(
+            products.some((p: any) =>
+              EC_NAMES.some((n) => (p.name || '').toLowerCase().includes(n))
+            )
+          );
+        }
+      } catch { /* ignore */ }
+      try {
+        const res = await apiService.get('/auth/me');
+        const d = res.data as any;
+        const role = d?.data?.role || d?.role || '';
+        setIsAdmin(role === 'admin' || role === 'owner');
+      } catch { /* ignore */ }
+    };
+    check();
+  }, [user?.id]);
+
+  const exclusive = hasExperienceCard || isAdmin;
 
   return (
     <div style={{ background: '#f5f4f0', minHeight: '100vh' }}>
@@ -23,7 +160,7 @@ const Home: React.FC = () => {
           position: 'relative' as const,
         }}
       >
-        {/* Top Bar — 3-column grid: left spacer | center ZaiMark | right wallet */}
+        {/* Top Bar */}
         <div
           style={{
             position: 'absolute',
@@ -38,7 +175,6 @@ const Home: React.FC = () => {
           }}
         >
           <div />
-          {/* Centered: Z-mark icon + "zai" label */}
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', paddingTop: '0.5rem' }}>
             <ZaiMark size={72} color="#ffffff" />
             <svg width="50" height="24" viewBox="48 0 62 35" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -77,44 +213,48 @@ const Home: React.FC = () => {
           </p>
           {user && (
             <div style={{ display: 'flex', gap: '0.75rem' }}>
-              <button
-                onClick={() => navigate('/products')}
-                style={{
-                  background: '#7D1E2C',
-                  color: '#fff',
-                  border: 'none',
-                  padding: '13px 28px',
-                  fontSize: '11px',
-                  letterSpacing: '0.15em',
-                  textTransform: 'uppercase',
-                  cursor: 'pointer',
-                  fontFamily: 'Inter, sans-serif',
-                  transition: 'all 0.2s',
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = '#9a2535')}
-                onMouseLeave={(e) => (e.currentTarget.style.background = '#7D1E2C')}
-              >
-                Claim Your Product
-              </button>
-              <button
-                onClick={() => navigate('/events')}
-                style={{
-                  background: 'transparent',
-                  color: '#fff',
-                  border: '1px solid #444',
-                  padding: '12px 28px',
-                  fontSize: '11px',
-                  letterSpacing: '0.15em',
-                  textTransform: 'uppercase',
-                  cursor: 'pointer',
-                  fontFamily: 'Inter, sans-serif',
-                  transition: 'all 0.2s',
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#fff')}
-                onMouseLeave={(e) => (e.currentTarget.style.borderColor = '#444')}
-              >
-                See Events
-              </button>
+              <LockedTooltip locked={!exclusive} message="Claim your zai Experience Card to unlock product claims and your personal collection.">
+                <button
+                  onClick={() => navigate('/products')}
+                  style={{
+                    background: '#7D1E2C',
+                    color: '#fff',
+                    border: 'none',
+                    padding: '13px 28px',
+                    fontSize: '11px',
+                    letterSpacing: '0.15em',
+                    textTransform: 'uppercase',
+                    cursor: 'pointer',
+                    fontFamily: 'Inter, sans-serif',
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = '#9a2535')}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = '#7D1E2C')}
+                >
+                  Claim Your Product
+                </button>
+              </LockedTooltip>
+              <LockedTooltip locked={!exclusive} message="Access exclusive zai events with the Experience Card membership.">
+                <button
+                  onClick={() => navigate('/events')}
+                  style={{
+                    background: 'transparent',
+                    color: '#fff',
+                    border: '1px solid #444',
+                    padding: '12px 28px',
+                    fontSize: '11px',
+                    letterSpacing: '0.15em',
+                    textTransform: 'uppercase',
+                    cursor: 'pointer',
+                    fontFamily: 'Inter, sans-serif',
+                    transition: 'all 0.2s',
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#fff')}
+                  onMouseLeave={(e) => (e.currentTarget.style.borderColor = '#444')}
+                >
+                  See Events
+                </button>
+              </LockedTooltip>
             </div>
           )}
         </div>
@@ -224,7 +364,6 @@ const Home: React.FC = () => {
           <h2 style={{ fontSize: 'clamp(24px, 3.5vw, 40px)', fontWeight: 300, lineHeight: 1.15, color: '#fff', marginBottom: '3rem' }}>
             Get your zai<br />experience card
           </h2>
-
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1px', background: '#2a2a2a', border: '1px solid #2a2a2a' }}>
             {[
               { num: 'Step 01', title: 'Tap your experience card with your phone', desc: 'Tap your zai Experience Card with your phone and access the zai world after signing up. By successfully claiming your card as a new client, you will have the chance to win a weekend getaway for two, revealed through a mystery box, each year.' },
@@ -257,7 +396,6 @@ const Home: React.FC = () => {
           <div style={{ fontSize: 'clamp(24px, 3.5vw, 40px)', fontWeight: 300, lineHeight: 1.15, marginBottom: '1rem', color: '#1a1a1a' }}>
             What you unlock
           </div>
-
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1px', background: '#e0ddd6', border: '1px solid #e0ddd6', marginTop: '3rem' }}>
             <div style={{ background: '#fff', padding: '2rem', cursor: 'pointer', transition: 'all 0.2s' }} onMouseEnter={(e) => (e.currentTarget.style.background = '#f0ede6')} onMouseLeave={(e) => (e.currentTarget.style.background = '#fff')}>
               <div style={{ width: '36px', height: '36px', border: '1px solid #e0ddd6', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.25rem' }}>
@@ -270,7 +408,6 @@ const Home: React.FC = () => {
                 Activate complimentary insurance on every new zai ski purchase directly through your portal.
               </div>
             </div>
-
             <div style={{ background: '#fff', padding: '2rem', cursor: 'pointer', transition: 'all 0.2s' }} onMouseEnter={(e) => (e.currentTarget.style.background = '#f0ede6')} onMouseLeave={(e) => (e.currentTarget.style.background = '#fff')}>
               <div style={{ width: '36px', height: '36px', border: '1px solid #e0ddd6', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.25rem' }}>
                 <CalendarIcon />
@@ -282,7 +419,6 @@ const Home: React.FC = () => {
                 Priority access to ski demos, factory tours, quarry visits, and personal meet-and-greets.
               </div>
             </div>
-
             <div style={{ background: '#fff', padding: '2rem', cursor: 'pointer', transition: 'all 0.2s' }} onMouseEnter={(e) => (e.currentTarget.style.background = '#f0ede6')} onMouseLeave={(e) => (e.currentTarget.style.background = '#fff')}>
               <div style={{ width: '36px', height: '36px', border: '1px solid #e0ddd6', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '1.25rem' }}>
                 <LocationIcon />
@@ -310,7 +446,6 @@ const Home: React.FC = () => {
           <p style={{ color: '#666', fontSize: '14px', lineHeight: 1.8, maxWidth: '580px', marginBottom: '2.5rem' }}>
             The zai ecosystem brings together exclusive brand partners and a global community of zai owners — connected through a shared passion for the mountain. Partners will be revealed soon. Join the community to share your experiences.
           </p>
-
           <div style={{ display: 'flex', gap: '1px', background: '#1e1e1e', border: '1px solid #1e1e1e', marginBottom: '2rem' }}>
             {['Mountain Pass', 'Destination', 'Financial', 'Mountain Pass', 'Destination'].map((label, i) => (
               <div key={i} style={{ flex: 1, background: '#1a1a1a', padding: '2rem 1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100px', position: 'relative', overflow: 'hidden' }}>
@@ -324,7 +459,6 @@ const Home: React.FC = () => {
               </div>
             ))}
           </div>
-
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '1.25rem 0', borderTop: '1px solid #333' }}>
             <div style={{ width: '5px', height: '5px', background: '#7A222E', borderRadius: '50%', flexShrink: 0 }} />
             <span style={{ fontSize: '11px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#555', whiteSpace: 'nowrap' }}>Partners to be announced</span>
@@ -383,7 +517,6 @@ const Home: React.FC = () => {
               </button>
             </div>
           </div>
-
           <div style={{ display: 'flex', gap: '3rem', flexWrap: 'wrap' }}>
             <div>
               <div style={{ fontSize: '10px', letterSpacing: '0.25em', textTransform: 'uppercase', color: '#444', marginBottom: '0.6rem' }}>
@@ -395,7 +528,6 @@ const Home: React.FC = () => {
                 <a href="#" style={{ fontSize: '11px', color: '#555', textDecoration: 'none', letterSpacing: '0.05em', transition: 'color 0.2s' }} onMouseEnter={(e) => (e.currentTarget.style.color = '#fff')} onMouseLeave={(e) => (e.currentTarget.style.color = '#555')}>Contact</a>
               </div>
             </div>
-
             <div>
               <div style={{ fontSize: '10px', letterSpacing: '0.25em', textTransform: 'uppercase', color: '#444', marginBottom: '0.6rem' }}>
                 Follow
@@ -425,7 +557,6 @@ const Home: React.FC = () => {
             </div>
           </div>
         </div>
-
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', maxWidth: '1200px', margin: '0 auto', paddingTop: '1.25rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '10px', color: '#444' }}>
             <svg width="12" height="10" viewBox="0 0 24 20" fill="none" style={{ flexShrink: 0 }}>

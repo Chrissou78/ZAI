@@ -46,27 +46,14 @@ const SkeletonBlock: React.FC<{ width?: string; height?: string; style?: React.C
   style,
 }) => <div style={{ ...shimmerStyle, width, height, ...style }} />;
 
-/* ── Loading overlay for the whole dashboard content ── */
 const DashboardSkeleton: React.FC = () => (
   <div style={{ maxWidth: 1100, margin: '0 auto', padding: '48px 48px 80px', fontFamily: "'Inter', sans-serif" }}>
-    {/* Header skeleton */}
     <div style={{ marginBottom: '2.5rem', paddingBottom: '2rem', borderBottom: '1px solid #e0ddd6' }}>
       <SkeletonBlock width="60px" height="11px" style={{ marginBottom: '0.6rem' }} />
       <SkeletonBlock width="220px" height="36px" style={{ marginBottom: '0.5rem' }} />
       <SkeletonBlock width="360px" height="13px" />
     </div>
-
-    {/* Profile + Welcome skeleton */}
-    <div
-      style={{
-        display: 'grid',
-        gridTemplateColumns: '300px 1fr',
-        gap: '1px',
-        background: '#e0ddd6',
-        border: '1px solid #e0ddd6',
-        marginBottom: '1px',
-      }}
-    >
+    <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: '1px', background: '#e0ddd6', border: '1px solid #e0ddd6', marginBottom: '1px' }}>
       <div style={{ background: '#f0ede6', padding: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         <SkeletonBlock width="56px" height="56px" style={{ borderRadius: '50%', marginBottom: '1rem' }} />
         <SkeletonBlock width="140px" height="16px" style={{ marginBottom: '6px' }} />
@@ -79,19 +66,7 @@ const DashboardSkeleton: React.FC = () => (
         <SkeletonBlock width="300px" height="12px" style={{ background: 'linear-gradient(90deg, #2a2a2a 25%, #333 50%, #2a2a2a 75%)', backgroundSize: '800px 100%', animation: 'zaiShimmer 1.6s infinite ease-in-out' }} />
       </div>
     </div>
-
-    {/* Stats skeleton */}
-    <div
-      style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(2, 1fr)',
-        gap: '1px',
-        background: '#e0ddd6',
-        border: '1px solid #e0ddd6',
-        borderTop: 0,
-        marginBottom: '1px',
-      }}
-    >
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1px', background: '#e0ddd6', border: '1px solid #e0ddd6', borderTop: 0, marginBottom: '1px' }}>
       {[0, 1].map((i) => (
         <div key={i} style={{ background: '#fff', padding: '1.5rem 1.25rem' }}>
           <SkeletonBlock width="50px" height="32px" style={{ marginBottom: '8px' }} />
@@ -100,18 +75,7 @@ const DashboardSkeleton: React.FC = () => (
         </div>
       ))}
     </div>
-
-    {/* Activity + Quick actions skeleton */}
-    <div
-      style={{
-        display: 'grid',
-        gridTemplateColumns: '1fr 1fr',
-        gap: '1px',
-        background: '#e0ddd6',
-        border: '1px solid #e0ddd6',
-        borderTop: 0,
-      }}
-    >
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1px', background: '#e0ddd6', border: '1px solid #e0ddd6', borderTop: 0 }}>
       <div style={{ background: '#fff', padding: '1.75rem' }}>
         <SkeletonBlock width="130px" height="11px" style={{ marginBottom: '1.25rem' }} />
         {[0, 1, 2].map((i) => (
@@ -140,6 +104,82 @@ const DashboardSkeleton: React.FC = () => (
   </div>
 );
 
+/* ── Locked overlay for gated sections (light theme) ── */
+const LockedOverlay: React.FC<{
+  children: React.ReactNode;
+  locked: boolean;
+  message?: string;
+}> = ({ children, locked, message }) => {
+  const [hover, setHover] = useState(false);
+
+  if (!locked) return <>{children}</>;
+
+  return (
+    <div
+      style={{ position: 'relative' }}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+    >
+      <div style={{ opacity: 0.25, pointerEvents: 'none', filter: 'grayscale(80%)' }}>
+        {children}
+      </div>
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'default',
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            background: 'rgba(255,255,255,0.9)',
+            border: '1px solid #e0ddd6',
+            borderRadius: 8,
+            padding: '8px 16px',
+            boxShadow: '0 2px 12px rgba(0,0,0,0.08)',
+          }}
+        >
+          <span style={{ fontSize: 14 }}>🔒</span>
+          <span style={{ fontSize: 10, letterSpacing: '0.1em', fontWeight: 600, color: '#7A222E', textTransform: 'uppercase' }}>
+            Exclusive
+          </span>
+        </div>
+      </div>
+      {hover && (
+        <div
+          style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            marginTop: 28,
+            background: '#fff',
+            border: '1px solid #c9a84c',
+            borderRadius: 8,
+            padding: '10px 16px',
+            zIndex: 100,
+            minWidth: 240,
+            maxWidth: 300,
+            textAlign: 'center',
+            boxShadow: '0 4px 24px rgba(0,0,0,0.12)',
+            pointerEvents: 'none',
+          }}
+        >
+          <div style={{ fontSize: 12, color: '#1a1a1a', lineHeight: 1.6 }}>
+            {message || 'Access exclusive content with the Experience Card membership.'}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const { user, isLoading } = useAppContext();
@@ -152,6 +192,11 @@ const Dashboard: React.FC = () => {
   const [activity, setActivity] = useState<Activity[]>([]);
   const [dashboardLoading, setDashboardLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // ── Experience card & admin checks ──
+  const [hasExperienceCard, setHasExperienceCard] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const exclusive = hasExperienceCard || isAdmin;
 
   useEffect(() => {
     ensureShimmerStyle();
@@ -177,13 +222,28 @@ const Dashboard: React.FC = () => {
       const productsResponse = await apiService.get(`/products/user/${user?.id}`);
       const products = productsResponse.data?.data || [];
 
+      // ── Check experience card ──
+      const EC_NAMES = ['experience card'];
+      setHasExperienceCard(
+        products.some((p: any) =>
+          EC_NAMES.some((n) => (p.name || '').toLowerCase().includes(n))
+        )
+      );
+
+      // ── Check admin role ──
+      try {
+        const authRes = await apiService.get('/auth/me');
+        const d = authRes.data as any;
+        const role = d?.data?.role || d?.role || '';
+        setIsAdmin(role === 'admin' || role === 'owner');
+      } catch { /* ignore */ }
+
       const eventsResponse = await apiService.get('/events', { params: { status: 'upcoming' } });
       const upcomingEvents = eventsResponse.data?.data || [];
 
       const recentActivity: Activity[] = [];
 
       if (products.length > 0) {
-        // ── CHANGED: sort products with unknown dates last instead of first ──
         const sortedProducts = [...products].sort((a: any, b: any) => {
           const dateA = a.claimedAt ? new Date(a.claimedAt).getTime() : 0;
           const dateB = b.claimedAt ? new Date(b.claimedAt).getTime() : 0;
@@ -195,7 +255,6 @@ const Dashboard: React.FC = () => {
             id: product.id,
             type: 'product',
             title: `Product claimed: ${product.name}`,
-            // Use claimedAt from API — never fake it with new Date()
             date: product.claimedAt || product.createdAt || '',
             icon: 'product',
           });
@@ -253,7 +312,6 @@ const Dashboard: React.FC = () => {
 
   const memberSince = user.createdAt ? new Date(user.createdAt).getFullYear() : new Date().getFullYear();
 
-  // ── CHANGED: formatDate now returns "Claimed" (no date) for unknown product dates ──
   const formatDate = (dateStr: string) => {
     try {
       if (!dateStr) return 'Claimed';
@@ -295,7 +353,6 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  /* Activity dot color: product = red, event = blue */
   const getActivityDotColor = (type: string) => {
     if (type === 'product') return '#7A222E';
     if (type === 'event') return '#2563eb';
@@ -316,15 +373,7 @@ const Dashboard: React.FC = () => {
         }}
       >
         <div>
-          <div
-            style={{
-              fontSize: '11px',
-              letterSpacing: '0.3em',
-              textTransform: 'uppercase',
-              color: '#7A222E',
-              marginBottom: '0.4rem',
-            }}
-          >
+          <div style={{ fontSize: '11px', letterSpacing: '0.3em', textTransform: 'uppercase', color: '#7A222E', marginBottom: '0.4rem' }}>
             overview
           </div>
           <h1 style={{ fontSize: 'clamp(32px, 4vw, 40px)', fontWeight: 300, lineHeight: 1.15, margin: '0 0 0.3rem', color: '#1a1a1a' }}>
@@ -334,25 +383,46 @@ const Dashboard: React.FC = () => {
             Your zai experience club at a glance — products, events, and upcoming activity.
           </p>
         </div>
-        <button
-          style={{
-            background: '#7D1E2C',
-            color: '#fff',
-            border: 'none',
-            padding: '13px 28px',
-            fontSize: '11px',
-            letterSpacing: '0.15em',
-            textTransform: 'uppercase',
-            cursor: 'pointer',
-            fontFamily: "'Inter', sans-serif",
-            transition: 'background 0.2s',
-          }}
-          onClick={() => navigate('/products')}
-          onMouseEnter={(e) => (e.currentTarget.style.background = '#9a2535')}
-          onMouseLeave={(e) => (e.currentTarget.style.background = '#7D1E2C')}
-        >
-          Claim Product
-        </button>
+
+        {/* ── GATED: Claim Product button ── */}
+        {exclusive ? (
+          <button
+            style={{
+              background: '#7D1E2C',
+              color: '#fff',
+              border: 'none',
+              padding: '13px 28px',
+              fontSize: '11px',
+              letterSpacing: '0.15em',
+              textTransform: 'uppercase',
+              cursor: 'pointer',
+              fontFamily: "'Inter', sans-serif",
+              transition: 'background 0.2s',
+            }}
+            onClick={() => navigate('/products')}
+            onMouseEnter={(e) => (e.currentTarget.style.background = '#9a2535')}
+            onMouseLeave={(e) => (e.currentTarget.style.background = '#7D1E2C')}
+          >
+            Claim Product
+          </button>
+        ) : (
+          <LockedOverlay locked message="Claim your Experience Card to unlock product claims.">
+            <button
+              style={{
+                background: '#7D1E2C',
+                color: '#fff',
+                border: 'none',
+                padding: '13px 28px',
+                fontSize: '11px',
+                letterSpacing: '0.15em',
+                textTransform: 'uppercase',
+                fontFamily: "'Inter', sans-serif",
+              }}
+            >
+              Claim Product
+            </button>
+          </LockedOverlay>
+        )}
       </div>
 
       {error && (
@@ -406,9 +476,12 @@ const Dashboard: React.FC = () => {
           <div style={{ fontSize: '11px', color: '#6a6a6a', marginBottom: '1.25rem' }}>
             {user.email} · {user.city || 'Location not set'} - {user.country || 'Country not set'}
           </div>
-          <div style={{ fontSize: '10px', color: '#6a6a6a', display: 'flex', alignItems: 'center', gap: '5px' }}>
-            <div style={{ width: '4px', height: '4px', background: '#7A222E', borderRadius: '50%' }} />
-            Member since {memberSince}
+          {/* ── Tier badge ── */}
+          <div style={{ fontSize: '10px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+            <div style={{ width: '4px', height: '4px', background: exclusive ? '#c9a84c' : '#7A222E', borderRadius: '50%' }} />
+            <span style={{ color: exclusive ? '#c9a84c' : '#6a6a6a', fontWeight: exclusive ? 600 : 400 }}>
+              {isAdmin ? 'Admin' : hasExperienceCard ? 'Exclusive Member' : 'Member'} since {memberSince}
+            </span>
           </div>
         </div>
 
@@ -431,7 +504,9 @@ const Dashboard: React.FC = () => {
               <span style={{ color: '#f5f4f0' }}>{user.givenName}.</span>
             </div>
             <div style={{ fontSize: '12px', color: '#999', lineHeight: 1.8, maxWidth: '380px' }}>
-              {user.email && 'Explore exclusive events, manage your registered products, and access the full zai experience club.'}
+              {exclusive
+                ? 'Explore exclusive events, manage your registered products, and access the full zai experience club.'
+                : 'Claim your zai Experience Card to unlock your collection, exclusive events, and the full zai experience.'}
             </div>
           </div>
           <div style={{ display: 'flex', gap: 0, border: '1px solid #2a2a2a', marginTop: '1.5rem', width: 'fit-content' }}>
@@ -443,13 +518,26 @@ const Dashboard: React.FC = () => {
                 Products
               </div>
             </div>
-            <div style={{ padding: '1rem 1.5rem', textAlign: 'center' }}>
-              <div style={{ fontSize: '20px', fontWeight: 200, color: '#fff' }}>
-                {stats.eventsAttended}
-              </div>
-              <div style={{ fontSize: '9px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#555', marginTop: '2px' }}>
-                Events
-              </div>
+            {/* ── GATED: Events counter ── */}
+            <div style={{ padding: '1rem 1.5rem', textAlign: 'center', position: 'relative' }}>
+              {exclusive ? (
+                <>
+                  <div style={{ fontSize: '20px', fontWeight: 200, color: '#fff' }}>
+                    {stats.eventsAttended}
+                  </div>
+                  <div style={{ fontSize: '9px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#555', marginTop: '2px' }}>
+                    Events
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div style={{ fontSize: '20px', fontWeight: 200, color: '#333' }}>—</div>
+                  <div style={{ fontSize: '9px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#333', marginTop: '2px' }}>
+                    Events
+                  </div>
+                  <div style={{ position: 'absolute', top: 4, right: 4, fontSize: 10 }}>🔒</div>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -467,6 +555,7 @@ const Dashboard: React.FC = () => {
           marginBottom: '1px',
         }}
       >
+        {/* Products Claimed — always visible */}
         <div style={{ background: '#fff', padding: '1.5rem 1.25rem' }}>
           <div style={{ fontSize: '32px', fontWeight: 200, lineHeight: 1, color: '#1a1a1a' }}>
             {stats.productsClaimed}
@@ -478,17 +567,21 @@ const Dashboard: React.FC = () => {
             {stats.productsClaimed === 0 ? 'Get started by claiming a product' : `${stats.insuranceActive} with active insurance`}
           </div>
         </div>
-        <div style={{ background: '#fff', padding: '1.5rem 1.25rem' }}>
-          <div style={{ fontSize: '32px', fontWeight: 200, lineHeight: 1, color: '#1a1a1a' }}>
-            {stats.eventsAttended}
+
+        {/* ── GATED: Upcoming Events stat ── */}
+        <LockedOverlay locked={!exclusive} message="Access events tracking with the Experience Card membership.">
+          <div style={{ background: '#fff', padding: '1.5rem 1.25rem' }}>
+            <div style={{ fontSize: '32px', fontWeight: 200, lineHeight: 1, color: '#1a1a1a' }}>
+              {stats.eventsAttended}
+            </div>
+            <div style={{ fontSize: '11px', letterSpacing: '0.25em', textTransform: 'uppercase', color: '#6a6a6a', marginTop: '6px' }}>
+              Upcoming events
+            </div>
+            <div style={{ fontSize: '11px', color: '#6a6a6a', marginTop: '2px' }}>
+              {stats.eventsAttended === 0 ? 'Check upcoming events' : 'Registrations active'}
+            </div>
           </div>
-          <div style={{ fontSize: '11px', letterSpacing: '0.25em', textTransform: 'uppercase', color: '#6a6a6a', marginTop: '6px' }}>
-            Upcoming events
-          </div>
-          <div style={{ fontSize: '11px', color: '#6a6a6a', marginTop: '2px' }}>
-            {stats.eventsAttended === 0 ? 'Check upcoming events' : 'Registrations active'}
-          </div>
-        </div>
+        </LockedOverlay>
       </div>
 
       {/* Activity + Quick Actions */}
@@ -535,7 +628,6 @@ const Dashboard: React.FC = () => {
                     borderBottom: i < activity.length - 1 ? '1px solid #e0ddd6' : 'none',
                   }}
                 >
-                  {/* Red/Blue dot */}
                   <div
                     style={{
                       width: '8px',
@@ -613,85 +705,87 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Quick Actions */}
-        <div style={{ background: '#f0ede6', padding: '1.75rem' }}>
-          <div
-            style={{
-              fontSize: '11px',
-              letterSpacing: '0.3em',
-              textTransform: 'uppercase',
-              color: '#1a1a1a',
-              marginBottom: '1.25rem',
-              paddingBottom: '0.75rem',
-              borderBottom: '1px solid #e0ddd6',
-            }}
-          >
-            Quick actions
-          </div>
-          {[
-            {
-              title: 'Claim a product',
-              sub: 'NFC or serial number',
-              page: '/products',
-              icon: (
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a1a1a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-                  <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
-                  <line x1="12" y1="22.08" x2="12" y2="12" />
-                </svg>
-              ),
-            },
-            {
-              title: 'Browse events',
-              sub: 'See upcoming events',
-              page: '/events',
-              icon: (
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a1a1a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-                  <line x1="16" y1="2" x2="16" y2="6" />
-                  <line x1="8" y1="2" x2="8" y2="6" />
-                  <line x1="3" y1="10" x2="21" y2="10" />
-                </svg>
-              ),
-            },
-          ].map((action, i) => (
+        {/* ── GATED: Quick Actions ── */}
+        <LockedOverlay locked={!exclusive} message="Access exclusive content with the Experience Card membership.">
+          <div style={{ background: '#f0ede6', padding: '1.75rem' }}>
             <div
-              key={i}
-              onClick={() => navigate(action.page)}
               style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-                padding: '0.9rem 0',
-                borderBottom: i === 0 ? '1px solid #e0ddd6' : 'none',
-                cursor: 'pointer',
-                transition: 'opacity 0.2s',
+                fontSize: '11px',
+                letterSpacing: '0.3em',
+                textTransform: 'uppercase',
+                color: '#1a1a1a',
+                marginBottom: '1.25rem',
+                paddingBottom: '0.75rem',
+                borderBottom: '1px solid #e0ddd6',
               }}
-              onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.7')}
-              onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
             >
+              Quick actions
+            </div>
+            {[
+              {
+                title: 'Claim a product',
+                sub: 'NFC or serial number',
+                page: '/products',
+                icon: (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a1a1a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                    <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+                    <line x1="12" y1="22.08" x2="12" y2="12" />
+                  </svg>
+                ),
+              },
+              {
+                title: 'Browse events',
+                sub: 'See upcoming events',
+                page: '/events',
+                icon: (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a1a1a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                    <line x1="16" y1="2" x2="16" y2="6" />
+                    <line x1="8" y1="2" x2="8" y2="6" />
+                    <line x1="3" y1="10" x2="21" y2="10" />
+                  </svg>
+                ),
+              },
+            ].map((action, i) => (
               <div
+                key={i}
+                onClick={() => navigate(action.page)}
                 style={{
-                  width: '32px',
-                  height: '32px',
-                  background: '#fff',
-                  border: '1px solid #e0ddd6',
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0,
+                  gap: '12px',
+                  padding: '0.9rem 0',
+                  borderBottom: i === 0 ? '1px solid #e0ddd6' : 'none',
+                  cursor: 'pointer',
+                  transition: 'opacity 0.2s',
                 }}
+                onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.7')}
+                onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
               >
-                {action.icon}
+                <div
+                  style={{
+                    width: '32px',
+                    height: '32px',
+                    background: '#fff',
+                    border: '1px solid #e0ddd6',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                  }}
+                >
+                  {action.icon}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: '12px', fontWeight: 500 }}>{action.title}</div>
+                  <div style={{ fontSize: '11px', color: '#6a6a6a', marginTop: '1px' }}>{action.sub}</div>
+                </div>
+                <div style={{ marginLeft: 'auto', color: '#6a6a6a', fontSize: '14px' }}>›</div>
               </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: '12px', fontWeight: 500 }}>{action.title}</div>
-                <div style={{ fontSize: '11px', color: '#6a6a6a', marginTop: '1px' }}>{action.sub}</div>
-              </div>
-              <div style={{ marginLeft: 'auto', color: '#6a6a6a', fontSize: '14px' }}>›</div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        </LockedOverlay>
       </div>
     </div>
   );
