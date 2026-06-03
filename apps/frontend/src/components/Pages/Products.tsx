@@ -213,6 +213,9 @@ const Products: React.FC = () => {
   const [isMobileDevice] = useState(() => /Android|iPhone|iPad|iPod/i.test(navigator.userAgent));
   const uploadPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  const [allClaims, setAllClaims] = useState<any[]>([]);
+  const [dismissedClaimIds, setDismissedClaimIds] = useState<Set<string>>(new Set());
+
   const needsCarousel = products.length > MAX_GRID_CARDS;
 
   useEffect(() => {
@@ -314,28 +317,49 @@ const Products: React.FC = () => {
 
   // ── Fetch user's pending claim requests ──
   useEffect(() => {
-    if (!user?.id) return;
-    const fetchPendingClaims = async () => {
-      try {
-        const res = await apiService.get('/products/claim-requests');
-        if (res.data?.success) {
-          setPendingClaimRequests(
-            ((res.data.data || []) as any[])
-              .filter((c: any) => c.status === 'pending' || c.status === 'minting')
-              .map((c: any) => ({
-                id: c.id,
-                status: c.status,
-                productName: c.productName || '',
-                createdAt: c.createdAt,
-              }))
-          );
+  if (!user?.id) return;
+
+  let active = true;
+
+  const fetchClaimRequests = async () => {
+    try {
+      const res = await apiService.get('/products/claim-requests');
+      if (res.data?.success && active) {
+        const claims = (res.data.data || []) as any[];
+
+        // Pending / minting → keep existing state name
+        setPendingClaimRequests(
+          claims
+            .filter((c: any) => c.status === 'pending' || c.status === 'minting')
+            .map((c: any) => ({
+              id: c.id,
+              status: c.status,
+              productName: c.productName || '',
+              createdAt: c.createdAt,
+            }))
+        );
+
+        // All claims → for notification banners
+        setAllClaims(claims);
+
+        // If any claim was validated, refresh products to show the new NFT
+        if (claims.some((c: any) => c.status === 'validated')) {
+          fetchUserProducts();
         }
-      } catch {
-        // silently fail
       }
-    };
-    fetchPendingClaims();
-  }, [user?.id]);
+    } catch {
+      // silently fail
+    }
+  };
+
+  fetchClaimRequests();
+  const interval = setInterval(fetchClaimRequests, 15000); // poll every 15s
+
+  return () => {
+    active = false;
+    clearInterval(interval);
+  };
+}, [user?.id]);
 
   // ── Mint polling ──
   useEffect(() => {
@@ -757,32 +781,127 @@ const Products: React.FC = () => {
           </div>
         )}
 
-        {/* ══════ PENDING CLAIM REQUESTS BANNER ══════ */}
-        {pendingClaimRequests.length > 0 && (
+        {/* ══════ CLAIM NOTIFICATIONS ══════ */}
+        {allClaims.filter(c => !dismissedClaimIds.has(c.id)).length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 24 }}>
-            {pendingClaimRequests.map(cr => (
-              <div key={cr.id} style={{
+
+            {/* Pending */}
+            {allClaims.filter(c => c.status === 'pending' && !dismissedClaimIds.has(c.id)).map(c => (
+              <div key={c.id} style={{
                 display: 'flex', alignItems: 'center', gap: 12,
                 padding: '14px 20px',
-                background: '#fef9e7', border: '1px solid #f0e68c', borderRadius: 8,
+                background: 'rgba(255,180,0,0.10)', border: '1px solid rgba(255,180,0,0.25)', borderRadius: 10,
               }}>
-                <div style={{
-                  width: 8, height: 8, borderRadius: '50%',
-                  background: cr.status === 'minting' ? '#1967d2' : '#b8860b',
-                  flexShrink: 0,
-                }} />
+                <span style={{ fontSize: 18, flexShrink: 0 }}>⏳</span>
                 <div style={{ flex: 1 }}>
-                  <span style={{ fontSize: 14, fontWeight: 500 }}>
-                    {cr.status === 'minting'
-                      ? `Minting "${cr.productName || 'your product'}"…`
-                      : `Claim for "${cr.productName || 'your product'}" is being reviewed`}
-                  </span>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: C.black }}>
+                    Claim pending review
+                  </div>
                   <div style={{ fontSize: 11, color: C.gray, marginTop: 2 }}>
-                    Submitted {formatClaimedDate(cr.createdAt)}
+                    {c.productName || 'Product'} — submitted {formatClaimedDate(c.createdAt)}
                   </div>
                 </div>
               </div>
             ))}
+
+            {/* Minting */}
+            {allClaims.filter(c => c.status === 'minting' && !dismissedClaimIds.has(c.id)).map(c => (
+              <div key={c.id} style={{
+                display: 'flex', alignItems: 'center', gap: 12,
+                padding: '14px 20px',
+                background: 'rgba(100,160,255,0.10)', border: '1px solid rgba(100,160,255,0.25)', borderRadius: 10,
+              }}>
+                <span style={{ fontSize: 18, flexShrink: 0 }}>⛏️</span>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: C.black }}>
+                    Minting your product…
+                  </div>
+                  <div style={{ fontSize: 11, color: C.gray, marginTop: 2 }}>
+                    {c.productName || 'Product'} — your NFT is being created
+                  </div>
+                </div>
+              </div>
+            ))}
+
+            {/* Validated */}
+            {allClaims.filter(c => c.status === 'validated' && !dismissedClaimIds.has(c.id)).map(c => (
+              <div key={c.id} style={{
+                display: 'flex', alignItems: 'center', gap: 12,
+                padding: '14px 20px',
+                background: 'rgba(76,175,125,0.10)', border: '1px solid rgba(76,175,125,0.25)', borderRadius: 10,
+              }}>
+                <span style={{ fontSize: 18, flexShrink: 0 }}>✅</span>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: C.green }}>
+                    Product added to your collection!
+                  </div>
+                  <div style={{ fontSize: 11, color: C.gray, marginTop: 2 }}>
+                    {c.productName || 'Product'} — validated {c.reviewedAt ? new Date(c.reviewedAt).toLocaleDateString() : ''}
+                  </div>
+                </div>
+                <button
+                  onClick={() => setDismissedClaimIds(prev => new Set([...prev, c.id]))}
+                  style={{
+                    background: 'none', border: 'none', color: '#999', cursor: 'pointer',
+                    fontSize: 16, padding: '4px 8px', flexShrink: 0,
+                  }}
+                >✕</button>
+              </div>
+            ))}
+
+            {/* Rejected */}
+            {allClaims.filter(c => c.status === 'rejected' && !dismissedClaimIds.has(c.id)).map(c => (
+              <div key={c.id} style={{
+                display: 'flex', alignItems: 'center', gap: 12,
+                padding: '14px 20px',
+                background: 'rgba(122,34,46,0.10)', border: '1px solid rgba(122,34,46,0.25)', borderRadius: 10,
+              }}>
+                <span style={{ fontSize: 18, flexShrink: 0 }}>❌</span>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#d44' }}>
+                    Claim rejected
+                  </div>
+                  <div style={{ fontSize: 11, color: C.gray, marginTop: 2 }}>
+                    {c.productName || 'Product'}
+                    {c.adminNote ? ` — ${c.adminNote}` : ' — contact support for details'}
+                  </div>
+                </div>
+                <button
+                  onClick={() => setDismissedClaimIds(prev => new Set([...prev, c.id]))}
+                  style={{
+                    background: 'none', border: 'none', color: '#999', cursor: 'pointer',
+                    fontSize: 16, padding: '4px 8px', flexShrink: 0,
+                  }}
+                >✕</button>
+              </div>
+            ))}
+
+            {/* Error */}
+            {allClaims.filter(c => c.status === 'error' && !dismissedClaimIds.has(c.id)).map(c => (
+              <div key={c.id} style={{
+                display: 'flex', alignItems: 'center', gap: 12,
+                padding: '14px 20px',
+                background: 'rgba(255,100,0,0.10)', border: '1px solid rgba(255,100,0,0.25)', borderRadius: 10,
+              }}>
+                <span style={{ fontSize: 18, flexShrink: 0 }}>⚠️</span>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#ff6400' }}>
+                    Minting error — admin notified
+                  </div>
+                  <div style={{ fontSize: 11, color: C.gray, marginTop: 2 }}>
+                    {c.productName || 'Product'} — {c.adminNote || 'an error occurred during minting'}
+                  </div>
+                </div>
+                <button
+                  onClick={() => setDismissedClaimIds(prev => new Set([...prev, c.id]))}
+                  style={{
+                    background: 'none', border: 'none', color: '#999', cursor: 'pointer',
+                    fontSize: 16, padding: '4px 8px', flexShrink: 0,
+                  }}
+                >✕</button>
+              </div>
+            ))}
+
           </div>
         )}
 
