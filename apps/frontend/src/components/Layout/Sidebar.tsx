@@ -18,8 +18,10 @@ const Sidebar: React.FC = () => {
   const { user } = useAppContext();
   const location = useLocation();
   const [communityNewCount, setCommunityNewCount] = useState(0);
+  const [adminPendingCount, setAdminPendingCount] = useState(0);
 
   const isActive = (path: string) => location.pathname === path;
+  const isAdminUser = user?.role === 'admin' || user?.role === 'owner';
 
   const checkCommunityUpdates = useCallback(async () => {
     if (!user) { setCommunityNewCount(0); return; }
@@ -46,6 +48,31 @@ const Sidebar: React.FC = () => {
     }
   }, [location.pathname, user]);
 
+  // ── Admin pending claims polling ──
+  const checkAdminUpdates = useCallback(async () => {
+    if (!user || !isAdminUser) { setAdminPendingCount(0); return; }
+    try {
+      const res = await apiService.get('/products/admin/pending-count');
+      if (res.data?.success) {
+        setAdminPendingCount((res.data as any).data?.count || 0);
+      }
+    } catch {
+      // silently fail
+    }
+  }, [user, isAdminUser]);
+
+  useEffect(() => {
+    checkAdminUpdates();
+    const interval = setInterval(checkAdminUpdates, 60000);
+    return () => clearInterval(interval);
+  }, [checkAdminUpdates]);
+
+  useEffect(() => {
+    if (location.pathname === '/admin' && user) {
+      setAdminPendingCount(0);
+    }
+  }, [location.pathname, user]);
+
   const navSections = [
     {
       section: 'Overview',
@@ -69,6 +96,13 @@ const Sidebar: React.FC = () => {
         { path: '/settings', label: 'Settings', icon: <SettingsIcon /> },
       ],
     },
+    // ── Admin section — only visible to admin/owner ──
+    ...(isAdminUser ? [{
+      section: 'Admin',
+      items: [
+        { path: '/admin', label: 'Claim Requests', icon: <ProductsIcon />, badge: adminPendingCount },
+      ],
+    }] : []),
   ];
 
   return (
@@ -88,7 +122,7 @@ const Sidebar: React.FC = () => {
         color: '#f5f4f0',
       }}
     >
-      {/* Logo — text only "zai", left-aligned, NO cross/mark SVG */}
+      {/* Logo — text only "zai", left-aligned */}
       <div style={{ padding: '1.5rem', borderBottom: '1px solid #2a2a2a' }}>
         <svg width="60" height="28" viewBox="48 0 62 35" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M63.7822 31.2694H52.0256C51.5457 31.2694 51.2758 31.1395 50.9259 30.7796C50.4461 30.2497 50.3961 29.5499 50.746 28.9701L60.9631 13.6445H52.0256C51.1858 13.6445 50.526 12.9447 50.576 12.1049C50.576 11.3151 51.2358 10.6953 52.0256 10.6953H63.7822C64.2221 10.6953 64.482 10.7853 64.8419 11.1352C65.3718 11.625 65.4118 12.3648 65.0219 12.9847L54.6748 28.3103H63.7922C64.582 28.3103 65.2418 29.0201 65.2418 29.8099C65.2418 30.5996 64.582 31.2594 63.7922 31.2594" fill="#f5f4f0"/>
@@ -106,7 +140,7 @@ const Sidebar: React.FC = () => {
         </div>
       </div>
 
-      {/* User Profile — kept, but role/member label removed, avatar icon white not gold */}
+      {/* User Profile */}
       {user && (
         <div style={{
           padding: '0.6rem 1.5rem',
@@ -124,7 +158,19 @@ const Sidebar: React.FC = () => {
             <div style={{ fontSize: '12px', color: '#f5f4f0', fontWeight: 500 }}>
               {user.givenName || user.firstName || ''} {user.familyName || user.lastName || ''}
             </div>
-            {/* Role label ("member" / "User") REMOVED */}
+            {/* Role label — only show for admin/owner */}
+            {isAdminUser && (
+              <div style={{
+                fontSize: '9px',
+                letterSpacing: '0.2em',
+                textTransform: 'uppercase',
+                color: '#7A222E',
+                fontWeight: 600,
+                marginTop: '2px',
+              }}>
+                {user.role}
+              </div>
+            )}
           </div>
         </div>
       )}

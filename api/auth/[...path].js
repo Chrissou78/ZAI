@@ -1,6 +1,17 @@
 import jwt from 'jsonwebtoken';
 import axios from 'axios';
 
+// Lazy DB import (same pattern as products)
+let dbModule = null;
+async function getDB() {
+  if (!dbModule) {
+    try { dbModule = await import('../db.js'); } catch (e) {
+      console.error('DB module import failed:', e.message);
+    }
+  }
+  return dbModule;
+}
+
 export default async function handler(req, res) {
   const path = req.url.split('?')[0].replace('/api/auth/', '').replace(/\/$/, '');
 
@@ -39,13 +50,22 @@ async function handleLogin(req, res) {
     const sessionToken = exchangeResponse.data.session?.token;
     const userProfile = exchangeResponse.data.user || {};
 
-    console.log('🔍 WalletTwo full response:', JSON.stringify(exchangeResponse.data, null, 2));
-
     if (!sessionToken) {
       return res.status(400).json({ error: 'Invalid exchange response' });
     }
 
-    // ALWAYS use the original userId from the request — this is what the frontend knows
+    // ── Fetch role from DB ──
+    let orgRole = 'member';
+    try {
+      const db = await getDB();
+      if (db) {
+        await db.initDB();
+        orgRole = await db.getUserRole(userId);
+      }
+    } catch (dbErr) {
+      console.error('[AUTH] DB role lookup failed (non-fatal):', dbErr.message);
+    }
+
     const mappedUser = {
       id: userId,
       name: userProfile.name || '',
@@ -63,7 +83,7 @@ async function handleLogin(req, res) {
       wallet: userProfile.wallet || wallet,
       walletAddress: wallet,
       walletSecured: userProfile.walletSecured || false,
-      role: userProfile.role || 'user',
+      role: orgRole,
       banned: userProfile.banned || false,
       isPublic: userProfile.isPublic || false,
       organizations: userProfile.organizations || exchangeResponse.data.organizations || [],
@@ -77,6 +97,7 @@ async function handleLogin(req, res) {
         name: mappedUser.name,
         givenName: mappedUser.givenName,
         familyName: mappedUser.familyName,
+        role: orgRole,
       },
       process.env.JWT_SECRET || 'fallback-secret',
       { expiresIn: '7d' }

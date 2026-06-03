@@ -241,6 +241,44 @@ async function fetchSasMakes() {
   return response.json();
 }
 
+// ── Email notification (simple — uses a generic SMTP or service) ──
+async function sendAdminNotificationEmail({ claimId, userName, productName, proofUrl }) {
+  // If you have a mail service like Resend, SendGrid, etc:
+  const RESEND_API_KEY = process.env.RESEND_API_KEY;
+  const ADMIN_EMAIL = process.env.ADMIN_NOTIFICATION_EMAIL || 'christopher.fourquier@onchainlabs.ch';
+
+  if (!RESEND_API_KEY) {
+    console.log('[EMAIL] No RESEND_API_KEY configured — skipping email notification');
+    return;
+  }
+
+  const response = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${RESEND_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: 'ZAI Club <noreply@zai.ch>',
+      to: [ADMIN_EMAIL],
+      subject: `[ZAI] New claim request from ${userName}`,
+      html: `
+        <h2>New Product Claim Request</h2>
+        <p><strong>User:</strong> ${userName}</p>
+        <p><strong>Product:</strong> ${productName}</p>
+        <p><strong>Claim ID:</strong> ${claimId}</p>
+        <p><strong>Proof of purchase:</strong><br/><img src="${proofUrl}" style="max-width:400px;border-radius:8px;" /></p>
+        <p><a href="https://zai-club.vercel.app/admin">Review in Admin Panel →</a></p>
+      `,
+    }),
+  });
+
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`Email send failed: ${err}`);
+  }
+}
+
 export default async function handler(req, res) {
   const fullPath = req.url.split('?')[0].replace(/^\/api\/products\/?/, '').replace(/\/$/, '');
 
@@ -862,6 +900,362 @@ export default async function handler(req, res) {
   // ══════════════════════════════════════════════════════════════
   if (fullPath && !fullPath.includes('/') && req.method === 'GET') {
     return res.json({ success: true, data: { id: fullPath } });
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // POST /api/products/claim-request
+  // User submits a proof-of-purchase image for admin review
+  // Body: { proofImage (base64), rwaId?, productName? }
+  // ══════════════════════════════════════════════════════════════
+  if (fullPath === 'claim-request' && req.method === 'POST') {
+    const decoded = authenticate(req);
+    if (!decoded) return res.status(401).json({ error: 'Authentication required' });
+
+    try {
+      const db = await getDB();
+      if (!db) return res.status(503).json({ success: false, error: 'Database unavailable' });
+      await db.initDB();
+      const pool = db.getPool();
+
+      const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+      const { proofImage, rwaId, productName } = body;
+
+      if (!proofImage) {
+        return res.status(400).json({ success: false, error: 'Proof image is required (base64)' });
+      }
+
+      // Validate mime type
+      const mimeMatch = proofImage.match(/^data:(image\/[a-zA-Z]+);base64,/);
+      const mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/heic', 'image/webp'];
+      if (!allowedTypes.includes(mimeType)) {
+        return res.status(400).json({ success: false, error: 'Only JPG, PNG, WebP and HEIC images are allowed' });
+      }
+
+      const base64Data = proofImage.replace(/^data:image\/[a-zA-Z+]+;base64,/, '');
+      const buffer = Buffer.from(base64Data, 'base64');
+
+      if (buffer.length > 8 * 1024 * 1024) {
+        return res.status(400).json({ success: false, error: 'Image must be under 8 MB' });
+      }
+
+      // Upload to Pinata
+      if (!process.env.PINATA_JWT) {
+        return res.status(500).json({ success: false, error: 'PINATA_JWT not configured' });
+      }
+
+      const ext = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/heic': 'heic', 'image/webp': 'webp' }[mimeType] || 'jpg';
+      const boundary = '----PinataFormBoundary' + Date.now().toString(36);
+      const fileName = `proof-${decoded.userId}-${Date.now()}.${ext}`;
+      const header = `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${fileName}"\r\nContent-Type: ${mimeType}\r\n\r\n`;
+      const footer = `\r\n--${boundary}--\r\n`;
+
+      const multipartBody = Buffer.concat([
+        Buffer.from(header, 'utf-8'),
+        buffer,
+        Buffer.from(footer, 'utf-8'),
+      ]);
+
+      const pinataRes = await fetch('https://api.pinata.cloud/pinning/pinFileToIPFS', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.PINATA_JWT}`,
+          'Content-Type': `multipart/form-data; boundary=${boundary}`,
+        },
+        body: multipartBody,
+      });
+
+      if (!pinataRes.ok) {
+        const errText = await pinataRes.text().catch(() => '');
+        return res.status(500).json({ success: false, error: 'Image upload failed', detail: errText });
+      }
+
+      const pinataData = await pinataRes.json();
+      const cid = pinataData.IpfsHash;
+      const gateway = process.env.PINATA_GATEWAY || 'gateway.pinata.cloud';
+      const proofUrl = `https://${gateway}/ipfs/${cid}`;
+
+      // Get user display name
+      const userName = decoded.givenName && decoded.familyName
+        ? `${decoded.givenName} ${decoded.familyName}`.trim()
+        : decoded.name || 'Member';
+
+      const id = genId();
+      await pool.query(
+        `INSERT INTO product_claim_requests
+         (id, user_id, user_name, user_email, rwa_id, product_name, proof_image_url, proof_image_cid, status)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending')`,
+        [id, decoded.userId, userName, decoded.email || '', rwaId || null, productName || '', proofUrl, cid]
+      );
+
+      // ── Send email notification to admin ──
+      try {
+        await sendAdminNotificationEmail({
+          claimId: id,
+          userName,
+          productName: productName || 'Unknown product',
+          proofUrl,
+        });
+      } catch (emailErr) {
+        console.error('[PRODUCTS] Admin notification email failed:', emailErr.message);
+        // Non-fatal — claim is still recorded
+      }
+
+      return res.json({
+        success: true,
+        data: {
+          id,
+          status: 'pending',
+          proofImageUrl: proofUrl,
+          message: 'Your claim has been submitted and is pending admin review.',
+        },
+      });
+    } catch (err) {
+      console.error('[PRODUCTS] claim-request error:', err);
+      return res.status(500).json({ success: false, error: err.message });
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // GET /api/products/claim-requests
+  // Returns claim requests:
+  //   - For admins: all requests (filterable by status)
+  //   - For regular users: only their own
+  // ══════════════════════════════════════════════════════════════
+  if (fullPath === 'claim-requests' && req.method === 'GET') {
+    const decoded = authenticate(req);
+    if (!decoded) return res.status(401).json({ error: 'Authentication required' });
+
+    try {
+      const db = await getDB();
+      if (!db) return res.status(503).json({ success: false, error: 'Database unavailable' });
+      await db.initDB();
+      const pool = db.getPool();
+
+      const callerIsAdmin = await db.isAdmin(decoded);
+      const { status: filterStatus } = req.query || {};
+
+      let result;
+      if (callerIsAdmin) {
+        // Admin sees all
+        if (filterStatus) {
+          result = await pool.query(
+            'SELECT * FROM product_claim_requests WHERE status = $1 ORDER BY created_at DESC',
+            [filterStatus]
+          );
+        } else {
+          result = await pool.query(
+            'SELECT * FROM product_claim_requests ORDER BY created_at DESC'
+          );
+        }
+      } else {
+        // User sees only their own
+        result = await pool.query(
+          'SELECT * FROM product_claim_requests WHERE user_id = $1 ORDER BY created_at DESC',
+          [decoded.userId]
+        );
+      }
+
+      const pendingCount = callerIsAdmin
+        ? (await pool.query("SELECT COUNT(*)::int AS c FROM product_claim_requests WHERE status = 'pending'")).rows[0].c
+        : 0;
+
+      return res.json({
+        success: true,
+        isAdmin: callerIsAdmin,
+        data: result.rows.map(r => ({
+          id: r.id,
+          userId: r.user_id,
+          userName: r.user_name,
+          userEmail: r.user_email,
+          rwaId: r.rwa_id,
+          productName: r.product_name,
+          proofImageUrl: r.proof_image_url,
+          status: r.status,
+          adminNote: r.admin_note,
+          reviewedBy: r.reviewed_by,
+          reviewedAt: r.reviewed_at,
+          nftId: r.nft_id,
+          mintTx: r.mint_tx,
+          createdAt: r.created_at,
+          updatedAt: r.updated_at,
+        })),
+        stats: { pendingCount },
+      });
+    } catch (err) {
+      console.error('[PRODUCTS] claim-requests GET error:', err);
+      return res.status(500).json({ success: false, error: err.message });
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // POST /api/products/claim-requests/:id/validate
+  // Admin validates a claim → triggers mint
+  // Body: { rwaId }  (the admin selects which product to mint)
+  // ══════════════════════════════════════════════════════════════
+  const validateMatch = fullPath.match(/^claim-requests\/([^/]+)\/validate$/);
+  if (validateMatch && req.method === 'POST') {
+    const decoded = authenticate(req);
+    if (!decoded) return res.status(401).json({ error: 'Authentication required' });
+
+    const db = await getDB();
+    if (!db) return res.status(503).json({ success: false, error: 'Database unavailable' });
+    await db.initDB();
+
+    if (!await db.isAdmin(decoded)) {
+      return res.status(403).json({ success: false, error: 'Admin access required' });
+    }
+
+    try {
+      const pool = db.getPool();
+      const claimId = validateMatch[1];
+      const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+      const { rwaId, note } = body;
+
+      if (!rwaId) {
+        return res.status(400).json({ success: false, error: 'rwaId is required — select the product to mint' });
+      }
+
+      // Fetch the claim request
+      const claim = await pool.query('SELECT * FROM product_claim_requests WHERE id = $1', [claimId]);
+      if (!claim.rows[0]) return res.status(404).json({ success: false, error: 'Claim request not found' });
+      if (claim.rows[0].status !== 'pending') {
+        return res.status(400).json({ success: false, error: `Claim already ${claim.rows[0].status}` });
+      }
+
+      const claimRow = claim.rows[0];
+
+      // Get user's wallet from user_profiles or JWT
+      let userWallet = null;
+      try {
+        const profileRes = await pool.query('SELECT wallet FROM user_profiles WHERE user_id = $1', [claimRow.user_id]);
+        userWallet = profileRes.rows[0]?.wallet;
+      } catch {}
+
+      if (!userWallet) {
+        return res.status(400).json({ success: false, error: 'User has no wallet on file — cannot mint' });
+      }
+
+      // Update status to "minting"
+      await pool.query(
+        `UPDATE product_claim_requests SET status = 'minting', rwa_id = $2, admin_note = $3, reviewed_by = $4, reviewed_at = NOW(), updated_at = NOW() WHERE id = $1`,
+        [claimId, rwaId, note || '', decoded.userId]
+      );
+
+      // Trigger the mint (same flow as claim-nft)
+      const { status: mintStatus, data: mintData } = await apiFetch(
+        RWA_BASE,
+        `/rwa/${rwaId}/mint`,
+        { method: 'POST', body: JSON.stringify({ wallet: userWallet }) }
+      );
+
+      if (mintStatus !== 200 || !mintData?.nft) {
+        const errMsg = mintData?.message || mintData?.error || `Mint API returned ${mintStatus}`;
+        await pool.query(
+          `UPDATE product_claim_requests SET status = 'error', admin_note = $2, updated_at = NOW() WHERE id = $1`,
+          [claimId, `Mint failed: ${errMsg}`]
+        );
+        return res.status(502).json({ success: false, error: errMsg });
+      }
+
+      const nft = mintData.nft;
+
+      // Update claim to "validated"
+      await pool.query(
+        `UPDATE product_claim_requests SET status = 'validated', nft_id = $2, updated_at = NOW() WHERE id = $1`,
+        [claimId, nft.id]
+      );
+
+      // Also record in product_claims for the user's collection
+      try {
+        await pool.query(
+          `INSERT INTO product_claims (id, user_id, product_id, wallet, product_name, claimed_at)
+           VALUES ($1, $2, $3, $4, $5, NOW())
+           ON CONFLICT (user_id, product_id) DO NOTHING`,
+          [nft.id || genId(), claimRow.user_id, rwaId, userWallet, claimRow.product_name || '']
+        );
+      } catch (dbErr) {
+        console.error('[PRODUCTS] Claim DB record failed:', dbErr.message);
+      }
+
+      return res.json({
+        success: true,
+        data: {
+          claimId,
+          nftId: nft.id,
+          serial: nft.serial,
+          status: 'validated',
+          message: 'Claim validated and NFT minting initiated',
+        },
+      });
+    } catch (err) {
+      console.error('[PRODUCTS] claim validate error:', err);
+      return res.status(500).json({ success: false, error: err.message });
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // POST /api/products/claim-requests/:id/reject
+  // Admin rejects a claim request
+  // ══════════════════════════════════════════════════════════════
+  const rejectMatch = fullPath.match(/^claim-requests\/([^/]+)\/reject$/);
+  if (rejectMatch && req.method === 'POST') {
+    const decoded = authenticate(req);
+    if (!decoded) return res.status(401).json({ error: 'Authentication required' });
+
+    const db = await getDB();
+    if (!db) return res.status(503).json({ success: false, error: 'Database unavailable' });
+    await db.initDB();
+
+    if (!await db.isAdmin(decoded)) {
+      return res.status(403).json({ success: false, error: 'Admin access required' });
+    }
+
+    try {
+      const pool = db.getPool();
+      const claimId = rejectMatch[1];
+      const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+
+      const claim = await pool.query('SELECT * FROM product_claim_requests WHERE id = $1', [claimId]);
+      if (!claim.rows[0]) return res.status(404).json({ success: false, error: 'Claim request not found' });
+      if (claim.rows[0].status !== 'pending') {
+        return res.status(400).json({ success: false, error: `Claim already ${claim.rows[0].status}` });
+      }
+
+      await pool.query(
+        `UPDATE product_claim_requests SET status = 'rejected', admin_note = $2, reviewed_by = $3, reviewed_at = NOW(), updated_at = NOW() WHERE id = $1`,
+        [claimId, body.note || '', decoded.userId]
+      );
+
+      return res.json({ success: true, message: 'Claim rejected' });
+    } catch (err) {
+      return res.status(500).json({ success: false, error: err.message });
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // GET /api/products/admin/pending-count
+  // Returns number of pending claim requests (for sidebar badge)
+  // ══════════════════════════════════════════════════════════════
+  if (fullPath === 'admin/pending-count' && req.method === 'GET') {
+    const decoded = authenticate(req);
+    if (!decoded) return res.status(401).json({ error: 'Authentication required' });
+
+    try {
+      const db = await getDB();
+      if (!db) return res.json({ success: true, data: { count: 0 } });
+      await db.initDB();
+
+      if (!await db.isAdmin(decoded)) {
+        return res.json({ success: true, data: { count: 0 } });
+      }
+
+      const pool = db.getPool();
+      const result = await pool.query("SELECT COUNT(*)::int AS c FROM product_claim_requests WHERE status = 'pending'");
+      return res.json({ success: true, data: { count: result.rows[0].c } });
+    } catch (err) {
+      return res.json({ success: true, data: { count: 0 } });
+    }
   }
 
   return res.status(404).json({ error: 'Route not found' });

@@ -5,17 +5,9 @@ const { Pool } = pg;
 let pool;
 let dbReady = false;
 
-// ── Admin wallet address (lowercase for comparison) ──
-export const ADMIN_WALLET = '0xff0f56711f61c52662d60be95f954649441107ec';
-
 // ── Contract addresses ──
 export const ZAI_PRODUCTS_CONTRACT = '0xedd1a9446a2c0e50a8287c9527bf2a7498bfbc55';
 export const ZAI_EXPERIENCE_CARD_CONTRACT = '0x3ec471e2a682381ee75b395eff068e04b6b5da5d';
-
-export function isAdmin(decoded) {
-  if (!decoded?.wallet) return false;
-  return decoded.wallet.toLowerCase() === ADMIN_WALLET;
-}
 
 export function getPool() {
   if (!pool) {
@@ -28,6 +20,35 @@ export function getPool() {
     });
   }
   return pool;
+}
+
+// ── Role-based admin check (replaces hardcoded wallet) ──
+export async function isAdmin(decoded) {
+  if (!decoded?.userId) return false;
+  try {
+    const res = await getPool().query(
+      'SELECT role FROM user_roles WHERE user_id = $1',
+      [decoded.userId]
+    );
+    const role = res.rows[0]?.role;
+    return role === 'owner' || role === 'admin';
+  } catch {
+    return false;
+  }
+}
+
+// ── Get user role (for JWT / profile display) ──
+export async function getUserRole(userId) {
+  if (!userId) return 'member';
+  try {
+    const res = await getPool().query(
+      'SELECT role FROM user_roles WHERE user_id = $1',
+      [userId]
+    );
+    return res.rows[0]?.role || 'member';
+  } catch {
+    return 'member';
+  }
 }
 
 export async function initDB() {
@@ -141,12 +162,38 @@ export async function initDB() {
         UNIQUE(user_id, product_id)
       );
 
-      -- Blocked / removed community members
       CREATE TABLE IF NOT EXISTS blocked_members (
         user_id TEXT PRIMARY KEY,
         blocked_by TEXT NOT NULL,
         reason TEXT DEFAULT '',
         blocked_at TIMESTAMPTZ DEFAULT NOW()
+      );
+
+      -- ═══ NEW: User roles table ═══
+      CREATE TABLE IF NOT EXISTS user_roles (
+        user_id TEXT PRIMARY KEY,
+        role TEXT NOT NULL DEFAULT 'member',
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      );
+
+      -- ═══ NEW: Product claim requests (receipt-based flow) ═══
+      CREATE TABLE IF NOT EXISTS product_claim_requests (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        user_name TEXT DEFAULT '',
+        user_email TEXT DEFAULT '',
+        rwa_id TEXT,
+        product_name TEXT DEFAULT '',
+        proof_image_url TEXT NOT NULL,
+        proof_image_cid TEXT,
+        status TEXT NOT NULL DEFAULT 'pending',
+        admin_note TEXT DEFAULT '',
+        reviewed_by TEXT,
+        reviewed_at TIMESTAMPTZ,
+        nft_id TEXT,
+        mint_tx TEXT,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW()
       );
 
       CREATE INDEX IF NOT EXISTS idx_photo_comments_photo ON photo_comments(photo_id);
@@ -160,6 +207,8 @@ export async function initDB() {
       CREATE INDEX IF NOT EXISTS idx_insurance_product ON insurance_registrations(product_id);
       CREATE INDEX IF NOT EXISTS idx_claims_user ON product_claims(user_id);
       CREATE INDEX IF NOT EXISTS idx_claims_product ON product_claims(product_id);
+      CREATE INDEX IF NOT EXISTS idx_claim_requests_user ON product_claim_requests(user_id);
+      CREATE INDEX IF NOT EXISTS idx_claim_requests_status ON product_claim_requests(status);
     `);
 
     // Safe ALTER for existing DBs
@@ -170,13 +219,19 @@ export async function initDB() {
 
     await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_product_claims_user_product ON product_claims(user_id, product_id)`);
 
+    // ── Seed owner role (your userId — runs once, no-op after) ──
+    await pool.query(`
+      INSERT INTO user_roles (user_id, role)
+      VALUES ('RhcQ43ACLUSfaDPSDcX71ntBFzHhq6zI', 'owner')
+      ON CONFLICT (user_id) DO NOTHING
+    `);
+
     dbReady = true;
   } finally {
     client.release();
   }
 }
 
-// ── Graceful DB init — returns true/false instead of throwing ──
 export async function tryInitDB() {
   try {
     await initDB();

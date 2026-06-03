@@ -5,7 +5,7 @@ const { Pool } = pg;
 
 const WALLETTWO_API = 'https://api.wallettwo.com/auth/v1/api';
 const API_KEY = () => process.env.WALLETTWO_API_KEY;
-const ADMIN_WALLET = '0xff0f56711f61c52662d60be95f954649441107ec';
+//const ADMIN_WALLET = '0xff0f56711f61c52662d60be95f954649441107ec';
 const PINATA_GATEWAY = () => process.env.PINATA_GATEWAY || 'gateway.pinata.cloud';
 
 
@@ -75,8 +75,18 @@ function authenticate(req) {
   catch { return null; }
 }
 
-function isAdmin(decoded) {
-  return decoded?.wallet?.toLowerCase() === ADMIN_WALLET;
+async function isAdmin(decoded) {
+  if (!decoded?.userId) return false;
+  try {
+    const res = await getPool().query(
+      'SELECT role FROM user_roles WHERE user_id = $1',
+      [decoded.userId]
+    );
+    const role = res.rows[0]?.role;
+    return role === 'owner' || role === 'admin';
+  } catch {
+    return false;
+  }
 }
 
 function genId() {
@@ -196,7 +206,7 @@ export default async function handler(req, res) {
       }
 
       const decoded = authenticate(req);
-      const callerIsAdmin = isAdmin(decoded);
+      const callerIsAdmin = await isAdmin(decoded);
 
       const members = (data.members || [])
         .filter(m => {
@@ -303,7 +313,7 @@ export default async function handler(req, res) {
   if (blockMatch && req.method === 'POST') {
     const user = authenticate(req);
     if (!user) return res.status(401).json({ error: 'No token provided' });
-    if (!isAdmin(user)) return res.status(403).json({ success: false, error: 'Admin only' });
+    if (!await isAdmin(user)) return res.status(403).json({ success: false, error: 'Admin only' });
     const dbOk = await initDB();
     if (!dbOk) return res.status(503).json({ success: false, error: 'Database unavailable' });
     try {
@@ -320,7 +330,7 @@ export default async function handler(req, res) {
   if (blockMatch && req.method === 'DELETE') {
     const user = authenticate(req);
     if (!user) return res.status(401).json({ error: 'No token provided' });
-    if (!isAdmin(user)) return res.status(403).json({ success: false, error: 'Admin only' });
+    if (!await isAdmin(user)) return res.status(403).json({ success: false, error: 'Admin only' });
     const dbOk = await initDB();
     if (!dbOk) return res.status(503).json({ success: false, error: 'Database unavailable' });
     try {
@@ -362,7 +372,7 @@ export default async function handler(req, res) {
 
       return res.json({
         success: true,
-        isAdmin: isAdmin(decoded),
+        isAdmin: await isAdmin(decoded),
         data: result.rows.map(r => ({
           id: r.id, cid: r.cid, url: r.url.replace('gateway.pinata.cloud', PINATA_GATEWAY()), caption: r.caption,
           authorId: r.author_id, authorName: r.author_name,
@@ -485,7 +495,7 @@ export default async function handler(req, res) {
       const p = photo.rows[0];
       const decoded = authenticate(req);
       return res.json({
-        success: true, isAdmin: isAdmin(decoded),
+        success: true, isAdmin: await isAdmin(decoded),
         data: {
           id: p.id, cid: p.cid, url: p.url.replace('gateway.pinata.cloud', PINATA_GATEWAY()), caption: p.caption,
           authorId: p.author_id, authorName: p.author_name,
@@ -506,7 +516,7 @@ export default async function handler(req, res) {
     try {
       const photo = await getPool().query('SELECT author_id FROM photos WHERE id=$1', [photoMatch[1]]);
       if (!photo.rows[0]) return res.status(404).json({ success: false, error: 'Photo not found' });
-      if (photo.rows[0].author_id !== user.userId && !isAdmin(user)) {
+      if (photo.rows[0].author_id !== user.userId && !await isAdmin(user)) {
         return res.status(403).json({ success: false, error: 'Not authorized' });
       }
       await getPool().query('DELETE FROM photos WHERE id=$1', [photoMatch[1]]);
@@ -605,7 +615,7 @@ export default async function handler(req, res) {
     const user = authenticate(req);
     if (!user) return res.status(401).json({ error: 'No token provided' });
     const dbOk = await initDB();
-    if (!dbOk) return res.json({ success: true, data: [], isAdmin: isAdmin(user), pagination: { limit: 50, offset: 0, total: 0, hasMore: false }, _dbOffline: true });
+    if (!dbOk) return res.json({ success: true, data: [], isAdmin: await isAdmin(user), pagination: { limit: 50, offset: 0, total: 0, hasMore: false }, _dbOffline: true });
     try {
       const { limit = 50, offset = 0, with: withUser } = req.query;
       const l = Math.min(parseInt(limit) || 50, 100);
@@ -619,7 +629,7 @@ export default async function handler(req, res) {
         countResult = await getPool().query('SELECT COUNT(*)::int AS total FROM chat_messages WHERE recipient_id IS NULL');
       }
       return res.json({
-        success: true, isAdmin: isAdmin(user),
+        success: true, isAdmin: await isAdmin(user),
         data: result.rows.reverse().map(m => ({ id: m.id, text: m.text, authorId: m.author_id, authorName: m.author_name, recipientId: m.recipient_id, createdAt: m.created_at })),
         pagination: { limit: l, offset: o, total: countResult.rows[0].total, hasMore: o + l < countResult.rows[0].total },
       });
@@ -652,7 +662,7 @@ export default async function handler(req, res) {
     try {
       const msg = await getPool().query('SELECT author_id FROM chat_messages WHERE id=$1', [chatDelMatch[1]]);
       if (!msg.rows[0]) return res.status(404).json({ success: false, error: 'Message not found' });
-      if (msg.rows[0].author_id !== user.userId && !isAdmin(user)) {
+      if (msg.rows[0].author_id !== user.userId && !await isAdmin(user)) {
         return res.status(403).json({ success: false, error: 'Not authorized' });
       }
       await getPool().query('DELETE FROM chat_messages WHERE id=$1', [chatDelMatch[1]]);

@@ -80,6 +80,13 @@ interface PendingMint {
   startedAt: number;
 }
 
+interface PendingClaimRequest {
+  id: string;
+  status: string;
+  productName: string;
+  createdAt: string;
+}
+
 const DEVICE_TYPES = [
   { id: 1, label: 'Ski Alpine' },
   { id: 2, label: 'Snowboard' },
@@ -168,6 +175,7 @@ const Products: React.FC = () => {
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
 
+  // Old claim modal (kept but no longer triggered by default)
   const [showClaimModal, setShowClaimModal] = useState(false);
   const [claimableRwas, setClaimableRwas] = useState<ClaimableRwa[]>([]);
   const [claimableLoading, setClaimableLoading] = useState(false);
@@ -187,6 +195,16 @@ const Products: React.FC = () => {
   });
 
   const [zoomImage, setZoomImage] = useState<{ src: string; alt: string } | null>(null);
+
+  // ── NEW: Receipt-based claim flow ──
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
+  const [receiptImage, setReceiptImage] = useState<string | null>(null);
+  const [receiptProductName, setReceiptProductName] = useState('');
+  const [receiptSubmitting, setReceiptSubmitting] = useState(false);
+  const [receiptError, setReceiptError] = useState<string | null>(null);
+  const [receiptSuccess, setReceiptSuccess] = useState(false);
+  const [pendingClaimRequests, setPendingClaimRequests] = useState<PendingClaimRequest[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const needsCarousel = products.length > MAX_GRID_CARDS;
 
@@ -267,7 +285,6 @@ const Products: React.FC = () => {
       if (response.data?.success) {
         setProducts(response.data.data || []);
 
-        // ★ Signal onboarding widget that products exist
         if ((response.data.data || []).length > 0) {
           window.dispatchEvent(new CustomEvent('zai:product-claimed'));
         }
@@ -288,6 +305,32 @@ const Products: React.FC = () => {
     }
   }, [user?.id]);
 
+  // ── Fetch user's pending claim requests ──
+  useEffect(() => {
+    if (!user?.id) return;
+    const fetchPendingClaims = async () => {
+      try {
+        const res = await apiService.get('/products/claim-requests');
+        if (res.data?.success) {
+          setPendingClaimRequests(
+            ((res.data.data || []) as any[])
+              .filter((c: any) => c.status === 'pending' || c.status === 'minting')
+              .map((c: any) => ({
+                id: c.id,
+                status: c.status,
+                productName: c.productName || '',
+                createdAt: c.createdAt,
+              }))
+          );
+        }
+      } catch {
+        // silently fail
+      }
+    };
+    fetchPendingClaims();
+  }, [user?.id]);
+
+  // ── Mint polling ──
   useEffect(() => {
     if (mintPollRef.current) {
       clearInterval(mintPollRef.current);
@@ -322,6 +365,7 @@ const Products: React.FC = () => {
     };
   }, [pendingMints, fetchUserProducts]);
 
+  // ── Old claim flow (kept for backward compat but not triggered by UI) ──
   const fetchClaimableRwas = async () => {
     setClaimableLoading(true);
     setClaimableError(null);
@@ -363,6 +407,62 @@ const Products: React.FC = () => {
     }
   };
 
+  // ── NEW: Receipt-based claim handlers ──
+  const openReceiptModal = () => {
+    setShowReceiptModal(true);
+    setReceiptImage(null);
+    setReceiptProductName('');
+    setReceiptError(null);
+    setReceiptSuccess(false);
+    setReceiptSubmitting(false);
+  };
+
+  const handleReceiptCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 8 * 1024 * 1024) {
+      setReceiptError('Image must be under 8 MB');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setReceiptImage(reader.result as string);
+      setReceiptError(null);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleReceiptSubmit = async () => {
+    if (!receiptImage) return;
+    setReceiptSubmitting(true);
+    setReceiptError(null);
+    try {
+      const res = await apiService.post('/products/claim-request', {
+        proofImage: receiptImage,
+        productName: receiptProductName,
+      });
+      const payload = res.data as any;
+      if (payload?.success) {
+        setReceiptSuccess(true);
+        setPendingClaimRequests(prev => [{
+          id: payload.data?.id || '',
+          status: 'pending',
+          productName: receiptProductName,
+          createdAt: new Date().toISOString(),
+        }, ...prev]);
+      } else {
+        setReceiptError(payload?.error || 'Submission failed');
+      }
+    } catch (err: any) {
+      setReceiptError(err?.response?.data?.error || err?.message || 'Submission failed');
+    } finally {
+      setReceiptSubmitting(false);
+    }
+  };
+
+  // ── Insurance ──
   const openInsuranceModal = (product: Product) => {
     setInsuranceProduct(product);
     setShowInsuranceModal(true);
@@ -436,7 +536,7 @@ const Products: React.FC = () => {
 
   const ClaimCard = ({ style: extraStyle }: { style?: React.CSSProperties }) => (
     <div
-      onClick={openClaimModal}
+      onClick={openReceiptModal}
       style={{
         height: 300,
         border: `2px dashed ${C.border}`, borderRadius: 8,
@@ -454,7 +554,7 @@ const Products: React.FC = () => {
         <span style={{ fontSize: 24, color: C.red, lineHeight: 1 }}>+</span>
       </div>
       <span style={{ fontSize: 13, fontWeight: 600, color: C.mid }}>Claim a Product</span>
-      <span style={{ fontSize: 11, color: C.gray, marginTop: 4 }}>NFC scan or serial number</span>
+      <span style={{ fontSize: 11, color: C.gray, marginTop: 4 }}>Scan or upload your receipt</span>
     </div>
   );
 
@@ -560,11 +660,11 @@ const Products: React.FC = () => {
               Your zai Collection
             </h1>
             <p style={{ color: C.gray, fontSize: '13px', margin: 0, maxWidth: 480 }}>
-              Claim products using your experience card or serial number to activate warranty and access exclusive benefits.
+              Claim products by uploading your proof of purchase. An admin will validate your claim and your product will appear here.
             </p>
           </div>
           <button
-            onClick={openClaimModal}
+            onClick={openReceiptModal}
             style={{
               background: C.red, color: '#fff', border: 'none',
               padding: '14px 28px', fontSize: '10px', letterSpacing: '0.2em',
@@ -602,6 +702,35 @@ const Products: React.FC = () => {
                 </span>
               )}
             </div>
+          </div>
+        )}
+
+        {/* ══════ PENDING CLAIM REQUESTS BANNER ══════ */}
+        {pendingClaimRequests.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 24 }}>
+            {pendingClaimRequests.map(cr => (
+              <div key={cr.id} style={{
+                display: 'flex', alignItems: 'center', gap: 12,
+                padding: '14px 20px',
+                background: '#fef9e7', border: '1px solid #f0e68c', borderRadius: 8,
+              }}>
+                <div style={{
+                  width: 8, height: 8, borderRadius: '50%',
+                  background: cr.status === 'minting' ? '#1967d2' : '#b8860b',
+                  flexShrink: 0,
+                }} />
+                <div style={{ flex: 1 }}>
+                  <span style={{ fontSize: 14, fontWeight: 500 }}>
+                    {cr.status === 'minting'
+                      ? `Minting "${cr.productName || 'your product'}"…`
+                      : `Claim for "${cr.productName || 'your product'}" is being reviewed`}
+                  </span>
+                  <div style={{ fontSize: 11, color: C.gray, marginTop: 2 }}>
+                    Submitted {formatClaimedDate(cr.createdAt)}
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         )}
 
@@ -710,7 +839,7 @@ const Products: React.FC = () => {
           </div>
         )}
 
-        {/* ══════ BLACK FOOTER — "How to claim" — INSIDE the 1100 container ══════ */}
+        {/* ══════ BLACK FOOTER — "How to claim" ══════ */}
         <div style={{
           marginTop: 48,
           background: C.black,
@@ -735,18 +864,18 @@ const Products: React.FC = () => {
             {[
               {
                 step: '01',
-                title: 'Get your card',
-                desc: 'Receive your zai Experience Card with your product purchase over CHF 500.',
+                title: 'Upload your receipt',
+                desc: 'Take a photo of your purchase receipt or upload an image of your proof of purchase.',
               },
               {
                 step: '02',
-                title: 'Tap or enter serial',
-                desc: 'Use NFC tap or manually enter the serial number from your experience card.',
+                title: 'Admin review',
+                desc: 'Our team reviews your proof of purchase and validates your claim.',
               },
               {
                 step: '03',
                 title: 'Enjoy benefits',
-                desc: 'Access free ski insurance, exclusive events, and community features.',
+                desc: 'Once validated, your product NFT is minted and you can access insurance, events, and community.',
               },
             ].map((item) => (
               <div key={item.step} style={{
@@ -871,9 +1000,142 @@ const Products: React.FC = () => {
         </Modal>
       )}
 
-      {/* ════════════ CLAIM MODAL ════════════ */}
+      {/* ════════════ RECEIPT UPLOAD MODAL (NEW CLAIM FLOW) ════════════ */}
+      {showReceiptModal && (
+        <Modal isOpen onClose={() => setShowReceiptModal(false)} title="Claim a Product">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20, minHeight: 200 }}>
+
+            {receiptSuccess ? (
+              <div style={{ textAlign: 'center', padding: 32 }}>
+                <div style={{ fontSize: 48, marginBottom: 12 }}>&#x2713;</div>
+                <p style={{ fontSize: 16, fontWeight: 600, marginBottom: 8 }}>Claim Submitted!</p>
+                <p style={{ fontSize: 13, color: C.gray, marginBottom: 24 }}>
+                  Your proof of purchase is being reviewed. You&rsquo;ll be notified once your product is validated.
+                </p>
+                <Button onClick={() => setShowReceiptModal(false)}>Done</Button>
+              </div>
+            ) : (
+              <>
+                <p style={{ fontSize: 13, color: C.gray, margin: 0 }}>
+                  Take a photo of your purchase receipt or upload an image. An admin will review it and validate your claim.
+                </p>
+
+                {/* Product name (optional) */}
+                <div>
+                  <label style={labelStyle}>Product Name (optional)</label>
+                  <input
+                    style={inputStyle}
+                    placeholder="e.g. ZAI Zermatt GT"
+                    value={receiptProductName}
+                    onChange={e => setReceiptProductName(e.target.value)}
+                  />
+                </div>
+
+                {/* Image capture / upload */}
+                <div>
+                  <label style={labelStyle}>Proof of Purchase</label>
+
+                  {!receiptImage ? (
+                    <div style={{ display: 'flex', gap: 12 }}>
+                      {/* Camera capture (mobile) */}
+                      <label
+                        style={{
+                          flex: 1, padding: '20px 16px', border: `2px dashed ${C.border}`, borderRadius: 8,
+                          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                          cursor: 'pointer', transition: 'border-color 0.2s', textAlign: 'center',
+                        }}
+                        onMouseEnter={e => (e.currentTarget.style.borderColor = C.red)}
+                        onMouseLeave={e => (e.currentTarget.style.borderColor = C.border)}
+                      >
+                        <span style={{ fontSize: 28, marginBottom: 4 }}>&#x1F4F7;</span>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: C.mid }}>Take Photo</span>
+                        <span style={{ fontSize: 10, color: C.gray }}>Camera</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          capture="environment"
+                          style={{ display: 'none' }}
+                          onChange={handleReceiptCapture}
+                        />
+                      </label>
+
+                      {/* File upload */}
+                      <label
+                        style={{
+                          flex: 1, padding: '20px 16px', border: `2px dashed ${C.border}`, borderRadius: 8,
+                          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                          cursor: 'pointer', transition: 'border-color 0.2s', textAlign: 'center',
+                        }}
+                        onMouseEnter={e => (e.currentTarget.style.borderColor = C.red)}
+                        onMouseLeave={e => (e.currentTarget.style.borderColor = C.border)}
+                      >
+                        <span style={{ fontSize: 28, marginBottom: 4 }}>&#x1F4C1;</span>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: C.mid }}>Upload Image</span>
+                        <span style={{ fontSize: 10, color: C.gray }}>JPG, PNG, WebP</span>
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp,image/heic"
+                          style={{ display: 'none' }}
+                          onChange={handleReceiptCapture}
+                          ref={fileInputRef}
+                        />
+                      </label>
+                    </div>
+                  ) : (
+                    <div style={{ position: 'relative' }}>
+                      <img
+                        src={receiptImage}
+                        alt="Receipt preview"
+                        style={{ width: '100%', maxHeight: 300, objectFit: 'contain', borderRadius: 8, background: C.surface }}
+                      />
+                      <button
+                        onClick={() => setReceiptImage(null)}
+                        style={{
+                          position: 'absolute', top: 8, right: 8,
+                          width: 28, height: 28, borderRadius: '50%',
+                          background: 'rgba(0,0,0,0.6)', color: '#fff',
+                          border: 'none', cursor: 'pointer', fontSize: 14,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}
+                      >
+                        &#x2715;
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {receiptError && (
+                  <div style={{ color: C.red, fontSize: 13 }}>{receiptError}</div>
+                )}
+
+                {/* Submit */}
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+                  <Button onClick={() => setShowReceiptModal(false)}>Cancel</Button>
+                  <button
+                    onClick={handleReceiptSubmit}
+                    disabled={!receiptImage || receiptSubmitting}
+                    style={{
+                      padding: '10px 24px', fontSize: 11, fontWeight: 600,
+                      letterSpacing: '0.15em', textTransform: 'uppercase',
+                      border: 'none', borderRadius: 4,
+                      background: (!receiptImage || receiptSubmitting) ? C.border : C.red,
+                      color: '#fff', fontFamily: C.font,
+                      cursor: (!receiptImage || receiptSubmitting) ? 'default' : 'pointer',
+                      opacity: receiptSubmitting ? 0.6 : 1,
+                    }}
+                  >
+                    {receiptSubmitting ? 'Submitting\u2026' : 'Submit Claim'}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </Modal>
+      )}
+
+      {/* ════════════ OLD CLAIM MODAL (kept for backward compat) ════════════ */}
       {showClaimModal && (
-        <Modal isOpen onClose={() => setShowClaimModal(false)} title="Claim a Product">
+        <Modal isOpen onClose={() => setShowClaimModal(false)} title="Claim a Product (Direct)">
           <div style={{ minHeight: 200 }}>
             {claimableLoading ? (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 48 }}>

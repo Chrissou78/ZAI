@@ -10,6 +10,7 @@ import Events from './components/Pages/Events';
 import Community from './components/Pages/Community';
 import Profile from './components/Pages/Profile';
 import Settings from './components/Pages/Settings';
+import Admin from './components/Pages/Admin';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -32,12 +33,10 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
 const Router: React.FC = () => {
   const { user, isLoading } = useAppContext();
 
-  // If user is connected, wrap Home with MainLayout to show sidebar
   if (!isLoading && user) {
     return (
       <BrowserRouter>
         <Routes>
-          {/* Home with sidebar when authenticated */}
           <Route
             element={
               <ProtectedRoute>
@@ -52,23 +51,20 @@ const Router: React.FC = () => {
             <Route path="/community" element={<Community />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="/admin" element={<Admin />} />
           </Route>
 
-          {/* 404 */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
     );
   }
 
-  // If user is NOT connected, Home has no sidebar
   return (
     <BrowserRouter>
       <Routes>
-        {/* Public home without sidebar */}
         <Route path="/" element={<Home />} />
 
-        {/* Protected routes with layout */}
         <Route
           element={
             <ProtectedRoute>
@@ -82,9 +78,9 @@ const Router: React.FC = () => {
           <Route path="/community" element={<Community />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/admin" element={<Admin />} />
         </Route>
 
-        {/* 404 */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
