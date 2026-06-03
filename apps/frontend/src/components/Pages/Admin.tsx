@@ -264,7 +264,7 @@ const Admin: React.FC = () => {
                     background: C.surface, flexShrink: 0,
                   }}>
                     <img
-                      src={claim.proofImageUrl}
+                      src={`/api/products/claim-proof/${claim.id}`}
                       alt="Proof"
                       style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                     />
@@ -323,10 +323,10 @@ const Admin: React.FC = () => {
                   borderRadius: 8, overflow: 'hidden', cursor: 'zoom-in',
                   background: C.surface, maxHeight: 300,
                 }}
-                onClick={() => setZoomImage(selectedClaim.proofImageUrl)}
+                onClick={() => setZoomImage(`/api/products/claim-proof/${selectedClaim.id}`)}
               >
                 <img
-                  src={selectedClaim.proofImageUrl}
+                  src={`/api/products/claim-proof/${selectedClaim.id}`}
                   alt="Proof of purchase"
                   style={{ width: '100%', height: 'auto', display: 'block', maxHeight: 300, objectFit: 'contain' }}
                 />
