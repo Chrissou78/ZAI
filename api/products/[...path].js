@@ -1090,8 +1090,14 @@ export default async function handler(req, res) {
 
       let result;
       if (callerIsAdmin) {
-        // Admin sees all
-        if (filterStatus) {
+        const myOnly = req.query?.mine === 'true';
+        if (myOnly) {
+          // Admin viewing their own Products page — only their claims
+          result = await pool.query(
+            'SELECT * FROM product_claim_requests WHERE user_id = $1 ORDER BY created_at DESC',
+            [decoded.userId]
+          );
+        } else if (filterStatus) {
           result = await pool.query(
             'SELECT * FROM product_claim_requests WHERE status = $1 ORDER BY created_at DESC',
             [filterStatus]

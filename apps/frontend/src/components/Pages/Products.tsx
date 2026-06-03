@@ -459,7 +459,7 @@ const Products: React.FC = () => {
 
   const fetchClaimRequests = async () => {
     try {
-      const res = await apiService.get('/products/claim-requests');
+      const res = await apiService.get('/products/claim-requests?mine=true');
       if (res.data?.success && active) {
         const claims = (res.data.data || []) as any[];
 
