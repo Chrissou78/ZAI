@@ -1,19 +1,37 @@
-import { useState, useEffect, useCallback } from 'react';
-import {
-  View, Text, StyleSheet, ScrollView, Image, Pressable,
-  ActivityIndicator, Alert,
-} from 'react-native';
+// apps/mobile/app/(tabs)/products.tsx
+import { useRef, useState, useEffect, useCallback } from 'react';
+import {View, Text, StyleSheet, ScrollView, Image, Pressable, ActivityIndicator, Alert, Modal, TextInput, TouchableOpacity,} from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import * as SecureStore from 'expo-secure-store';
 import { useAuth } from '@/context/AuthContext';
 import { apiService } from '@/services/api';
 import { DARK_THEME } from '@/theme/colors';
 import type { Product } from '@zai/shared';
+
+interface ClaimableRwa {
+  rwaId: string;
+  name: string;
+  image: string;
+  description?: string;
+  collection?: string;
+}
 
 export default function ProductsScreen() {
   const { user } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [pendingClaims, setPendingClaims] = useState<any[]>([]);
+  const DISMISSED_KEY = 'zai_dismissed_claims';
+  const dismissedRef = useRef<Set<string>>(new Set());
+
+  // Claim flow states
+  const [showClaimModal, setShowClaimModal] = useState(false);
+  const [claimableRwas, setClaimableRwas] = useState<ClaimableRwa[]>([]);
+  const [claimableLoading, setClaimableLoading] = useState(false);
+  const [selectedProductName, setSelectedProductName] = useState('');
+  const [customProductName, setCustomProductName] = useState('');
+  const [isCustomProduct, setIsCustomProduct] = useState(false);
+  const [claimSubmitting, setClaimSubmitting] = useState(false);
 
   const fetchProducts = useCallback(async () => {
     if (!user?.id) return;
@@ -37,10 +55,19 @@ export default function ProductsScreen() {
     try {
       const res = await apiService.get('/products/claim-requests?mine=true');
       if (res.data?.success) {
-        setPendingClaims(res.data.data || []);
+        const claims = (res.data.data || []).filter(
+          (c: any) => !(
+            (c.status === 'validated' || c.status === 'rejected') &&
+            dismissedRef.current.has(c.id)
+          )
+        );
+        setPendingClaims(claims);
+
+        const hasValidated = claims.some((c: any) => c.status === 'validated');
+        if (hasValidated) fetchProducts();
       }
     } catch {}
-  }, []);
+  }, [fetchProducts]);
 
   useEffect(() => {
     fetchProducts();
@@ -53,8 +80,51 @@ export default function ProductsScreen() {
     return () => clearInterval(interval);
   }, [fetchClaims]);
 
-  const handleClaimProduct = async () => {
-    // Open camera or image picker
+  useEffect(() => {
+    SecureStore.getItemAsync(DISMISSED_KEY).then((stored) => {
+      if (stored) {
+        dismissedRef.current = new Set<string>(JSON.parse(stored));
+        // Filter out already-dismissed claims from initial load
+        setPendingClaims((prev) =>
+          prev.filter((c: any) => !(
+            (c.status === 'validated' || c.status === 'rejected') &&
+            dismissedRef.current.has(c.id)
+          ))
+        );
+      }
+    }).catch(() => {});
+  }, []);
+
+  // Fetch claimable products list from API (same as web)
+  const fetchClaimableProducts = async () => {
+    setClaimableLoading(true);
+    try {
+      const res = await apiService.get('/products/claimable');
+      const payload = res.data as any;
+      if (payload?.success) {
+        setClaimableRwas(payload.data || []);
+      }
+    } catch {
+      // silently fail — user can still type a custom name
+    } finally {
+      setClaimableLoading(false);
+    }
+  };
+
+  // Open claim modal (replaces handleClaimProduct)
+  const openClaimFlow = () => {
+    setShowClaimModal(true);
+    setSelectedProductName('');
+    setCustomProductName('');
+    setIsCustomProduct(false);
+    setClaimSubmitting(false);
+    fetchClaimableProducts();
+  };
+
+  // After product selection, open camera then submit
+  const handleContinueToPhoto = async () => {
+    const productName = isCustomProduct ? customProductName.trim() : selectedProductName;
+
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== 'granted') {
       Alert.alert('Permission needed', 'Camera access is required to photograph your receipt.');
@@ -73,16 +143,13 @@ export default function ProductsScreen() {
     const asset = result.assets[0];
     const base64Image = `data:image/jpeg;base64,${asset.base64}`;
 
-    // Ask for product name
-    Alert.prompt(
-      'Product Name',
-      'Enter the product name (optional)',
-      [
-        { text: 'Skip', onPress: () => submitClaim(base64Image, '') },
-        { text: 'Submit', onPress: (name) => submitClaim(base64Image, name || '') },
-      ],
-      'plain-text'
-    );
+    setClaimSubmitting(true);
+    try {
+      await submitClaim(base64Image, productName);
+    } finally {
+      setClaimSubmitting(false);
+      setShowClaimModal(false);
+    }
   };
 
   const submitClaim = async (proofImage: string, productName: string) => {
@@ -102,6 +169,13 @@ export default function ProductsScreen() {
     }
   };
 
+  const dismissClaim = (claimId: string) => {
+    dismissedRef.current.add(claimId);
+    SecureStore.setItemAsync(DISMISSED_KEY, JSON.stringify([...dismissedRef.current])).catch(() => {});
+    // Just remove from the array — single surgical update, no full re-render
+    setPendingClaims((prev) => prev.filter((c: any) => c.id !== claimId));
+  };
+
   if (isLoading) {
     return (
       <View style={styles.center}>
@@ -118,13 +192,13 @@ export default function ProductsScreen() {
           <Text style={styles.sectionLabel}>ZAI EXCLUSIVE</Text>
           <Text style={styles.title}>My Collection</Text>
         </View>
-        <Pressable style={styles.claimBtn} onPress={handleClaimProduct}>
+        <Pressable style={styles.claimBtn} onPress={openClaimFlow}>
           <Text style={styles.claimBtnText}>+ CLAIM</Text>
         </Pressable>
       </View>
 
       {/* Pending claims */}
-      {pendingClaims.filter(c => c.status === 'pending' || c.status === 'minting').map(c => (
+      {pendingClaims.filter((c: any) => c.status === 'pending' || c.status === 'minting').map((c: any) => (
         <View key={c.id} style={styles.pendingBanner}>
           <Text style={styles.pendingIcon}>⏳</Text>
           <View style={{ flex: 1 }}>
@@ -137,13 +211,30 @@ export default function ProductsScreen() {
       ))}
 
       {/* Validated notifications */}
-      {pendingClaims.filter(c => c.status === 'validated').map(c => (
+      {pendingClaims.filter((c: any) => c.status === 'validated').map((c: any) => (
         <View key={c.id} style={[styles.pendingBanner, { backgroundColor: 'rgba(76,175,125,0.1)', borderColor: 'rgba(76,175,125,0.25)' }]}>
           <Text style={styles.pendingIcon}>✅</Text>
           <View style={{ flex: 1 }}>
             <Text style={[styles.pendingTitle, { color: DARK_THEME.success }]}>Product added!</Text>
             <Text style={styles.pendingDesc}>{c.productName || 'Product'}</Text>
           </View>
+          <TouchableOpacity onPress={() => dismissClaim(c.id)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <Text style={{ color: DARK_THEME.textSecondary, fontSize: 18, fontWeight: '300' }}>✕</Text>
+          </TouchableOpacity>
+        </View>
+      ))}
+
+      {/* Rejected notifications */}
+      {pendingClaims.filter((c: any) => c.status === 'rejected').map((c: any) => (
+        <View key={c.id} style={[styles.pendingBanner, { backgroundColor: 'rgba(122,34,46,0.1)', borderColor: 'rgba(122,34,46,0.25)' }]}>
+          <Text style={styles.pendingIcon}>❌</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.pendingTitle, { color: DARK_THEME.primary }]}>Claim rejected</Text>
+            <Text style={styles.pendingDesc}>{c.productName || 'Product'}</Text>
+          </View>
+          <TouchableOpacity onPress={() => dismissClaim(c.id)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <Text style={{ color: DARK_THEME.textSecondary, fontSize: 18, fontWeight: '300' }}>✕</Text>
+          </TouchableOpacity>
         </View>
       ))}
 
@@ -155,7 +246,7 @@ export default function ProductsScreen() {
         </View>
         <View style={[styles.statBox, { borderLeftWidth: 1, borderLeftColor: DARK_THEME.border }]}>
           <Text style={styles.statNumber}>
-            {products.filter(p => p.insurance?.active).length}
+            {products.filter((p: any) => p.insurance?.active).length}
           </Text>
           <Text style={styles.statLabel}>INSURED</Text>
         </View>
@@ -170,7 +261,7 @@ export default function ProductsScreen() {
         </View>
       ) : (
         <View style={styles.grid}>
-          {products.map(product => (
+          {products.map((product: any) => (
             <Pressable key={product.id} style={styles.productCard}>
               {product.image ? (
                 <Image source={{ uri: product.image }} style={styles.productImage} />
@@ -201,6 +292,116 @@ export default function ProductsScreen() {
             </Pressable>
           ))}
         </View>
+      )}
+
+      {/* ══════ CLAIM PRODUCT MODAL ══════ */}
+      {showClaimModal && (
+        <Modal transparent visible animationType="fade" onRequestClose={() => setShowClaimModal(false)}>
+          <Pressable style={styles.claimOverlay} onPress={() => setShowClaimModal(false)}>
+            <View style={styles.claimCard} onStartShouldSetResponder={() => true}>
+              <Text style={styles.claimModalTitle}>Claim a Product</Text>
+              <Text style={styles.claimModalSubtitle}>
+                Select your product, then take a photo of your proof of purchase.
+              </Text>
+
+              {/* Product selection */}
+              <Text style={styles.claimLabel}>PRODUCT NAME</Text>
+
+              {claimableLoading ? (
+                <ActivityIndicator color={DARK_THEME.primary} style={{ marginVertical: 16 }} />
+              ) : claimableRwas.length > 0 ? (
+                <View>
+                  <ScrollView style={styles.claimProductList} nestedScrollEnabled>
+                    {claimableRwas.map((rwa: ClaimableRwa) => (
+                      <TouchableOpacity
+                        key={rwa.rwaId}
+                        style={[
+                          styles.claimProductItem,
+                          selectedProductName === rwa.name && !isCustomProduct && styles.claimProductItemSelected,
+                        ]}
+                        onPress={() => {
+                          setSelectedProductName(rwa.name);
+                          setIsCustomProduct(false);
+                        }}
+                      >
+                        <View style={styles.claimProductRadio}>
+                          {selectedProductName === rwa.name && !isCustomProduct && (
+                            <View style={styles.claimProductRadioDot} />
+                          )}
+                        </View>
+                        <Text style={styles.claimProductItemText}>{rwa.name}</Text>
+                      </TouchableOpacity>
+                    ))}
+
+                    {/* "Other" option */}
+                    <TouchableOpacity
+                      style={[
+                        styles.claimProductItem,
+                        isCustomProduct && styles.claimProductItemSelected,
+                      ]}
+                      onPress={() => {
+                        setIsCustomProduct(true);
+                        setSelectedProductName('');
+                      }}
+                    >
+                      <View style={styles.claimProductRadio}>
+                        {isCustomProduct && <View style={styles.claimProductRadioDot} />}
+                      </View>
+                      <Text style={styles.claimProductItemText}>Other (not listed)</Text>
+                    </TouchableOpacity>
+                  </ScrollView>
+
+                  {isCustomProduct && (
+                    <TextInput
+                      style={styles.claimCustomInput}
+                      placeholder="Enter product name…"
+                      placeholderTextColor={DARK_THEME.textSecondary}
+                      value={customProductName}
+                      onChangeText={setCustomProductName}
+                      autoFocus
+                    />
+                  )}
+                </View>
+              ) : (
+                /* Fallback to free text if claimable list is empty */
+                <TextInput
+                  style={styles.claimCustomInput}
+                  placeholder="e.g. ZAI Zermatt GT"
+                  placeholderTextColor={DARK_THEME.textSecondary}
+                  value={customProductName}
+                  onChangeText={(t: string) => {
+                    setCustomProductName(t);
+                    setIsCustomProduct(true);
+                  }}
+                />
+              )}
+
+              {/* Actions */}
+              <View style={styles.claimModalActions}>
+                <TouchableOpacity
+                  style={styles.claimCancelBtn}
+                  onPress={() => setShowClaimModal(false)}
+                >
+                  <Text style={styles.claimCancelText}>CANCEL</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.claimSubmitBtn,
+                    (!selectedProductName && !customProductName.trim()) && { opacity: 0.5 },
+                  ]}
+                  disabled={(!selectedProductName && !customProductName.trim()) || claimSubmitting}
+                  onPress={handleContinueToPhoto}
+                >
+                  {claimSubmitting ? (
+                    <ActivityIndicator color="#fff" size="small" />
+                  ) : (
+                    <Text style={styles.claimSubmitText}>TAKE PHOTO</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Pressable>
+        </Modal>
       )}
     </ScrollView>
   );
@@ -247,4 +448,59 @@ const styles = StyleSheet.create({
   emptyState: { alignItems: 'center', padding: 48 },
   emptyTitle: { fontSize: 16, fontWeight: '600', color: DARK_THEME.text, marginBottom: 8 },
   emptyDesc: { fontSize: 13, color: DARK_THEME.textSecondary, textAlign: 'center', lineHeight: 20 },
+
+  // Claim modal styles
+  claimOverlay: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'center', alignItems: 'center', padding: 24,
+  },
+  claimCard: {
+    backgroundColor: DARK_THEME.surface, borderRadius: 16, padding: 24,
+    width: '100%', maxWidth: 360,
+    borderWidth: 1, borderColor: DARK_THEME.border,
+  },
+  claimModalTitle: {fontSize: 18, fontWeight: '600', color: DARK_THEME.text, marginBottom: 4,},
+  claimModalSubtitle: {fontSize: 13, color: DARK_THEME.textSecondary, marginBottom: 20, lineHeight: 18,},
+  claimLabel: {
+    fontSize: 10, fontWeight: '700', letterSpacing: 2,
+    color: DARK_THEME.textSecondary, marginBottom: 8,
+  },
+  claimProductList: {
+    maxHeight: 220, borderRadius: 8,
+    borderWidth: 1, borderColor: DARK_THEME.border,
+    backgroundColor: DARK_THEME.background,
+  },
+  claimProductItem: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingVertical: 14, paddingHorizontal: 14,
+    borderBottomWidth: 1, borderBottomColor: DARK_THEME.border,
+  },
+  claimProductItemSelected: {backgroundColor: 'rgba(122, 34, 46, 0.15)',},
+  claimProductRadio: {
+    width: 20, height: 20, borderRadius: 10,
+    borderWidth: 2, borderColor: DARK_THEME.textSecondary,
+    justifyContent: 'center', alignItems: 'center',
+  },
+  claimProductRadioDot: {
+    width: 10, height: 10, borderRadius: 5,
+    backgroundColor: DARK_THEME.primary,
+  },
+  claimProductItemText: {fontSize: 14, color: DARK_THEME.text, flex: 1,},
+  claimCustomInput: {
+    backgroundColor: DARK_THEME.background, borderRadius: 8,
+    paddingHorizontal: 14, paddingVertical: 12,
+    fontSize: 14, color: DARK_THEME.text,
+    borderWidth: 1, borderColor: DARK_THEME.border, marginTop: 10,
+  },
+  claimModalActions: {flexDirection: 'row', gap: 12, marginTop: 20,},
+  claimCancelBtn: {
+    flex: 1, paddingVertical: 14, alignItems: 'center',
+    borderRadius: 8, borderWidth: 1, borderColor: DARK_THEME.border,
+  },
+  claimCancelText: {fontSize: 11, fontWeight: '700', letterSpacing: 2, color: DARK_THEME.textSecondary,},
+  claimSubmitBtn: {
+    flex: 1, paddingVertical: 14, alignItems: 'center',
+    borderRadius: 8, backgroundColor: DARK_THEME.primary,
+  },
+  claimSubmitText: {fontSize: 11, fontWeight: '700', letterSpacing: 2, color: '#fff',},
 });

@@ -123,13 +123,13 @@ export default function CommunityScreen() {
   const [captionText, setCaptionText] = useState('');
   const [captionBase64, setCaptionBase64] = useState('');
 
-  // ── Fetch gallery ──
+  // ── Fetch gallery ── *** FIXED: /community/gallery ***
 
   const fetchPhotos = useCallback(async (background = false) => {
     if (!background) setPhotosLoading(true);
     try {
       const [photosRes, statsRes] = await Promise.all([
-        apiService.get('/community/photos'),
+        apiService.get('/community/gallery', { limit: 50, offset: 0 }),
         apiService.get('/community/stats'),
       ]);
       setPhotos(photosRes.data?.data || []);
@@ -146,7 +146,7 @@ export default function CommunityScreen() {
   const fetchMembers = useCallback(async () => {
     setMembersLoading(true);
     try {
-      const res = await apiService.get('/community/members', { limit: 100 });
+      const res = await apiService.get('/community/members', { limit: 100, offset: 0 });
       setMembers(res.data?.data || []);
     } catch (err: any) {
       console.error('Members fetch error:', err.message);
@@ -165,7 +165,7 @@ export default function CommunityScreen() {
     setRefreshing(false);
   };
 
-  // ── Upload photo ──
+  // ── Upload photo ── *** FIXED: /community/gallery ***
 
   const handleUploadPhoto = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -189,10 +189,7 @@ export default function CommunityScreen() {
       'Add a caption',
       'Would you like to add a caption to your photo?',
       [
-        {
-          text: 'Skip',
-          onPress: () => doUpload(base64, ''),
-        },
+        { text: 'Skip', onPress: () => doUpload(base64, '') },
         {
           text: 'Add Caption',
           onPress: () => {
@@ -207,7 +204,7 @@ export default function CommunityScreen() {
   const doUpload = async (base64: string, caption: string) => {
     setUploading(true);
     try {
-      const res = await apiService.post('/community/photos', {
+      const res = await apiService.post('/community/gallery', {
         image: `data:image/jpeg;base64,${base64}`,
         caption,
       });
@@ -224,34 +221,52 @@ export default function CommunityScreen() {
     }
   };
 
-  // ── Reactions ──
+  // ── Reactions ── *** FIXED: /community/gallery ***
 
   const handleReaction = async (photoId: string, emoji: string) => {
     setShowReactionPicker(null);
     try {
-      const res = await apiService.post(`/community/photos/${photoId}/reactions`, { emoji });
+      const res = await apiService.post(`/community/gallery/${photoId}/reactions`, { emoji });
       if (res.data?.success) {
         fetchPhotos(true);
         if (selectedPhoto?.id === photoId) {
-          const photoRes = await apiService.get(`/community/photos/${photoId}`);
+          const photoRes = await apiService.get(`/community/gallery/${photoId}`);
           if (photoRes.data?.success) setSelectedPhoto(photoRes.data.data);
         }
       }
     } catch {}
   };
 
-  // ── Comments ──
+  // ── Open photo detail (fetches comments) ── *** FIXED: /community/gallery ***
+
+  const openPhotoDetail = async (photo: Photo) => {
+    try {
+      const res = await apiService.get(`/community/gallery/${photo.id}`);
+      if (res.data?.success) {
+        setSelectedPhoto(res.data.data);
+      } else {
+        setSelectedPhoto(photo);
+      }
+    } catch {
+      setSelectedPhoto(photo);
+    }
+  };
+
+  // ── Comments ── *** FIXED: /community/gallery ***
 
   const handleAddComment = async () => {
     if (!selectedPhoto || !newComment.trim()) return;
     try {
-      const res = await apiService.post(`/community/photos/${selectedPhoto.id}/comments`, {
+      const res = await apiService.post(`/community/gallery/${selectedPhoto.id}/comments`, {
         text: newComment.trim(),
       });
       if (res.data?.success) {
         setNewComment('');
-        const photoRes = await apiService.get(`/community/photos/${selectedPhoto.id}`);
-        if (photoRes.data?.success) setSelectedPhoto(photoRes.data.data);
+        setSelectedPhoto(prev => prev ? {
+          ...prev,
+          commentCount: prev.commentCount + 1,
+          comments: [...(prev.comments || []), res.data.data],
+        } : null);
         fetchPhotos(true);
       }
     } catch (err: any) {
@@ -265,9 +280,12 @@ export default function CommunityScreen() {
       {
         text: 'Delete', style: 'destructive', onPress: async () => {
           try {
-            await apiService.delete(`/community/photos/${photoId}/comments/${commentId}`);
-            const photoRes = await apiService.get(`/community/photos/${photoId}`);
-            if (photoRes.data?.success) setSelectedPhoto(photoRes.data.data);
+            await apiService.delete(`/community/gallery/${photoId}/comments/${commentId}`);
+            setSelectedPhoto(prev => prev ? {
+              ...prev,
+              commentCount: Math.max(prev.commentCount - 1, 0),
+              comments: (prev.comments || []).filter(c => c.id !== commentId),
+            } : null);
             fetchPhotos(true);
           } catch {}
         },
@@ -275,7 +293,7 @@ export default function CommunityScreen() {
     ]);
   };
 
-  // ── Delete photo (admin/owner) ──
+  // ── Delete photo ── *** FIXED: /community/gallery ***
 
   const handleDeletePhoto = async (photoId: string) => {
     Alert.alert('Delete Photo', 'This will permanently remove this photo.', [
@@ -283,7 +301,7 @@ export default function CommunityScreen() {
       {
         text: 'Delete', style: 'destructive', onPress: async () => {
           try {
-            await apiService.delete(`/community/photos/${photoId}`);
+            await apiService.delete(`/community/gallery/${photoId}`);
             setSelectedPhoto(null);
             fetchPhotos(true);
           } catch (err: any) {
@@ -347,7 +365,6 @@ export default function CommunityScreen() {
         {/* ══════ GALLERY TAB ══════ */}
         {activeTab === 'gallery' && (
           <>
-            {/* Upload button */}
             <TouchableOpacity
               style={styles.uploadBtn}
               onPress={handleUploadPhoto}
@@ -376,7 +393,7 @@ export default function CommunityScreen() {
                     key={photo.id}
                     style={styles.photoCard}
                     activeOpacity={0.9}
-                    onPress={() => setSelectedPhoto(photo)}
+                    onPress={() => openPhotoDetail(photo)}
                   >
                     {/* Author header */}
                     <View style={styles.photoHeader}>
@@ -396,15 +413,12 @@ export default function CommunityScreen() {
                       )}
                     </View>
 
-                    {/* Photo */}
                     <Image source={{ uri: photo.url }} style={styles.photoImage} />
 
-                    {/* Caption */}
                     {photo.caption ? (
                       <Text style={styles.photoCaption} numberOfLines={3}>{photo.caption}</Text>
                     ) : null}
 
-                    {/* Location */}
                     {photo.location ? (
                       <View style={styles.photoLocationRow}>
                         <Ionicons name="location-outline" size={12} color={DARK_THEME.textSecondary} />
@@ -412,7 +426,6 @@ export default function CommunityScreen() {
                       </View>
                     ) : null}
 
-                    {/* Reactions */}
                     {Object.keys(reactions).length > 0 && (
                       <View style={styles.reactionsRow}>
                         {Object.entries(reactions).map(([emoji, data]) => (
@@ -428,7 +441,6 @@ export default function CommunityScreen() {
                       </View>
                     )}
 
-                    {/* Footer: react + comment count */}
                     <View style={styles.photoFooter}>
                       <TouchableOpacity
                         style={styles.footerAction}
@@ -439,16 +451,13 @@ export default function CommunityScreen() {
                       </TouchableOpacity>
                       <TouchableOpacity
                         style={styles.footerAction}
-                        onPress={() => setSelectedPhoto(photo)}
+                        onPress={() => openPhotoDetail(photo)}
                       >
                         <Ionicons name="chatbubble-outline" size={16} color={DARK_THEME.textSecondary} />
-                        <Text style={styles.footerActionText}>
-                          {photo.commentCount || 0}
-                        </Text>
+                        <Text style={styles.footerActionText}>{photo.commentCount || 0}</Text>
                       </TouchableOpacity>
                     </View>
 
-                    {/* Reaction picker */}
                     {showReactionPicker === photo.id && (
                       <View style={styles.reactionPicker}>
                         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -474,7 +483,6 @@ export default function CommunityScreen() {
         {/* ══════ MEMBERS TAB ══════ */}
         {activeTab === 'members' && (
           <>
-            {/* Search */}
             <View style={styles.searchBar}>
               <Ionicons name="search-outline" size={16} color={DARK_THEME.textSecondary} />
               <TextInput
@@ -526,16 +534,13 @@ export default function CommunityScreen() {
           <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
               <ScrollView bounces={false} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-                {/* Close */}
                 <TouchableOpacity style={styles.modalClose} onPress={() => setSelectedPhoto(null)}>
                   <Text style={styles.modalCloseText}>✕</Text>
                 </TouchableOpacity>
 
-                {/* Photo */}
                 <Image source={{ uri: selectedPhoto.url }} style={styles.modalPhoto} resizeMode="contain" />
 
                 <View style={styles.modalBody}>
-                  {/* Author */}
                   <View style={styles.photoHeader}>
                     <View style={styles.avatarCircle}>
                       <Text style={styles.avatarText}>
@@ -557,7 +562,6 @@ export default function CommunityScreen() {
                     <Text style={[styles.photoCaption, { marginBottom: 16 }]}>{selectedPhoto.caption}</Text>
                   ) : null}
 
-                  {/* Reactions */}
                   {(() => {
                     const reactions = groupReactions(selectedPhoto.reactions || [], user?.id);
                     if (Object.keys(reactions).length === 0) return null;
@@ -577,7 +581,6 @@ export default function CommunityScreen() {
                     );
                   })()}
 
-                  {/* Reaction picker in modal */}
                   <View style={styles.reactionPicker}>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                       {REACTION_EMOJIS.map((emoji) => (
@@ -592,7 +595,6 @@ export default function CommunityScreen() {
                     </ScrollView>
                   </View>
 
-                  {/* Comments */}
                   <Text style={styles.commentsHeader}>
                     COMMENTS ({selectedPhoto.comments?.length || selectedPhoto.commentCount || 0})
                   </Text>
@@ -623,7 +625,6 @@ export default function CommunityScreen() {
                     ))
                   )}
 
-                  {/* Add comment input */}
                   <View style={styles.commentInputRow}>
                     <TextInput
                       style={styles.commentInput}
@@ -705,7 +706,6 @@ const styles = StyleSheet.create({
   sectionLabel: { fontSize: 10, letterSpacing: 4, color: DARK_THEME.primary, fontWeight: '600', marginBottom: 8 },
   title: { fontSize: 28, fontWeight: '300', color: DARK_THEME.text, marginBottom: 20 },
 
-  // Stats
   statsRow: {
     flexDirection: 'row', borderWidth: 1, borderColor: DARK_THEME.border,
     borderRadius: 8, marginBottom: 24, overflow: 'hidden',
@@ -715,7 +715,6 @@ const styles = StyleSheet.create({
   statValue: { fontSize: 24, fontWeight: '200', color: DARK_THEME.text },
   statLabel: { fontSize: 9, letterSpacing: 2, color: DARK_THEME.textSecondary, fontWeight: '600', marginTop: 4 },
 
-  // Tabs
   tabRow: { flexDirection: 'row', marginBottom: 24, gap: 8 },
   tab: {
     flex: 1, paddingVertical: 12, alignItems: 'center', borderRadius: 8,
@@ -725,14 +724,12 @@ const styles = StyleSheet.create({
   tabText: { fontSize: 10, fontWeight: '700', letterSpacing: 2, color: DARK_THEME.textSecondary },
   tabTextActive: { color: DARK_THEME.background },
 
-  // Upload
   uploadBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
     backgroundColor: DARK_THEME.primary, borderRadius: 10, height: 48, marginBottom: 24,
   },
   uploadBtnText: { color: '#fff', fontSize: 11, fontWeight: '700', letterSpacing: 2 },
 
-  // Empty
   emptyCard: {
     padding: 40, backgroundColor: DARK_THEME.surface, borderRadius: 12,
     borderWidth: 1, borderColor: DARK_THEME.border, alignItems: 'center',
@@ -740,14 +737,11 @@ const styles = StyleSheet.create({
   emptyTitle: { fontSize: 15, fontWeight: '300', color: DARK_THEME.text, marginBottom: 4 },
   emptyDesc: { fontSize: 12, color: DARK_THEME.textSecondary, textAlign: 'center', lineHeight: 20 },
 
-  // ── Photo card ──
   photoCard: {
     backgroundColor: DARK_THEME.surface, borderRadius: 12, overflow: 'hidden',
     borderWidth: 1, borderColor: DARK_THEME.border, marginBottom: 20,
   },
-  photoHeader: {
-    flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14,
-  },
+  photoHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 14 },
   avatarCircle: {
     width: 36, height: 36, borderRadius: 18, backgroundColor: DARK_THEME.card,
     justifyContent: 'center', alignItems: 'center',
@@ -760,7 +754,6 @@ const styles = StyleSheet.create({
   photoLocationRow: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 14, paddingTop: 6 },
   photoLocationText: { fontSize: 11, color: DARK_THEME.textSecondary },
 
-  // Reactions
   reactionsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, paddingHorizontal: 14, paddingTop: 10 },
   reactionBubble: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
@@ -771,7 +764,6 @@ const styles = StyleSheet.create({
   reactionBubbleActive: { borderColor: DARK_THEME.primary, backgroundColor: 'rgba(122,34,46,0.15)' },
   reactionCount: { fontSize: 11, color: DARK_THEME.textSecondary, fontWeight: '600' },
 
-  // Footer
   photoFooter: {
     flexDirection: 'row', gap: 20, paddingHorizontal: 14,
     paddingVertical: 12, borderTopWidth: 1, borderTopColor: DARK_THEME.border, marginTop: 10,
@@ -779,23 +771,19 @@ const styles = StyleSheet.create({
   footerAction: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   footerActionText: { fontSize: 12, color: DARK_THEME.textSecondary },
 
-  // Reaction picker
   reactionPicker: {
     paddingHorizontal: 14, paddingVertical: 8,
     backgroundColor: DARK_THEME.card, borderTopWidth: 1, borderTopColor: DARK_THEME.border,
   },
   emojiBtn: { paddingHorizontal: 6, paddingVertical: 4 },
 
-  // ── Members ──
   searchBar: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     backgroundColor: DARK_THEME.surface, borderRadius: 8, paddingHorizontal: 14,
     borderWidth: 1, borderColor: DARK_THEME.border, marginBottom: 20,
   },
   searchInput: { flex: 1, paddingVertical: 12, fontSize: 13, color: DARK_THEME.text },
-  membersList: {
-    borderWidth: 1, borderColor: DARK_THEME.border, borderRadius: 8, overflow: 'hidden',
-  },
+  membersList: { borderWidth: 1, borderColor: DARK_THEME.border, borderRadius: 8, overflow: 'hidden' },
   memberRow: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
     paddingVertical: 14, paddingHorizontal: 16, backgroundColor: DARK_THEME.surface,
@@ -811,7 +799,6 @@ const styles = StyleSheet.create({
   memberLocation: { fontSize: 11, color: DARK_THEME.textSecondary, marginTop: 2 },
   memberJoined: { fontSize: 10, color: DARK_THEME.textSecondary },
 
-  // ── Modal ──
   modalOverlay: { flex: 1, backgroundColor: 'rgba(10,10,10,0.92)', justifyContent: 'flex-end' },
   modalContent: {
     backgroundColor: DARK_THEME.background, borderTopLeftRadius: 16, borderTopRightRadius: 16,
@@ -826,7 +813,6 @@ const styles = StyleSheet.create({
   modalPhoto: { width: '100%', aspectRatio: 1, backgroundColor: '#000' },
   modalBody: { padding: 20, paddingBottom: 40 },
 
-  // Comments
   commentsHeader: {
     fontSize: 10, letterSpacing: 2, color: DARK_THEME.textSecondary,
     fontWeight: '600', marginTop: 20, marginBottom: 14,
@@ -845,7 +831,6 @@ const styles = StyleSheet.create({
   commentTime: { fontSize: 10, color: DARK_THEME.textSecondary },
   commentText: { fontSize: 13, color: DARK_THEME.textSecondary, lineHeight: 19, marginTop: 2 },
 
-  // Comment input
   commentInputRow: {
     flexDirection: 'row', alignItems: 'flex-end', gap: 10, marginTop: 16,
     borderTopWidth: 1, borderTopColor: DARK_THEME.border, paddingTop: 14,
@@ -861,7 +846,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center', alignItems: 'center',
   },
 
-  // ── Caption modal ──
   captionOverlay: {
     flex: 1, backgroundColor: 'rgba(0,0,0,0.7)',
     justifyContent: 'center', alignItems: 'center', padding: 32,
@@ -871,30 +855,22 @@ const styles = StyleSheet.create({
     width: '100%', maxWidth: 340,
     borderWidth: 1, borderColor: DARK_THEME.border,
   },
-  captionModalTitle: {
-    fontSize: 16, fontWeight: '600', color: DARK_THEME.text, marginBottom: 16,
-  },
+  captionModalTitle: { fontSize: 16, fontWeight: '600', color: DARK_THEME.text, marginBottom: 16 },
   captionModalInput: {
     backgroundColor: DARK_THEME.background, borderRadius: 8,
     paddingHorizontal: 14, paddingVertical: 12, fontSize: 14,
     color: DARK_THEME.text, minHeight: 80, textAlignVertical: 'top',
     borderWidth: 1, borderColor: DARK_THEME.border, marginBottom: 16,
   },
-  captionModalActions: {
-    flexDirection: 'row', gap: 12,
-  },
+  captionModalActions: { flexDirection: 'row', gap: 12 },
   captionCancelBtn: {
     flex: 1, paddingVertical: 12, alignItems: 'center', borderRadius: 8,
     borderWidth: 1, borderColor: DARK_THEME.border,
   },
-  captionCancelText: {
-    fontSize: 11, fontWeight: '700', letterSpacing: 2, color: DARK_THEME.textSecondary,
-  },
+  captionCancelText: { fontSize: 11, fontWeight: '700', letterSpacing: 2, color: DARK_THEME.textSecondary },
   captionSubmitBtn: {
     flex: 1, paddingVertical: 12, alignItems: 'center', borderRadius: 8,
     backgroundColor: DARK_THEME.primary,
   },
-  captionSubmitText: {
-    fontSize: 11, fontWeight: '700', letterSpacing: 2, color: '#fff',
-  },
+  captionSubmitText: { fontSize: 11, fontWeight: '700', letterSpacing: 2, color: '#fff' },
 });

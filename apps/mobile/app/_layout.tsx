@@ -2,6 +2,9 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider } from '@/context/AuthContext';
+import { LogBox } from 'react-native';
+
+LogBox.ignoreLogs(['Unable to activate keep awake']);
 
 export default function RootLayout() {
   return (
