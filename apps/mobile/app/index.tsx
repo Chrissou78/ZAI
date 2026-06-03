@@ -1,6 +1,7 @@
 import { Redirect } from 'expo-router';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { useAuth } from '@/context/AuthContext';
+import ScreenBackground from '@/components/ScreenBackground';
 import { DARK_THEME } from '@/theme/colors';
 
 export default function Index() {
@@ -8,9 +9,11 @@ export default function Index() {
 
   if (isLoading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator color={DARK_THEME.primary} size="large" />
-      </View>
+      <ScreenBackground>
+        <View style={styles.center}>
+          <ActivityIndicator color="#ffffff" size="large" />
+        </View>
+      </ScreenBackground>
     );
   }
 
@@ -18,10 +21,5 @@ export default function Index() {
 }
 
 const styles = StyleSheet.create({
-  center: {
-    flex: 1,
-    backgroundColor: DARK_THEME.background,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 });

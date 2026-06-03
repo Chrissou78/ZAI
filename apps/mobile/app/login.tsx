@@ -13,6 +13,7 @@ import { Redirect, useRouter } from 'expo-router';
 import Constants from 'expo-constants';
 import { apiService } from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
+import ScreenBackground from '@/components/ScreenBackground';
 import { DARK_THEME } from '@/theme/colors';
 
 const COMPANY_ID =
@@ -103,7 +104,8 @@ export default function Login() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <ScreenBackground>
+      <SafeAreaView style={styles.container}>
       <View style={styles.brand}>
         <Text style={styles.logo}>zai</Text>
         <Text style={styles.subtitle}>EXPERIENCE CLUB</Text>
@@ -157,12 +159,13 @@ export default function Login() {
           />
         </SafeAreaView>
       </Modal>
-    </SafeAreaView>
+      </SafeAreaView>
+    </ScreenBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: DARK_THEME.background, justifyContent: 'space-between' },
+  container: { flex: 1, backgroundColor: 'transparent', justifyContent: 'space-between' },
   brand: { alignItems: 'center', marginTop: 80 },
   logo: { fontSize: 48, fontWeight: '200', color: DARK_THEME.text, letterSpacing: 8 },
   subtitle: { fontSize: 10, letterSpacing: 6, color: DARK_THEME.textSecondary, marginTop: 4 },

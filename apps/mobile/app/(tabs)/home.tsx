@@ -1,43 +1,46 @@
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { useAuth } from '@/context/AuthContext';
+import ScreenBackground from '@/components/ScreenBackground';
 import { DARK_THEME } from '@/theme/colors';
 
 export default function HomeScreen() {
   const { user, hasExperienceCard, isAdmin } = useAuth();
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <View style={styles.header}>
-        <Text style={styles.sectionLabel}>OVERVIEW</Text>
-        <Text style={styles.greeting}>
-          Welcome back{user?.givenName ? `, ${user.givenName}` : ''}
-        </Text>
-        <View style={styles.tierBadge}>
-          <View style={[styles.tierDot, {
-            backgroundColor: isAdmin ? DARK_THEME.primary : hasExperienceCard ? DARK_THEME.gold : DARK_THEME.textSecondary,
-          }]} />
-          <Text style={[styles.tierText, {
-            color: isAdmin ? DARK_THEME.primary : hasExperienceCard ? DARK_THEME.gold : DARK_THEME.textSecondary,
-          }]}>
-            {isAdmin ? (user?.role || 'admin').toUpperCase() : hasExperienceCard ? 'EXCLUSIVE MEMBER' : 'MEMBER'}
+    <ScreenBackground>
+      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+        <View style={styles.header}>
+          <Text style={styles.sectionLabel}>OVERVIEW</Text>
+          <Text style={styles.greeting}>
+            Welcome back{user?.givenName ? `, ${user.givenName}` : ''}
           </Text>
+          <View style={styles.tierBadge}>
+            <View style={[styles.tierDot, {
+              backgroundColor: isAdmin ? DARK_THEME.primary : hasExperienceCard ? DARK_THEME.gold : DARK_THEME.textSecondary,
+            }]} />
+            <Text style={[styles.tierText, {
+              color: isAdmin ? DARK_THEME.primary : hasExperienceCard ? DARK_THEME.gold : DARK_THEME.textSecondary,
+            }]}>
+              {isAdmin ? (user?.role || 'admin').toUpperCase() : hasExperienceCard ? 'EXCLUSIVE MEMBER' : 'MEMBER'}
+            </Text>
+          </View>
         </View>
-      </View>
 
-      {!hasExperienceCard && !isAdmin && (
-        <View style={styles.upgradeCard}>
-          <Text style={styles.upgradeTitle}>Become an Exclusive Member</Text>
-          <Text style={styles.upgradeDesc}>
-            Claim your zai Experience Card to unlock your collection, events, and the exclusive community.
-          </Text>
-        </View>
-      )}
-    </ScrollView>
+        {!hasExperienceCard && !isAdmin && (
+          <View style={styles.upgradeCard}>
+            <Text style={styles.upgradeTitle}>Become an Exclusive Member</Text>
+            <Text style={styles.upgradeDesc}>
+              Claim your zai Experience Card to unlock your collection, events, and the exclusive community.
+            </Text>
+          </View>
+        )}
+      </ScrollView>
+    </ScreenBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: DARK_THEME.background },
+  container: { flex: 1, backgroundColor: 'transparent' },
   content: { padding: 24, paddingTop: 64 },
   header: { marginBottom: 32 },
   sectionLabel: {
@@ -54,7 +57,7 @@ const styles = StyleSheet.create({
   tierDot: { width: 6, height: 6, borderRadius: 3 },
   tierText: { fontSize: 9, letterSpacing: 2, fontWeight: '700' },
   upgradeCard: {
-    backgroundColor: DARK_THEME.surface,
+    backgroundColor: 'rgba(26,26,26,0.75)',
     borderRadius: 12, padding: 24,
     borderWidth: 1, borderColor: DARK_THEME.border,
   },
