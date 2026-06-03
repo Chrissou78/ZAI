@@ -216,7 +216,22 @@ const Products: React.FC = () => {
   const uploadPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const [allClaims, setAllClaims] = useState<any[]>([]);
-  const [dismissedClaimIds, setDismissedClaimIds] = useState<Set<string>>(new Set());
+  const [dismissedClaimIds, setDismissedClaimIds] = useState<Set<string>>(() => {
+    try {
+      const stored = localStorage.getItem('zai_dismissed_claims');
+      return stored ? new Set<string>(JSON.parse(stored)) : new Set<string>();
+    } catch {
+      return new Set<string>();
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('zai_dismissed_claims', JSON.stringify([...dismissedClaimIds]));
+    } catch {
+      /* ignore quota / private-mode errors */
+    }
+  }, [dismissedClaimIds]);
 
   const needsCarousel = products.length > MAX_GRID_CARDS;
 

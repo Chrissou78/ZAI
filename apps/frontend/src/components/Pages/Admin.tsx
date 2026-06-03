@@ -3,6 +3,7 @@ import { useAppContext } from '../../context/AppContext';
 import { apiService } from '../../services/api';
 import Modal from '../Common/Modal';
 import Button from '../Common/Button';
+import AuthImage from '../Common/AuthImage';
 
 /* ───── Types ───── */
 
@@ -263,7 +264,7 @@ const Admin: React.FC = () => {
                     width: 80, height: 80, borderRadius: 6, overflow: 'hidden',
                     background: C.surface, flexShrink: 0,
                   }}>
-                    <img
+                    <AuthImage
                       src={`/api/products/claim-proof/${claim.id}`}
                       alt="Proof"
                       style={{ width: '100%', height: '100%', objectFit: 'cover' }}
@@ -325,7 +326,7 @@ const Admin: React.FC = () => {
                 }}
                 onClick={() => setZoomImage(`/api/products/claim-proof/${selectedClaim.id}`)}
               >
-                <img
+                <AuthImage
                   src={`/api/products/claim-proof/${selectedClaim.id}`}
                   alt="Proof of purchase"
                   style={{ width: '100%', height: 'auto', display: 'block', maxHeight: 300, objectFit: 'contain' }}
@@ -433,7 +434,7 @@ const Admin: React.FC = () => {
       {zoomImage && (
         <Modal isOpen onClose={() => setZoomImage(null)} title="">
           <div style={{ display: 'flex', justifyContent: 'center' }}>
-            <img src={zoomImage} alt="Proof" style={{ maxWidth: '100%', maxHeight: '80vh', objectFit: 'contain', borderRadius: 8 }} />
+            <AuthImage src={zoomImage} alt="Proof" style={{ maxWidth: '100%', maxHeight: '80vh', objectFit: 'contain', borderRadius: 8 }} />
           </div>
         </Modal>
       )}
