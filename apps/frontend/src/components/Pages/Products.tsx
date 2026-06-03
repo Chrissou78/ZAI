@@ -3,6 +3,7 @@ import { useAppContext } from '../../context/AppContext';
 import { apiService } from '../../services/api';
 import Button from '../Common/Button';
 import Modal from '../Common/Modal';
+import { QRCodeSVG } from 'qrcode.react';
 
 /* ───── Types ───── */
 
@@ -206,6 +207,10 @@ const Products: React.FC = () => {
   const [pendingClaimRequests, setPendingClaimRequests] = useState<PendingClaimRequest[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const [showQrLink, setShowQrLink] = useState(false);
+  const [isMobileDevice] = useState(() => /Android|iPhone|iPad|iPod/i.test(navigator.userAgent));
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+
   const needsCarousel = products.length > MAX_GRID_CARDS;
 
   useEffect(() => {
@@ -364,6 +369,15 @@ const Products: React.FC = () => {
       if (mintPollRef.current) { clearInterval(mintPollRef.current); mintPollRef.current = null; }
     };
   }, [pendingMints, fetchUserProducts]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('claim') === 'upload') {
+      openReceiptModal();
+      // Clean up URL
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
 
   // ── Old claim flow (kept for backward compat but not triggered by UI) ──
   const fetchClaimableRwas = async () => {
@@ -1002,7 +1016,7 @@ const Products: React.FC = () => {
 
       {/* ════════════ RECEIPT UPLOAD MODAL (NEW CLAIM FLOW) ════════════ */}
       {showReceiptModal && (
-        <Modal isOpen onClose={() => setShowReceiptModal(false)} title="Claim a Product">
+        <Modal isOpen onClose={() => { setShowReceiptModal(false); setShowQrLink(false); }} title="Claim a Product">
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20, minHeight: 200 }}>
 
             {receiptSuccess ? (
@@ -1013,6 +1027,57 @@ const Products: React.FC = () => {
                   Your proof of purchase is being reviewed. You&rsquo;ll be notified once your product is validated.
                 </p>
                 <Button onClick={() => setShowReceiptModal(false)}>Done</Button>
+              </div>
+            ) : showQrLink ? (
+              /* ── QR Code screen (desktop → phone handoff) ── */
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20, padding: '16px 0' }}>
+                <p style={{ fontSize: 13, color: C.gray, margin: 0, textAlign: 'center', maxWidth: 320 }}>
+                  Scan this QR code with your phone to take a photo of your receipt directly.
+                </p>
+                <div style={{
+                  padding: 16, background: '#fff', borderRadius: 12,
+                  border: bdr, display: 'inline-block',
+                }}>
+                  <QRCodeSVG
+                    value={`${window.location.origin}/products?claim=upload`}
+                    size={200}
+                    level="M"
+                    includeMargin={false}
+                  />
+                </div>
+                <p style={{ fontSize: 11, color: C.gray, margin: 0, textAlign: 'center' }}>
+                  Or use the options below to upload from this device.
+                </p>
+                <div style={{ display: 'flex', gap: 12, width: '100%' }}>
+                  <label
+                    style={{
+                      flex: 1, padding: '16px 12px', border: `2px dashed ${C.border}`, borderRadius: 8,
+                      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                      cursor: 'pointer', transition: 'border-color 0.2s', textAlign: 'center',
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.borderColor = C.red)}
+                    onMouseLeave={e => (e.currentTarget.style.borderColor = C.border)}
+                  >
+                    <span style={{ fontSize: 24, marginBottom: 4 }}>&#x1F4C1;</span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: C.mid }}>Browse Files</span>
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/heic"
+                      style={{ display: 'none' }}
+                      onChange={e => { handleReceiptCapture(e); setShowQrLink(false); }}
+                      ref={fileInputRef}
+                    />
+                  </label>
+                </div>
+                <button
+                  onClick={() => setShowQrLink(false)}
+                  style={{
+                    background: 'none', border: 'none', color: C.gray,
+                    fontSize: 12, cursor: 'pointer', textDecoration: 'underline',
+                  }}
+                >
+                  ← Back
+                </button>
               </div>
             ) : (
               <>
@@ -1036,50 +1101,70 @@ const Products: React.FC = () => {
                   <label style={labelStyle}>Proof of Purchase</label>
 
                   {!receiptImage ? (
-                    <div style={{ display: 'flex', gap: 12 }}>
-                      {/* Camera capture (mobile) */}
-                      <label
-                        style={{
-                          flex: 1, padding: '20px 16px', border: `2px dashed ${C.border}`, borderRadius: 8,
-                          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                          cursor: 'pointer', transition: 'border-color 0.2s', textAlign: 'center',
-                        }}
-                        onMouseEnter={e => (e.currentTarget.style.borderColor = C.red)}
-                        onMouseLeave={e => (e.currentTarget.style.borderColor = C.border)}
-                      >
-                        <span style={{ fontSize: 28, marginBottom: 4 }}>&#x1F4F7;</span>
-                        <span style={{ fontSize: 12, fontWeight: 600, color: C.mid }}>Take Photo</span>
-                        <span style={{ fontSize: 10, color: C.gray }}>Camera</span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          capture="environment"
-                          style={{ display: 'none' }}
-                          onChange={handleReceiptCapture}
-                        />
-                      </label>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                      <div style={{ display: 'flex', gap: 12 }}>
+                        {/* OPTION 1: Camera (mobile) or QR handoff (desktop) */}
+                        {isMobileDevice ? (
+                          <label
+                            style={{
+                              flex: 1, padding: '20px 16px', border: `2px dashed ${C.border}`, borderRadius: 8,
+                              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                              cursor: 'pointer', transition: 'border-color 0.2s', textAlign: 'center',
+                            }}
+                            onMouseEnter={e => (e.currentTarget.style.borderColor = C.red)}
+                            onMouseLeave={e => (e.currentTarget.style.borderColor = C.border)}
+                          >
+                            <span style={{ fontSize: 28, marginBottom: 4 }}>&#x1F4F7;</span>
+                            <span style={{ fontSize: 12, fontWeight: 600, color: C.mid }}>Take Photo</span>
+                            <span style={{ fontSize: 10, color: C.gray }}>Open camera</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              capture="environment"
+                              style={{ display: 'none' }}
+                              onChange={handleReceiptCapture}
+                              ref={cameraInputRef}
+                            />
+                          </label>
+                        ) : (
+                          <div
+                            onClick={() => setShowQrLink(true)}
+                            style={{
+                              flex: 1, padding: '20px 16px', border: `2px dashed ${C.border}`, borderRadius: 8,
+                              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                              cursor: 'pointer', transition: 'border-color 0.2s', textAlign: 'center',
+                            }}
+                            onMouseEnter={e => (e.currentTarget.style.borderColor = C.red)}
+                            onMouseLeave={e => (e.currentTarget.style.borderColor = C.border)}
+                          >
+                            <span style={{ fontSize: 28, marginBottom: 4 }}>&#x1F4F1;</span>
+                            <span style={{ fontSize: 12, fontWeight: 600, color: C.mid }}>Use Phone</span>
+                            <span style={{ fontSize: 10, color: C.gray }}>Scan QR to take photo</span>
+                          </div>
+                        )}
 
-                      {/* File upload */}
-                      <label
-                        style={{
-                          flex: 1, padding: '20px 16px', border: `2px dashed ${C.border}`, borderRadius: 8,
-                          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                          cursor: 'pointer', transition: 'border-color 0.2s', textAlign: 'center',
-                        }}
-                        onMouseEnter={e => (e.currentTarget.style.borderColor = C.red)}
-                        onMouseLeave={e => (e.currentTarget.style.borderColor = C.border)}
-                      >
-                        <span style={{ fontSize: 28, marginBottom: 4 }}>&#x1F4C1;</span>
-                        <span style={{ fontSize: 12, fontWeight: 600, color: C.mid }}>Upload Image</span>
-                        <span style={{ fontSize: 10, color: C.gray }}>JPG, PNG, WebP</span>
-                        <input
-                          type="file"
-                          accept="image/jpeg,image/png,image/webp,image/heic"
-                          style={{ display: 'none' }}
-                          onChange={handleReceiptCapture}
-                          ref={fileInputRef}
-                        />
-                      </label>
+                        {/* OPTION 2: File upload (always available) */}
+                        <label
+                          style={{
+                            flex: 1, padding: '20px 16px', border: `2px dashed ${C.border}`, borderRadius: 8,
+                            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                            cursor: 'pointer', transition: 'border-color 0.2s', textAlign: 'center',
+                          }}
+                          onMouseEnter={e => (e.currentTarget.style.borderColor = C.red)}
+                          onMouseLeave={e => (e.currentTarget.style.borderColor = C.border)}
+                        >
+                          <span style={{ fontSize: 28, marginBottom: 4 }}>&#x1F4C1;</span>
+                          <span style={{ fontSize: 12, fontWeight: 600, color: C.mid }}>Upload Image</span>
+                          <span style={{ fontSize: 10, color: C.gray }}>JPG, PNG, WebP</span>
+                          <input
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp,image/heic"
+                            style={{ display: 'none' }}
+                            onChange={handleReceiptCapture}
+                            ref={fileInputRef}
+                          />
+                        </label>
+                      </div>
                     </div>
                   ) : (
                     <div style={{ position: 'relative' }}>
