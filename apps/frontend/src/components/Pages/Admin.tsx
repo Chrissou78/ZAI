@@ -313,6 +313,11 @@ const Admin: React.FC = () => {
                 <div style={{ fontSize: 15, fontWeight: 600 }}>{selectedClaim.userName}</div>
                 <div style={{ fontSize: 12, color: C.gray }}>{selectedClaim.userEmail}</div>
                 <div style={{ fontSize: 11, color: C.gray }}>ID: {selectedClaim.userId}</div>
+                {selectedClaim.productName && (
+                  <div style={{ fontSize: 13, fontWeight: 500, color: C.black, marginTop: 6 }}>
+                    Product: {selectedClaim.productName}
+                  </div>
+                )}
               </div>
             </div>
 
