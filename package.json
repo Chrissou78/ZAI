@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
+  "workspaces": ["apps/*", "packages/*"],
   "dependencies": {
     "axios": "^1.6.0",
     "jsonwebtoken": "^9.0.2",
@@ -11,6 +12,9 @@
   },
   "scripts": {
     "dev": "pnpm --filter zai-frontend dev",
-    "build": "pnpm --filter zai-frontend build"
+    "build": "pnpm --filter zai-frontend build",
+    "mobile": "pnpm --filter zai-mobile start",
+    "mobile:ios": "pnpm --filter zai-mobile ios",
+    "mobile:android": "pnpm --filter zai-mobile android"
   }
 }
