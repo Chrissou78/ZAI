@@ -1,4 +1,5 @@
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 
 let dbModule = null;
 async function getDB() {
@@ -33,6 +34,31 @@ async function getCurrencyMap() {
     console.error('[PRODUCTS] Currency API failed:', err.message);
   }
   return { 'b60f590b-2855-4b3c-a78a-8cac203e4768': 'CHF' };
+}
+
+// ── Encrypt/decrypt helpers ──
+function encryptBuffer(buffer) {
+  const key = crypto.randomBytes(32);
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+  const encrypted = Buffer.concat([cipher.update(buffer), cipher.final()]);
+  const authTag = cipher.getAuthTag();
+  // Format: iv (12) + authTag (16) + encrypted data
+  const result = Buffer.concat([iv, authTag, encrypted]);
+  return {
+    encryptedBuffer: result,
+    keyHex: key.toString('hex'),
+  };
+}
+
+function decryptBuffer(encryptedBuffer, keyHex) {
+  const key = Buffer.from(keyHex, 'hex');
+  const iv = encryptedBuffer.subarray(0, 12);
+  const authTag = encryptedBuffer.subarray(12, 28);
+  const data = encryptedBuffer.subarray(28);
+  const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
+  decipher.setAuthTag(authTag);
+  return Buffer.concat([decipher.update(data), decipher.final()]);
 }
 
 /* ─────────────────────────────────────────────────────────
@@ -70,6 +96,11 @@ async function getZaiRwaMap() {
 function getZaiContractsFromMap(rwaMap) {
   return new Set(rwaMap.keys());
 }
+
+// ── Known proof images (fallback when DB record exists but image URL needs resolution) ──
+const KNOWN_PROOF_IMAGES = {
+  'mpxr986qj1gvv250': 'https://ipfs.io/ipfs/QmfFQJEE9X9uKGGwDRf6fDZ8hPsKLKJUjwXLjVeYvjrAR7',
+};
 
 const API_KEY = () => process.env.WALLETTWO_API_KEY;
 const BLOCKCHAIN_BASE = 'https://api.wallettwo.com/blockchain/v1/api';
@@ -243,7 +274,6 @@ async function fetchSasMakes() {
 
 // ── Email notification (simple — uses a generic SMTP or service) ──
 async function sendAdminNotificationEmail({ claimId, userName, productName, proofUrl }) {
-  // If you have a mail service like Resend, SendGrid, etc:
   const RESEND_API_KEY = process.env.RESEND_API_KEY;
   const ADMIN_EMAIL = process.env.ADMIN_NOTIFICATION_EMAIL || 'christopher.fourquier@onchainlabs.ch';
 
@@ -277,6 +307,23 @@ async function sendAdminNotificationEmail({ claimId, userName, productName, proo
     const err = await response.text();
     throw new Error(`Email send failed: ${err}`);
   }
+}
+
+// ── Helper: resolve proof image URL (DB → known map → IPFS fallback) ──
+function resolveProofImageUrl(claimRow) {
+  // 1. If the DB has a valid URL, use it
+  if (claimRow.proof_image_url && claimRow.proof_image_url.startsWith('http')) {
+    return claimRow.proof_image_url;
+  }
+  // 2. Check known proof images map
+  if (KNOWN_PROOF_IMAGES[claimRow.id]) {
+    return KNOWN_PROOF_IMAGES[claimRow.id];
+  }
+  // 3. Build from CID if available
+  if (claimRow.proof_image_cid) {
+    return `https://ipfs.io/ipfs/${claimRow.proof_image_cid}`;
+  }
+  return '';
 }
 
 export default async function handler(req, res) {
@@ -899,6 +946,7 @@ export default async function handler(req, res) {
   // POST /api/products/claim-request
   // User submits a proof-of-purchase image for admin review
   // Body: { proofImage (base64), rwaId?, productName? }
+  //   OR: { preUploadedCid, preUploadedKey, productName? }  (phone upload)
   // ══════════════════════════════════════════════════════════════
   if (fullPath === 'claim-request' && req.method === 'POST') {
     const decoded = authenticate(req);
@@ -911,62 +959,74 @@ export default async function handler(req, res) {
       const pool = db.getPool();
 
       const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-      const { proofImage, rwaId, productName } = body;
+      const { proofImage, rwaId, productName, preUploadedCid, preUploadedKey } = body;
 
-      if (!proofImage) {
-        return res.status(400).json({ success: false, error: 'Proof image is required (base64)' });
+      let cid;
+      let proofUrl;
+      let keyHex = null;
+
+      // ── Path A: Phone already uploaded — use pre-uploaded CID ──
+      if (preUploadedCid) {
+        cid = preUploadedCid;
+        proofUrl = `https://ipfs.io/ipfs/${cid}`;
+        keyHex = preUploadedKey || null;
       }
+      // ── Path B: Direct base64 upload — encrypt and push to IPFS ──
+      else if (proofImage) {
+        // Validate mime type
+        const mimeMatch = proofImage.match(/^data:(image\/[a-zA-Z+]+);base64,/);
+        const mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/heic', 'image/webp'];
+        if (!allowedTypes.includes(mimeType)) {
+          return res.status(400).json({ success: false, error: 'Only JPG, PNG, WebP and HEIC images are allowed' });
+        }
 
-      // Validate mime type
-      const mimeMatch = proofImage.match(/^data:(image\/[a-zA-Z]+);base64,/);
-      const mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
-      const allowedTypes = ['image/jpeg', 'image/png', 'image/heic', 'image/webp'];
-      if (!allowedTypes.includes(mimeType)) {
-        return res.status(400).json({ success: false, error: 'Only JPG, PNG, WebP and HEIC images are allowed' });
+        const base64Data = proofImage.replace(/^data:image\/[a-zA-Z+]+;base64,/, '');
+        const buffer = Buffer.from(base64Data, 'base64');
+
+        if (buffer.length > 8 * 1024 * 1024) {
+          return res.status(400).json({ success: false, error: 'Image must be under 8 MB' });
+        }
+
+        if (!process.env.PINATA_JWT) {
+          return res.status(500).json({ success: false, error: 'PINATA_JWT not configured' });
+        }
+
+        // ── Encrypt the image before uploading ──
+        const encrypted = encryptBuffer(buffer);
+        keyHex = encrypted.keyHex;
+
+        const boundary = '----PinataFormBoundary' + Date.now().toString(36);
+        const fileName = `proof-enc-${decoded.userId}-${Date.now()}.bin`;
+        const headerPart = `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${fileName}"\r\nContent-Type: application/octet-stream\r\n\r\n`;
+        const footerPart = `\r\n--${boundary}--\r\n`;
+
+        const multipartBody = Buffer.concat([
+          Buffer.from(headerPart, 'utf-8'),
+          encrypted.encryptedBuffer,
+          Buffer.from(footerPart, 'utf-8'),
+        ]);
+
+        const pinataRes = await fetch('https://api.pinata.cloud/pinning/pinFileToIPFS', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${process.env.PINATA_JWT}`,
+            'Content-Type': `multipart/form-data; boundary=${boundary}`,
+          },
+          body: multipartBody,
+        });
+
+        if (!pinataRes.ok) {
+          const errText = await pinataRes.text().catch(() => '');
+          return res.status(500).json({ success: false, error: 'Image upload failed', detail: errText });
+        }
+
+        const pinataData = await pinataRes.json();
+        cid = pinataData.IpfsHash;
+        proofUrl = `https://ipfs.io/ipfs/${cid}`;
+      } else {
+        return res.status(400).json({ success: false, error: 'Proof image is required (base64 or preUploadedCid)' });
       }
-
-      const base64Data = proofImage.replace(/^data:image\/[a-zA-Z+]+;base64,/, '');
-      const buffer = Buffer.from(base64Data, 'base64');
-
-      if (buffer.length > 8 * 1024 * 1024) {
-        return res.status(400).json({ success: false, error: 'Image must be under 8 MB' });
-      }
-
-      // Upload to Pinata
-      if (!process.env.PINATA_JWT) {
-        return res.status(500).json({ success: false, error: 'PINATA_JWT not configured' });
-      }
-
-      const ext = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/heic': 'heic', 'image/webp': 'webp' }[mimeType] || 'jpg';
-      const boundary = '----PinataFormBoundary' + Date.now().toString(36);
-      const fileName = `proof-${decoded.userId}-${Date.now()}.${ext}`;
-      const header = `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${fileName}"\r\nContent-Type: ${mimeType}\r\n\r\n`;
-      const footer = `\r\n--${boundary}--\r\n`;
-
-      const multipartBody = Buffer.concat([
-        Buffer.from(header, 'utf-8'),
-        buffer,
-        Buffer.from(footer, 'utf-8'),
-      ]);
-
-      const pinataRes = await fetch('https://api.pinata.cloud/pinning/pinFileToIPFS', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.PINATA_JWT}`,
-          'Content-Type': `multipart/form-data; boundary=${boundary}`,
-        },
-        body: multipartBody,
-      });
-
-      if (!pinataRes.ok) {
-        const errText = await pinataRes.text().catch(() => '');
-        return res.status(500).json({ success: false, error: 'Image upload failed', detail: errText });
-      }
-
-      const pinataData = await pinataRes.json();
-      const cid = pinataData.IpfsHash;
-      const gateway = process.env.PINATA_GATEWAY || 'gateway.pinata.cloud';
-      const proofUrl = `https://${gateway}/ipfs/${cid}`;
 
       // Get user display name
       const userName = decoded.givenName && decoded.familyName
@@ -976,9 +1036,9 @@ export default async function handler(req, res) {
       const id = genId();
       await pool.query(
         `INSERT INTO product_claim_requests
-         (id, user_id, user_name, user_email, rwa_id, product_name, proof_image_url, proof_image_cid, status)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending')`,
-        [id, decoded.userId, userName, decoded.email || '', rwaId || null, productName || '', proofUrl, cid]
+         (id, user_id, user_name, user_email, rwa_id, product_name, proof_image_url, proof_image_cid, proof_encryption_key, status)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'pending')`,
+        [id, decoded.userId, userName, decoded.email || '', rwaId || null, productName || '', proofUrl, cid, keyHex]
       );
 
       // ── Send email notification to admin ──
@@ -1063,7 +1123,8 @@ export default async function handler(req, res) {
           userEmail: r.user_email,
           rwaId: r.rwa_id,
           productName: r.product_name,
-          proofImageUrl: r.proof_image_url,
+          proofImageUrl: resolveProofImageUrl(r),
+          proofEncryptionKey: callerIsAdmin ? (r.proof_encryption_key || null) : null,
           status: r.status,
           adminNote: r.admin_note,
           reviewedBy: r.reviewed_by,
@@ -1077,6 +1138,83 @@ export default async function handler(req, res) {
       });
     } catch (err) {
       console.error('[PRODUCTS] claim-requests GET error:', err);
+      return res.status(500).json({ success: false, error: err.message });
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // GET /api/products/claim-proof/:claimId
+  // Serves the decrypted proof image (admin only)
+  // If no encryption key → redirects to the raw IPFS URL
+  // ══════════════════════════════════════════════════════════════
+  const claimProofMatch = fullPath.match(/^claim-proof\/([^/]+)$/);
+  if (claimProofMatch && req.method === 'GET') {
+    const decoded = authenticate(req);
+    if (!decoded) return res.status(401).json({ error: 'Authentication required' });
+
+    try {
+      const db = await getDB();
+      if (!db) return res.status(503).json({ success: false, error: 'Database unavailable' });
+      await db.initDB();
+      const pool = db.getPool();
+
+      const callerIsAdmin = await db.isAdmin(decoded);
+      const claimId = claimProofMatch[1];
+
+      // Fetch claim — admin can see any, user can see only their own
+      let claimResult;
+      if (callerIsAdmin) {
+        claimResult = await pool.query('SELECT * FROM product_claim_requests WHERE id = $1', [claimId]);
+      } else {
+        claimResult = await pool.query('SELECT * FROM product_claim_requests WHERE id = $1 AND user_id = $2', [claimId, decoded.userId]);
+      }
+
+      if (!claimResult.rows[0]) {
+        return res.status(404).json({ success: false, error: 'Claim not found' });
+      }
+
+      const row = claimResult.rows[0];
+      const encKey = row.proof_encryption_key;
+      const cidOrUrl = row.proof_image_cid || row.proof_image_url;
+
+      // If no encryption key, redirect to the plain IPFS URL
+      if (!encKey) {
+        const url = resolveProofImageUrl(row);
+        if (url) return res.redirect(url);
+        return res.status(404).json({ success: false, error: 'No proof image available' });
+      }
+
+      // Fetch the encrypted blob from IPFS
+      const ipfsUrl = row.proof_image_cid
+        ? `https://ipfs.io/ipfs/${row.proof_image_cid}`
+        : row.proof_image_url;
+
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 15000);
+      const ipfsRes = await fetch(ipfsUrl, { signal: controller.signal });
+      clearTimeout(timeout);
+
+      if (!ipfsRes.ok) {
+        return res.status(502).json({ success: false, error: 'Failed to fetch encrypted image from IPFS' });
+      }
+
+      const encryptedArrayBuffer = await ipfsRes.arrayBuffer();
+      const encryptedBuf = Buffer.from(encryptedArrayBuffer);
+
+      // Decrypt
+      const decrypted = decryptBuffer(encryptedBuf, encKey);
+
+      // Detect content type from magic bytes
+      let contentType = 'image/jpeg';
+      if (decrypted[0] === 0x89 && decrypted[1] === 0x50) contentType = 'image/png';
+      else if (decrypted[0] === 0x52 && decrypted[1] === 0x49) contentType = 'image/webp';
+
+      res.setHeader('Content-Type', contentType);
+      res.setHeader('Cache-Control', 'private, max-age=3600');
+      res.setHeader('Content-Length', decrypted.length);
+      return res.send(decrypted);
+    } catch (err) {
+      console.error('[PRODUCTS] claim-proof error:', err);
       return res.status(500).json({ success: false, error: err.message });
     }
   }
@@ -1272,6 +1410,7 @@ export default async function handler(req, res) {
           user_id TEXT NOT NULL,
           image_url TEXT,
           image_cid TEXT,
+          proof_encryption_key TEXT,
           status TEXT NOT NULL DEFAULT 'waiting',
           created_at TIMESTAMPTZ DEFAULT NOW(),
           expires_at TIMESTAMPTZ DEFAULT NOW() + INTERVAL '15 minutes'
@@ -1311,7 +1450,7 @@ export default async function handler(req, res) {
 
       const token = uploadStatusMatch[1];
       const result = await pool.query(
-        `SELECT status, image_url FROM upload_tokens WHERE token = $1 AND expires_at > NOW()`,
+        `SELECT status, image_url, image_cid, proof_encryption_key FROM upload_tokens WHERE token = $1 AND expires_at > NOW()`,
         [token]
       );
 
@@ -1324,6 +1463,8 @@ export default async function handler(req, res) {
         data: {
           status: result.rows[0].status,
           imageUrl: result.rows[0].image_url || null,
+          imageCid: result.rows[0].image_cid || null,
+          encryptionKey: result.rows[0].proof_encryption_key || null,
         },
       });
     } catch (err) {
@@ -1378,17 +1519,18 @@ export default async function handler(req, res) {
         return res.status(500).json({ success: false, error: 'Upload service not configured' });
       }
 
-      // Upload to Pinata
-      const ext = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/heic': 'heic', 'image/webp': 'webp' }[mimeType] || 'jpg';
+      // ── Encrypt the image before uploading ──
+      const encrypted = encryptBuffer(buffer);
+
       const boundary = '----PinataFormBoundary' + Date.now().toString(36);
-      const fileName = `proof-mobile-${Date.now()}.${ext}`;
-      const header = `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${fileName}"\r\nContent-Type: ${mimeType}\r\n\r\n`;
-      const footer = `\r\n--${boundary}--\r\n`;
+      const fileName = `proof-mobile-enc-${Date.now()}.bin`;
+      const headerPart = `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${fileName}"\r\nContent-Type: application/octet-stream\r\n\r\n`;
+      const footerPart = `\r\n--${boundary}--\r\n`;
 
       const multipartBody = Buffer.concat([
-        Buffer.from(header, 'utf-8'),
-        buffer,
-        Buffer.from(footer, 'utf-8'),
+        Buffer.from(headerPart, 'utf-8'),
+        encrypted.encryptedBuffer,
+        Buffer.from(footerPart, 'utf-8'),
       ]);
 
       const pinataRes = await fetch('https://api.pinata.cloud/pinning/pinFileToIPFS', {
@@ -1407,13 +1549,12 @@ export default async function handler(req, res) {
 
       const pinataData = await pinataRes.json();
       const cid = pinataData.IpfsHash;
-      const gateway = process.env.PINATA_GATEWAY || 'gateway.pinata.cloud';
-      const imageUrl = `https://${gateway}/ipfs/${cid}`;
+      const imageUrl = `https://ipfs.io/ipfs/${cid}`;
 
-      // Update token with the uploaded image
+      // Update token with the uploaded image + encryption key
       await pool.query(
-        `UPDATE upload_tokens SET status = 'uploaded', image_url = $2, image_cid = $3 WHERE token = $1`,
-        [token, imageUrl, cid]
+        `UPDATE upload_tokens SET status = 'uploaded', image_url = $2, image_cid = $3, proof_encryption_key = $4 WHERE token = $1`,
+        [token, imageUrl, cid, encrypted.keyHex]
       );
 
       return res.json({
@@ -1602,7 +1743,7 @@ export default async function handler(req, res) {
   }
 
   // ══════════════════════════════════════════════════════════════
-  // GET /api/products/:productId
+  // GET /api/products/:productId  ← CATCH-ALL — MUST BE LAST
   // ══════════════════════════════════════════════════════════════
   if (fullPath && !fullPath.includes('/') && req.method === 'GET') {
     return res.json({ success: true, data: { id: fullPath } });
