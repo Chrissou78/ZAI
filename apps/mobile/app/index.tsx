@@ -1,46 +1,27 @@
-import { View, Text, StyleSheet } from 'react-native';
+import { Redirect } from 'expo-router';
+import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { useAuth } from '@/context/AuthContext';
+import { DARK_THEME } from '@/theme/colors';
 
-export default function LoginScreen() {
-  return (
-    <View style={styles.container}>
-      <Text style={styles.logo}>zai</Text>
-      <Text style={styles.subtitle}>EXPERIENCE CLUB</Text>
-      <Text style={styles.welcome}>Welcome!</Text>
-      <Text style={styles.desc}>If you can read this, the app is working.</Text>
-    </View>
-  );
+export default function Index() {
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator color={DARK_THEME.primary} size="large" />
+      </View>
+    );
+  }
+
+  return <Redirect href={user ? '/home' : '/login'} />;
 }
 
 const styles = StyleSheet.create({
-  container: {
+  center: {
     flex: 1,
-    backgroundColor: '#0a0a0a',
+    backgroundColor: DARK_THEME.background,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 32,
-  },
-  logo: {
-    fontSize: 48,
-    fontWeight: '200',
-    color: '#ffffff',
-    letterSpacing: 8,
-  },
-  subtitle: {
-    fontSize: 10,
-    letterSpacing: 6,
-    color: '#999999',
-    marginTop: 4,
-  },
-  welcome: {
-    fontSize: 26,
-    fontWeight: '300',
-    color: '#ffffff',
-    marginTop: 40,
-  },
-  desc: {
-    fontSize: 14,
-    color: '#cccccc',
-    marginTop: 16,
-    textAlign: 'center',
   },
 });

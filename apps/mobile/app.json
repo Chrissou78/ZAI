@@ -40,6 +40,8 @@
     ],
     "extra": {
       "apiUrl": "https://zai-chi.vercel.app/api",
+      "companyId": "p7IH5cVirHbWy1a0hPxeKro5j9bRSJtt",
+      "wallettwoUrl": "https://wallet.wallettwo.com/auth/login",
       "eas": {
         "projectId": "YOUR_EAS_PROJECT_ID"
       }
