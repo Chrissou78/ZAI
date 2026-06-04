@@ -149,7 +149,7 @@ async function apiFetch(base, path, opts = {}) {
 async function fetchTokenMetadata(tokenUri) {
   if (!tokenUri) return null;
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 8000);
+  const timeout = setTimeout(() => controller.abort(), 4000);
   try {
     const res = await fetch(tokenUri, { signal: controller.signal });
     clearTimeout(timeout);
@@ -373,28 +373,29 @@ export default async function handler(req, res) {
 
       // ── Step 2: Filter to ZAI NFTs only, then parse ──
       const currencyMap = await getCurrencyMap();
-      const products = [];
 
-      for (const nft of rawNfts) {
-        if (zaiContracts.size > 0) {
-          const addr = (nft.token_address || '').toLowerCase();
-          if (!zaiContracts.has(addr)) continue;
-        }
+      const zaiNfts = zaiContracts.size > 0
+        ? rawNfts.filter(nft => zaiContracts.has((nft.token_address || '').toLowerCase()))
+        : rawNfts;
 
-        if (!nft.metadata && nft.token_uri) {
-          console.log('[PRODUCTS] Fetching metadata from token_uri:', nft.token_uri);
-          const fetched = await fetchTokenMetadata(nft.token_uri);
-          if (fetched) {
-            nft.metadata = JSON.stringify(fetched);
+      // Fetch any missing metadata in parallel with a bounded per-fetch
+      // timeout, so one slow IPFS gateway cannot stall the whole response.
+      await Promise.all(
+        zaiNfts.map(async (nft) => {
+          if (!nft.metadata && nft.token_uri) {
+            const fetched = await fetchTokenMetadata(nft.token_uri);
+            if (fetched) nft.metadata = JSON.stringify(fetched);
           }
-        }
+        })
+      );
 
+      const products = [];
+      for (const nft of zaiNfts) {
         // ★ FALLBACK: Use RWA catalog data when metadata is missing
         if (!nft.metadata) {
           const addr = (nft.token_address || '').toLowerCase();
           const rwa = zaiRwaMap.get(addr);
           if (rwa) {
-            console.log('[PRODUCTS] Falling back to RWA catalog data for', addr, '→', rwa.name);
             const rwaData = rwa.data || {};
             nft.metadata = JSON.stringify({
               name: rwa.name || 'ZAI Product',
@@ -410,13 +411,10 @@ export default async function handler(req, res) {
                 insurance:   rwaData.insurance   || { value: '' },
               },
             });
-          } else {
-            console.warn('[PRODUCTS] No metadata and no RWA match for', (nft.token_address || '').toLowerCase(), '— product will have no image');
           }
         }
 
-        const product = parseNftToProduct(nft, currencyMap);
-        products.push(product);
+        products.push(parseNftToProduct(nft, currencyMap));
       }
             // ── Step 3: Enrich with DB data (insurance, claim dates) ──
       if (dbReady && pool) {
