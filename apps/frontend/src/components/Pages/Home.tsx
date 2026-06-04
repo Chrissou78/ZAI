@@ -148,6 +148,10 @@ const Home: React.FC = () => {
           alignItems: 'center',
           justifyContent: 'flex-start',
           paddingLeft: '4rem',
+          paddingRight: '2rem',
+          paddingTop: '150px',
+          paddingBottom: '140px',
+          boxSizing: 'border-box' as const,
           position: 'relative' as const,
         }}
       >
