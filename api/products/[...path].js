@@ -336,8 +336,7 @@ export default async function handler(req, res) {
     if (!decoded) return res.status(401).json({ error: 'No token provided' });
 
     // ── Rate limit: 30 req/min ──
-    const rlResult = applyRateLimit(req, res, { max: 30, windowSec: 60 });
-    if (rlResult === false) return;
+    if (applyRateLimit(req, res, 'products:r1', 30, 60000)) return;
 
     try {
       const wallet = decoded.wallet;
@@ -489,8 +488,7 @@ export default async function handler(req, res) {
     if (!decoded) return res.status(401).json({ error: 'Unauthorized' });
 
     // ── Rate limit: 5 req/min ──
-    const rlResult = applyRateLimit(req, res, { max: 5, windowSec: 60 });
-    if (rlResult === false) return;
+    if (applyRateLimit(req, res, 'products:r2', 5, 60000)) return;
 
     // ── Body size guard ──
     if (!checkBodySize(req, res, 1 * 1024 * 1024)) return; // 1 MB
@@ -618,8 +616,7 @@ export default async function handler(req, res) {
     if (!decoded) return res.status(401).json({ error: 'Unauthorized' });
 
     // ── Rate limit: 10 req/min ──
-    const rlResult = applyRateLimit(req, res, { max: 10, windowSec: 60 });
-    if (rlResult === false) return;
+    if (applyRateLimit(req, res, 'products:r3', 10, 60000)) return;
 
     try {
       const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
@@ -725,8 +722,7 @@ export default async function handler(req, res) {
     if (!decoded) return res.status(401).json({ error: 'Unauthorized' });
 
     // ── Rate limit: 3 req/min ──
-    const rlResult = applyRateLimit(req, res, { max: 3, windowSec: 60 });
-    if (rlResult === false) return;
+    if (applyRateLimit(req, res, 'products:r4', 3, 60000)) return;
 
     try {
       const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
@@ -797,8 +793,7 @@ export default async function handler(req, res) {
     if (!decoded) return res.status(401).json({ error: 'Unauthorized' });
 
     // ── Rate limit: 5 req/min ──
-    const rlResult = applyRateLimit(req, res, { max: 5, windowSec: 60 });
-    if (rlResult === false) return;
+    if (applyRateLimit(req, res, 'products:r5', 5, 60000)) return;
 
     // ── Body size guard: 10 MB ──
     if (!checkBodySize(req, res, 10 * 1024 * 1024)) return;
@@ -904,8 +899,7 @@ export default async function handler(req, res) {
     if (!decoded) return res.status(401).json({ error: 'Unauthorized' });
 
     // ── Rate limit: 30 req/min ──
-    const rlResult = applyRateLimit(req, res, { max: 30, windowSec: 60 });
-    if (rlResult === false) return;
+    if (applyRateLimit(req, res, 'products:r6', 30, 60000)) return;
 
     try {
       const db = await getDB();
@@ -1057,8 +1051,7 @@ export default async function handler(req, res) {
     if (!isAdminUser) return res.status(403).json({ error: 'Admin access required' });
 
     // ── Rate limit: 20 req/min ──
-    const rlResult = applyRateLimit(req, res, { max: 20, windowSec: 60 });
-    if (rlResult === false) return;
+    if (applyRateLimit(req, res, 'products:r7', 20, 60000)) return;
 
     const requestId = validateMatch[1];
 
@@ -1151,8 +1144,7 @@ export default async function handler(req, res) {
     if (!isAdminUser) return res.status(403).json({ error: 'Admin access required' });
 
     // ── Rate limit: 20 req/min ──
-    const rlResult = applyRateLimit(req, res, { max: 20, windowSec: 60 });
-    if (rlResult === false) return;
+    if (applyRateLimit(req, res, 'products:r8', 20, 60000)) return;
 
     const requestId = rejectMatch[1];
 
@@ -1221,8 +1213,7 @@ export default async function handler(req, res) {
     if (!decoded) return res.status(401).json({ error: 'Unauthorized' });
 
     // ── Rate limit: 10 req/min ──
-    const rlResult = applyRateLimit(req, res, { max: 10, windowSec: 60 });
-    if (rlResult === false) return;
+    if (applyRateLimit(req, res, 'products:r9', 10, 60000)) return;
 
     try {
       const db = await getDB();
@@ -1313,8 +1304,7 @@ export default async function handler(req, res) {
     const token = uploadMatch[1];
 
     // ── Rate limit: 5 req/min (by token, not by IP since this is phone upload) ──
-    const rlResult = applyRateLimit(req, res, { max: 5, windowSec: 60 });
-    if (rlResult === false) return;
+    if (applyRateLimit(req, res, 'products:r10', 5, 60000)) return;
 
     // ── Body size guard: 10 MB ──
     if (!checkBodySize(req, res, 10 * 1024 * 1024)) return;
