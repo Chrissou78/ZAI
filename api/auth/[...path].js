@@ -31,8 +31,7 @@ export default async function handler(req, res) {
     if (!decoded) return res.status(401).json({ error: 'No token provided' });
 
     // Rate limit: 30 req/min
-    const rlResult = applyRateLimit(req, res, { max: 30, windowSec: 60 });
-    if (rlResult === false) return;
+    if (applyRateLimit(req, res, 'auth:me', 30, 60_000)) return;
 
     try {
       // Always verify role from DB, never trust JWT claim
@@ -136,8 +135,7 @@ async function handleLogin(req, res) {
   res.setHeader('Content-Type', 'application/json');
 
   // Rate limit: 10 req/min on login
-  const rlResult = applyRateLimit(req, res, { max: 10, windowSec: 60 });
-  if (rlResult === false) return;
+  if (applyRateLimit(req, res, 'auth:login', 10, 60_000)) return;
 
   try {
     let body = req.body;
@@ -237,8 +235,7 @@ async function handleProfile(req, res) {
   if (!decoded) return res.status(401).json({ error: 'No token provided' });
 
   // Rate limit: 20 req/min
-  const rlResult = applyRateLimit(req, res, { max: 20, windowSec: 60 });
-  if (rlResult === false) return;
+  if (applyRateLimit(req, res, 'auth:profile', 20, 60_000)) return;
 
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
@@ -271,8 +268,7 @@ async function handleRefresh(req, res) {
   res.setHeader('Content-Type', 'application/json');
 
   // Rate limit: 10 req/min
-  const rlResult = applyRateLimit(req, res, { max: 10, windowSec: 60 });
-  if (rlResult === false) return;
+  if (applyRateLimit(req, res, 'auth:refresh', 10, 60_000)) return;
 
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
