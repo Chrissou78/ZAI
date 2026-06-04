@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
 import { getPool, initDB } from '../db.js';
 import { createHmac, randomBytes } from 'crypto';
+import { authenticate, applyRateLimit, signToken, sanitizeString, sanitizeObject, JWT_SECRET } from '../middleware.js';
 
 // ── Inline TOTP helpers (replaces otplib) ──
 function base32Encode(buffer) {
@@ -65,39 +66,17 @@ function totpKeyUri(account, issuer, secret) {
 
 const DEFAULT_SETTINGS = {
   notifications: {
-    eventInvitations: true,
-    membershipUpdates: true,
-    productLaunches: false,
-    partnerOffers: false,
-    productUpdates: true,
-    eventReminders: true,
+    eventInvitations: true, membershipUpdates: true, productLaunches: false,
+    partnerOffers: false, productUpdates: true, eventReminders: true,
   },
   privacy: {
-    partnerDataSharing: true,
-    analytics: false,
-    profileVisibility: true,
-    communityVisibility: false,
+    partnerDataSharing: true, analytics: false, profileVisibility: true, communityVisibility: false,
   },
-  card: {
-    nfcActive: true,
-    autoLoginOnTap: true,
-  },
-  region: {
-    country: 'Switzerland',
-    currency: 'CHF',
-    language: 'English',
-  },
+  card: { nfcActive: true, autoLoginOnTap: true },
+  region: { country: 'Switzerland', currency: 'CHF', language: 'English' },
 };
 
-function authenticate(req) {
-  const authHeader = req.headers.authorization;
-  if (!authHeader?.startsWith('Bearer ')) return null;
-  try {
-    return jwt.verify(authHeader.split(' ')[1], process.env.JWT_SECRET || 'fallback-secret');
-  } catch {
-    return null;
-  }
-}
+// ── Removed local authenticate() — now imported from middleware.js ──
 
 async function ensureProfile(decoded) {
   const pool = getPool();
@@ -108,9 +87,9 @@ async function ensureProfile(decoded) {
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)`,
       [
         decoded.userId, decoded.wallet || '',
-        decoded.name || '', decoded.givenName || '', decoded.familyName || '',
+        sanitizeString(decoded.name || ''), sanitizeString(decoded.givenName || ''), sanitizeString(decoded.familyName || ''),
         decoded.email || '', decoded.phoneNumber || '',
-        decoded.address || '', decoded.city || '', decoded.country || '',
+        sanitizeString(decoded.address || ''), sanitizeString(decoded.city || ''), sanitizeString(decoded.country || ''),
         decoded.postalCode || '', decoded.birthdate || null, decoded.isPublic || false,
         decoded.salutation || 0, decoded.language || 'en',
       ]
@@ -150,7 +129,6 @@ async function ensureSecurity(userId) {
       created_at TIMESTAMPTZ DEFAULT NOW()
     )
   `);
-  // Migrate: add ip_address column if table exists but column doesn't
   await pool.query(`
     DO $$ BEGIN
       ALTER TABLE user_sessions ADD COLUMN ip_address TEXT;
@@ -220,14 +198,16 @@ export default async function handler(req, res) {
 
   // ─── PUT /api/users/me ───
   if (path === 'me' && method === 'PUT') {
+    if (applyRateLimit(req, res, 'users:profile', 20, 60_000)) return;
     const decoded = authenticate(req);
     if (!decoded) return res.status(401).json({ error: 'No token provided' });
     try {
       const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+      const sanitizedBody = sanitizeObject(body, ['name','givenName','familyName','address','city','country']);
       const updatableFields = ['name','givenName','familyName','email','phoneNumber','address','city','country','postalCode','birthdate','isPublic','salutation','language'];
       const updatedUser = { id: decoded.userId, userId: decoded.userId, wallet: decoded.wallet };
       for (const field of updatableFields) {
-        updatedUser[field] = body[field] !== undefined ? body[field] : (decoded[field] || '');
+        updatedUser[field] = sanitizedBody[field] !== undefined ? sanitizedBody[field] : (decoded[field] || '');
       }
 
       await initDB();
@@ -249,17 +229,12 @@ export default async function handler(req, res) {
         ]
       );
 
-      const newToken = jwt.sign(
+      const newToken = signToken(
         {
           userId: decoded.userId, wallet: decoded.wallet, wallettwoToken: decoded.wallettwoToken,
           name: updatedUser.name, givenName: updatedUser.givenName, familyName: updatedUser.familyName,
-          email: updatedUser.email, phoneNumber: updatedUser.phoneNumber, address: updatedUser.address,
-          city: updatedUser.city, country: updatedUser.country, postalCode: updatedUser.postalCode,
-          birthdate: updatedUser.birthdate, isPublic: updatedUser.isPublic,
-          salutation: updatedUser.salutation, language: updatedUser.language,
         },
-        process.env.JWT_SECRET || 'fallback-secret',
-        { expiresIn: '7d' }
+        '1h'
       );
 
       return res.json({ success: true, message: 'Profile updated successfully', jwtToken: newToken, user: updatedUser });
@@ -280,15 +255,16 @@ export default async function handler(req, res) {
       const row = result.rows[0];
       return res.json({
         success: true,
-        data: { notifications: row.notifications, privacy: row.privacy, card: row.card, region: row.region },
+        settings: { notifications: row.notifications, privacy: row.privacy, card: row.card, region: row.region },
       });
     } catch (err) {
-      return res.json({ success: true, data: DEFAULT_SETTINGS });
+      return res.json({ success: true, settings: DEFAULT_SETTINGS });
     }
   }
 
   // ─── PUT /api/users/me/settings ───
   if (path === 'me/settings' && method === 'PUT') {
+    if (applyRateLimit(req, res, 'users:settings', 20, 60_000)) return;
     const decoded = authenticate(req);
     if (!decoded) return res.status(401).json({ error: 'No token provided' });
     try {
@@ -296,30 +272,14 @@ export default async function handler(req, res) {
       await initDB();
       await ensureProfile(decoded);
       await ensureSettings(decoded.userId);
-      const existing = await getPool().query('SELECT * FROM user_settings WHERE user_id = $1', [decoded.userId]);
-      const current = existing.rows[0] || {};
-      const updated = {
-        notifications: { ...(current.notifications || DEFAULT_SETTINGS.notifications), ...(body.notifications || {}) },
-        privacy: { ...(current.privacy || DEFAULT_SETTINGS.privacy), ...(body.privacy || {}) },
-        card: { ...(current.card || DEFAULT_SETTINGS.card), ...(body.card || {}) },
-        region: { ...(current.region || DEFAULT_SETTINGS.region), ...(body.region || {}) },
-      };
       await getPool().query(
         `UPDATE user_settings SET notifications=$2, privacy=$3, card=$4, region=$5, updated_at=NOW() WHERE user_id=$1`,
-        [decoded.userId, JSON.stringify(updated.notifications), JSON.stringify(updated.privacy), JSON.stringify(updated.card), JSON.stringify(updated.region)]
+        [decoded.userId, JSON.stringify(body.notifications || {}), JSON.stringify(body.privacy || {}), JSON.stringify(body.card || {}), JSON.stringify(body.region || {})]
       );
-      return res.json({ success: true, message: 'Settings saved', data: updated });
+      return res.json({ success: true, message: 'Settings saved' });
     } catch (err) {
       return res.status(500).json({ success: false, error: err.message });
     }
-  }
-
-  // ─── POST /api/users/me/request-card-replacement ───
-  if (path === 'me/request-card-replacement' && method === 'POST') {
-    const decoded = authenticate(req);
-    if (!decoded) return res.status(401).json({ error: 'No token provided' });
-    console.log(`Card replacement requested by ${decoded.userId}`);
-    return res.json({ success: true, message: 'Card replacement request submitted' });
   }
 
   // ─── GET /api/users/me/security ───
@@ -328,74 +288,24 @@ export default async function handler(req, res) {
     if (!decoded) return res.status(401).json({ error: 'No token provided' });
     try {
       await initDB();
-      const pool = getPool();
       await ensureSecurity(decoded.userId);
-
-      const userAgent = req.headers['user-agent'] || 'Unknown';
-      const sessionId = `${decoded.userId}-${Buffer.from(userAgent).toString('base64').slice(0, 16)}`;
-      const device = /Mobile|Android|iPhone/i.test(userAgent) ? 'Mobile' : 'Desktop';
-      const browser = userAgent.match(/(Chrome|Firefox|Safari|Edge|Opera)/i)?.[1] || 'Unknown';
-      const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'Unknown';
-
-      await pool.query(`
-        INSERT INTO user_sessions (id, user_id, device, browser, ip_address, last_active)
-        VALUES ($1, $2, $3, $4, $5, NOW())
-        ON CONFLICT (id) DO UPDATE SET last_active = NOW(), ip_address = $5
-      `, [sessionId, decoded.userId, device, browser, ip]);
-
-      const secResult = await pool.query(
-        `SELECT two_factor_enabled, two_factor_method, last_password_change FROM user_security WHERE user_id = $1`,
-        [decoded.userId]
-      );
-      const sessResult = await pool.query(
-        `SELECT id, device, browser, ip_address, last_active, created_at FROM user_sessions WHERE user_id = $1 ORDER BY last_active DESC LIMIT 10`,
-        [decoded.userId]
-      );
-
-      const sec = secResult.rows[0] || {};
+      const secResult = await getPool().query('SELECT * FROM user_security WHERE user_id = $1', [decoded.userId]);
+      const secRow = secResult.rows[0] || {};
+      const sessResult = await getPool().query('SELECT * FROM user_sessions WHERE user_id = $1 ORDER BY last_active DESC', [decoded.userId]);
       return res.json({
         success: true,
         security: {
-          twoFactorEnabled: sec.two_factor_enabled || false,
-          twoFactorMethod: sec.two_factor_method || 'none',
-          lastPasswordChange: sec.last_password_change || null,
+          twoFactorEnabled: secRow.two_factor_enabled || false,
+          twoFactorMethod: secRow.two_factor_method || 'none',
+          lastPasswordChange: secRow.last_password_change || null,
         },
         sessions: sessResult.rows.map(s => ({
-          id: s.id,
-          device: s.device,
-          browser: s.browser,
-          ipAddress: s.ip_address,
-          lastActive: s.last_active,
-          createdAt: s.created_at,
-          isCurrent: s.id === sessionId,
+          id: s.id, device: s.device, browser: s.browser, ipAddress: s.ip_address,
+          lastActive: s.last_active, createdAt: s.created_at, isCurrent: false,
         })),
       });
     } catch (err) {
-      console.error('Security fetch error:', err);
-      return res.status(500).json({ success: false, error: err.message });
-    }
-  }
-
-  // ─── POST /api/users/me/change-password ───
-  if (path === 'me/change-password' && method === 'POST') {
-    const decoded = authenticate(req);
-    if (!decoded) return res.status(401).json({ error: 'No token provided' });
-    try {
-      const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-      const { newPassword } = body || {};
-      if (!newPassword || newPassword.length < 8) {
-        return res.status(400).json({ error: 'Password must be at least 8 characters' });
-      }
-      await initDB();
-      const pool = getPool();
-      await ensureSecurity(decoded.userId);
-      await pool.query(`
-        UPDATE user_security SET last_password_change = NOW(), updated_at = NOW() WHERE user_id = $1
-      `, [decoded.userId]);
-      return res.json({ success: true, message: 'Password updated' });
-    } catch (err) {
-      console.error('Password change error:', err);
-      return res.status(500).json({ success: false, error: err.message });
+      return res.json({ success: true, security: { twoFactorEnabled: false, twoFactorMethod: 'none', lastPasswordChange: null }, sessions: [] });
     }
   }
 
@@ -404,25 +314,18 @@ export default async function handler(req, res) {
     const decoded = authenticate(req);
     if (!decoded) return res.status(401).json({ error: 'No token provided' });
     try {
-      const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-      const tfMethod = body?.method || 'authenticator';
       await initDB();
-      const pool = getPool();
       await ensureSecurity(decoded.userId);
-
       const secret = generateSecret();
-      const otpauthUrl = totpKeyUri(decoded.email || decoded.wallet || decoded.userId, 'ZAI', secret);
-      const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(otpauthUrl)}`;
-
-      await pool.query(
-        `UPDATE user_security SET two_factor_secret = $2, two_factor_method = $3, updated_at = NOW() WHERE user_id = $1`,
-        [decoded.userId, secret, tfMethod]
+      await getPool().query(
+        `UPDATE user_security SET two_factor_secret=$2, two_factor_method='authenticator', updated_at=NOW() WHERE user_id=$1`,
+        [decoded.userId, secret]
       );
-
-      return res.json({ success: true, secret, qrCodeUrl, otpauthUrl });
+      const email = decoded.email || decoded.name || decoded.userId;
+      const qrCodeUrl = totpKeyUri(email, 'ZAI Club', secret);
+      return res.json({ success: true, secret, qrCodeUrl });
     } catch (err) {
-      console.error('2FA setup error:', err);
-      return res.status(500).json({ success: false, error: err.message });
+      return res.status(500).json({ error: err.message });
     }
   }
 
@@ -432,35 +335,18 @@ export default async function handler(req, res) {
     if (!decoded) return res.status(401).json({ error: 'No token provided' });
     try {
       const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-      const { code } = body || {};
-      if (!code || code.length !== 6) {
-        return res.status(400).json({ error: 'Invalid verification code' });
-      }
       await initDB();
-      const pool = getPool();
-      const secResult = await pool.query(
-        `SELECT two_factor_secret, two_factor_method FROM user_security WHERE user_id = $1`,
+      const secResult = await getPool().query('SELECT two_factor_secret FROM user_security WHERE user_id = $1', [decoded.userId]);
+      const secret = secResult.rows[0]?.two_factor_secret;
+      if (!secret) return res.status(400).json({ error: '2FA not set up' });
+      if (!verifyTOTP(body.code, secret)) return res.status(400).json({ error: 'Invalid verification code' });
+      await getPool().query(
+        `UPDATE user_security SET two_factor_enabled=true, updated_at=NOW() WHERE user_id=$1`,
         [decoded.userId]
       );
-      const secRow = secResult.rows[0];
-      if (!secRow?.two_factor_secret) {
-        return res.status(400).json({ error: 'No 2FA setup found. Please run setup first.' });
-      }
-
-      const isValid = verifyTOTP(code, secRow.two_factor_secret);
-
-      if (!isValid) {
-        return res.status(400).json({ error: 'Invalid verification code' });
-      }
-
-      await pool.query(
-        `UPDATE user_security SET two_factor_enabled = true, updated_at = NOW() WHERE user_id = $1`,
-        [decoded.userId]
-      );
-      return res.json({ success: true, message: 'Two-factor authentication enabled' });
+      return res.json({ success: true, message: '2FA enabled successfully' });
     } catch (err) {
-      console.error('2FA verify error:', err);
-      return res.status(500).json({ success: false, error: err.message });
+      return res.status(500).json({ error: err.message });
     }
   }
 
@@ -470,141 +356,36 @@ export default async function handler(req, res) {
     if (!decoded) return res.status(401).json({ error: 'No token provided' });
     try {
       const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-      const { code } = body || {};
-      if (!code || code.length !== 6) {
-        return res.status(400).json({ error: 'Invalid verification code' });
-      }
       await initDB();
-      const pool = getPool();
-      const secResult = await pool.query(
-        `SELECT two_factor_secret FROM user_security WHERE user_id = $1`,
-        [decoded.userId]
-      );
-      const secRow = secResult.rows[0];
-      if (!secRow?.two_factor_secret) {
-        return res.status(400).json({ error: '2FA is not enabled' });
-      }
-
-      const isValid = verifyTOTP(code, secRow.two_factor_secret);
-
-      if (!isValid) {
-        return res.status(400).json({ error: 'Invalid verification code' });
-      }
-
-      await pool.query(
-        `UPDATE user_security SET two_factor_enabled = false, two_factor_secret = NULL, two_factor_method = 'none', updated_at = NOW() WHERE user_id = $1`,
-        [decoded.userId]
-      );
-      return res.json({ success: true, message: 'Two-factor authentication disabled' });
-    } catch (err) {
-      console.error('2FA disable error:', err);
-      return res.status(500).json({ success: false, error: err.message });
-    }
-  }
-
-  // ─── GET /api/users/me/sessions ───
-  if (path === 'me/sessions' && method === 'GET') {
-    const decoded = authenticate(req);
-    if (!decoded) return res.status(401).json({ error: 'No token provided' });
-    try {
-      await initDB();
-      const pool = getPool();
-      const userAgent = req.headers['user-agent'] || 'Unknown';
-      const sessionId = `${decoded.userId}-${Buffer.from(userAgent).toString('base64').slice(0, 16)}`;
-      const result = await pool.query(
-        `SELECT id, device, browser, ip_address, last_active, created_at FROM user_sessions WHERE user_id = $1 ORDER BY last_active DESC`,
-        [decoded.userId]
-      );
-      return res.json({
-        success: true,
-        sessions: result.rows.map(s => ({
-          id: s.id,
-          device: s.device,
-          browser: s.browser,
-          ipAddress: s.ip_address,
-          lastActive: s.last_active,
-          createdAt: s.created_at,
-          isCurrent: s.id === sessionId,
-        })),
-      });
-    } catch (err) {
-      console.error('Sessions fetch error:', err);
-      return res.status(500).json({ success: false, error: err.message });
-    }
-  }
-
-  // ─── POST /api/users/me/sessions/revoke ───
-  if (path === 'me/sessions/revoke' && method === 'POST') {
-    const decoded = authenticate(req);
-    if (!decoded) return res.status(401).json({ error: 'No token provided' });
-    try {
-      const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-      const { sessionId } = body || {};
-      if (!sessionId) return res.status(400).json({ error: 'sessionId required' });
-      await initDB();
+      const secResult = await getPool().query('SELECT two_factor_secret FROM user_security WHERE user_id = $1', [decoded.userId]);
+      const secret = secResult.rows[0]?.two_factor_secret;
+      if (!secret) return res.status(400).json({ error: '2FA not enabled' });
+      if (!verifyTOTP(body.code, secret)) return res.status(400).json({ error: 'Invalid code' });
       await getPool().query(
-        `DELETE FROM user_sessions WHERE id = $1 AND user_id = $2`,
-        [sessionId, decoded.userId]
+        `UPDATE user_security SET two_factor_enabled=false, two_factor_method='none', two_factor_secret=NULL, updated_at=NOW() WHERE user_id=$1`,
+        [decoded.userId]
       );
-      return res.json({ success: true, message: 'Session revoked' });
+      return res.json({ success: true, message: '2FA disabled' });
     } catch (err) {
-      console.error('Session revoke error:', err);
-      return res.status(500).json({ success: false, error: err.message });
+      return res.status(500).json({ error: err.message });
     }
   }
 
-    // ─── GET /api/users/me/stats ───
-  if (path === 'me/stats' && method === 'GET') {
+  // ─── POST /api/users/me/change-password ───
+  if (path === 'me/change-password' && method === 'POST') {
+    if (applyRateLimit(req, res, 'users:password', 5, 60_000)) return;
     const decoded = authenticate(req);
     if (!decoded) return res.status(401).json({ error: 'No token provided' });
     try {
       await initDB();
-      const pool = getPool();
-      
-      // Count claimed products from product_claims table
-      const prodResult = await pool.query(
-        'SELECT COUNT(*) as count FROM product_claims WHERE user_id = $1',
-        [decoded.userId]
-      );
-      
-      // Count event registrations from event_registrations table
-      const evtResult = await pool.query(
-        'SELECT COUNT(*) as count FROM event_registrations WHERE user_id = $1',
-        [decoded.userId]
-      );
-      
-      return res.json({
-        success: true,
-        stats: {
-          productsClaimed: parseInt(prodResult.rows[0]?.count || '0'),
-          eventsAttended: parseInt(evtResult.rows[0]?.count || '0'),
-        },
-      });
-    } catch (err) {
-      console.error('Stats fetch error:', err);
-      return res.json({
-        success: true,
-        stats: { productsClaimed: 0, eventsAttended: 0 },
-      });
-    }
-  }
-
-  // ─── POST /api/users/me/sessions/revoke-all ───
-  if (path === 'me/sessions/revoke-all' && method === 'POST') {
-    const decoded = authenticate(req);
-    if (!decoded) return res.status(401).json({ error: 'No token provided' });
-    try {
-      await initDB();
-      const userAgent = req.headers['user-agent'] || 'Unknown';
-      const currentSessionId = `${decoded.userId}-${Buffer.from(userAgent).toString('base64').slice(0, 16)}`;
+      await ensureSecurity(decoded.userId);
       await getPool().query(
-        `DELETE FROM user_sessions WHERE user_id = $1 AND id != $2`,
-        [decoded.userId, currentSessionId]
+        `UPDATE user_security SET last_password_change=NOW(), updated_at=NOW() WHERE user_id=$1`,
+        [decoded.userId]
       );
-      return res.json({ success: true, message: 'All other sessions revoked' });
+      return res.json({ success: true, message: 'Password updated' });
     } catch (err) {
-      console.error('Revoke all error:', err);
-      return res.status(500).json({ success: false, error: err.message });
+      return res.status(500).json({ error: err.message });
     }
   }
 

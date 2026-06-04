@@ -7,13 +7,14 @@ let dbReady = false;
 
 // ── Contract addresses ──
 export const ZAI_PRODUCTS_CONTRACT = '0xedd1a9446a2c0e50a8287c9527bf2a7498bfbc55';
-export const ZAI_EXPERIENCE_CARD_CONTRACT = '0x3ec471e2a682381ee75b395eff068e04b6b5da5d';
+export const ZAI_EXPERIENCE_CARD_CONTRACT = '0x3ec471e2a68238ee75b395eff068e04b6b5da5d';
 
 export function getPool() {
   if (!pool) {
+    const useSSL = process.env.DATABASE_SSL === 'true';
     pool = new Pool({
       connectionString: process.env.DATABASE_URL,
-      ssl: false,
+      ssl: useSSL ? { rejectUnauthorized: false } : false,
       max: 5,
       connectionTimeoutMillis: 5000,
       idleTimeoutMillis: 30000,
@@ -34,6 +35,12 @@ export async function isAdmin(decoded) {
   } catch {
     return false;
   }
+}
+
+export async function requireAdmin(decoded) {
+  const admin = await isAdmin(decoded);
+  if (!admin) throw new Error('FORBIDDEN');
+  return true;
 }
 
 export async function getUserRole(userId, wallet) {
@@ -166,14 +173,12 @@ export async function initDB() {
         blocked_at TIMESTAMPTZ DEFAULT NOW()
       );
 
-      -- ═══ NEW: User roles table ═══
       CREATE TABLE IF NOT EXISTS user_roles (
         user_id TEXT PRIMARY KEY,
         role TEXT NOT NULL DEFAULT 'member',
         updated_at TIMESTAMPTZ DEFAULT NOW()
       );
 
-      -- ═══ NEW: Product claim requests (receipt-based flow) ═══
       CREATE TABLE IF NOT EXISTS product_claim_requests (
         id TEXT PRIMARY KEY,
         user_id TEXT NOT NULL,
@@ -208,7 +213,6 @@ export async function initDB() {
       CREATE INDEX IF NOT EXISTS idx_claim_requests_status ON product_claim_requests(status);
     `);
 
-    // Safe ALTER for existing DBs
     await client.query(`
       ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS salutation INT DEFAULT 0;
       ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS language TEXT DEFAULT 'en';
@@ -216,12 +220,17 @@ export async function initDB() {
 
     await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_product_claims_user_product ON product_claims(user_id, product_id)`);
 
-    // ── Seed owner role (your userId — runs once, no-op after) ──
-    await pool.query(`
-      INSERT INTO user_roles (user_id, role)
-      VALUES ('RhcQ43ACLUSfaDPSDcX71ntBFzHhq6zI', 'owner')
-      ON CONFLICT (user_id) DO NOTHING
-    `);
+    // ── Seed owner role from env var (no hardcoded ID) ──
+    const OWNER_USER_ID = process.env.ZAI_OWNER_USER_ID;
+    if (OWNER_USER_ID) {
+      await pool.query(`
+        INSERT INTO user_roles (user_id, role)
+        VALUES ($1, 'owner')
+        ON CONFLICT (user_id) DO NOTHING
+      `, [OWNER_USER_ID]);
+    } else {
+      console.warn('[DB] ZAI_OWNER_USER_ID env var not set — skipping owner seed.');
+    }
 
     dbReady = true;
   } finally {
