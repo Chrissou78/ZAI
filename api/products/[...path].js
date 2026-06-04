@@ -879,13 +879,30 @@ export default async function handler(req, res) {
         note,
       } = body;
 
-      if (!productId && !productName) {
-        return res.status(400).json({ error: 'productId or productName is required' });
+      // Product name/id are optional: the admin assigns the product at
+      // validation time. What we require is a proof of purchase.
+      if (!proofImage && !proofImageCid && !preUploadedCid) {
+        return res.status(400).json({ error: 'Proof of purchase is required' });
       }
 
       // Sanitize user inputs
       const safeProductName = sanitizeString(productName || '');
       const safeNote = sanitizeString(note || '');
+
+      // Resolve the submitter's name and email so admins can see who sent
+      // the request instead of a bare user id.
+      let userName = (decoded.name || `${decoded.givenName || ''} ${decoded.familyName || ''}`).trim();
+      let userEmail = '';
+      try {
+        const up = await pool.query(
+          `SELECT name, given_name, family_name, email FROM user_profiles WHERE user_id = $1`,
+          [decoded.userId]
+        );
+        if (up.rows[0]) {
+          userName = userName || up.rows[0].name || `${up.rows[0].given_name || ''} ${up.rows[0].family_name || ''}`.trim();
+          userEmail = up.rows[0].email || '';
+        }
+      } catch { /* best effort */ }
 
       const claimId = genId();
       let imageCid = proofImageCid || preUploadedCid || '';
@@ -928,11 +945,13 @@ export default async function handler(req, res) {
       // Store in DB
       await pool.query(
         `INSERT INTO product_claim_requests
-          (id, user_id, product_id, product_name, proof_image_cid, proof_image_url, encryption_key, note, wallet, status, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'pending', NOW())`,
+          (id, user_id, user_name, user_email, product_id, product_name, proof_image_cid, proof_image_url, encryption_key, note, wallet, status, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'pending', NOW())`,
         [
           claimId,
           decoded.userId,
+          sanitizeString(userName || ''),
+          sanitizeString(userEmail || ''),
           sanitizeString(productId || ''),
           safeProductName,
           sanitizeString(imageCid),
@@ -1009,6 +1028,8 @@ export default async function handler(req, res) {
         const item = {
           id: row.id,
           userId: row.user_id,
+          userName: row.user_name || '',
+          userEmail: row.user_email || '',
           productId: row.product_id,
           productName: row.product_name,
           note: row.note,
@@ -1188,21 +1209,32 @@ export default async function handler(req, res) {
                 body: JSON.stringify({ wallet: userWallet, address: userWallet }),
               }
             );
-            mintResult = { status: mintStatus, data: mintData };
 
-            // Record claim
-            await pool.query(
-              `INSERT INTO product_claims (id, user_id, product_id, claimed_at)
-               VALUES ($1, $2, $3, NOW())
-               ON CONFLICT (user_id, product_id) DO NOTHING`,
-              [genId(), claimReq.user_id, rwaIdToMint]
-            );
+            const mintOk = mintStatus >= 200 && mintStatus < 300 && mintData?.success !== false;
+            mintResult = {
+              success: mintOk,
+              status: mintStatus,
+              data: mintData,
+              error: mintOk
+                ? undefined
+                : (mintData?.message || mintData?.error || `Mint failed (HTTP ${mintStatus})`),
+            };
+
+            // Record the claim only on a successful mint.
+            if (mintOk) {
+              await pool.query(
+                `INSERT INTO product_claims (id, user_id, product_id, claimed_at)
+                 VALUES ($1, $2, $3, NOW())
+                 ON CONFLICT (user_id, product_id) DO NOTHING`,
+                [genId(), claimReq.user_id, rwaIdToMint]
+              );
+            }
           } else {
-            mintResult = { error: 'No wallet on file for this user' };
+            mintResult = { success: false, error: 'No wallet on file for this user' };
           }
         } catch (mintErr) {
           console.error('[PRODUCTS] Auto-mint after validation failed:', mintErr.message);
-          mintResult = { error: mintErr.message };
+          mintResult = { success: false, error: mintErr.message };
         }
       }
 
