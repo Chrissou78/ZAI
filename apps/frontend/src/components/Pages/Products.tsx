@@ -543,10 +543,12 @@ const Products: React.FC = () => {
     try {
       const res = await apiService.post('/products/claim-upload/create-token');
       const payload = res.data as any;
-      if (payload?.success) {
-        setUploadToken(payload.data.token);
+      if (payload?.success && payload.token) {
+        setUploadToken(payload.token);
         setShowQrLink(true);
         setQrPolling(true);
+      } else {
+        setReceiptError('Failed to generate upload link');
       }
     } catch (err: any) {
       setReceiptError('Failed to generate upload link');
@@ -561,22 +563,23 @@ const Products: React.FC = () => {
     uploadPollRef.current = setInterval(async () => {
       try {
         const res = await apiService.get(`/products/claim-upload/${uploadToken}/status`);
-        const data = (res.data as any)?.data;
-        if (data?.status === 'uploaded' && data?.imageUrl) {
+        const data = res.data as any;
+        if (data?.status === 'completed' && data?.proofImageCid) {
           setReceiptImage('phone-uploaded');       // truthy flag, not a real URL
-          setReceiptCid(data.imageCid || null);
+          setReceiptCid(data.proofImageCid || null);
           setReceiptKey(data.encryptionKey || null);
           setShowQrLink(false);
           setQrPolling(false);
           if (uploadPollRef.current) clearInterval(uploadPollRef.current);
-        } else if (data?.status === 'expired') {
+        }
+      } catch (err: any) {
+        if (err?.response?.status === 410) {
           setQrPolling(false);
           setReceiptError('Upload link expired. Please try again.');
           setShowQrLink(false);
           if (uploadPollRef.current) clearInterval(uploadPollRef.current);
         }
-      } catch {
-        // silently retry
+        // otherwise silently retry
       }
     }, 2000);
 
