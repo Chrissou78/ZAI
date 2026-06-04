@@ -471,7 +471,7 @@ export default async function handler(req, res) {
       // Separate the Experience Card from the regular collection. The card
       // is a membership artifact, not a catalogue product, and the frontend
       // reads it from `experienceCard` to drive exclusive access.
-      const EC_RE = /experience\s*card/i;
+      const EC_RE = /experience[\s_-]*(?:club[\s_-]*)?card/i;
       const experienceCard = products.find(p => EC_RE.test(p.name || '')) || null;
       const collection = experienceCard
         ? products.filter(p => p.id !== experienceCard.id)
