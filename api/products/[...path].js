@@ -180,6 +180,13 @@ function formatPrice(raw) {
     : num.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+// The Experience Card may be named "Experience Card" or "Experience Club
+// Card". Match on both keywords so detection is consistent everywhere.
+function isExperienceCardName(name) {
+  const s = (name || '').toLowerCase();
+  return s.includes('experience') && s.includes('card');
+}
+
 function parseNftToProduct(nft, currencyMap) {
   let meta = {};
 
@@ -486,8 +493,7 @@ export default async function handler(req, res) {
       // Separate the Experience Card from the regular collection. The card
       // is a membership artifact, not a catalogue product, and the frontend
       // reads it from `experienceCard` to drive exclusive access.
-      const EC_RE = /experience\s*card/i;
-      const experienceCard = products.find(p => EC_RE.test(p.name || '')) || null;
+      const experienceCard = products.find(p => isExperienceCardName(p.name)) || null;
       const collection = experienceCard
         ? products.filter(p => p.id !== experienceCard.id)
         : products;
@@ -713,6 +719,35 @@ export default async function handler(req, res) {
   // ══════════════════════════════════════════════════════════════
   // GET /api/products/claimable
   // ══════════════════════════════════════════════════════════════
+  if (fullPath === 'experience-card' && req.method === 'GET') {
+    const decoded = authenticate(req);
+    if (!decoded) return res.status(401).json({ error: 'Unauthorized' });
+    try {
+      const rwaMap = await getZaiRwaMap();
+      const currencyMap = await getCurrencyMap();
+      let card = null;
+      for (const [addr, rwa] of rwaMap) {
+        if (isExperienceCardName(rwa.name)) {
+          card = {
+            id: rwa.id,
+            rwaId: rwa.id,
+            name: rwa.name || 'ZAI Experience Club Card',
+            contractAddress: addr,
+            description: rwa.description || rwa.data?.description?.value || '',
+            image: rwa.image || rwa.data?.image?.value || '',
+            price: formatPrice(rwa.data?.price?.value || ''),
+            currency: resolveCurrency(rwa.currencyId || rwa.data?.currency?.value || '', currencyMap),
+          };
+          break;
+        }
+      }
+      return res.json({ success: true, data: card });
+    } catch (err) {
+      console.error('[PRODUCTS] experience-card error:', err);
+      return res.status(500).json({ error: 'Failed to fetch Experience Card' });
+    }
+  }
+
   if (fullPath === 'claimable' && req.method === 'GET') {
     try {
       const rwaMap = await getZaiRwaMap();
@@ -721,7 +756,7 @@ export default async function handler(req, res) {
 
       for (const [addr, rwa] of rwaMap) {
         // Skip experience card
-        if ((rwa.name || '').toLowerCase().includes('experience card')) continue;
+        if (isExperienceCardName(rwa.name)) continue;
 
         claimable.push({
           id: rwa.id,

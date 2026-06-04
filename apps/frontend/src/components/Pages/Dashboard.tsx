@@ -214,10 +214,29 @@ const Dashboard: React.FC = () => {
 
   // ── Experience card & admin checks ──
   const [hasExperienceCard, setHasExperienceCard] = useState(false);
+  const [ecClaimStatus, setEcClaimStatus] = useState<'none' | 'pending' | 'validated'>('none');
   const isAdmin = (user as any)?.role === 'admin' || (user as any)?.role === 'owner';
   const exclusive = hasExperienceCard || isAdmin;
 
-  // ── Experience Card claim flow (proof-of-purchase, same as Products) ──
+  // Detect a pending or validated Experience Card claim so the CTA can show
+  // "under review" instead of inviting another claim.
+  useEffect(() => {
+    if (!user?.id || isAdmin || hasExperienceCard) { setEcClaimStatus('none'); return; }
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await apiService.get('/products/claim-requests?mine=true');
+        if (cancelled) return;
+        const claims = ((res.data as any)?.data || []) as any[];
+        const ec = claims.find(c => {
+          const n = (c.productName || '').toLowerCase();
+          return n.includes('experience') && n.includes('card');
+        });
+        setEcClaimStatus(ec ? (ec.status === 'validated' ? 'validated' : 'pending') : 'none');
+      } catch { /* ignore */ }
+    })();
+    return () => { cancelled = true; };
+  }, [user?.id, isAdmin, hasExperienceCard]);
   const [showECModal, setShowECModal] = useState(false);
   const [ecData, setEcData] = useState<any>(null);
   const [ecLoading, setEcLoading] = useState(false);
@@ -438,6 +457,7 @@ const Dashboard: React.FC = () => {
       const payload = res.data as any;
       if (payload?.success) {
         setEcSuccess(true);
+        setEcClaimStatus('pending');
       } else {
         setEcError(payload?.error || 'Submission failed');
       }
@@ -638,7 +658,29 @@ const Dashboard: React.FC = () => {
           </div>
 
           {/* ── Claim Membership CTA (only for non-exclusive, non-admin users) ── */}
-          {!exclusive && (
+          {!exclusive && ecClaimStatus === 'pending' ? (
+            <div
+              style={{
+                marginTop: '1rem',
+                padding: '10px 20px',
+                background: 'transparent',
+                border: '1px solid #c9a84c',
+                color: '#c9a84c',
+                fontSize: '10px',
+                letterSpacing: '0.15em',
+                textTransform: 'uppercase',
+                fontFamily: "'Inter', sans-serif",
+                fontWeight: 600,
+                borderRadius: 4,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                width: 'fit-content',
+              }}
+            >
+              <span>&#9203;</span> Membership under review
+            </div>
+          ) : !exclusive ? (
             <button
               onClick={handleClaimMembership}
               style={{
@@ -667,7 +709,7 @@ const Dashboard: React.FC = () => {
             >
               Claim your Exclusive Membership
             </button>
-          )}
+          ) : null}
 
           {/* ── Exclusive Member badge (when user has the card) ── */}
           {hasExperienceCard && !isAdmin && (

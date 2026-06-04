@@ -126,13 +126,8 @@ const Home: React.FC = () => {
       try {
         const res = await apiService.get(`/products/user/${user.id}`);
         if (!cancelled && res.data?.success) {
-          const products = res.data.data || [];
-          const EC_NAMES = ['experience card'];
-          setHasExperienceCard(
-            products.some((p: any) =>
-              EC_NAMES.some((n) => (p.name || '').toLowerCase().includes(n))
-            )
-          );
+          const d = res.data as any;
+          setHasExperienceCard(!!d.experienceCard || !!d.stats?.hasExperienceCard);
         }
       } catch { /* ignore */ }
     };
