@@ -1,6 +1,8 @@
-// apps/mobile/app/(tabs)/products.tsx
-import { useRef, useState, useEffect, useCallback } from 'react';
-import {View, Text, StyleSheet, ScrollView, Image, Pressable, ActivityIndicator, Alert, Modal, TextInput, TouchableOpacity,} from 'react-native';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import {
+  View, Text, StyleSheet, ScrollView, Image, Pressable,
+  ActivityIndicator, Alert, Modal, TextInput, TouchableOpacity,
+} from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as SecureStore from 'expo-secure-store';
 import { useAuth } from '@/context/AuthContext';
@@ -12,19 +14,24 @@ interface ClaimableRwa {
   rwaId: string;
   name: string;
   image: string;
-  description?: string;
-  collection?: string;
 }
+
+const DISMISSED_KEY = 'zai_dismissed_claims';
 
 export default function ProductsScreen() {
   const { user } = useAuth();
+  const userIdRef = useRef(user?.id);
+  userIdRef.current = user?.id;
+
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [pendingClaims, setPendingClaims] = useState<any[]>([]);
-  const DISMISSED_KEY = 'zai_dismissed_claims';
-  const dismissedRef = useRef<Set<string>>(new Set());
 
-  // Claim flow states
+  // Dismissed claims — stored in ref, never triggers re-renders
+  const dismissedRef = useRef<Set<string>>(new Set());
+  const dismissedLoaded = useRef(false);
+
+  // Claim modal states
   const [showClaimModal, setShowClaimModal] = useState(false);
   const [claimableRwas, setClaimableRwas] = useState<ClaimableRwa[]>([]);
   const [claimableLoading, setClaimableLoading] = useState(false);
@@ -33,85 +40,101 @@ export default function ProductsScreen() {
   const [isCustomProduct, setIsCustomProduct] = useState(false);
   const [claimSubmitting, setClaimSubmitting] = useState(false);
 
-  const fetchProducts = useCallback(async () => {
-    if (!user?.id) return;
-    try {
-      setIsLoading(true);
-      const res = await apiService.get(`/products/user/${user.id}`);
-      if (res.data?.success) {
-        setProducts(res.data.data || []);
-        // Update experience card
-        const ecCard = res.data.experienceCard || null;
-        await apiService.setExperienceCard(ecCard);
-      }
-    } catch (err: any) {
-      console.error('Products fetch error:', err.message);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [user?.id]);
-
-  const fetchClaims = useCallback(async () => {
-    try {
-      const res = await apiService.get('/products/claim-requests?mine=true');
-      if (res.data?.success) {
-        const claims = (res.data.data || []).filter(
-          (c: any) => !(
-            (c.status === 'validated' || c.status === 'rejected') &&
-            dismissedRef.current.has(c.id)
-          )
-        );
-        setPendingClaims(claims);
-
-        const hasValidated = claims.some((c: any) => c.status === 'validated');
-        if (hasValidated) fetchProducts();
-      }
-    } catch {}
-  }, [fetchProducts]);
-
-  useEffect(() => {
-    fetchProducts();
-    fetchClaims();
-  }, [fetchProducts, fetchClaims]);
-
-  // Poll claims every 15s
-  useEffect(() => {
-    const interval = setInterval(fetchClaims, 15000);
-    return () => clearInterval(interval);
-  }, [fetchClaims]);
-
+  // Load dismissed IDs once (no state update unless needed)
   useEffect(() => {
     SecureStore.getItemAsync(DISMISSED_KEY).then((stored) => {
       if (stored) {
         dismissedRef.current = new Set<string>(JSON.parse(stored));
-        // Filter out already-dismissed claims from initial load
-        setPendingClaims((prev) =>
-          prev.filter((c: any) => !(
-            (c.status === 'validated' || c.status === 'rejected') &&
-            dismissedRef.current.has(c.id)
-          ))
-        );
       }
-    }).catch(() => {});
+      dismissedLoaded.current = true;
+    }).catch(() => {
+      dismissedLoaded.current = true;
+    });
   }, []);
 
-  // Fetch claimable products list from API (same as web)
+  // Stable fetch function — no state dependencies, uses ref for userId
+  const fetchProducts = useCallback(async (background = false) => {
+    const uid = userIdRef.current;
+    if (!uid) return;
+    try {
+      if (!background) setIsLoading(true);
+      const res = await apiService.get(`/products/user/${uid}`);
+      if (res.data?.success) {
+        setProducts(res.data.data || []);
+        const ecCard = res.data.experienceCard || null;
+        await apiService.setExperienceCard(ecCard);
+      }
+    } catch (err: any) {
+      if (!background) console.error('Products fetch error:', err.message);
+    } finally {
+      if (!background) setIsLoading(false);
+    }
+  }, []); // stable — never recreated
+
+  const filterDismissed = useCallback((claims: any[]) => {
+    return claims.filter(
+      (c: any) => !(
+        (c.status === 'validated' || c.status === 'rejected') &&
+        dismissedRef.current.has(c.id)
+      )
+    );
+  }, []);
+
+  const fetchClaims = useCallback(async () => {
+    const uid = userIdRef.current;
+    if (!uid) return;
+    try {
+      const res = await apiService.get('/products/claim-requests?mine=true');
+      if (res.data?.success) {
+        const raw = res.data.data || [];
+        const filtered = filterDismissed(raw);
+
+        // Only update state if the data actually changed
+        setPendingClaims((prev) => {
+          const prevIds = prev.map((c: any) => `${c.id}-${c.status}`).join(',');
+          const nextIds = filtered.map((c: any) => `${c.id}-${c.status}`).join(',');
+          if (prevIds === nextIds) return prev; // no change → no re-render
+          return filtered;
+        });
+
+        // Auto-refresh products if there's a newly validated claim
+        const hasValidated = filtered.some((c: any) => c.status === 'validated');
+        if (hasValidated) fetchProducts(true);
+      }
+    } catch {}
+  }, [fetchProducts, filterDismissed]);
+
+  // Initial load — runs once
+  useEffect(() => {
+    if (!user?.id) return;
+    fetchProducts();
+    fetchClaims();
+  }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Poll claims every 15s — stable interval, no dependency churn
+  useEffect(() => {
+    const id = setInterval(fetchClaims, 15000);
+    return () => clearInterval(id);
+  }, [fetchClaims]);
+
+  const dismissClaim = (claimId: string) => {
+    dismissedRef.current.add(claimId);
+    SecureStore.setItemAsync(DISMISSED_KEY, JSON.stringify([...dismissedRef.current])).catch(() => {});
+    setPendingClaims((prev) => prev.filter((c: any) => c.id !== claimId));
+  };
+
+  // ── Claim flow ──
   const fetchClaimableProducts = async () => {
     setClaimableLoading(true);
     try {
       const res = await apiService.get('/products/claimable');
       const payload = res.data as any;
-      if (payload?.success) {
-        setClaimableRwas(payload.data || []);
-      }
-    } catch {
-      // silently fail — user can still type a custom name
-    } finally {
+      if (payload?.success) setClaimableRwas(payload.data || []);
+    } catch {} finally {
       setClaimableLoading(false);
     }
   };
 
-  // Open claim modal (replaces handleClaimProduct)
   const openClaimFlow = () => {
     setShowClaimModal(true);
     setSelectedProductName('');
@@ -121,7 +144,6 @@ export default function ProductsScreen() {
     fetchClaimableProducts();
   };
 
-  // After product selection, open camera then submit
   const handleContinueToPhoto = async () => {
     const productName = isCustomProduct ? customProductName.trim() : selectedProductName;
 
@@ -154,10 +176,7 @@ export default function ProductsScreen() {
 
   const submitClaim = async (proofImage: string, productName: string) => {
     try {
-      const res = await apiService.post('/products/claim-request', {
-        proofImage,
-        productName,
-      });
+      const res = await apiService.post('/products/claim-request', { proofImage, productName });
       if (res.data?.success) {
         Alert.alert('Claim Submitted', 'Your proof of purchase is being reviewed.');
         fetchClaims();
@@ -169,12 +188,7 @@ export default function ProductsScreen() {
     }
   };
 
-  const dismissClaim = (claimId: string) => {
-    dismissedRef.current.add(claimId);
-    SecureStore.setItemAsync(DISMISSED_KEY, JSON.stringify([...dismissedRef.current])).catch(() => {});
-    // Just remove from the array — single surgical update, no full re-render
-    setPendingClaims((prev) => prev.filter((c: any) => c.id !== claimId));
-  };
+  // ── Render ──
 
   if (isLoading) {
     return (
@@ -304,7 +318,6 @@ export default function ProductsScreen() {
                 Select your product, then take a photo of your proof of purchase.
               </Text>
 
-              {/* Product selection */}
               <Text style={styles.claimLabel}>PRODUCT NAME</Text>
 
               {claimableLoading ? (
@@ -319,10 +332,7 @@ export default function ProductsScreen() {
                           styles.claimProductItem,
                           selectedProductName === rwa.name && !isCustomProduct && styles.claimProductItemSelected,
                         ]}
-                        onPress={() => {
-                          setSelectedProductName(rwa.name);
-                          setIsCustomProduct(false);
-                        }}
+                        onPress={() => { setSelectedProductName(rwa.name); setIsCustomProduct(false); }}
                       >
                         <View style={styles.claimProductRadio}>
                           {selectedProductName === rwa.name && !isCustomProduct && (
@@ -332,17 +342,9 @@ export default function ProductsScreen() {
                         <Text style={styles.claimProductItemText}>{rwa.name}</Text>
                       </TouchableOpacity>
                     ))}
-
-                    {/* "Other" option */}
                     <TouchableOpacity
-                      style={[
-                        styles.claimProductItem,
-                        isCustomProduct && styles.claimProductItemSelected,
-                      ]}
-                      onPress={() => {
-                        setIsCustomProduct(true);
-                        setSelectedProductName('');
-                      }}
+                      style={[styles.claimProductItem, isCustomProduct && styles.claimProductItemSelected]}
+                      onPress={() => { setIsCustomProduct(true); setSelectedProductName(''); }}
                     >
                       <View style={styles.claimProductRadio}>
                         {isCustomProduct && <View style={styles.claimProductRadioDot} />}
@@ -350,7 +352,6 @@ export default function ProductsScreen() {
                       <Text style={styles.claimProductItemText}>Other (not listed)</Text>
                     </TouchableOpacity>
                   </ScrollView>
-
                   {isCustomProduct && (
                     <TextInput
                       style={styles.claimCustomInput}
@@ -363,32 +364,21 @@ export default function ProductsScreen() {
                   )}
                 </View>
               ) : (
-                /* Fallback to free text if claimable list is empty */
                 <TextInput
                   style={styles.claimCustomInput}
                   placeholder="e.g. ZAI Zermatt GT"
                   placeholderTextColor={DARK_THEME.textSecondary}
                   value={customProductName}
-                  onChangeText={(t: string) => {
-                    setCustomProductName(t);
-                    setIsCustomProduct(true);
-                  }}
+                  onChangeText={(t: string) => { setCustomProductName(t); setIsCustomProduct(true); }}
                 />
               )}
 
-              {/* Actions */}
               <View style={styles.claimModalActions}>
-                <TouchableOpacity
-                  style={styles.claimCancelBtn}
-                  onPress={() => setShowClaimModal(false)}
-                >
+                <TouchableOpacity style={styles.claimCancelBtn} onPress={() => setShowClaimModal(false)}>
                   <Text style={styles.claimCancelText}>CANCEL</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={[
-                    styles.claimSubmitBtn,
-                    (!selectedProductName && !customProductName.trim()) && { opacity: 0.5 },
-                  ]}
+                  style={[styles.claimSubmitBtn, (!selectedProductName && !customProductName.trim()) && { opacity: 0.5 }]}
                   disabled={(!selectedProductName && !customProductName.trim()) || claimSubmitting}
                   onPress={handleContinueToPhoto}
                 >
@@ -424,10 +414,7 @@ const styles = StyleSheet.create({
   pendingIcon: { fontSize: 18 },
   pendingTitle: { fontSize: 13, fontWeight: '600', color: DARK_THEME.text },
   pendingDesc: { fontSize: 11, color: DARK_THEME.textSecondary, marginTop: 2 },
-  statsRow: {
-    flexDirection: 'row', borderWidth: 1, borderColor: DARK_THEME.border,
-    borderRadius: 8, marginBottom: 24,
-  },
+  statsRow: { flexDirection: 'row', borderWidth: 1, borderColor: DARK_THEME.border, borderRadius: 8, marginBottom: 24 },
   statBox: { flex: 1, padding: 16, alignItems: 'center' },
   statNumber: { fontSize: 28, fontWeight: '300', color: DARK_THEME.text },
   statLabel: { fontSize: 9, letterSpacing: 2, color: DARK_THEME.textSecondary, fontWeight: '600', marginTop: 4 },
@@ -448,59 +435,21 @@ const styles = StyleSheet.create({
   emptyState: { alignItems: 'center', padding: 48 },
   emptyTitle: { fontSize: 16, fontWeight: '600', color: DARK_THEME.text, marginBottom: 8 },
   emptyDesc: { fontSize: 13, color: DARK_THEME.textSecondary, textAlign: 'center', lineHeight: 20 },
-
-  // Claim modal styles
-  claimOverlay: {
-    flex: 1, backgroundColor: 'rgba(0,0,0,0.7)',
-    justifyContent: 'center', alignItems: 'center', padding: 24,
-  },
-  claimCard: {
-    backgroundColor: DARK_THEME.surface, borderRadius: 16, padding: 24,
-    width: '100%', maxWidth: 360,
-    borderWidth: 1, borderColor: DARK_THEME.border,
-  },
-  claimModalTitle: {fontSize: 18, fontWeight: '600', color: DARK_THEME.text, marginBottom: 4,},
-  claimModalSubtitle: {fontSize: 13, color: DARK_THEME.textSecondary, marginBottom: 20, lineHeight: 18,},
-  claimLabel: {
-    fontSize: 10, fontWeight: '700', letterSpacing: 2,
-    color: DARK_THEME.textSecondary, marginBottom: 8,
-  },
-  claimProductList: {
-    maxHeight: 220, borderRadius: 8,
-    borderWidth: 1, borderColor: DARK_THEME.border,
-    backgroundColor: DARK_THEME.background,
-  },
-  claimProductItem: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    paddingVertical: 14, paddingHorizontal: 14,
-    borderBottomWidth: 1, borderBottomColor: DARK_THEME.border,
-  },
-  claimProductItemSelected: {backgroundColor: 'rgba(122, 34, 46, 0.15)',},
-  claimProductRadio: {
-    width: 20, height: 20, borderRadius: 10,
-    borderWidth: 2, borderColor: DARK_THEME.textSecondary,
-    justifyContent: 'center', alignItems: 'center',
-  },
-  claimProductRadioDot: {
-    width: 10, height: 10, borderRadius: 5,
-    backgroundColor: DARK_THEME.primary,
-  },
-  claimProductItemText: {fontSize: 14, color: DARK_THEME.text, flex: 1,},
-  claimCustomInput: {
-    backgroundColor: DARK_THEME.background, borderRadius: 8,
-    paddingHorizontal: 14, paddingVertical: 12,
-    fontSize: 14, color: DARK_THEME.text,
-    borderWidth: 1, borderColor: DARK_THEME.border, marginTop: 10,
-  },
-  claimModalActions: {flexDirection: 'row', gap: 12, marginTop: 20,},
-  claimCancelBtn: {
-    flex: 1, paddingVertical: 14, alignItems: 'center',
-    borderRadius: 8, borderWidth: 1, borderColor: DARK_THEME.border,
-  },
-  claimCancelText: {fontSize: 11, fontWeight: '700', letterSpacing: 2, color: DARK_THEME.textSecondary,},
-  claimSubmitBtn: {
-    flex: 1, paddingVertical: 14, alignItems: 'center',
-    borderRadius: 8, backgroundColor: DARK_THEME.primary,
-  },
-  claimSubmitText: {fontSize: 11, fontWeight: '700', letterSpacing: 2, color: '#fff',},
+  claimOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center', padding: 24 },
+  claimCard: { backgroundColor: DARK_THEME.surface, borderRadius: 16, padding: 24, width: '100%', maxWidth: 360, borderWidth: 1, borderColor: DARK_THEME.border },
+  claimModalTitle: { fontSize: 18, fontWeight: '600', color: DARK_THEME.text, marginBottom: 4 },
+  claimModalSubtitle: { fontSize: 13, color: DARK_THEME.textSecondary, marginBottom: 20, lineHeight: 18 },
+  claimLabel: { fontSize: 10, fontWeight: '700', letterSpacing: 2, color: DARK_THEME.textSecondary, marginBottom: 8 },
+  claimProductList: { maxHeight: 220, borderRadius: 8, borderWidth: 1, borderColor: DARK_THEME.border, backgroundColor: DARK_THEME.background },
+  claimProductItem: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, paddingHorizontal: 14, borderBottomWidth: 1, borderBottomColor: DARK_THEME.border },
+  claimProductItemSelected: { backgroundColor: 'rgba(122, 34, 46, 0.15)' },
+  claimProductRadio: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: DARK_THEME.textSecondary, justifyContent: 'center', alignItems: 'center' },
+  claimProductRadioDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: DARK_THEME.primary },
+  claimProductItemText: { fontSize: 14, color: DARK_THEME.text, flex: 1 },
+  claimCustomInput: { backgroundColor: DARK_THEME.background, borderRadius: 8, paddingHorizontal: 14, paddingVertical: 12, fontSize: 14, color: DARK_THEME.text, borderWidth: 1, borderColor: DARK_THEME.border, marginTop: 10 },
+  claimModalActions: { flexDirection: 'row', gap: 12, marginTop: 20 },
+  claimCancelBtn: { flex: 1, paddingVertical: 14, alignItems: 'center', borderRadius: 8, borderWidth: 1, borderColor: DARK_THEME.border },
+  claimCancelText: { fontSize: 11, fontWeight: '700', letterSpacing: 2, color: DARK_THEME.textSecondary },
+  claimSubmitBtn: { flex: 1, paddingVertical: 14, alignItems: 'center', borderRadius: 8, backgroundColor: DARK_THEME.primary },
+  claimSubmitText: { fontSize: 11, fontWeight: '700', letterSpacing: 2, color: '#fff' },
 });
