@@ -315,6 +315,7 @@ const Products: React.FC = () => {
   const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [receiptImage, setReceiptImage] = useState<string | null>(null);
   const [receiptProductName, setReceiptProductName] = useState('');
+  const [receiptProductId, setReceiptProductId] = useState('');
   const [isCustomProduct, setIsCustomProduct] = useState(false);
   const [receiptSubmitting, setReceiptSubmitting] = useState(false);
   const [receiptError, setReceiptError] = useState<string | null>(null);
@@ -637,6 +638,7 @@ const Products: React.FC = () => {
     setReceiptCid(null);
     setReceiptKey(null);
     setReceiptProductName('');
+    setReceiptProductId('');
     setIsCustomProduct(false);
     setReceiptError(null);
     setReceiptSuccess(false);
@@ -669,6 +671,7 @@ const Products: React.FC = () => {
     setReceiptError(null);
     try {
       const body: any = { productName: receiptProductName };
+      if (receiptProductId) body.productId = receiptProductId;
       if (receiptCid) {
         body.preUploadedCid = receiptCid;
         body.preUploadedKey = receiptKey;
@@ -1299,21 +1302,28 @@ const Products: React.FC = () => {
                     <>
                       <select
                         style={inputStyle}
-                        value={isCustomProduct ? '__other__' : receiptProductName}
+                        value={isCustomProduct ? '__other__' : receiptProductId}
                         onChange={e => {
                           const v = e.target.value;
                           if (v === '__other__') {
                             setIsCustomProduct(true);
+                            setReceiptProductId('');
+                            setReceiptProductName('');
+                          } else if (v === '') {
+                            setIsCustomProduct(false);
+                            setReceiptProductId('');
                             setReceiptProductName('');
                           } else {
                             setIsCustomProduct(false);
-                            setReceiptProductName(v);
+                            const sel = claimableRwas.find(r => r.rwaId === v);
+                            setReceiptProductId(v);
+                            setReceiptProductName(sel?.name || '');
                           }
                         }}
                       >
                         <option value="">Select a product&hellip;</option>
                         {claimableRwas.map(rwa => (
-                          <option key={rwa.rwaId} value={rwa.name}>{rwa.name}</option>
+                          <option key={rwa.rwaId} value={rwa.rwaId}>{rwa.name}</option>
                         ))}
                         <option value="__other__">Other (not listed)</option>
                       </select>

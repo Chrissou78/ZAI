@@ -710,6 +710,7 @@ export default async function handler(req, res) {
 
         claimable.push({
           id: rwa.id,
+          rwaId: rwa.id,
           name: rwa.name || 'ZAI Product',
           contractAddress: addr,
           description: rwa.description || '',
