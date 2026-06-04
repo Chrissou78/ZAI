@@ -378,44 +378,46 @@ export default async function handler(req, res) {
         ? rawNfts.filter(nft => zaiContracts.has((nft.token_address || '').toLowerCase()))
         : rawNfts;
 
-      // Fetch any missing metadata in parallel with a bounded per-fetch
-      // timeout, so one slow IPFS gateway cannot stall the whole response.
-      await Promise.all(
-        zaiNfts.map(async (nft) => {
-          if (!nft.metadata && nft.token_uri) {
+      // ── Build products. Prefer the cached RWA catalog (no network) for
+      // known ZAI contracts and only fall back to a per-NFT IPFS metadata
+      // fetch for NFTs we can't resolve from the catalog or embedded data.
+      // This keeps the common path free of slow IPFS round-trips. ──
+      const needsIpfs = [];
+      for (const nft of zaiNfts) {
+        const addr = (nft.token_address || '').toLowerCase();
+        const rwa = zaiRwaMap.get(addr);
+        if (!nft.metadata && rwa) {
+          const rwaData = rwa.data || {};
+          nft.metadata = JSON.stringify({
+            name: rwa.name || 'ZAI Product',
+            rwaId: rwa.id,
+            rwa: { name: rwa.name },
+            data: {
+              image:       rwaData.image       || { value: rwa.image || '' },
+              description: rwaData.description || { value: rwa.description || '' },
+              price:       rwaData.price       || { value: '' },
+              currency:    rwaData.currency    || { value: rwa.currencyId || '' },
+              materials:   rwaData.materials   || { value: '' },
+              collection:  rwaData.collection  || { value: '' },
+              insurance:   rwaData.insurance   || { value: '' },
+            },
+          });
+        } else if (!nft.metadata && nft.token_uri) {
+          needsIpfs.push(nft);
+        }
+      }
+
+      // Only unknown NFTs hit IPFS, in parallel with a bounded timeout.
+      if (needsIpfs.length > 0) {
+        await Promise.all(
+          needsIpfs.map(async (nft) => {
             const fetched = await fetchTokenMetadata(nft.token_uri);
             if (fetched) nft.metadata = JSON.stringify(fetched);
-          }
-        })
-      );
-
-      const products = [];
-      for (const nft of zaiNfts) {
-        // ★ FALLBACK: Use RWA catalog data when metadata is missing
-        if (!nft.metadata) {
-          const addr = (nft.token_address || '').toLowerCase();
-          const rwa = zaiRwaMap.get(addr);
-          if (rwa) {
-            const rwaData = rwa.data || {};
-            nft.metadata = JSON.stringify({
-              name: rwa.name || 'ZAI Product',
-              rwaId: rwa.id,
-              rwa: { name: rwa.name },
-              data: {
-                image:       rwaData.image       || { value: rwa.image || '' },
-                description: rwaData.description || { value: rwa.description || '' },
-                price:       rwaData.price       || { value: '' },
-                currency:    rwaData.currency    || { value: rwa.currencyId || '' },
-                materials:   rwaData.materials   || { value: '' },
-                collection:  rwaData.collection  || { value: '' },
-                insurance:   rwaData.insurance   || { value: '' },
-              },
-            });
-          }
-        }
-
-        products.push(parseNftToProduct(nft, currencyMap));
+          })
+        );
       }
+
+      const products = zaiNfts.map(nft => parseNftToProduct(nft, currencyMap));
             // ── Step 3: Enrich with DB data (insurance, claim dates) ──
       if (dbReady && pool) {
         try {
