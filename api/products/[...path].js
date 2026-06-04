@@ -1736,7 +1736,7 @@ export default async function handler(req, res) {
     try {
       const rwaMap = await getZaiRwaMap();
       const currencyMap = await getCurrencyMap();
-      const EC_RE = /experience\s*card/i;
+      const EC_RE = /experience[\s_-]*(?:club[\s_-]*)?card/i;
 
       for (const [addr, rwa] of rwaMap) {
         if (EC_RE.test(rwa.name || '')) {
