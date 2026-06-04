@@ -468,10 +468,23 @@ export default async function handler(req, res) {
 
       console.log('[PRODUCTS] Returning', products.length, 'products for wallet', wallet);
 
+      // Separate the Experience Card from the regular collection. The card
+      // is a membership artifact, not a catalogue product, and the frontend
+      // reads it from `experienceCard` to drive exclusive access.
+      const EC_RE = /experience\s*card/i;
+      const experienceCard = products.find(p => EC_RE.test(p.name || '')) || null;
+      const collection = experienceCard
+        ? products.filter(p => p.id !== experienceCard.id)
+        : products;
+
       return res.json({
         success: true,
-        data: products,
-        stats: { totalProducts: products.length },
+        data: collection,
+        experienceCard,
+        stats: {
+          totalProducts: collection.length,
+          hasExperienceCard: !!experienceCard,
+        },
       });
     } catch (err) {
       console.error('[PRODUCTS] user products error:', err);

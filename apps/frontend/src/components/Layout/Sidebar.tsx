@@ -81,7 +81,7 @@ const Sidebar: React.FC = () => {
     try {
       const res = await apiService.get('/products/admin/pending-count');
       if (res.data?.success) {
-        setAdminPendingCount((res.data as any).data?.count || 0);
+        setAdminPendingCount((res.data as any).count ?? (res.data as any).data?.count ?? 0);
       }
     } catch {
       // silently fail
