@@ -4,6 +4,7 @@ import { apiService } from '../../services/api';
 import Button from '../Common/Button';
 import Modal from '../Common/Modal';
 import { QRCodeSVG } from 'qrcode.react';
+import { CameraIcon, UploadIcon, SmartphoneIcon } from '../Icons/ClaimIcons';
 
 /* ───── Types ───── */
 
@@ -1364,7 +1365,7 @@ const Products: React.FC = () => {
                           onMouseEnter={e => (e.currentTarget.style.borderColor = C.red)}
                           onMouseLeave={e => (e.currentTarget.style.borderColor = C.border)}
                         >
-                          <span style={{ fontSize: 28, marginBottom: 4 }}>&#x1F4F7;</span>
+                          <CameraIcon size={28} color="#2e2e2e" />
                           <span style={{ fontSize: 12, fontWeight: 600, color: C.mid }}>Take Photo</span>
                           <span style={{ fontSize: 10, color: C.gray }}>Open camera</span>
                           <input
@@ -1386,7 +1387,7 @@ const Products: React.FC = () => {
                           onMouseEnter={e => (e.currentTarget.style.borderColor = C.red)}
                           onMouseLeave={e => (e.currentTarget.style.borderColor = C.border)}
                         >
-                          <span style={{ fontSize: 28, marginBottom: 4 }}>&#x1F4F1;</span>
+                          <SmartphoneIcon size={28} color="#2e2e2e" />
                           <span style={{ fontSize: 12, fontWeight: 600, color: C.mid }}>Use Phone</span>
                           <span style={{ fontSize: 10, color: C.gray }}>Scan QR to take photo</span>
                         </div>
@@ -1402,7 +1403,7 @@ const Products: React.FC = () => {
                         onMouseEnter={e => (e.currentTarget.style.borderColor = C.red)}
                         onMouseLeave={e => (e.currentTarget.style.borderColor = C.border)}
                       >
-                        <span style={{ fontSize: 28, marginBottom: 4 }}>&#x1F4C1;</span>
+                        <UploadIcon size={28} color="#2e2e2e" />
                         <span style={{ fontSize: 12, fontWeight: 600, color: C.mid }}>Upload Image</span>
                         <span style={{ fontSize: 10, color: C.gray }}>JPG, PNG, WebP</span>
                         <input

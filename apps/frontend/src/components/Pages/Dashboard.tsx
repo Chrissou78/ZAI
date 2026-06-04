@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAppContext } from '../../context/AppContext';
 import { apiService } from '../../services/api';
 import { QRCodeSVG } from 'qrcode.react';
+import { CameraIcon, UploadIcon, SmartphoneIcon } from '../Icons/ClaimIcons';
 
 interface DashboardStats {
   productsClaimed: number;
@@ -1203,7 +1204,7 @@ const Dashboard: React.FC = () => {
                           onMouseEnter={e => (e.currentTarget.style.borderColor = EC_RED)}
                           onMouseLeave={e => (e.currentTarget.style.borderColor = EC_BORDER)}
                         >
-                          <span style={{ fontSize: 28, marginBottom: 4 }}>&#x1F4F7;</span>
+                          <CameraIcon size={28} color="#2e2e2e" />
                           <span style={{ fontSize: 12, fontWeight: 600, color: '#2e2e2e' }}>Take Photo</span>
                           <span style={{ fontSize: 10, color: EC_GRAY }}>Open camera</span>
                           <input
@@ -1225,7 +1226,7 @@ const Dashboard: React.FC = () => {
                           onMouseEnter={e => (e.currentTarget.style.borderColor = EC_RED)}
                           onMouseLeave={e => (e.currentTarget.style.borderColor = EC_BORDER)}
                         >
-                          <span style={{ fontSize: 28, marginBottom: 4 }}>&#x1F4F1;</span>
+                          <SmartphoneIcon size={28} color="#2e2e2e" />
                           <span style={{ fontSize: 12, fontWeight: 600, color: '#2e2e2e' }}>Use Phone</span>
                           <span style={{ fontSize: 10, color: EC_GRAY }}>Scan QR to take photo</span>
                         </div>
@@ -1241,7 +1242,7 @@ const Dashboard: React.FC = () => {
                         onMouseEnter={e => (e.currentTarget.style.borderColor = EC_RED)}
                         onMouseLeave={e => (e.currentTarget.style.borderColor = EC_BORDER)}
                       >
-                        <span style={{ fontSize: 28, marginBottom: 4 }}>&#x1F4C1;</span>
+                        <UploadIcon size={28} color="#2e2e2e" />
                         <span style={{ fontSize: 12, fontWeight: 600, color: '#2e2e2e' }}>Upload Image</span>
                         <span style={{ fontSize: 10, color: EC_GRAY }}>JPG, PNG, WebP</span>
                         <input
@@ -1262,7 +1263,9 @@ const Dashboard: React.FC = () => {
                           background: EC_SURFACE, textAlign: 'center',
                           border: `1px solid ${EC_BORDER}`,
                         }}>
-                          <div style={{ fontSize: 32, marginBottom: 8 }}>&#x1F4F7;</div>
+                          <div style={{ marginBottom: 8 }}>
+                            <CameraIcon size={32} color="#2e2e2e" />
+                          </div>
                           <div style={{ fontSize: 14, fontWeight: 600, color: '#1a1a1a', marginBottom: 4 }}>
                             Photo received from phone
                           </div>
