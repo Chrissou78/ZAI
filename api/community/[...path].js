@@ -71,7 +71,7 @@ async function initDB() {
 function authenticate(req) {
   const token = req.headers.authorization?.replace('Bearer ', '');
   if (!token) return null;
-  try { return jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret'); }
+  try { return jwt.verify(token, process.env.JWT_SECRET); }
   catch { return null; }
 }
 

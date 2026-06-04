@@ -491,7 +491,7 @@ export default async function handler(req, res) {
     if (applyRateLimit(req, res, 'products:r2', 5, 60000)) return;
 
     // ── Body size guard ──
-    if (!checkBodySize(req, res, 1 * 1024 * 1024)) return; // 1 MB
+    if (checkBodySize(req, res, 1 * 1024 * 1024)) return; // 1 MB
 
     const productId = insuranceActivateMatch[1];
 
@@ -796,7 +796,7 @@ export default async function handler(req, res) {
     if (applyRateLimit(req, res, 'products:r5', 5, 60000)) return;
 
     // ── Body size guard: 10 MB ──
-    if (!checkBodySize(req, res, 10 * 1024 * 1024)) return;
+    if (checkBodySize(req, res, 10 * 1024 * 1024)) return;
 
     try {
       const db = await getDB();
@@ -1307,7 +1307,7 @@ export default async function handler(req, res) {
     if (applyRateLimit(req, res, 'products:r10', 5, 60000)) return;
 
     // ── Body size guard: 10 MB ──
-    if (!checkBodySize(req, res, 10 * 1024 * 1024)) return;
+    if (checkBodySize(req, res, 10 * 1024 * 1024)) return;
 
     try {
       const db = await getDB();
