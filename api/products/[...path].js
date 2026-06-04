@@ -358,22 +358,22 @@ export default async function handler(req, res) {
         return res.json({ success: true, data: [], stats: { totalProducts: 0 }, _debug: { error: 'No wallet in JWT' } });
       }
 
-      // ── Step 1: Fetch on-chain NFTs ──
-      const { status: nftStatus, data: nftData } = await apiFetch(
-        BLOCKCHAIN_BASE,
-        `/nft?address=${wallet}&chainId=${chainId}`
-      );
+      // ── Steps 1 + 1b + 2 prep: run the on-chain NFT fetch and the
+      // catalog lookups together so a cold request does not pay for them
+      // one after another. ──
+      const [nftResult, zaiRwaMap, currencyMap] = await Promise.all([
+        apiFetch(BLOCKCHAIN_BASE, `/nft?address=${wallet}&chainId=${chainId}`),
+        getZaiRwaMap(),
+        getCurrencyMap(),
+      ]);
 
+      const { status: nftStatus, data: nftData } = nftResult;
       const rawNfts = (nftStatus === 200 && nftData?.result) ? nftData.result : [];
       console.log('[PRODUCTS] Blockchain returned', rawNfts.length, 'NFTs, status:', nftStatus);
 
-      // ── Step 1b: Get known ZAI RWA data ──
-      const zaiRwaMap = await getZaiRwaMap();
       const zaiContracts = getZaiContractsFromMap(zaiRwaMap);
 
-      // ── Step 2: Filter to ZAI NFTs only, then parse ──
-      const currencyMap = await getCurrencyMap();
-
+      // ── Filter to ZAI NFTs only, then parse ──
       const zaiNfts = zaiContracts.size > 0
         ? rawNfts.filter(nft => zaiContracts.has((nft.token_address || '').toLowerCase()))
         : rawNfts;

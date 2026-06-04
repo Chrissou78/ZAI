@@ -1,28 +1,30 @@
 import { useWalletTwo } from '@oc-labs/wallettwo-sdk';
 import { useAppContext } from '../../context/AppContext';
-import { useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 
 export function LogoutButton() {
   const { logout } = useWalletTwo();
   const { setUser, setWalletState } = useAppContext();
-  const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
 
   const handleLogout = async () => {
     setIsLoading(true);
+    // Best-effort SDK logout, but never let it block clearing the session.
     try {
       await logout();
-      setUser(null);
-      setWalletState({ isConnected: false, address: undefined, token: null, isLoading: false, error: null });
-      localStorage.removeItem('zai_user');
-      localStorage.removeItem('zai_token');
-      sessionStorage.clear();
-      navigate('/');
     } catch (error) {
-      console.error('Logout error:', error);
-      setIsLoading(false);
+      console.warn('WalletTwo SDK logout failed (continuing):', error);
     }
+    // Always clear local session.
+    setUser(null);
+    setWalletState({ isConnected: false, address: undefined, token: null, isLoading: false, error: null });
+    localStorage.removeItem('zai_user');
+    localStorage.removeItem('zai_token');
+    localStorage.removeItem('token');
+    localStorage.removeItem('zai_wallet_state');
+    localStorage.removeItem('zai_experience_card');
+    sessionStorage.clear();
+    window.location.href = '/';
   };
 
   return (
