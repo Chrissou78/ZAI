@@ -236,7 +236,11 @@ const Dashboard: React.FC = () => {
         const d = authRes.data as any;
         const role = d?.data?.role || d?.role || '';
         setIsAdmin(role === 'admin' || role === 'owner');
-      } catch { /* ignore */ }
+      } catch {
+        // Fallback: read role from the user object in context (set at login)
+        const ctxRole = (user as any)?.role || '';
+        setIsAdmin(ctxRole === 'admin' || ctxRole === 'owner');
+      }
 
       const eventsResponse = await apiService.get('/events', { params: { status: 'upcoming' } });
       const upcomingEvents = eventsResponse.data?.data || [];
