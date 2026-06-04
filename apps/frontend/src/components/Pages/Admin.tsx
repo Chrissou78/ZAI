@@ -116,6 +116,7 @@ const Admin: React.FC = () => {
   const [selectedClaim, setSelectedClaim] = useState<ClaimRequest | null>(null);
   const [claimableProducts, setClaimableProducts] = useState<ClaimableProduct[]>([]);
   const [selectedRwaId, setSelectedRwaId] = useState<string>('');
+  const [ecCardInfo, setEcCardInfo] = useState<{ rwaId: string; name: string; image: string } | null>(null);
   const [adminNote, setAdminNote] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -162,8 +163,31 @@ const Admin: React.FC = () => {
     setSelectedRwaId(claim.rwaId || claim.productId || '');
     setAdminNote(claim.adminNote || '');
     setActionError(null);
-    fetchClaimableProducts();
+    setEcCardInfo(null);
+
+    const n = (claim.productName || '').toLowerCase();
+    const isEC = n.includes('experience') && n.includes('card');
+    if (isEC) {
+      // Experience Card claims have a single, fixed product: the card itself.
+      // Resolve it and select it automatically — the admin gets no choice.
+      apiService.get('/products/experience-card')
+        .then(res => {
+          const card = (res.data as any)?.data;
+          if (card?.rwaId) {
+            setEcCardInfo({ rwaId: card.rwaId, name: card.name, image: card.image });
+            setSelectedRwaId(card.rwaId);
+          }
+        })
+        .catch(() => { /* fall back to the id stored on the claim */ });
+    } else {
+      fetchClaimableProducts();
+    }
   };
+
+  const isExperienceCardClaim = !!selectedClaim && (() => {
+    const n = (selectedClaim.productName || '').toLowerCase();
+    return n.includes('experience') && n.includes('card');
+  })();
 
   const handleValidate = async () => {
     if (!selectedClaim || !selectedRwaId) return;
@@ -463,47 +487,73 @@ const Admin: React.FC = () => {
               <>
                 {/* Product selection with preview */}
                 <div>
-                  <div style={{ ...lbl, marginBottom: 8 }}>Select Product to Mint</div>
-                  <select
-                    value={selectedRwaId}
-                    onChange={e => setSelectedRwaId(e.target.value)}
-                    style={{
-                      width: '100%', padding: '10px 12px', border: bdr,
-                      fontSize: 13, fontFamily: C.font, borderRadius: 4,
-                      background: C.pureWhite,
-                    }}
-                  >
-                    <option value="">— Select a product —</option>
-                    {claimableProducts.map(p => (
-                      <option key={p.rwaId} value={p.rwaId}>
-                        {p.name} {p.price ? `(${p.currency || 'CHF'} ${p.price})` : ''}
-                      </option>
-                    ))}
-                  </select>
-
-                  {/* Preview of selected product */}
-                  {selectedClaimableProduct && (
+                  <div style={{ ...lbl, marginBottom: 8 }}>
+                    {isExperienceCardClaim ? 'Product to Mint' : 'Select Product to Mint'}
+                  </div>
+                  {isExperienceCardClaim ? (
                     <div style={{
                       display: 'flex', gap: 10, alignItems: 'center',
-                      marginTop: 10, padding: '10px 12px',
+                      padding: '10px 12px',
                       background: C.surface, borderRadius: 6, border: bdr,
                     }}>
                       <ProductThumb
-                        src={selectedClaimableProduct.image}
-                        name={selectedClaimableProduct.name}
+                        src={ecCardInfo?.image || selectedClaim.productImage}
+                        name={ecCardInfo?.name || selectedClaim.productName || 'Experience Card'}
                         size={36}
                       />
                       <div>
                         <div style={{ fontSize: 13, fontWeight: 600 }}>
-                          {selectedClaimableProduct.name}
+                          {ecCardInfo?.name || 'ZAI Experience Club Card'}
                         </div>
-                        {selectedClaimableProduct.price && (
-                          <div style={{ fontSize: 11, color: C.gray }}>
-                            {selectedClaimableProduct.currency || 'CHF'} {selectedClaimableProduct.price}
-                          </div>
-                        )}
+                        <div style={{ fontSize: 11, color: C.gray }}>
+                          Membership card · selected automatically
+                        </div>
                       </div>
                     </div>
+                  ) : (
+                    <>
+                      <select
+                        value={selectedRwaId}
+                        onChange={e => setSelectedRwaId(e.target.value)}
+                        style={{
+                          width: '100%', padding: '10px 12px', border: bdr,
+                          fontSize: 13, fontFamily: C.font, borderRadius: 4,
+                          background: C.pureWhite,
+                        }}
+                      >
+                        <option value="">— Select a product —</option>
+                        {claimableProducts.map(p => (
+                          <option key={p.rwaId} value={p.rwaId}>
+                            {p.name} {p.price ? `(${p.currency || 'CHF'} ${p.price})` : ''}
+                          </option>
+                        ))}
+                      </select>
+
+                      {/* Preview of selected product */}
+                      {selectedClaimableProduct && (
+                        <div style={{
+                          display: 'flex', gap: 10, alignItems: 'center',
+                          marginTop: 10, padding: '10px 12px',
+                          background: C.surface, borderRadius: 6, border: bdr,
+                        }}>
+                          <ProductThumb
+                            src={selectedClaimableProduct.image}
+                            name={selectedClaimableProduct.name}
+                            size={36}
+                          />
+                          <div>
+                            <div style={{ fontSize: 13, fontWeight: 600 }}>
+                              {selectedClaimableProduct.name}
+                            </div>
+                            {selectedClaimableProduct.price && (
+                              <div style={{ fontSize: 11, color: C.gray }}>
+                                {selectedClaimableProduct.currency || 'CHF'} {selectedClaimableProduct.price}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
 

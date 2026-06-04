@@ -1150,9 +1150,22 @@ export default async function handler(req, res) {
         [adminNote, requestId]
       );
 
-      // Trigger NFT mint if rwaId is available
+      // Determine which RWA to mint: the admin's selection wins, otherwise
+      // the product id stored on the claim. This makes the admin's choice
+      // authoritative and lets free-text claims (no stored id) still mint.
+      const rwaIdToMint = (body.rwaId && String(body.rwaId).trim()) || claimReq.product_id || '';
+
+      // Persist it so the claim record reflects what was minted.
+      if (rwaIdToMint && rwaIdToMint !== claimReq.product_id) {
+        await pool.query(
+          `UPDATE product_claim_requests SET product_id = $1 WHERE id = $2`,
+          [rwaIdToMint, requestId]
+        );
+      }
+
+      // Trigger NFT mint if an RWA id is available
       let mintResult = null;
-      if (claimReq.product_id) {
+      if (rwaIdToMint) {
         try {
           // Prefer the wallet captured on the claim (the user's session
           // wallet, which is also what the collection queries). Fall back
@@ -1169,7 +1182,7 @@ export default async function handler(req, res) {
           if (userWallet) {
             const { status: mintStatus, data: mintData } = await apiFetch(
               RWA_BASE,
-              `/rwa/${claimReq.product_id}/mint`,
+              `/rwa/${rwaIdToMint}/mint`,
               {
                 method: 'POST',
                 body: JSON.stringify({ wallet: userWallet, address: userWallet }),
@@ -1182,8 +1195,10 @@ export default async function handler(req, res) {
               `INSERT INTO product_claims (id, user_id, product_id, claimed_at)
                VALUES ($1, $2, $3, NOW())
                ON CONFLICT (user_id, product_id) DO NOTHING`,
-              [genId(), claimReq.user_id, claimReq.product_id]
+              [genId(), claimReq.user_id, rwaIdToMint]
             );
+          } else {
+            mintResult = { error: 'No wallet on file for this user' };
           }
         } catch (mintErr) {
           console.error('[PRODUCTS] Auto-mint after validation failed:', mintErr.message);
