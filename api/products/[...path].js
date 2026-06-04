@@ -1570,119 +1570,226 @@ export default async function handler(req, res) {
     const uploadUrl = `https://${req.headers.host}/api/products/claim-upload/${token}`;
 
     const html = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ZAI – Upload Proof of Purchase</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: #0d0d0d; color: #fff;
-      display: flex; flex-direction: column; align-items: center;
-      min-height: 100vh; padding: 24px 16px;
-    }
-    h1 { font-size: 20px; margin-bottom: 8px; color: #c9a84c; }
-    p  { font-size: 14px; color: #aaa; margin-bottom: 16px; text-align: center; }
-    .preview { max-width: 100%; max-height: 300px; border-radius: 12px; margin-bottom: 16px; display: none; }
-    input[type=file] { display: none; }
-    .btn {
-      display: inline-block; padding: 14px 28px; border-radius: 10px;
-      font-size: 16px; font-weight: 600; border: none; cursor: pointer;
-      margin: 6px; color: #fff; transition: background 0.2s;
-    }
-    .btn-primary { background: #c9a84c; }
-    .btn-primary:hover { background: #b8943e; }
-    .btn-primary:disabled { background: #555; cursor: not-allowed; }
-    .btn-secondary { background: #333; }
-    .btn-secondary:hover { background: #444; }
-    .status { margin-top: 16px; font-size: 14px; color: #aaa; }
-    .success { color: #4caf50; font-size: 18px; font-weight: 600; }
-    .error { color: #f44336; }
-  </style>
-</head>
-<body>
-  <h1>ZAI Club</h1>
-  <p>Take or select a photo of your proof of purchase</p>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <title>ZAI – Upload Proof of Purchase</title>
+      <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+          font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+          background: #f5f4f0; color: #0a0a0a;
+          display: flex; flex-direction: column; align-items: center;
+          min-height: 100vh; padding: 32px 16px;
+        }
 
-  <img id="preview" class="preview" />
+        .logo {
+          margin-bottom: 24px;
+        }
 
-  <div id="buttons">
-    <label class="btn btn-primary" id="cameraLabel">
-      📷 Take Photo
-      <input type="file" id="cameraInput" accept="image/*" capture="environment" />
-    </label>
-    <label class="btn btn-secondary">
-      🖼️ Choose from Gallery
-      <input type="file" id="galleryInput" accept="image/*" />
-    </label>
-  </div>
+        h1 {
+          font-size: 18px; font-weight: 600; letter-spacing: 0.12em;
+          text-transform: uppercase; margin-bottom: 6px; color: #0a0a0a;
+        }
+        p {
+          font-size: 13px; color: #6a6a6a; margin-bottom: 24px;
+          text-align: center; line-height: 1.5; max-width: 300px;
+        }
 
-  <button id="uploadBtn" class="btn btn-primary" style="display:none">Upload Proof</button>
-  <div id="status" class="status"></div>
+        .preview {
+          max-width: 100%; max-height: 280px; border-radius: 8px;
+          margin-bottom: 20px; display: none;
+          border: 1px solid #e0ddd6;
+        }
 
-  <script>
-    const uploadUrl = "${uploadUrl}";
-    let selectedFile = null;
+        input[type=file] { display: none; }
 
-    function handleFile(e) {
-      const file = e.target.files[0];
-      if (!file) return;
-      selectedFile = file;
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        document.getElementById('preview').src = ev.target.result;
-        document.getElementById('preview').style.display = 'block';
-        document.getElementById('uploadBtn').style.display = 'inline-block';
-      };
-      reader.readAsDataURL(file);
-    }
+        .btn-row {
+          display: flex; gap: 12px; width: 100%; max-width: 340px;
+          margin-bottom: 16px;
+        }
 
-    document.getElementById('cameraInput').addEventListener('change', handleFile);
-    document.getElementById('galleryInput').addEventListener('change', handleFile);
+        .pick-btn {
+          flex: 1; display: flex; flex-direction: column;
+          align-items: center; justify-content: center;
+          padding: 22px 12px; border: 2px dashed #e0ddd6; border-radius: 8px;
+          background: #fff; cursor: pointer; transition: border-color 0.2s;
+          text-decoration: none;
+        }
+        .pick-btn:hover, .pick-btn:active { border-color: #0a0a0a; }
 
-    document.getElementById('uploadBtn').addEventListener('click', async () => {
-      if (!selectedFile) return;
-      const btn = document.getElementById('uploadBtn');
-      const status = document.getElementById('status');
-      btn.disabled = true;
-      btn.textContent = 'Uploading...';
-      status.textContent = '';
+        .pick-btn .icon { margin-bottom: 8px; }
+        .pick-btn .label {
+          font-size: 12px; font-weight: 600; color: #0a0a0a;
+          letter-spacing: 0.04em;
+        }
+        .pick-btn .sub {
+          font-size: 10px; color: #6a6a6a; margin-top: 2px;
+        }
 
-      try {
-        const reader = new FileReader();
-        reader.onload = async (ev) => {
+        .btn {
+          display: inline-block; padding: 14px 32px; border-radius: 4px;
+          font-size: 11px; font-weight: 600; border: none; cursor: pointer;
+          letter-spacing: 0.15em; text-transform: uppercase;
+          font-family: inherit; transition: background 0.2s;
+        }
+        .btn-primary { background: #0a0a0a; color: #f5f4f0; }
+        .btn-primary:hover { background: #2e2e2e; }
+        .btn-primary:disabled { background: #ccc; color: #999; cursor: not-allowed; }
+
+        .btn-outline {
+          background: transparent; color: #0a0a0a;
+          border: 1px solid #e0ddd6; font-size: 11px;
+          padding: 10px 20px; border-radius: 4px; cursor: pointer;
+          letter-spacing: 0.1em; text-transform: uppercase;
+          font-weight: 500; font-family: inherit; transition: all 0.2s;
+        }
+        .btn-outline:hover { border-color: #0a0a0a; }
+
+        #uploadBtn { display: none; margin-top: 4px; }
+
+        .status { margin-top: 20px; font-size: 13px; color: #6a6a6a; text-align: center; }
+        .success { color: #0a0a0a; font-size: 15px; font-weight: 600; }
+        .error { color: #7A222E; }
+
+        .divider {
+          width: 40px; height: 1px; background: #e0ddd6; margin: 0 0 24px;
+        }
+      </style>
+    </head>
+    <body>
+
+      <!-- ZAI Mark -->
+      <div class="logo">
+        <svg width="36" height="36" viewBox="0 0 35 35" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M24.4032 15.5546C24.4032 14.215 25.4329 13.1253 26.7025 13.1253H32.6908C33.9604 13.1253 34.9901 14.215 34.9901 15.5546V19.4435C34.9901 20.7831 33.9604 21.8728 32.6908 21.8728H26.7025C25.4329 21.8728 24.4032 20.7831 24.4032 19.4435V15.5546ZM12.6665 2.29837C12.6665 1.02873 13.6962 -0.000976562 14.9658 -0.000976562H20.0344C21.304 -0.000976562 22.3337 1.02873 22.3337 2.29837V32.6897C22.3337 33.9593 21.304 34.989 20.0344 34.989H14.9658C13.6962 34.989 12.6665 33.9593 12.6665 32.6897V2.29837ZM0.00012207 21.8728L3.00926 16.3144C3.28918 15.8045 3.09924 15.3946 2.58938 15.3946H0.00012207C0.0201164 14.135 1.03983 13.1253 2.29947 13.1253H10.5871V13.1553L7.54797 18.7537C7.26805 19.2635 7.45799 19.6734 7.96785 19.6734H10.5871C10.5271 20.8931 9.5274 21.8728 8.28776 21.8728H0.00012207Z" fill="#0a0a0a"/>
+        </svg>
+      </div>
+
+      <h1>Upload Proof</h1>
+      <p>Take or select a photo of your proof of purchase to claim your product.</p>
+      <div class="divider"></div>
+
+      <img id="preview" class="preview" />
+
+      <div class="btn-row" id="buttons">
+        <!-- Camera button -->
+        <label class="pick-btn" id="cameraLabel">
+          <span class="icon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2v11z" stroke="#0a0a0a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="12" cy="13" r="4" stroke="#0a0a0a" stroke-width="1.5"/>
+            </svg>
+          </span>
+          <span class="label">Take Photo</span>
+          <span class="sub">Open camera</span>
+          <input type="file" id="cameraInput" accept="image/*" capture="environment" />
+        </label>
+
+        <!-- Gallery button -->
+        <label class="pick-btn">
+          <span class="icon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2" stroke="#0a0a0a" stroke-width="1.5"/>
+              <circle cx="8.5" cy="8.5" r="1.5" fill="#0a0a0a"/>
+              <polyline points="21 15 16 10 5 21" stroke="#0a0a0a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </span>
+          <span class="label">Gallery</span>
+          <span class="sub">Choose image</span>
+          <input type="file" id="galleryInput" accept="image/*" />
+        </label>
+      </div>
+
+      <button id="uploadBtn" class="btn btn-primary">Submit Proof</button>
+      <button id="retakeBtn" class="btn-outline" style="display:none; margin-top:8px;">Choose Another</button>
+      <div id="status" class="status"></div>
+
+      <script>
+        const uploadUrl = "${uploadUrl}";
+        let selectedFile = null;
+
+        function handleFile(e) {
+          const file = e.target.files[0];
+          if (!file) return;
+          selectedFile = file;
+          const reader = new FileReader();
+          reader.onload = (ev) => {
+            document.getElementById('preview').src = ev.target.result;
+            document.getElementById('preview').style.display = 'block';
+            document.getElementById('buttons').style.display = 'none';
+            document.getElementById('uploadBtn').style.display = 'inline-block';
+            document.getElementById('retakeBtn').style.display = 'inline-block';
+          };
+          reader.readAsDataURL(file);
+        }
+
+        document.getElementById('cameraInput').addEventListener('change', handleFile);
+        document.getElementById('galleryInput').addEventListener('change', handleFile);
+
+        document.getElementById('retakeBtn').addEventListener('click', () => {
+          selectedFile = null;
+          document.getElementById('preview').style.display = 'none';
+          document.getElementById('preview').src = '';
+          document.getElementById('buttons').style.display = 'flex';
+          document.getElementById('uploadBtn').style.display = 'none';
+          document.getElementById('retakeBtn').style.display = 'none';
+          document.getElementById('status').textContent = '';
+          document.getElementById('cameraInput').value = '';
+          document.getElementById('galleryInput').value = '';
+        });
+
+        document.getElementById('uploadBtn').addEventListener('click', async () => {
+          if (!selectedFile) return;
+          const btn = document.getElementById('uploadBtn');
+          const status = document.getElementById('status');
+          btn.disabled = true;
+          btn.textContent = 'UPLOADING...';
+          status.textContent = '';
+
           try {
-            const res = await fetch(uploadUrl, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ image: ev.target.result }),
-            });
-            const data = await res.json();
-            if (data.success) {
-              document.getElementById('buttons').style.display = 'none';
-              btn.style.display = 'none';
-              status.innerHTML = '<span class="success">✓ Uploaded successfully!</span><br/>You can close this page.';
-            } else {
-              throw new Error(data.error || 'Upload failed');
-            }
+            const reader = new FileReader();
+            reader.onload = async (ev) => {
+              try {
+                const res = await fetch(uploadUrl, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ image: ev.target.result }),
+                });
+                const data = await res.json();
+                if (data.success) {
+                  document.getElementById('buttons').style.display = 'none';
+                  btn.style.display = 'none';
+                  document.getElementById('retakeBtn').style.display = 'none';
+                  status.innerHTML = \`
+                    <div style="margin-top: 8px;">
+                      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="margin-bottom: 8px;">
+                        <circle cx="12" cy="12" r="10" stroke="#0a0a0a" stroke-width="1.5"/>
+                        <polyline points="8 12 11 15 16 9" stroke="#0a0a0a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+                      </svg>
+                      <div class="success">Uploaded successfully</div>
+                      <p style="font-size: 12px; color: #6a6a6a; margin-top: 6px;">You can close this page and return to your dashboard.</p>
+                    </div>\`;
+                } else {
+                  throw new Error(data.error || 'Upload failed');
+                }
+              } catch (err) {
+                status.innerHTML = '<span class="error">' + err.message + '</span>';
+                btn.disabled = false;
+                btn.textContent = 'SUBMIT PROOF';
+              }
+            };
+            reader.readAsDataURL(selectedFile);
           } catch (err) {
-            status.innerHTML = '<span class="error">Upload failed: ' + err.message + '</span>';
+            status.innerHTML = '<span class="error">' + err.message + '</span>';
             btn.disabled = false;
-            btn.textContent = 'Upload Proof';
+            btn.textContent = 'SUBMIT PROOF';
           }
-        };
-        reader.readAsDataURL(selectedFile);
-      } catch (err) {
-        status.innerHTML = '<span class="error">Error: ' + err.message + '</span>';
-        btn.disabled = false;
-        btn.textContent = 'Upload Proof';
-      }
-    });
-  </script>
-</body>
-</html>`;
+        });
+      </script>
+    </body>
+    </html>`;
 
     res.setHeader('Content-Type', 'text/html');
     return res.send(html);
