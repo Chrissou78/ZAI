@@ -220,21 +220,14 @@ const Dashboard: React.FC = () => {
       setError(null);
 
       const productsResponse = await apiService.get(`/products/user/${user?.id}`);
-      const products = productsResponse.data?.data || [];
+      const responseData = productsResponse.data as any;
+      const products = responseData?.data || [];
 
-      // ── Check experience card ──
-      const EC_NAMES = ['experience card'];
-      setHasExperienceCard(
-        products.some((p: any) =>
-          EC_NAMES.some((n) => (p.name || '').toLowerCase().includes(n))
-        )
-      );
-
-      // ── Admin role is derived from context (see isAdmin above), so it
-      // no longer depends on this fetch succeeding ──
+      // ── Check experience card from API response (backend separates it) ──
+      setHasExperienceCard(!!responseData?.experienceCard || !!responseData?.stats?.hasExperienceCard);
 
       const eventsResponse = await apiService.get('/events', { params: { status: 'upcoming' } });
-      const upcomingEvents = eventsResponse.data?.data || [];
+      const upcomingEvents = (eventsResponse.data as any)?.data || [];
 
       const recentActivity: Activity[] = [];
 
@@ -478,6 +471,57 @@ const Dashboard: React.FC = () => {
               {isAdmin ? 'Admin' : hasExperienceCard ? 'Exclusive Member' : 'Member'} since {memberSince}
             </span>
           </div>
+
+          {/* ── Claim Membership CTA (only for non-exclusive, non-admin users) ── */}
+          {!exclusive && (
+            <button
+              onClick={() => navigate('/products', { state: { openMembershipClaim: true } })}
+              style={{
+                marginTop: '1rem',
+                padding: '10px 20px',
+                background: 'transparent',
+                border: '1px solid #c9a84c',
+                color: '#c9a84c',
+                fontSize: '10px',
+                letterSpacing: '0.15em',
+                textTransform: 'uppercase',
+                cursor: 'pointer',
+                fontFamily: "'Inter', sans-serif",
+                fontWeight: 600,
+                transition: 'all 0.2s',
+                borderRadius: 4,
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = '#c9a84c';
+                e.currentTarget.style.color = '#fff';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent';
+                e.currentTarget.style.color = '#c9a84c';
+              }}
+            >
+              Claim your Exclusive Membership
+            </button>
+          )}
+
+          {/* ── Exclusive Member badge (when user has the card) ── */}
+          {hasExperienceCard && !isAdmin && (
+            <div style={{
+              marginTop: '1rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '6px 14px',
+              background: 'linear-gradient(135deg, #c9a84c 0%, #dfc06e 100%)',
+              borderRadius: 4,
+              boxShadow: '0 1px 4px rgba(201,168,76,0.3)',
+            }}>
+              <span style={{ fontSize: 12 }}>★</span>
+              <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#fff' }}>
+                Exclusive Member
+              </span>
+            </div>
+          )}
         </div>
 
         <div
