@@ -1163,14 +1163,6 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: `Claim is already ${claimReq.status}` });
       }
 
-      // Update status
-      await pool.query(
-        `UPDATE product_claim_requests
-         SET status = 'validated', admin_note = $1, updated_at = NOW()
-         WHERE id = $2`,
-        [adminNote, requestId]
-      );
-
       // Determine which RWA to mint: the admin's selection wins, otherwise
       // the product id stored on the claim. This makes the admin's choice
       // authoritative and lets free-text claims (no stored id) still mint.
@@ -1186,6 +1178,7 @@ export default async function handler(req, res) {
 
       // Trigger NFT mint if an RWA id is available
       let mintResult = null;
+      let minted = false;
       if (rwaIdToMint) {
         try {
           // Prefer the wallet captured on the claim (the user's session
@@ -1220,8 +1213,8 @@ export default async function handler(req, res) {
                 : (mintData?.message || mintData?.error || `Mint failed (HTTP ${mintStatus})`),
             };
 
-            // Record the claim only on a successful mint.
             if (mintOk) {
+              minted = true;
               await pool.query(
                 `INSERT INTO product_claims (id, user_id, product_id, claimed_at)
                  VALUES ($1, $2, $3, NOW())
@@ -1236,9 +1229,35 @@ export default async function handler(req, res) {
           console.error('[PRODUCTS] Auto-mint after validation failed:', mintErr.message);
           mintResult = { success: false, error: mintErr.message };
         }
+      } else {
+        mintResult = { success: false, error: 'No product selected to mint' };
       }
 
-      return res.json({ success: true, status: 'validated', mintResult });
+      // Only mark the claim validated once the mint actually succeeded.
+      // On failure the claim stays pending so the admin can fix the cause
+      // and retry, or reject it, instead of it being stuck as "validated".
+      if (minted) {
+        await pool.query(
+          `UPDATE product_claim_requests
+           SET status = 'validated', admin_note = $1, updated_at = NOW()
+           WHERE id = $2`,
+          [adminNote, requestId]
+        );
+      } else {
+        await pool.query(
+          `UPDATE product_claim_requests
+           SET admin_note = $1, updated_at = NOW()
+           WHERE id = $2`,
+          [adminNote, requestId]
+        );
+      }
+
+      return res.json({
+        success: true,
+        status: minted ? 'validated' : 'pending',
+        minted,
+        mintResult,
+      });
     } catch (err) {
       console.error('[PRODUCTS] validate error:', err);
       return res.status(500).json({ error: 'Failed to validate claim request' });
@@ -1280,8 +1299,8 @@ export default async function handler(req, res) {
         return res.status(404).json({ error: 'Claim request not found' });
       }
 
-      if (result.rows[0].status !== 'pending') {
-        return res.status(400).json({ error: `Claim is already ${result.rows[0].status}` });
+      if (result.rows[0].status === 'rejected') {
+        return res.status(400).json({ error: 'Claim is already rejected' });
       }
 
       await pool.query(
