@@ -313,7 +313,19 @@ const Dashboard: React.FC = () => {
       const products = responseData?.data || [];
 
       // ── Check experience card from API response (backend separates it) ──
-      setHasExperienceCard(!!responseData?.experienceCard || !!responseData?.stats?.hasExperienceCard);
+      const ecFound = !!responseData?.experienceCard || !!responseData?.stats?.hasExperienceCard;
+      setHasExperienceCard(ecFound);
+
+      if (ecFound) {
+        // Store the card object if available, or a truthy flag
+        const ecPayload = responseData?.experienceCard
+          ? JSON.stringify(responseData.experienceCard)
+          : 'true';
+        localStorage.setItem('zai_experience_card', ecPayload);
+      } else {
+        localStorage.removeItem('zai_experience_card');
+      }
+      window.dispatchEvent(new Event('zai:experience-card-updated'));
 
       const eventsResponse = await apiService.get('/events', { params: { status: 'upcoming' } });
       const upcomingEvents = (eventsResponse.data as any)?.data || [];
