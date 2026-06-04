@@ -864,8 +864,8 @@ export default async function handler(req, res) {
       // Store in DB
       await pool.query(
         `INSERT INTO product_claim_requests
-          (id, user_id, product_id, product_name, proof_image_cid, proof_image_url, encryption_key, note, status, created_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'pending', NOW())`,
+          (id, user_id, product_id, product_name, proof_image_cid, proof_image_url, encryption_key, note, wallet, status, created_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'pending', NOW())`,
         [
           claimId,
           decoded.userId,
@@ -875,6 +875,7 @@ export default async function handler(req, res) {
           sanitizeString(imageUrl),
           encryptionKey,
           safeNote,
+          decoded.wallet || '',
         ]
       );
 
@@ -1089,12 +1090,17 @@ export default async function handler(req, res) {
       let mintResult = null;
       if (claimReq.product_id) {
         try {
-          // Look up user's wallet
-          const userResult = await pool.query(
-            `SELECT wallet FROM user_profiles WHERE user_id = $1`,
-            [claimReq.user_id]
-          );
-          const userWallet = userResult.rows[0]?.wallet;
+          // Prefer the wallet captured on the claim (the user's session
+          // wallet, which is also what the collection queries). Fall back
+          // to the profile wallet for older claims that predate this.
+          let userWallet = claimReq.wallet;
+          if (!userWallet) {
+            const userResult = await pool.query(
+              `SELECT wallet FROM user_profiles WHERE user_id = $1`,
+              [claimReq.user_id]
+            );
+            userWallet = userResult.rows[0]?.wallet;
+          }
 
           if (userWallet) {
             const { status: mintStatus, data: mintData } = await apiFetch(

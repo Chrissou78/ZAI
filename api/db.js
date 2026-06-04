@@ -219,6 +219,7 @@ export async function initDB() {
       ALTER TABLE product_claim_requests ADD COLUMN IF NOT EXISTS product_id TEXT;
       ALTER TABLE product_claim_requests ADD COLUMN IF NOT EXISTS encryption_key TEXT DEFAULT '';
       ALTER TABLE product_claim_requests ADD COLUMN IF NOT EXISTS note TEXT DEFAULT '';
+      ALTER TABLE product_claim_requests ADD COLUMN IF NOT EXISTS wallet TEXT DEFAULT '';
       ALTER TABLE product_claim_requests ALTER COLUMN proof_image_url DROP NOT NULL;
     `);
 
