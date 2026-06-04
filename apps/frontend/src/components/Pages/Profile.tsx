@@ -66,6 +66,10 @@ const Profile: React.FC = () => {
     name: '', image: '', tokenAddress: '',
   });
 
+  /* ── Exclusive check ── */
+  const isAdmin = (user as any)?.role === 'admin' || (user as any)?.role === 'owner';
+  const exclusive = card.isActive || isAdmin;
+
   /* ── Load Experience Card data ── */
   useEffect(() => {
     const loadCardFromStorage = () => {
@@ -621,136 +625,140 @@ const Profile: React.FC = () => {
             </div>
           )}
 
-          {/* ═══ EXPERIENCE CARD SECTION ═══ */}
-          <div
-            style={{
-              ...label,
-              color: C.black,
-              fontSize: '11px',
-              marginTop: '3rem',
-              marginBottom: '1.5rem',
-              paddingBottom: '0.75rem',
-              borderBottom: `1px solid ${C.border}`,
-            }}
-          >
-            Experience Card
-          </div>
-
-          {/* Card visual */}
-          <div
-            style={{
-              background: C.black,
-              borderRadius: '12px',
-              padding: '2rem 2rem 1.75rem',
-              marginBottom: '1.5rem',
-              position: 'relative',
-              overflow: 'hidden',
-            }}
-          >
-            {/* Decorative gradient */}
-            <div style={{
-              position: 'absolute', top: 0, right: 0, width: '50%', height: '100%',
-              background: 'linear-gradient(135deg, transparent 30%, rgba(201,168,76,0.06) 100%)',
-              pointerEvents: 'none',
-            }} />
-            {/* Chip icon */}
-            <div
-              style={{
-                width: '36px',
-                height: '28px',
-                borderRadius: '4px',
-                border: '1px solid rgba(255,255,255,0.25)',
-                background: 'linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05))',
-                marginBottom: '1.25rem',
-              }}
-            />
-            <div style={{
-              fontSize: '16px',
-              fontWeight: 400,
-              color: '#fff',
-              letterSpacing: '0.2em',
-              fontFamily: "'Courier New', monospace",
-            }}>
-              {card.cardId
-                ? `ZAI-${card.cardId.slice(0, 4)} ···· ${card.cardId.slice(-4)}`
-                : 'ZAI-2024 ···· 0000'
-              }
-            </div>
-            <div style={{
-              fontSize: '10px',
-              letterSpacing: '0.15em',
-              textTransform: 'uppercase',
-              color: card.isActive ? '#2a9d4e' : C.gray,
-              marginTop: '6px',
-            }}>
-              {card.isActive ? '● Active' : '● Not claimed'}
-            </div>
-            {card.isActive && card.name && (
-              <div style={{
-                fontSize: '10px',
-                letterSpacing: '0.1em',
-                color: 'rgba(255,255,255,0.5)',
-                marginTop: '12px',
-                textTransform: 'uppercase',
-              }}>
-                {card.name}
+          {/* ═══ EXPERIENCE CARD SECTION — exclusive members & admins only ═══ */}
+          {exclusive && (
+            <>
+              <div
+                style={{
+                  ...label,
+                  color: C.black,
+                  fontSize: '11px',
+                  marginTop: '3rem',
+                  marginBottom: '1.5rem',
+                  paddingBottom: '0.75rem',
+                  borderBottom: `1px solid ${C.border}`,
+                }}
+              >
+                Experience Card
               </div>
-            )}
-          </div>
 
-          {/* Card detail rows */}
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            border: `1px solid ${C.border}`,
-          }}>
-            <div style={{
-              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-              padding: '1.25rem', borderBottom: `1px solid ${C.border}`,
-            }}>
-              <div>
-                <div style={{ fontSize: '13px', color: C.black, fontWeight: 400 }}>Status</div>
-                <div style={{ fontSize: '11px', color: C.gray, marginTop: '3px' }}>NFC Experience Card</div>
-              </div>
-              <span style={{
-                fontSize: '10px', letterSpacing: '0.2em', textTransform: 'uppercase',
-                color: card.isActive ? '#2a9d4e' : C.gray, fontWeight: 500,
-              }}>
-                {card.isActive ? 'Active' : 'Inactive'}
-              </span>
-            </div>
-
-            <div style={{
-              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-              padding: '1.25rem',
-              borderBottom: card.isActive && card.tokenAddress ? `1px solid ${C.border}` : 'none',
-            }}>
-              <div>
-                <div style={{ fontSize: '13px', color: C.black, fontWeight: 400 }}>NFC</div>
-                <div style={{ fontSize: '11px', color: C.gray, marginTop: '3px' }}>Contactless product claim and access</div>
-              </div>
-              <span style={{
-                fontSize: '10px', letterSpacing: '0.2em', textTransform: 'uppercase',
-                color: card.nfcEnabled && card.isActive ? '#2a9d4e' : C.gray, fontWeight: 500,
-              }}>
-                {card.nfcEnabled && card.isActive ? 'Enabled' : 'Disabled'}
-              </span>
-            </div>
-
-            {card.isActive && card.tokenAddress && (
-              <div style={{ padding: '1.25rem' }}>
-                <div style={{ fontSize: '13px', color: C.black, fontWeight: 400, marginBottom: '3px' }}>
-                  Contract
+              {/* Card visual */}
+              <div
+                style={{
+                  background: C.black,
+                  borderRadius: '12px',
+                  padding: '2rem 2rem 1.75rem',
+                  marginBottom: '1.5rem',
+                  position: 'relative',
+                  overflow: 'hidden',
+                }}
+              >
+                {/* Decorative gradient */}
+                <div style={{
+                  position: 'absolute', top: 0, right: 0, width: '50%', height: '100%',
+                  background: 'linear-gradient(135deg, transparent 30%, rgba(201,168,76,0.06) 100%)',
+                  pointerEvents: 'none',
+                }} />
+                {/* Chip icon */}
+                <div
+                  style={{
+                    width: '36px',
+                    height: '28px',
+                    borderRadius: '4px',
+                    border: '1px solid rgba(255,255,255,0.25)',
+                    background: 'linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05))',
+                    marginBottom: '1.25rem',
+                  }}
+                />
+                <div style={{
+                  fontSize: '16px',
+                  fontWeight: 400,
+                  color: '#fff',
+                  letterSpacing: '0.2em',
+                  fontFamily: "'Courier New', monospace",
+                }}>
+                  {card.cardId
+                    ? `ZAI-${card.cardId.slice(0, 4)} ···· ${card.cardId.slice(-4)}`
+                    : 'ZAI-2024 ···· 0000'
+                  }
                 </div>
                 <div style={{
-                  fontSize: '11px', color: C.gray, fontFamily: 'monospace',
-                  wordBreak: 'break-all',
+                  fontSize: '10px',
+                  letterSpacing: '0.15em',
+                  textTransform: 'uppercase',
+                  color: card.isActive ? '#2a9d4e' : C.gray,
+                  marginTop: '6px',
                 }}>
-                  {card.tokenAddress}
+                  {card.isActive ? '● Active' : '● Not claimed'}
                 </div>
+                {card.isActive && card.name && (
+                  <div style={{
+                    fontSize: '10px',
+                    letterSpacing: '0.1em',
+                    color: 'rgba(255,255,255,0.5)',
+                    marginTop: '12px',
+                    textTransform: 'uppercase',
+                  }}>
+                    {card.name}
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+
+              {/* Card detail rows */}
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                border: `1px solid ${C.border}`,
+              }}>
+                <div style={{
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  padding: '1.25rem', borderBottom: `1px solid ${C.border}`,
+                }}>
+                  <div>
+                    <div style={{ fontSize: '13px', color: C.black, fontWeight: 400 }}>Status</div>
+                    <div style={{ fontSize: '11px', color: C.gray, marginTop: '3px' }}>NFC Experience Card</div>
+                  </div>
+                  <span style={{
+                    fontSize: '10px', letterSpacing: '0.2em', textTransform: 'uppercase',
+                    color: card.isActive ? '#2a9d4e' : C.gray, fontWeight: 500,
+                  }}>
+                    {card.isActive ? 'Active' : 'Inactive'}
+                  </span>
+                </div>
+
+                <div style={{
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  padding: '1.25rem',
+                  borderBottom: card.isActive && card.tokenAddress ? `1px solid ${C.border}` : 'none',
+                }}>
+                  <div>
+                    <div style={{ fontSize: '13px', color: C.black, fontWeight: 400 }}>NFC</div>
+                    <div style={{ fontSize: '11px', color: C.gray, marginTop: '3px' }}>Contactless product claim and access</div>
+                  </div>
+                  <span style={{
+                    fontSize: '10px', letterSpacing: '0.2em', textTransform: 'uppercase',
+                    color: card.nfcEnabled && card.isActive ? '#2a9d4e' : C.gray, fontWeight: 500,
+                  }}>
+                    {card.nfcEnabled && card.isActive ? 'Enabled' : 'Disabled'}
+                  </span>
+                </div>
+
+                {card.isActive && card.tokenAddress && (
+                  <div style={{ padding: '1.25rem' }}>
+                    <div style={{ fontSize: '13px', color: C.black, fontWeight: 400, marginBottom: '3px' }}>
+                      Contract
+                    </div>
+                    <div style={{
+                      fontSize: '11px', color: C.gray, fontFamily: 'monospace',
+                      wordBreak: 'break-all',
+                    }}>
+                      {card.tokenAddress}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
 
         </div>
       </div>
