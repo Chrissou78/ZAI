@@ -13,7 +13,9 @@ interface ClaimRequest {
   userName: string;
   userEmail: string;
   rwaId: string | null;
+  productId: string | null;
   productName: string;
+  productImage: string;
   proofImageUrl: string;
   status: 'pending' | 'minting' | 'validated' | 'rejected' | 'error';
   adminNote: string;
@@ -52,11 +54,11 @@ const sectionLabel: React.CSSProperties = {
 };
 
 const statusColors: Record<string, { bg: string; color: string }> = {
-  pending: { bg: '#fef9e7', color: '#b8860b' },
-  minting: { bg: '#e8f0fe', color: '#1967d2' },
+  pending:   { bg: '#fef9e7', color: '#b8860b' },
+  minting:   { bg: '#e8f0fe', color: '#1967d2' },
   validated: { bg: '#e8f5e9', color: '#2e7d32' },
-  rejected: { bg: '#fce8e6', color: '#c62828' },
-  error: { bg: '#fce8e6', color: '#c62828' },
+  rejected:  { bg: '#fce8e6', color: '#c62828' },
+  error:     { bg: '#fce8e6', color: '#c62828' },
 };
 
 /* ───── Helpers ───── */
@@ -65,6 +67,41 @@ const formatDate = (d: string) => {
   const dt = new Date(d);
   if (isNaN(dt.getTime())) return '—';
   return dt.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+};
+
+/* ───── Product Thumbnail sub-component ───── */
+
+const ProductThumb: React.FC<{ src?: string; name?: string; size?: number }> = ({
+  src,
+  name,
+  size = 40,
+}) => {
+  const [failed, setFailed] = useState(false);
+
+  if (src && !failed) {
+    return (
+      <img
+        src={src}
+        alt={name || 'Product'}
+        onError={() => setFailed(true)}
+        style={{
+          width: size, height: size, borderRadius: 4,
+          objectFit: 'cover', border: bdr, flexShrink: 0,
+        }}
+      />
+    );
+  }
+
+  return (
+    <div style={{
+      width: size, height: size, borderRadius: 4,
+      background: C.surface, border: bdr,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontSize: size * 0.4, color: C.border, flexShrink: 0,
+    }}>
+      &#x2B21;
+    </div>
+  );
 };
 
 /* ───── Component ───── */
@@ -122,7 +159,7 @@ const Admin: React.FC = () => {
 
   const openReview = (claim: ClaimRequest) => {
     setSelectedClaim(claim);
-    setSelectedRwaId(claim.rwaId || '');
+    setSelectedRwaId(claim.rwaId || claim.productId || '');
     setAdminNote(claim.adminNote || '');
     setActionError(null);
     fetchClaimableProducts();
@@ -135,11 +172,19 @@ const Admin: React.FC = () => {
     try {
       const res = await apiService.post(`/products/claim-requests/${selectedClaim.id}/validate`, {
         rwaId: selectedRwaId,
-        note: adminNote,
+        adminNote,
       });
       if (res.data?.success) {
-        setSelectedClaim(null);
-        fetchClaims();
+        // Show mint result feedback if available
+        const mintResult = (res.data as any).mintResult;
+        if (mintResult && !mintResult.success) {
+          setActionError(`Validated but mint issue: ${mintResult.error || 'Unknown error'}. Check admin notes.`);
+          // Still refresh the list since the status changed
+          fetchClaims();
+        } else {
+          setSelectedClaim(null);
+          fetchClaims();
+        }
       } else {
         setActionError(res.data?.error || 'Validation failed');
       }
@@ -156,7 +201,7 @@ const Admin: React.FC = () => {
     setActionError(null);
     try {
       const res = await apiService.post(`/products/claim-requests/${selectedClaim.id}/reject`, {
-        note: adminNote,
+        adminNote,
       });
       if (res.data?.success) {
         setSelectedClaim(null);
@@ -170,6 +215,9 @@ const Admin: React.FC = () => {
       setActionLoading(false);
     }
   };
+
+  // Find the selected claimable product for preview in the modal
+  const selectedClaimableProduct = claimableProducts.find(p => p.rwaId === selectedRwaId);
 
   if (!isAdminUser) {
     return (
@@ -195,7 +243,7 @@ const Admin: React.FC = () => {
         </div>
 
         {/* Filter tabs */}
-        <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 24, flexWrap: 'wrap' }}>
           {['pending', 'validated', 'rejected', 'all'].map(f => (
             <button
               key={f}
@@ -211,6 +259,14 @@ const Admin: React.FC = () => {
               }}
             >
               {f}
+              {f === 'pending' && claims.length > 0 && filter === 'pending' && (
+                <span style={{
+                  marginLeft: 6, fontSize: 9, fontWeight: 700,
+                  background: 'rgba(255,255,255,0.2)', padding: '1px 5px', borderRadius: 3,
+                }}>
+                  {claims.length}
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -255,14 +311,48 @@ const Admin: React.FC = () => {
                     display: 'flex', gap: 16, padding: 16,
                     border: bdr, borderRadius: 8, background: C.pureWhite,
                     cursor: 'pointer', transition: 'box-shadow 0.2s',
+                    alignItems: 'center',
                   }}
                   onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08)')}
                   onMouseLeave={e => (e.currentTarget.style.boxShadow = 'none')}
                 >
-                  {/* Proof thumbnail */}
+                  {/* Product thumbnail */}
+                  <ProductThumb
+                    src={claim.productImage}
+                    name={claim.productName}
+                    size={56}
+                  />
+
+                  {/* Product name + user info */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                      <span style={{
+                        fontSize: 14, fontWeight: 600,
+                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                      }}>
+                        {claim.productName || 'Unnamed product'}
+                      </span>
+                      <span style={{
+                        fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase',
+                        padding: '2px 8px', borderRadius: 3, flexShrink: 0,
+                        background: sc.bg, color: sc.color,
+                      }}>
+                        {claim.status}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: 12, color: C.mid, marginBottom: 2 }}>
+                      {claim.userName || claim.userId}
+                    </div>
+                    <div style={{ fontSize: 11, color: C.gray }}>
+                      Submitted {formatDate(claim.createdAt)}
+                    </div>
+                  </div>
+
+                  {/* Proof thumbnail (small) */}
                   <div style={{
-                    width: 80, height: 80, borderRadius: 6, overflow: 'hidden',
+                    width: 48, height: 48, borderRadius: 4, overflow: 'hidden',
                     background: C.surface, flexShrink: 0,
+                    border: bdr,
                   }}>
                     <AuthImage
                       src={`/api/products/claim-proof/${claim.id}`}
@@ -271,31 +361,8 @@ const Admin: React.FC = () => {
                     />
                   </div>
 
-                  {/* Info */}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                      <span style={{ fontSize: 14, fontWeight: 600 }}>{claim.userName}</span>
-                      <span style={{
-                        fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase',
-                        padding: '2px 8px', borderRadius: 3,
-                        background: sc.bg, color: sc.color,
-                      }}>
-                        {claim.status}
-                      </span>
-                    </div>
-                    {claim.productName && (
-                      <div style={{ fontSize: 12, color: C.gray, marginBottom: 2 }}>{claim.productName}</div>
-                    )}
-                    <div style={{ fontSize: 11, color: C.gray }}>
-                      Submitted {formatDate(claim.createdAt)}
-                    </div>
-                    {claim.userEmail && (
-                      <div style={{ fontSize: 11, color: C.gray }}>{claim.userEmail}</div>
-                    )}
-                  </div>
-
                   {/* Arrow */}
-                  <div style={{ display: 'flex', alignItems: 'center', color: C.gray, fontSize: 18 }}>→</div>
+                  <div style={{ display: 'flex', alignItems: 'center', color: C.gray, fontSize: 18, flexShrink: 0 }}>→</div>
                 </div>
               );
             })}
@@ -307,17 +374,46 @@ const Admin: React.FC = () => {
       {selectedClaim && (
         <Modal isOpen onClose={() => setSelectedClaim(null)} title="Review Claim Request">
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+            {/* Product info card */}
+            <div style={{
+              display: 'flex', gap: 14, padding: 16,
+              background: C.surface, borderRadius: 8, border: bdr,
+            }}>
+              <ProductThumb
+                src={selectedClaim.productImage}
+                name={selectedClaim.productName}
+                size={64}
+              />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 4 }}>
+                  {selectedClaim.productName || 'Unnamed product'}
+                </div>
+                <div style={{ fontSize: 12, color: C.gray, marginBottom: 2 }}>
+                  Claim ID: <span style={{ fontFamily: 'monospace', fontSize: 11 }}>{selectedClaim.id}</span>
+                </div>
+                <div style={{ fontSize: 12, color: C.gray }}>
+                  Submitted {formatDate(selectedClaim.createdAt)}
+                </div>
+              </div>
+            </div>
+
             {/* User info */}
-            <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-              <div>
-                <div style={{ fontSize: 15, fontWeight: 600 }}>{selectedClaim.userName}</div>
-                <div style={{ fontSize: 12, color: C.gray }}>{selectedClaim.userEmail}</div>
-                <div style={{ fontSize: 11, color: C.gray }}>ID: {selectedClaim.userId}</div>
-                {selectedClaim.productName && (
-                  <div style={{ fontSize: 13, fontWeight: 500, color: C.black, marginTop: 6 }}>
-                    Product: {selectedClaim.productName}
-                  </div>
+            <div>
+              <div style={{ ...lbl, marginBottom: 8 }}>Submitted By</div>
+              <div style={{
+                padding: '12px 16px', borderRadius: 8, border: bdr,
+                background: C.pureWhite,
+              }}>
+                <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 2 }}>
+                  {selectedClaim.userName || selectedClaim.userId}
+                </div>
+                {selectedClaim.userEmail && (
+                  <div style={{ fontSize: 12, color: C.gray }}>{selectedClaim.userEmail}</div>
                 )}
+                <div style={{ fontSize: 11, color: C.gray, marginTop: 2, fontFamily: 'monospace' }}>
+                  {selectedClaim.userId}
+                </div>
               </div>
             </div>
 
@@ -327,7 +423,7 @@ const Admin: React.FC = () => {
               <div
                 style={{
                   borderRadius: 8, overflow: 'hidden', cursor: 'zoom-in',
-                  background: C.surface, maxHeight: 300,
+                  background: C.surface, maxHeight: 300, border: bdr,
                 }}
                 onClick={() => setZoomImage(`/api/products/claim-proof/${selectedClaim.id}`)}
               >
@@ -340,7 +436,7 @@ const Admin: React.FC = () => {
               <div style={{ fontSize: 11, color: C.gray, marginTop: 4 }}>Click to zoom</div>
             </div>
 
-            {/* Status */}
+            {/* Status (for non-pending claims) */}
             {selectedClaim.status !== 'pending' && (
               <div style={{
                 padding: '12px 16px', borderRadius: 8,
@@ -350,7 +446,14 @@ const Admin: React.FC = () => {
               }}>
                 Status: {selectedClaim.status.toUpperCase()}
                 {selectedClaim.adminNote && (
-                  <div style={{ fontWeight: 400, marginTop: 4, fontSize: 12 }}>Note: {selectedClaim.adminNote}</div>
+                  <div style={{ fontWeight: 400, marginTop: 4, fontSize: 12 }}>
+                    Note: {selectedClaim.adminNote}
+                  </div>
+                )}
+                {selectedClaim.mintTx && (
+                  <div style={{ fontWeight: 400, marginTop: 4, fontSize: 11, fontFamily: 'monospace' }}>
+                    Mint TX: {selectedClaim.mintTx}
+                  </div>
                 )}
               </div>
             )}
@@ -358,20 +461,7 @@ const Admin: React.FC = () => {
             {/* Admin actions (only for pending claims) */}
             {selectedClaim.status === 'pending' && (
               <>
-                {/* User's product name (if provided) */}
-                {selectedClaim.productName && (
-                  <div style={{
-                    padding: '12px 16px', borderRadius: 8,
-                    background: C.surface, border: bdr,
-                  }}>
-                    <div style={{ ...lbl, marginBottom: 4 }}>Product Name (from user)</div>
-                    <div style={{ fontSize: 14, fontWeight: 500, color: C.black }}>
-                      {selectedClaim.productName}
-                    </div>
-                  </div>
-                )}
-
-                {/* Product selection */}
+                {/* Product selection with preview */}
                 <div>
                   <div style={{ ...lbl, marginBottom: 8 }}>Select Product to Mint</div>
                   <select
@@ -380,6 +470,7 @@ const Admin: React.FC = () => {
                     style={{
                       width: '100%', padding: '10px 12px', border: bdr,
                       fontSize: 13, fontFamily: C.font, borderRadius: 4,
+                      background: C.pureWhite,
                     }}
                   >
                     <option value="">— Select a product —</option>
@@ -389,6 +480,31 @@ const Admin: React.FC = () => {
                       </option>
                     ))}
                   </select>
+
+                  {/* Preview of selected product */}
+                  {selectedClaimableProduct && (
+                    <div style={{
+                      display: 'flex', gap: 10, alignItems: 'center',
+                      marginTop: 10, padding: '10px 12px',
+                      background: C.surface, borderRadius: 6, border: bdr,
+                    }}>
+                      <ProductThumb
+                        src={selectedClaimableProduct.image}
+                        name={selectedClaimableProduct.name}
+                        size={36}
+                      />
+                      <div>
+                        <div style={{ fontSize: 13, fontWeight: 600 }}>
+                          {selectedClaimableProduct.name}
+                        </div>
+                        {selectedClaimableProduct.price && (
+                          <div style={{ fontSize: 11, color: C.gray }}>
+                            {selectedClaimableProduct.currency || 'CHF'} {selectedClaimableProduct.price}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Admin note */}
@@ -407,7 +523,12 @@ const Admin: React.FC = () => {
                 </div>
 
                 {actionError && (
-                  <div style={{ color: C.red, fontSize: 13 }}>{actionError}</div>
+                  <div style={{
+                    color: C.red, fontSize: 13, padding: '10px 14px',
+                    background: '#fce8e6', borderRadius: 6,
+                  }}>
+                    {actionError}
+                  </div>
                 )}
 
                 {/* Action buttons */}
@@ -422,6 +543,7 @@ const Admin: React.FC = () => {
                       background: 'transparent', color: C.red,
                       cursor: actionLoading ? 'default' : 'pointer',
                       fontFamily: C.font, opacity: actionLoading ? 0.5 : 1,
+                      transition: 'all 0.2s',
                     }}
                   >
                     Reject
@@ -437,6 +559,7 @@ const Admin: React.FC = () => {
                       color: '#fff',
                       cursor: (!selectedRwaId || actionLoading) ? 'default' : 'pointer',
                       fontFamily: C.font, opacity: actionLoading ? 0.5 : 1,
+                      transition: 'all 0.2s',
                     }}
                   >
                     {actionLoading ? 'Processing...' : 'Validate & Mint'}

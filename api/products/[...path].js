@@ -935,11 +935,9 @@ export default async function handler(req, res) {
       const isAdminUser = await db.isAdmin(decoded);
 
       if (mine === 'true' || !isAdminUser) {
-        // User's own claims
         query = `SELECT * FROM product_claim_requests WHERE user_id = $1 ORDER BY created_at DESC`;
         params = [decoded.userId];
       } else {
-        // Admin: all claims
         query = `SELECT * FROM product_claim_requests ORDER BY created_at DESC`;
         params = [];
       }
@@ -955,6 +953,23 @@ export default async function handler(req, res) {
 
       const result = await pool.query(query, params);
 
+      // ── Load RWA catalog once for thumbnail resolution ──
+      let rwaMap = new Map();
+      try {
+        rwaMap = await getZaiRwaMap();
+      } catch (rwaErr) {
+        console.error('[PRODUCTS] RWA map load for thumbnails failed:', rwaErr.message);
+      }
+
+      // ── Build a quick lookup: rwaId → image ──
+      const rwaByIdMap = new Map();
+      const rwaByNameMap = new Map();
+      for (const [, rwa] of rwaMap) {
+        const img = rwa.image || rwa.data?.image?.value || '';
+        if (rwa.id) rwaByIdMap.set(rwa.id, img);
+        if (rwa.name) rwaByNameMap.set(rwa.name.toLowerCase(), img);
+      }
+
       const data = result.rows.map(row => {
         const item = {
           id: row.id,
@@ -967,7 +982,21 @@ export default async function handler(req, res) {
           createdAt: row.created_at,
           updatedAt: row.updated_at,
           proofImageUrl: resolveProofImageUrl(row),
+          productImage: '',
         };
+
+        // ── Resolve product thumbnail ──
+        // 1. Try direct match by product_id (which stores the rwaId)
+        if (row.product_id && rwaByIdMap.has(row.product_id)) {
+          item.productImage = rwaByIdMap.get(row.product_id);
+        }
+        // 2. Fallback: match by product name (case-insensitive)
+        if (!item.productImage && row.product_name) {
+          const nameLower = row.product_name.toLowerCase();
+          if (rwaByNameMap.has(nameLower)) {
+            item.productImage = rwaByNameMap.get(nameLower);
+          }
+        }
 
         // Only admin gets the decryption key
         if (isAdminUser && row.encryption_key) {
@@ -1058,7 +1087,6 @@ export default async function handler(req, res) {
     const decoded = authenticate(req);
     if (!decoded) return res.status(401).json({ error: 'Unauthorized' });
 
-    // ── Admin DB check ──
     const db = await getDB();
     if (!db) return res.status(503).json({ error: 'Database not available' });
     await db.initDB();
@@ -1067,7 +1095,6 @@ export default async function handler(req, res) {
     const isAdminUser = await db.isAdmin(decoded);
     if (!isAdminUser) return res.status(403).json({ error: 'Admin access required' });
 
-    // ── Rate limit: 20 req/min ──
     if (applyRateLimit(req, res, 'products:r7', 20, 60000)) return;
 
     const requestId = validateMatch[1];
@@ -1075,8 +1102,9 @@ export default async function handler(req, res) {
     try {
       const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
       const adminNote = sanitizeString(body.adminNote || '');
+      // Admin can optionally override which RWA to mint
+      const overrideRwaId = body.rwaId ? sanitizeString(body.rwaId) : null;
 
-      // Fetch the claim request
       const claimResult = await pool.query(
         `SELECT * FROM product_claim_requests WHERE id = $1`,
         [requestId]
@@ -1092,7 +1120,37 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: `Claim is already ${claimReq.status}` });
       }
 
-      // Update status
+      // ── Resolve the RWA ID to mint ──
+      // The product_id column may store an rwaId directly, or we need to
+      // look it up from the RWA catalog by matching the product name.
+      let rwaIdToMint = overrideRwaId || claimReq.product_id;
+
+      // If no rwaId, try to find from RWA catalog by name
+      if (!rwaIdToMint && claimReq.product_name) {
+        try {
+          const rwaMap = await getZaiRwaMap();
+          for (const [, rwa] of rwaMap) {
+            if ((rwa.name || '').toLowerCase() === (claimReq.product_name || '').toLowerCase()) {
+              rwaIdToMint = rwa.id;
+              break;
+            }
+          }
+        } catch (e) {
+          console.error('[PRODUCTS] RWA name lookup failed:', e.message);
+        }
+      }
+
+      // ── Resolve the user's wallet ──
+      let userWallet = claimReq.wallet;
+      if (!userWallet) {
+        const userResult = await pool.query(
+          `SELECT wallet FROM user_profiles WHERE user_id = $1`,
+          [claimReq.user_id]
+        );
+        userWallet = userResult.rows[0]?.wallet;
+      }
+
+      // Update status to validated
       await pool.query(
         `UPDATE product_claim_requests
          SET status = 'validated', admin_note = $1, updated_at = NOW()
@@ -1100,51 +1158,70 @@ export default async function handler(req, res) {
         [adminNote, requestId]
       );
 
-      // Trigger NFT mint if rwaId is available
+      // ── Trigger NFT mint ──
       let mintResult = null;
-      if (claimReq.product_id) {
+      if (rwaIdToMint && userWallet) {
         try {
-          // Prefer the wallet captured on the claim (the user's session
-          // wallet, which is also what the collection queries). Fall back
-          // to the profile wallet for older claims that predate this.
-          let userWallet = claimReq.wallet;
-          if (!userWallet) {
-            const userResult = await pool.query(
-              `SELECT wallet FROM user_profiles WHERE user_id = $1`,
-              [claimReq.user_id]
-            );
-            userWallet = userResult.rows[0]?.wallet;
-          }
+          console.log('[PRODUCTS] Minting RWA', rwaIdToMint, 'to wallet', userWallet);
 
-          if (userWallet) {
-            const { status: mintStatus, data: mintData } = await apiFetch(
-              RWA_BASE,
-              `/rwa/${claimReq.product_id}/mint`,
-              {
-                method: 'POST',
-                body: JSON.stringify({ address: userWallet }),
-              }
-            );
-            mintResult = { status: mintStatus, data: mintData };
+          const { status: mintStatus, data: mintData } = await apiFetch(
+            RWA_BASE,
+            `/rwa/${rwaIdToMint}/mint`,
+            {
+              method: 'POST',
+              body: JSON.stringify({ address: userWallet }),
+            }
+          );
 
-            // Record claim
+          console.log('[PRODUCTS] Mint response:', mintStatus, JSON.stringify(mintData));
+
+          if (mintStatus >= 400) {
+            // Mint failed — mark the claim so admin can see
+            mintResult = { success: false, status: mintStatus, error: mintData };
+            await pool.query(
+              `UPDATE product_claim_requests
+               SET admin_note = $1, updated_at = NOW()
+               WHERE id = $2`,
+              [adminNote + ` [MINT FAILED: HTTP ${mintStatus}]`, requestId]
+            );
+          } else {
+            mintResult = { success: true, status: mintStatus, data: mintData };
+
+            // Record the claim
             await pool.query(
               `INSERT INTO product_claims (id, user_id, product_id, claimed_at)
                VALUES ($1, $2, $3, NOW())
                ON CONFLICT (user_id, product_id) DO NOTHING`,
-              [genId(), claimReq.user_id, claimReq.product_id]
+              [genId(), claimReq.user_id, rwaIdToMint]
             );
           }
         } catch (mintErr) {
-          console.error('[PRODUCTS] Auto-mint after validation failed:', mintErr.message);
-          mintResult = { error: mintErr.message };
+          console.error('[PRODUCTS] Mint after validation failed:', mintErr);
+          mintResult = { success: false, error: mintErr.message };
+          await pool.query(
+            `UPDATE product_claim_requests
+             SET admin_note = $1, updated_at = NOW()
+             WHERE id = $2`,
+            [adminNote + ` [MINT ERROR: ${mintErr.message}]`, requestId]
+          );
         }
+      } else {
+        console.warn('[PRODUCTS] Cannot mint: rwaId=', rwaIdToMint, 'wallet=', userWallet);
+        mintResult = {
+          success: false,
+          error: !rwaIdToMint ? 'No RWA ID resolved' : 'No wallet address found',
+        };
       }
 
-      return res.json({ success: true, status: 'validated', mintResult });
+      return res.json({
+        success: true,
+        status: 'validated',
+        mintResult,
+        debug: { rwaIdToMint, userWallet: userWallet ? '***' + userWallet.slice(-6) : null },
+      });
     } catch (err) {
       console.error('[PRODUCTS] validate error:', err);
-      return res.status(500).json({ error: 'Failed to validate claim request' });
+      return res.status(500).json({ error: 'Failed to validate claim request', detail: err.message });
     }
   }
 
@@ -1570,6 +1647,44 @@ export default async function handler(req, res) {
 
     res.setHeader('Content-Type', 'text/html');
     return res.send(html);
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // GET /api/products/experience-card — get the Experience Card RWA
+  // ══════════════════════════════════════════════════════════════
+  if (fullPath === 'experience-card' && req.method === 'GET') {
+    try {
+      const rwaMap = await getZaiRwaMap();
+      const currencyMap = await getCurrencyMap();
+      const EC_RE = /experience\s*card/i;
+
+      for (const [addr, rwa] of rwaMap) {
+        if (EC_RE.test(rwa.name || '')) {
+          return res.json({
+            success: true,
+            data: {
+              id: rwa.id,
+              rwaId: rwa.id,
+              name: rwa.name,
+              contractAddress: addr,
+              description: rwa.description || '',
+              image: rwa.image || rwa.data?.image?.value || '',
+              price: formatPrice(rwa.data?.price?.value || ''),
+              priceRaw: rwa.data?.price?.value || '',
+              currency: resolveCurrency(
+                rwa.currencyId || rwa.data?.currency?.value || '',
+                currencyMap
+              ),
+            },
+          });
+        }
+      }
+
+      return res.status(404).json({ error: 'Experience Card not found in catalog' });
+    } catch (err) {
+      console.error('[PRODUCTS] experience-card error:', err);
+      return res.status(500).json({ error: 'Failed to fetch Experience Card' });
+    }
   }
 
   // ══════════════════════════════════════════════════════════════
