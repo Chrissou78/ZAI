@@ -808,8 +808,10 @@ export default async function handler(req, res) {
       const {
         productId,
         productName,
-        proofImage,     // base64 string
-        proofImageCid,  // pre-uploaded IPFS CID
+        proofImage,      // base64 string
+        proofImageCid,   // pre-uploaded IPFS CID
+        preUploadedCid,  // phone-upload flow: IPFS CID
+        preUploadedKey,  // phone-upload flow: encryption key
         note,
       } = body;
 
@@ -822,8 +824,8 @@ export default async function handler(req, res) {
       const safeNote = sanitizeString(note || '');
 
       const claimId = genId();
-      let imageCid = proofImageCid || '';
-      let encryptionKey = '';
+      let imageCid = proofImageCid || preUploadedCid || '';
+      let encryptionKey = preUploadedKey || '';
       let imageUrl = '';
 
       // If base64 image provided, encrypt and upload to Pinata
@@ -1235,6 +1237,14 @@ export default async function handler(req, res) {
           created_at TIMESTAMPTZ DEFAULT NOW()
         )`
       );
+
+      // Defensive migrations: a pre-existing table may lack newer columns,
+      // and CREATE TABLE IF NOT EXISTS will not add them.
+      await pool.query(`
+        ALTER TABLE upload_tokens ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'pending';
+        ALTER TABLE upload_tokens ADD COLUMN IF NOT EXISTS proof_image_cid TEXT;
+        ALTER TABLE upload_tokens ADD COLUMN IF NOT EXISTS encryption_key TEXT;
+      `);
 
       await pool.query(
         `INSERT INTO upload_tokens (token, user_id, expires_at) VALUES ($1, $2, $3)`,

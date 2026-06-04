@@ -216,6 +216,10 @@ export async function initDB() {
     await client.query(`
       ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS salutation INT DEFAULT 0;
       ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS language TEXT DEFAULT 'en';
+      ALTER TABLE product_claim_requests ADD COLUMN IF NOT EXISTS product_id TEXT;
+      ALTER TABLE product_claim_requests ADD COLUMN IF NOT EXISTS encryption_key TEXT DEFAULT '';
+      ALTER TABLE product_claim_requests ADD COLUMN IF NOT EXISTS note TEXT DEFAULT '';
+      ALTER TABLE product_claim_requests ALTER COLUMN proof_image_url DROP NOT NULL;
     `);
 
     await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_product_claims_user_product ON product_claims(user_id, product_id)`);

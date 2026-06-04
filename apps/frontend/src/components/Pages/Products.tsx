@@ -680,7 +680,7 @@ const Products: React.FC = () => {
       if (payload?.success) {
         setReceiptSuccess(true);
         setPendingClaimRequests(prev => [{
-          id: payload.data?.id || '',
+          id: payload.claimId || '',
           status: 'pending',
           productName: receiptProductName,
           createdAt: new Date().toISOString(),
