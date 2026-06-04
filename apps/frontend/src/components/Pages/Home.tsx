@@ -117,14 +117,15 @@ const Home: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAppContext();
   const [hasExperienceCard, setHasExperienceCard] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const isAdmin = user?.role === 'admin' || user?.role === 'owner';
 
   useEffect(() => {
-    if (!user?.id) return;
+    if (!user?.id || isAdmin) return; // admins are exclusive already; skip the probe
+    let cancelled = false;
     const check = async () => {
       try {
         const res = await apiService.get(`/products/user/${user.id}`);
-        if (res.data?.success) {
+        if (!cancelled && res.data?.success) {
           const products = res.data.data || [];
           const EC_NAMES = ['experience card'];
           setHasExperienceCard(
@@ -134,15 +135,10 @@ const Home: React.FC = () => {
           );
         }
       } catch { /* ignore */ }
-      try {
-        const res = await apiService.get('/auth/me');
-        const d = res.data as any;
-        const role = d?.data?.role || d?.role || '';
-        setIsAdmin(role === 'admin' || role === 'owner');
-      } catch { /* ignore */ }
     };
     check();
-  }, [user?.id]);
+    return () => { cancelled = true; };
+  }, [user?.id, isAdmin]);
 
   const exclusive = hasExperienceCard || isAdmin;
 

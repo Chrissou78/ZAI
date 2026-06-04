@@ -195,7 +195,7 @@ const Dashboard: React.FC = () => {
 
   // ── Experience card & admin checks ──
   const [hasExperienceCard, setHasExperienceCard] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const isAdmin = (user as any)?.role === 'admin' || (user as any)?.role === 'owner';
   const exclusive = hasExperienceCard || isAdmin;
 
   useEffect(() => {
@@ -230,17 +230,8 @@ const Dashboard: React.FC = () => {
         )
       );
 
-      // ── Check admin role ──
-      try {
-        const authRes = await apiService.get('/auth/me');
-        const d = authRes.data as any;
-        const role = d?.data?.role || d?.role || '';
-        setIsAdmin(role === 'admin' || role === 'owner');
-      } catch {
-        // Fallback: read role from the user object in context (set at login)
-        const ctxRole = (user as any)?.role || '';
-        setIsAdmin(ctxRole === 'admin' || ctxRole === 'owner');
-      }
+      // ── Admin role is derived from context (see isAdmin above), so it
+      // no longer depends on this fetch succeeding ──
 
       const eventsResponse = await apiService.get('/events', { params: { status: 'upcoming' } });
       const upcomingEvents = eventsResponse.data?.data || [];
