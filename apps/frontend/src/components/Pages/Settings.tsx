@@ -18,7 +18,7 @@ const C = {
   font: "'Inter', sans-serif",
 };
 
-type Panel = 'notifications' | 'card' | 'privacy' | 'region' | 'security';
+type Panel = 'notifications' | 'privacy' | 'region' | 'security';
 
 /* ── Interfaces ── */
 interface SecuritySettings {
@@ -49,12 +49,6 @@ interface PrivacySettings {
   analytics: boolean;
   profileVisibility: boolean;
   communityVisibility: boolean;
-}
-interface CardSettings {
-  cardId: string;
-  isActive: boolean;
-  nfcEnabled: boolean;
-  autoLogin: boolean;
 }
 interface RegionSettings {
   country: string;
@@ -99,9 +93,6 @@ const Settings: React.FC = () => {
     dataSharing: false, analytics: true,
     profileVisibility: true, communityVisibility: true,
   });
-  const [card, setCard] = useState<CardSettings>({
-    cardId: '', isActive: false, nfcEnabled: true, autoLogin: true,
-  });
   const [region, setRegion] = useState<RegionSettings>({
     country: 'Switzerland', countryCode: 'CH', currency: 'CHF', language: 'en',
   });
@@ -139,50 +130,6 @@ const Settings: React.FC = () => {
   /* ── Sessions ── */
   const [sessionsLoading, setSessionsLoading] = useState(false);
   const [sessionsList, setSessionsList] = useState<SessionInfo[]>([]);
-
-  useEffect(() => {
-    const loadCardFromStorage = () => {
-      try {
-        const stored = localStorage.getItem('zai_experience_card');
-        if (stored) {
-          const ec = JSON.parse(stored);
-          setCard(prev => ({
-            ...prev,
-            cardId: ec.serialNumber || ec.tokenId || '',
-            isActive: true,
-            nfcEnabled: true,
-          }));
-        }
-      } catch { /* silent */ }
-    };
-
-    // Load from localStorage first (instant)
-    loadCardFromStorage();
-
-    // Then fetch fresh data from API
-    const fetchCard = async () => {
-      if (!user?.id) return;
-      try {
-        const res = await apiService.get(`/products/user/${user.id}`);
-        const ec = (res.data as any)?.experienceCard;
-        if (ec) {
-          setCard(prev => ({
-            ...prev,
-            cardId: ec.serialNumber || ec.tokenId || '',
-            isActive: true,
-            nfcEnabled: true,
-          }));
-          localStorage.setItem('zai_experience_card', JSON.stringify(ec));
-        }
-      } catch { /* silent */ }
-    };
-    fetchCard();
-
-    // Listen for updates from Products page
-    const handler = () => loadCardFromStorage();
-    window.addEventListener('zai:experience-card-updated', handler);
-    return () => window.removeEventListener('zai:experience-card-updated', handler);
-  }, [user?.id]);
   
   /* ── Fetch settings ── */
   useEffect(() => {
@@ -194,7 +141,6 @@ const Settings: React.FC = () => {
         if (p.settings) {
           if (p.settings.notifications) setNotifications(prev => ({ ...prev, ...p.settings.notifications }));
           if (p.settings.privacy) setPrivacy(prev => ({ ...prev, ...p.settings.privacy }));
-          if (p.settings.card) setCard(prev => ({ ...prev, ...p.settings.card }));
           if (p.settings.region) setRegion(prev => ({ ...prev, ...p.settings.region }));
         }
       } catch (err: any) {
@@ -227,7 +173,7 @@ const Settings: React.FC = () => {
   const saveSettings = async () => {
     setSaving(true); setError(''); setSuccess('');
     try {
-      const res = await apiService.put('/users/me/settings', { notifications, privacy, card, region });
+      const res = await apiService.put('/users/me/settings', { notifications, privacy, region });
       const p = res.data as any;
       if (p.token) localStorage.setItem('token', p.token);
       setSuccess('Settings saved');
@@ -241,8 +187,6 @@ const Settings: React.FC = () => {
     setNotifications(prev => ({ ...prev, [key]: !prev[key] }));
   const togglePrivacy = (key: keyof PrivacySettings) =>
     setPrivacy(prev => ({ ...prev, [key]: !prev[key] }));
-  const toggleCard = (key: 'nfcEnabled' | 'autoLogin') =>
-    setCard(prev => ({ ...prev, [key]: !prev[key] }));
 
   /* ── Password change ── */
   const handlePasswordChange = async () => {
@@ -451,7 +395,6 @@ const Settings: React.FC = () => {
   /* ── Nav labels (no emoji icons — matches screenshots) ── */
   const panels: { key: Panel; label: string }[] = [
     { key: 'notifications', label: 'Notifications' },
-    { key: 'card', label: 'Experience Card' },
     { key: 'privacy', label: 'Privacy' },
     { key: 'region', label: 'Region & Currency' },
     { key: 'security', label: 'Security' },
@@ -600,71 +543,6 @@ const Settings: React.FC = () => {
                 title="Event reminders"
                 desc="48 hours before registered events"
                 right={<Toggle checked={notifications.pushEventReminders} onChange={() => toggleNotif('pushEventReminders')} />}
-                noBorder
-              />
-            </div>
-          )}
-
-          {/* ══════ EXPERIENCE CARD ══════ */}
-          {activePanel === 'card' && (
-            <div>
-              <SectionHead text="NFC Experience Card" />
-
-              {/* Card preview */}
-              <div
-                style={{
-                  background: C.black, borderRadius: '12px', padding: '2rem 2rem 1.75rem',
-                  marginTop: '1rem', marginBottom: '2rem', position: 'relative',
-                  overflow: 'hidden',
-                }}
-              >
-                {/* Chip icon */}
-                <div
-                  style={{
-                    width: '36px', height: '28px', borderRadius: '4px',
-                    border: '1px solid rgba(255,255,255,0.25)',
-                    background: 'linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05))',
-                    marginBottom: '1.25rem',
-                  }}
-                />
-                <div style={{
-                  fontSize: '16px', fontWeight: 400, color: '#fff',
-                  letterSpacing: '0.2em', fontFamily: "'Courier New', monospace',",
-                }}>
-                  {card.cardId
-                    ? `ZAI-${card.cardId.slice(0, 4)} ···· ${card.cardId.slice(-4)}`
-                    : 'ZAI-2024 ···· 0000'
-                  }
-                </div>
-                <div style={{
-                  fontSize: '10px', letterSpacing: '0.15em', textTransform: 'uppercase',
-                  color: card.isActive ? '#2a9d4e' : C.gray, marginTop: '6px',
-                }}>
-                  {card.isActive ? '● Active' : '● Inactive'}
-                </div>
-              </div>
-
-              <Row
-                title="NFC card active"
-                desc="Enables contactless product claim and access"
-                right={
-                  <span style={{
-                    fontSize: '10px', letterSpacing: '0.2em', textTransform: 'uppercase',
-                    color: card.nfcEnabled ? '#2a9d4e' : C.gray, fontWeight: 500,
-                  }}>
-                    {card.nfcEnabled ? 'Active' : 'Inactive'}
-                  </span>
-                }
-              />
-              <Row
-                title="Auto-login on tap"
-                desc="Tap card to log in without password"
-                right={<Toggle checked={card.autoLogin} onChange={() => toggleCard('autoLogin')} />}
-              />
-              <Row
-                title="Replace card"
-                desc="Request a new card if yours is lost or damaged"
-                right={<TextLink text="Request" onClick={() => alert('Card replacement requested')} />}
                 noBorder
               />
             </div>
