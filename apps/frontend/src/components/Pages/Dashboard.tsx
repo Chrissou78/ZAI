@@ -198,6 +198,13 @@ const Dashboard: React.FC = () => {
   const isAdmin = (user as any)?.role === 'admin' || (user as any)?.role === 'owner';
   const exclusive = hasExperienceCard || isAdmin;
 
+  // ── Experience Card claim flow (self-contained in Dashboard) ──
+  const [showECModal, setShowECModal] = useState(false);
+  const [ecLoading, setEcLoading] = useState(false);
+  const [ecError, setEcError] = useState<string | null>(null);
+  const [ecSuccess, setEcSuccess] = useState(false);
+  const [ecData, setEcData] = useState<any>(null);
+
   useEffect(() => {
     ensureShimmerStyle();
   }, []);
@@ -287,6 +294,48 @@ const Dashboard: React.FC = () => {
       navigator.clipboard.writeText(user.walletAddress);
       setCopiedWallet(true);
       setTimeout(() => setCopiedWallet(false), 2000);
+    }
+  };
+
+  // ── Experience Card claim handlers ──
+  const handleClaimMembership = async () => {
+    setShowECModal(true);
+    setEcLoading(true);
+    setEcError(null);
+    setEcSuccess(false);
+    setEcData(null);
+    try {
+      const res = await apiService.get('/products/experience-card');
+      const data = (res.data as any)?.data;
+      if (!data) {
+        setEcError('Experience Card not available at the moment.');
+        return;
+      }
+      setEcData(data);
+    } catch (err: any) {
+      setEcError(err?.response?.data?.error || 'Failed to load Experience Card details.');
+    } finally {
+      setEcLoading(false);
+    }
+  };
+
+  const handleMintEC = async () => {
+    if (!ecData?.rwaId) return;
+    setEcLoading(true);
+    setEcError(null);
+    try {
+      const res = await apiService.post('/products/claim-nft', { rwaId: ecData.rwaId });
+      const payload = res.data as any;
+      if (!payload?.success) throw new Error(payload?.error || 'Mint failed');
+      setEcSuccess(true);
+      // Refresh dashboard data after a delay to let mint propagate
+      setTimeout(() => {
+        fetchDashboardData();
+      }, 5000);
+    } catch (err: any) {
+      setEcError(err?.response?.data?.error || err?.message || 'Minting failed. Please try again.');
+    } finally {
+      setEcLoading(false);
     }
   };
 
@@ -475,7 +524,7 @@ const Dashboard: React.FC = () => {
           {/* ── Claim Membership CTA (only for non-exclusive, non-admin users) ── */}
           {!exclusive && (
             <button
-              onClick={() => navigate('/products', { state: { openMembershipClaim: true } })}
+              onClick={handleClaimMembership}
               style={{
                 marginTop: '1rem',
                 padding: '10px 20px',
@@ -826,6 +875,190 @@ const Dashboard: React.FC = () => {
           </div>
         </LockedOverlay>
       </div>
+
+      {/* ══════ Experience Card Claim Modal ══════ */}
+      {showECModal && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 9999,
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+          onClick={() => { if (!ecLoading) setShowECModal(false); }}
+        >
+          <div
+            style={{
+              background: '#fff',
+              borderRadius: 12,
+              padding: '2rem',
+              maxWidth: 420,
+              width: '90%',
+              position: 'relative',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.2)',
+              fontFamily: "'Inter', sans-serif",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Close button */}
+            <button
+              onClick={() => setShowECModal(false)}
+              disabled={ecLoading}
+              style={{
+                position: 'absolute',
+                top: 12,
+                right: 12,
+                background: 'none',
+                border: 'none',
+                fontSize: 18,
+                cursor: ecLoading ? 'not-allowed' : 'pointer',
+                color: '#999',
+                padding: '4px 8px',
+              }}
+            >
+              &times;
+            </button>
+
+            {ecSuccess ? (
+              /* ── Success state ── */
+              <div style={{ textAlign: 'center', padding: '1rem 0' }}>
+                <div style={{ fontSize: 48, marginBottom: 16 }}>&#9733;</div>
+                <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 8, color: '#1a1a1a' }}>
+                  Welcome, Exclusive Member!
+                </h3>
+                <p style={{ fontSize: 13, color: '#6a6a6a', lineHeight: 1.6, marginBottom: 20 }}>
+                  Your ZAI Experience Club Card is being minted. It may take a moment to appear in your collection.
+                </p>
+                <button
+                  onClick={() => { setShowECModal(false); fetchDashboardData(); }}
+                  style={{
+                    background: '#c9a84c',
+                    color: '#fff',
+                    border: 'none',
+                    padding: '12px 28px',
+                    fontSize: 12,
+                    letterSpacing: '0.15em',
+                    textTransform: 'uppercase',
+                    cursor: 'pointer',
+                    borderRadius: 4,
+                    fontFamily: "'Inter', sans-serif",
+                    fontWeight: 600,
+                  }}
+                >
+                  Continue
+                </button>
+              </div>
+            ) : ecLoading && !ecData ? (
+              /* ── Loading state ── */
+              <div style={{ textAlign: 'center', padding: '2rem 0' }}>
+                <div style={{
+                  width: 32,
+                  height: 32,
+                  border: '3px solid #e0ddd6',
+                  borderTopColor: '#c9a84c',
+                  borderRadius: '50%',
+                  animation: 'zaiShimmer 0.8s linear infinite',
+                  margin: '0 auto 16px',
+                }} />
+                <p style={{ fontSize: 13, color: '#6a6a6a' }}>Loading Experience Card...</p>
+              </div>
+            ) : (
+              /* ── Claim confirmation ── */
+              <>
+                <div style={{
+                  fontSize: 10,
+                  letterSpacing: '0.3em',
+                  textTransform: 'uppercase',
+                  color: '#c9a84c',
+                  marginBottom: 12,
+                  fontWeight: 600,
+                }}>
+                  Exclusive Membership
+                </div>
+                <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 6, color: '#1a1a1a' }}>
+                  {ecData?.name || 'ZAI Experience Club Card'}
+                </h3>
+                <p style={{ fontSize: 13, color: '#6a6a6a', lineHeight: 1.6, marginBottom: 16 }}>
+                  {ecData?.description || 'Claim your exclusive membership card to unlock the full ZAI experience — products, events, and community access.'}
+                </p>
+
+                {ecData?.image && (
+                  <div style={{
+                    width: '100%',
+                    height: 180,
+                    borderRadius: 8,
+                    overflow: 'hidden',
+                    marginBottom: 16,
+                    background: '#f0ede6',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}>
+                    <img
+                      src={ecData.image}
+                      alt={ecData.name}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                  </div>
+                )}
+
+                {ecData?.price && (
+                  <div style={{
+                    fontSize: 14,
+                    fontWeight: 600,
+                    color: '#1a1a1a',
+                    marginBottom: 16,
+                    padding: '10px 14px',
+                    background: '#f0ede6',
+                    borderRadius: 6,
+                  }}>
+                    {ecData.currency || 'CHF'} {ecData.price}
+                  </div>
+                )}
+
+                {ecError && (
+                  <div style={{
+                    padding: '10px 12px',
+                    background: '#fff5f5',
+                    border: '1px solid #ffdddd',
+                    color: '#7A222E',
+                    fontSize: 12,
+                    borderRadius: 6,
+                    marginBottom: 16,
+                  }}>
+                    {ecError}
+                  </div>
+                )}
+
+                <button
+                  onClick={handleMintEC}
+                  disabled={ecLoading || !ecData}
+                  style={{
+                    width: '100%',
+                    background: ecLoading ? '#999' : '#7A222E',
+                    color: '#fff',
+                    border: 'none',
+                    padding: '14px',
+                    fontSize: 11,
+                    letterSpacing: '0.15em',
+                    textTransform: 'uppercase',
+                    cursor: ecLoading ? 'not-allowed' : 'pointer',
+                    borderRadius: 4,
+                    fontFamily: "'Inter', sans-serif",
+                    fontWeight: 600,
+                    transition: 'background 0.2s',
+                  }}
+                >
+                  {ecLoading ? 'Minting...' : 'Claim Membership Card'}
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

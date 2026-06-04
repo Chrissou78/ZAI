@@ -1102,7 +1102,6 @@ export default async function handler(req, res) {
     try {
       const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
       const adminNote = sanitizeString(body.adminNote || '');
-      // Admin can optionally override which RWA to mint
       const overrideRwaId = body.rwaId ? sanitizeString(body.rwaId) : null;
 
       const claimResult = await pool.query(
@@ -1120,18 +1119,46 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: `Claim is already ${claimReq.status}` });
       }
 
-      // ── Resolve the RWA ID to mint ──
-      // The product_id column may store an rwaId directly, or we need to
-      // look it up from the RWA catalog by matching the product name.
-      let rwaIdToMint = overrideRwaId || claimReq.product_id;
+      // ── Mark as "minting" immediately so the user sees progress ──
+      await pool.query(
+        `UPDATE product_claim_requests
+         SET status = 'minting', admin_note = $1, updated_at = NOW()
+         WHERE id = $2`,
+        [adminNote, requestId]
+      );
 
-      // If no rwaId, try to find from RWA catalog by name
-      if (!rwaIdToMint && claimReq.product_name) {
+      // ── Resolve the RWA ID to mint ──
+      let rwaIdToMint = overrideRwaId || null;
+      const storedId = (claimReq.product_id || '').trim();
+
+      // 1. If admin provided an override, use it
+      // 2. If product_id looks like a valid RWA UUID (not a composite
+      //    blockchain key like "0xabc...-42"), use it directly
+      const looksLikeUUID = storedId && !storedId.startsWith('0x') && !storedId.includes('-0x');
+      if (!rwaIdToMint && looksLikeUUID) {
+        // Verify it actually exists in the RWA catalog
         try {
           const rwaMap = await getZaiRwaMap();
           for (const [, rwa] of rwaMap) {
-            if ((rwa.name || '').toLowerCase() === (claimReq.product_name || '').toLowerCase()) {
+            if (rwa.id === storedId) {
+              rwaIdToMint = storedId;
+              break;
+            }
+          }
+        } catch (e) {
+          console.error('[PRODUCTS] RWA ID verification failed:', e.message);
+        }
+      }
+
+      // 3. Fallback: look up the RWA catalog by product name
+      if (!rwaIdToMint && claimReq.product_name) {
+        try {
+          const rwaMap = await getZaiRwaMap();
+          const searchName = (claimReq.product_name || '').toLowerCase().trim();
+          for (const [, rwa] of rwaMap) {
+            if ((rwa.name || '').toLowerCase().trim() === searchName) {
               rwaIdToMint = rwa.id;
+              console.log('[PRODUCTS] Resolved RWA by name:', claimReq.product_name, '->', rwa.id);
               break;
             }
           }
@@ -1140,22 +1167,52 @@ export default async function handler(req, res) {
         }
       }
 
+      // 4. Last resort: if stored ID is a contract address (0x...), look up by contract
+      if (!rwaIdToMint && storedId.startsWith('0x')) {
+        try {
+          const rwaMap = await getZaiRwaMap();
+          const contractAddr = storedId.split('-')[0].toLowerCase();
+          const rwa = rwaMap.get(contractAddr);
+          if (rwa) {
+            rwaIdToMint = rwa.id;
+            console.log('[PRODUCTS] Resolved RWA by contract:', contractAddr, '->', rwa.id);
+          }
+        } catch (e) {
+          console.error('[PRODUCTS] RWA contract lookup failed:', e.message);
+        }
+      }
+
       // ── Resolve the user's wallet ──
       let userWallet = claimReq.wallet;
       if (!userWallet) {
-        const userResult = await pool.query(
-          `SELECT wallet FROM user_profiles WHERE user_id = $1`,
-          [claimReq.user_id]
-        );
-        userWallet = userResult.rows[0]?.wallet;
+        try {
+          const userResult = await pool.query(
+            `SELECT wallet FROM user_profiles WHERE user_id = $1`,
+            [claimReq.user_id]
+          );
+          userWallet = userResult.rows[0]?.wallet;
+        } catch (e) {
+          console.error('[PRODUCTS] wallet lookup from user_profiles failed:', e.message);
+        }
+      }
+      // Also try the users table if user_profiles didn't work
+      if (!userWallet) {
+        try {
+          const userResult = await pool.query(
+            `SELECT wallet_address as wallet FROM users WHERE id = $1`,
+            [claimReq.user_id]
+          );
+          userWallet = userResult.rows[0]?.wallet;
+        } catch (e) {
+          // table might not exist, that's fine
+        }
       }
 
-      // Update status to validated
-      await pool.query(
-        `UPDATE product_claim_requests
-         SET status = 'validated', admin_note = $1, updated_at = NOW()
-         WHERE id = $2`,
-        [adminNote, requestId]
+      console.log('[PRODUCTS] Validate claim:', requestId,
+        '| rwaIdToMint:', rwaIdToMint,
+        '| wallet:', userWallet ? '***' + userWallet.slice(-6) : 'NONE',
+        '| product_id:', storedId,
+        '| product_name:', claimReq.product_name
       );
 
       // ── Trigger NFT mint ──
@@ -1176,16 +1233,23 @@ export default async function handler(req, res) {
           console.log('[PRODUCTS] Mint response:', mintStatus, JSON.stringify(mintData));
 
           if (mintStatus >= 400) {
-            // Mint failed — mark the claim so admin can see
             mintResult = { success: false, status: mintStatus, error: mintData };
             await pool.query(
               `UPDATE product_claim_requests
-               SET admin_note = $1, updated_at = NOW()
+               SET status = 'error', admin_note = $1, updated_at = NOW()
                WHERE id = $2`,
-              [adminNote + ` [MINT FAILED: HTTP ${mintStatus}]`, requestId]
+              [adminNote + ` [MINT FAILED: HTTP ${mintStatus} — ${JSON.stringify(mintData)}]`, requestId]
             );
           } else {
             mintResult = { success: true, status: mintStatus, data: mintData };
+
+            // Mark as validated (mint succeeded)
+            await pool.query(
+              `UPDATE product_claim_requests
+               SET status = 'validated', admin_note = $1, reviewed_at = NOW(), updated_at = NOW()
+               WHERE id = $2`,
+              [adminNote, requestId]
+            );
 
             // Record the claim
             await pool.query(
@@ -1200,27 +1264,43 @@ export default async function handler(req, res) {
           mintResult = { success: false, error: mintErr.message };
           await pool.query(
             `UPDATE product_claim_requests
-             SET admin_note = $1, updated_at = NOW()
+             SET status = 'error', admin_note = $1, updated_at = NOW()
              WHERE id = $2`,
             [adminNote + ` [MINT ERROR: ${mintErr.message}]`, requestId]
           );
         }
       } else {
-        console.warn('[PRODUCTS] Cannot mint: rwaId=', rwaIdToMint, 'wallet=', userWallet);
-        mintResult = {
-          success: false,
-          error: !rwaIdToMint ? 'No RWA ID resolved' : 'No wallet address found',
-        };
+        const reason = !rwaIdToMint ? 'No RWA ID resolved' : 'No wallet address found';
+        console.warn('[PRODUCTS] Cannot mint:', reason, '| rwaId=', rwaIdToMint, 'wallet=', userWallet);
+        mintResult = { success: false, error: reason };
+        await pool.query(
+          `UPDATE product_claim_requests
+           SET status = 'error', admin_note = $1, updated_at = NOW()
+           WHERE id = $2`,
+          [adminNote + ` [${reason}]`, requestId]
+        );
       }
 
       return res.json({
         success: true,
-        status: 'validated',
+        status: mintResult?.success ? 'validated' : 'error',
         mintResult,
-        debug: { rwaIdToMint, userWallet: userWallet ? '***' + userWallet.slice(-6) : null },
+        debug: {
+          rwaIdToMint,
+          productId: storedId,
+          productName: claimReq.product_name,
+          userWallet: userWallet ? '***' + userWallet.slice(-6) : null,
+        },
       });
     } catch (err) {
       console.error('[PRODUCTS] validate error:', err);
+      // Revert to pending so admin can retry
+      try {
+        await pool.query(
+          `UPDATE product_claim_requests SET status = 'pending', updated_at = NOW() WHERE id = $1`,
+          [requestId]
+        );
+      } catch {}
       return res.status(500).json({ error: 'Failed to validate claim request', detail: err.message });
     }
   }
