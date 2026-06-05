@@ -112,42 +112,16 @@ const ProductPicker: React.FC<ProductPickerProps> = ({
 
           {/* Product list */}
           {products.map(p => (
-            <div
+            <PickerRow
               key={p.id}
-              onClick={() => {
+              product={p}
+              isSelected={p.id === value}
+              onSelect={() => {
                 if (p.available === false) return;
                 onChange(p.id, p);
                 setOpen(false);
               }}
-              style={{
-                display: 'flex', alignItems: 'center', gap: 10,
-                padding: '8px 12px', cursor: p.available === false ? 'default' : 'pointer',
-                transition: 'background 0.15s',
-                opacity: p.available === false ? 0.45 : 1,
-                background: p.id === value ? C.surface : 'transparent',
-                borderBottom: `1px solid ${C.border}`,
-              }}
-              onMouseEnter={e => { if (p.available !== false) e.currentTarget.style.background = C.surface; }}
-              onMouseLeave={e => { e.currentTarget.style.background = p.id === value ? C.surface : 'transparent'; }}
-            >
-              <Thumb src={p.image} name={p.name} size={36} />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{
-                  fontSize: 13, fontWeight: 500, overflow: 'hidden',
-                  textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                }}>
-                  {p.name}
-                </div>
-                <div style={{ fontSize: 11, color: C.gray, marginTop: 1 }}>
-                  {p.collection && <span>{p.collection} · </span>}
-                  {p.price && <span>{p.currency || 'CHF'} {p.price}</span>}
-                  {p.available === false && <span style={{ color: C.gray }}> · Out of stock</span>}
-                </div>
-              </div>
-              {p.id === value && (
-                <span style={{ fontSize: 14, color: C.red, flexShrink: 0 }}>✓</span>
-              )}
-            </div>
+            />
           ))}
 
           {/* "Other" option */}
@@ -172,7 +146,115 @@ const ProductPicker: React.FC<ProductPickerProps> = ({
   );
 };
 
+/* ── Picker row with hover zoom ── */
+
+const PickerRow: React.FC<{
+  product: PickerProduct;
+  isSelected: boolean;
+  onSelect: () => void;
+}> = ({ product, isSelected, onSelect }) => {
+  const [hover, setHover] = useState(false);
+  const [zoomPos, setZoomPos] = useState<{ top: number; left: number } | null>(null);
+  const rowRef = useRef<HTMLDivElement>(null);
+
+  const handleMouseEnter = () => {
+    setHover(true);
+    if (product.image && rowRef.current) {
+      const rect = rowRef.current.getBoundingClientRect();
+      // Position zoom popup to the left of the dropdown
+      setZoomPos({
+        top: rect.top,
+        left: rect.left - 220,
+      });
+    }
+  };
+
+  const handleMouseLeave = () => {
+    setHover(false);
+    setZoomPos(null);
+  };
+
+  return (
+    <div
+      ref={rowRef}
+      onClick={onSelect}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 10,
+        padding: '8px 12px',
+        cursor: product.available === false ? 'default' : 'pointer',
+        transition: 'background 0.15s',
+        opacity: product.available === false ? 0.45 : 1,
+        background: isSelected ? C.surface : hover ? C.surface : 'transparent',
+        borderBottom: `1px solid ${C.border}`,
+        position: 'relative',
+      }}
+    >
+      <Thumb src={product.image} name={product.name} size={36} />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{
+          fontSize: 13, fontWeight: 500, overflow: 'hidden',
+          textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        }}>
+          {product.name}
+        </div>
+        <div style={{ fontSize: 11, color: C.gray, marginTop: 1 }}>
+          {product.collection && <span>{product.collection} · </span>}
+          {product.price && <span>{product.currency || 'CHF'} {product.price}</span>}
+          {product.available === false && <span style={{ color: C.gray }}> · Out of stock</span>}
+        </div>
+      </div>
+      {isSelected && (
+        <span style={{ fontSize: 14, color: C.red, flexShrink: 0 }}>✓</span>
+      )}
+
+      {/* Zoom popup on hover */}
+      {hover && product.image && zoomPos && (
+        <div
+          style={{
+            position: 'fixed',
+            top: zoomPos.top,
+            left: zoomPos.left,
+            width: 200,
+            zIndex: 2000,
+            pointerEvents: 'none',
+          }}
+        >
+          <div style={{
+            background: C.pureWhite,
+            borderRadius: 8,
+            border: `1px solid ${C.border}`,
+            boxShadow: '0 12px 40px rgba(0,0,0,0.18)',
+            overflow: 'hidden',
+          }}>
+            <img
+              src={product.image}
+              alt={product.name}
+              style={{ width: '100%', height: 'auto', display: 'block' }}
+            />
+            <div style={{
+              padding: '8px 10px',
+              borderTop: `1px solid ${C.border}`,
+            }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: C.black }}>
+                {product.name}
+              </div>
+              {product.price && (
+                <div style={{ fontSize: 10, color: C.gray, marginTop: 2 }}>
+                  {product.currency || 'CHF'} {product.price}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 /* ── Thumbnail helper ── */
+
 const Thumb: React.FC<{ src?: string; name?: string; size?: number }> = ({ src, name, size = 36 }) => {
   const [failed, setFailed] = useState(false);
 
