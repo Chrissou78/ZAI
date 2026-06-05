@@ -1179,11 +1179,14 @@ const Dashboard: React.FC = () => {
 
                 {ecData?.image && (
                   <div style={{
-                    width: '100%', height: 160, borderRadius: 8, overflow: 'hidden',
+                    width: '100%', borderRadius: 8, overflow: 'hidden',
                     marginBottom: 16, background: EC_SURFACE,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
                   }}>
-                    <img src={ecData.image} alt={ecData.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    <img
+                      src={ecData.image}
+                      alt={ecData.name}
+                      style={{ width: '100%', height: 'auto', display: 'block', borderRadius: 8 }}
+                    />
                   </div>
                 )}
 
