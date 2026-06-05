@@ -1328,6 +1328,45 @@ const Products: React.FC = () => {
                         ))}
                         <option value="__other__">Other (not listed)</option>
                       </select>
+
+                      {/* ── ADD THIS: Product preview when a product is selected ── */}
+                      {!isCustomProduct && receiptProductId && (() => {
+                        const selectedRwa = claimableRwas.find(r => r.rwaId === receiptProductId);
+                        if (!selectedRwa) return null;
+                        return (
+                          <div style={{
+                            display: 'flex', gap: 12, alignItems: 'center',
+                            marginTop: 10, padding: '10px 12px',
+                            background: C.surface, borderRadius: 6, border: bdr,
+                          }}>
+                            <div style={{
+                              width: 48, height: 48, borderRadius: 6, overflow: 'hidden',
+                              background: C.pureWhite, border: bdr, flexShrink: 0,
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            }}>
+                              {selectedRwa.image ? (
+                                <img
+                                  src={selectedRwa.image}
+                                  alt={selectedRwa.name}
+                                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                />
+                              ) : (
+                                <span style={{ fontSize: 20, color: C.border }}>&#x2B21;</span>
+                              )}
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: 13, fontWeight: 600, color: C.black }}>
+                                {selectedRwa.name}
+                              </div>
+                              <div style={{ fontSize: 11, color: C.gray, marginTop: 2 }}>
+                                {selectedRwa.collection && <span>{selectedRwa.collection} · </span>}
+                                {selectedRwa.price && <span>{selectedRwa.currency || 'CHF'} {selectedRwa.price}</span>}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })()}
+
                       {isCustomProduct && (
                         <input
                           style={{ ...inputStyle, marginTop: 8 }}
