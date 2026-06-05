@@ -163,7 +163,7 @@ const LockedOverlay: React.FC<{
             transform: 'translate(-50%, -50%)',
             marginTop: 28,
             background: '#fff',
-            border: '1px solid #c9a84c',
+            border: '1px solid #7A222E',
             borderRadius: 8,
             padding: '10px 16px',
             zIndex: 100,
@@ -187,7 +187,7 @@ const LockedOverlay: React.FC<{
 const EC_BORDER = '#e0ddd6';
 const EC_GRAY = '#6a6a6a';
 const EC_RED = '#7A222E';
-const EC_GOLD = '#c9a84c';
+const EC_GOLD = '#7A222E';
 const EC_SURFACE = '#f0ede6';
 
 const ecInputStyle: React.CSSProperties = {
@@ -664,8 +664,8 @@ const Dashboard: React.FC = () => {
           </div>
           {/* ── Tier badge ── */}
           <div style={{ fontSize: '10px', display: 'flex', alignItems: 'center', gap: '5px' }}>
-            <div style={{ width: '4px', height: '4px', background: exclusive ? '#c9a84c' : '#7A222E', borderRadius: '50%' }} />
-            <span style={{ color: exclusive ? '#c9a84c' : '#6a6a6a', fontWeight: exclusive ? 600 : 400 }}>
+            <div style={{ width: '4px', height: '4px', background: exclusive ? '#7A222E' : '#7A222E', borderRadius: '50%' }} />
+            <span style={{ color: exclusive ? '#7A222E' : '#6a6a6a', fontWeight: exclusive ? 600 : 400 }}>
               {isAdmin ? 'Admin' : hasExperienceCard ? 'Exclusive Member' : 'Member'} since {memberSince}
             </span>
           </div>
@@ -677,8 +677,8 @@ const Dashboard: React.FC = () => {
                 marginTop: '1rem',
                 padding: '10px 20px',
                 background: 'transparent',
-                border: '1px solid #c9a84c',
-                color: '#c9a84c',
+                border: '1px solid #7A222E',
+                color: '#7A222E',
                 fontSize: '10px',
                 letterSpacing: '0.15em',
                 textTransform: 'uppercase',
@@ -700,8 +700,8 @@ const Dashboard: React.FC = () => {
                 marginTop: '1rem',
                 padding: '10px 20px',
                 background: 'transparent',
-                border: '1px solid #c9a84c',
-                color: '#c9a84c',
+                border: '1px solid #7A222E',
+                color: '#7A222E',
                 fontSize: '10px',
                 letterSpacing: '0.15em',
                 textTransform: 'uppercase',
@@ -712,12 +712,12 @@ const Dashboard: React.FC = () => {
                 borderRadius: 4,
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.background = '#c9a84c';
+                e.currentTarget.style.background = '#7A222E';
                 e.currentTarget.style.color = '#fff';
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.background = 'transparent';
-                e.currentTarget.style.color = '#c9a84c';
+                e.currentTarget.style.color = '#7A222E';
               }}
             >
               Claim your Exclusive Membership
@@ -732,7 +732,7 @@ const Dashboard: React.FC = () => {
               alignItems: 'center',
               gap: 6,
               padding: '6px 14px',
-              background: 'linear-gradient(135deg, #c9a84c 0%, #dfc06e 100%)',
+              background: 'linear-gradient(135deg, #7A222E 0%, #dfc06e 100%)',
               borderRadius: 4,
               boxShadow: '0 1px 4px rgba(201,168,76,0.3)',
             }}>

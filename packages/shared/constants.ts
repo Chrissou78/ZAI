@@ -17,5 +17,5 @@ export const COLORS = {
   green: '#4caf7d',
   pureWhite: '#ffffff',
   mid: '#2e2e2e',
-  gold: '#c9a84c',
+  gold: '#7A222E',
 };

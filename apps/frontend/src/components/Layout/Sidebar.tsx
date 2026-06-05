@@ -191,7 +191,7 @@ const Sidebar: React.FC = () => {
               fontSize: '9px',
               letterSpacing: '0.2em',
               textTransform: 'uppercase',
-              color: isAdminUser ? '#7A222E' : hasExperienceCard ? '#c9a84c' : '#555',
+              color: isAdminUser ? '#7A222E' : hasExperienceCard ? '#7A222E' : '#555',
               fontWeight: 600,
               marginTop: '2px',
             }}>

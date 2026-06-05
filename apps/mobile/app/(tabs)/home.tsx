@@ -187,11 +187,11 @@ const styles = StyleSheet.create({
   },
   bubbleCard: {
     backgroundColor: '#1a1a1a', borderRadius: 16, padding: 28,
-    alignItems: 'center', borderWidth: 1, borderColor: '#c9a84c',
+    alignItems: 'center', borderWidth: 1, borderColor: '#7A222E',
     maxWidth: 320, width: '100%',
   },
   bubbleTitle: {
-    fontSize: 16, fontWeight: '700', color: '#c9a84c',
+    fontSize: 16, fontWeight: '700', color: '#7A222E',
     letterSpacing: 1, marginBottom: 8,
   },
   bubbleMessage: {

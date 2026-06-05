@@ -8,6 +8,6 @@ export const DARK_THEME = {
   border: '#2a2a2a',
   primary: '#7A222E',
   success: '#4caf7d',
-  gold: '#c9a84c',
+  gold: '#7A222E',
   surface: '#1a1a1a',
 };

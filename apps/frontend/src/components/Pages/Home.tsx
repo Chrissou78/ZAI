@@ -54,7 +54,7 @@ const LockedTooltip: React.FC<{
               fontSize: 10,
               letterSpacing: '0.1em',
               fontWeight: 600,
-              color: '#c9a84c',
+              color: '#7A222E',
               textTransform: 'uppercase',
             }}
           >
@@ -71,7 +71,7 @@ const LockedTooltip: React.FC<{
             left: '50%',
             transform: 'translateX(-50%)',
             background: dark ? '#1a1a1a' : '#fff',
-            border: '1px solid #c9a84c',
+            border: '1px solid #7A222E',
             borderRadius: 8,
             padding: '10px 16px',
             zIndex: 100,
@@ -101,7 +101,7 @@ const LockedTooltip: React.FC<{
               width: 12,
               height: 12,
               background: dark ? '#1a1a1a' : '#fff',
-              border: '1px solid #c9a84c',
+              border: '1px solid #7A222E',
               borderTop: 'none',
               borderLeft: 'none',
               transform: 'rotate(45deg)',
