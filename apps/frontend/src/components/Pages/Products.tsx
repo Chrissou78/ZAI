@@ -5,6 +5,7 @@ import Button from '../Common/Button';
 import Modal from '../Common/Modal';
 import { QRCodeSVG } from 'qrcode.react';
 import { CameraIcon, UploadIcon, SmartphoneIcon } from '../Icons/ClaimIcons';
+import ProductPicker from '../Common/ProductPicker';
 
 /* ───── Types ───── */
 
@@ -1301,80 +1302,39 @@ const Products: React.FC = () => {
                     <div style={{ fontSize: 12, color: C.gray, padding: '10px 0' }}>Loading products&hellip;</div>
                   ) : claimableRwas.length > 0 ? (
                     <>
-                      <select
-                        style={inputStyle}
-                        value={isCustomProduct ? '__other__' : receiptProductId}
-                        onChange={e => {
-                          const v = e.target.value;
-                          if (v === '__other__') {
+                        <ProductPicker
+                          products={claimableRwas.map(r => ({
+                            id: r.rwaId,
+                            name: r.name,
+                            image: r.image,
+                            price: r.price,
+                            currency: r.currency,
+                            collection: r.collection,
+                            available: r.available,
+                          }))}
+                          value={receiptProductId}
+                          onChange={(id, product) => {
+                            setIsCustomProduct(false);
+                            setReceiptProductId(id);
+                            setReceiptProductName(product?.name || '');
+                          }}
+                          showOther
+                          onOther={() => {
                             setIsCustomProduct(true);
                             setReceiptProductId('');
                             setReceiptProductName('');
-                          } else if (v === '') {
-                            setIsCustomProduct(false);
-                            setReceiptProductId('');
-                            setReceiptProductName('');
-                          } else {
-                            setIsCustomProduct(false);
-                            const sel = claimableRwas.find(r => r.rwaId === v);
-                            setReceiptProductId(v);
-                            setReceiptProductName(sel?.name || '');
-                          }
-                        }}
-                      >
-                        <option value="">Select a product&hellip;</option>
-                        {claimableRwas.map(rwa => (
-                          <option key={rwa.rwaId} value={rwa.rwaId}>{rwa.name}</option>
-                        ))}
-                        <option value="__other__">Other (not listed)</option>
-                      </select>
-
-                      {/* ── ADD THIS: Product preview when a product is selected ── */}
-                      {!isCustomProduct && receiptProductId && (() => {
-                        const selectedRwa = claimableRwas.find(r => r.rwaId === receiptProductId);
-                        if (!selectedRwa) return null;
-                        return (
-                          <div style={{
-                            display: 'flex', gap: 12, alignItems: 'center',
-                            marginTop: 10, padding: '10px 12px',
-                            background: C.surface, borderRadius: 6, border: bdr,
-                          }}>
-                            <div style={{
-                              width: 48, height: 48, borderRadius: 6, overflow: 'hidden',
-                              background: C.pureWhite, border: bdr, flexShrink: 0,
-                              display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            }}>
-                              {selectedRwa.image ? (
-                                <img
-                                  src={selectedRwa.image}
-                                  alt={selectedRwa.name}
-                                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                                />
-                              ) : (
-                                <span style={{ fontSize: 20, color: C.border }}>&#x2B21;</span>
-                              )}
-                            </div>
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{ fontSize: 13, fontWeight: 600, color: C.black }}>
-                                {selectedRwa.name}
-                              </div>
-                              <div style={{ fontSize: 11, color: C.gray, marginTop: 2 }}>
-                                {selectedRwa.collection && <span>{selectedRwa.collection} · </span>}
-                                {selectedRwa.price && <span>{selectedRwa.currency || 'CHF'} {selectedRwa.price}</span>}
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })()}
-
-                      {isCustomProduct && (
-                        <input
-                          style={{ ...inputStyle, marginTop: 8 }}
-                          placeholder="Enter product name"
-                          value={receiptProductName}
-                          onChange={e => setReceiptProductName(e.target.value)}
+                          }}
+                          isOther={isCustomProduct}
+                          placeholder="Select a product\u2026"
                         />
-                      )}
+                        {isCustomProduct && (
+                          <input
+                            style={{ ...inputStyle, marginTop: 8 }}
+                            placeholder="Enter product name"
+                            value={receiptProductName}
+                            onChange={e => setReceiptProductName(e.target.value)}
+                          />
+                        )}
                     </>
                   ) : (
                     /* Fallback to free text if the claimable list is empty or failed to load */

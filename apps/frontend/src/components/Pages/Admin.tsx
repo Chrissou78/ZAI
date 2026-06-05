@@ -4,6 +4,7 @@ import { apiService } from '../../services/api';
 import Modal from '../Common/Modal';
 import Button from '../Common/Button';
 import AuthImage from '../Common/AuthImage';
+import ProductPicker from '../Common/ProductPicker';
 
 /* ───── Types ───── */
 
@@ -511,49 +512,18 @@ const Admin: React.FC = () => {
                       </div>
                     </div>
                   ) : (
-                    <>
-                      <select
-                        value={selectedRwaId}
-                        onChange={e => setSelectedRwaId(e.target.value)}
-                        style={{
-                          width: '100%', padding: '10px 12px', border: bdr,
-                          fontSize: 13, fontFamily: C.font, borderRadius: 4,
-                          background: C.pureWhite,
-                        }}
-                      >
-                        <option value="">— Select a product —</option>
-                        {claimableProducts.map(p => (
-                          <option key={p.rwaId} value={p.rwaId}>
-                            {p.name} {p.price ? `(${p.currency || 'CHF'} ${p.price})` : ''}
-                          </option>
-                        ))}
-                      </select>
-
-                      {/* Preview of selected product */}
-                      {selectedClaimableProduct && (
-                        <div style={{
-                          display: 'flex', gap: 10, alignItems: 'center',
-                          marginTop: 10, padding: '10px 12px',
-                          background: C.surface, borderRadius: 6, border: bdr,
-                        }}>
-                          <ProductThumb
-                            src={selectedClaimableProduct.image}
-                            name={selectedClaimableProduct.name}
-                            size={36}
-                          />
-                          <div>
-                            <div style={{ fontSize: 13, fontWeight: 600 }}>
-                              {selectedClaimableProduct.name}
-                            </div>
-                            {selectedClaimableProduct.price && (
-                              <div style={{ fontSize: 11, color: C.gray }}>
-                                {selectedClaimableProduct.currency || 'CHF'} {selectedClaimableProduct.price}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                    </>
+                    <ProductPicker
+                      products={claimableProducts.map(p => ({
+                        id: p.rwaId,
+                        name: p.name,
+                        image: p.image,
+                        price: p.price,
+                        currency: p.currency,
+                      }))}
+                      value={selectedRwaId}
+                      onChange={(id) => setSelectedRwaId(id)}
+                      placeholder="— Select a product —"
+                    />
                   )}
                 </div>
 
