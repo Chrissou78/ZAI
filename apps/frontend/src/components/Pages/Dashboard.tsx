@@ -862,7 +862,7 @@ const Dashboard: React.FC = () => {
                   const img = e.currentTarget;
                   if (!img.dataset.fallback) {
                     img.dataset.fallback = '1';
-                    img.src = 'https://www.genspark.ai/api/files/s/CUnNLapu';
+                    img.src="/images/experience-card.png";
                   }
                 }}
               />
