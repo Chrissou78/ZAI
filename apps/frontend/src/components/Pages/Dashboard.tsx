@@ -573,7 +573,7 @@ const Dashboard: React.FC = () => {
   };
 
   /* ── Should we show the EC card image on the right? ── */
-  const showEcCardRight = hasExperienceCard && !isAdmin;
+  const showEcCardRight = exclusive;
 
   return (
     <div style={{ maxWidth: 1100, margin: '0 auto', padding: '48px 48px 80px', fontFamily: "'Inter', sans-serif" }}>
@@ -689,10 +689,10 @@ const Dashboard: React.FC = () => {
               letterSpacing: '0.05em',
             }}
           >
-            {userFirst?.[0]?.toUpperCase() || ''}{userLast?.[0]?.toUpperCase() || ''}
+            {userFirst?.[0]?.toUpperCase() || userDisplay?.[0]?.toUpperCase() || ''}
           </div>
           <div style={{ fontSize: '17px', fontWeight: 300, marginBottom: '2px' }}>
-            {userDisplay}
+            {userFirst || userDisplay}
           </div>
           <div style={{ fontSize: '11px', color: '#6a6a6a', marginBottom: '1.25rem' }}>
             {user.city || 'Location not set'} · {user.country || 'Country not set'}

@@ -206,7 +206,7 @@ const Sidebar: React.FC = () => {
           />
           <div>
             <div style={{ fontSize: '12px', color: '#f5f4f0', fontWeight: 500 }}>
-              {displayName}
+              {first || displayName}
             </div>
             {/* Tier label */}
             <div style={{

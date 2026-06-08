@@ -278,8 +278,7 @@ const Profile: React.FC = () => {
 
   const firstName = formData.givenName || user.givenName || 'User';
   const lastName = formData.familyName || user.familyName || '';
-  const initials = `${firstName[0] || ''}${lastName[0] || ''}`.toUpperCase();
-
+  const initials = (firstName[0] || '').toUpperCase();
   /* ── Sidebar bullet items ── */
   const bulletItems: string[] = [];
   const ms = memberSince();
@@ -396,10 +395,10 @@ const Profile: React.FC = () => {
           </div>
 
           <div style={{ fontSize: '16px', fontWeight: 400, color: C.black, marginBottom: '2px' }}>
-            {firstName} {lastName}
+            {firstName}
           </div>
           <div style={{ fontSize: '11px', color: C.gray, marginBottom: '1.5rem' }}>
-            @{(firstName + '.' + lastName).toLowerCase().replace(/\s+/g, '')}
+            @{firstName.toLowerCase().replace(/\s+/g, '')}
           </div>
 
           <div
