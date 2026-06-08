@@ -19,6 +19,25 @@ interface Activity {
   icon: string;
 }
 
+/* ── Derive a clean display name from user fields ── */
+function getDisplayName(user: any): { first: string; last: string; display: string } {
+  const first = (user?.givenName || user?.firstName || '').trim();
+  const last = (user?.familyName || user?.lastName || '').trim();
+  if (first || last) {
+    return { first, last, display: [first, last].filter(Boolean).join(' ') };
+  }
+  // Fallback: extract from email
+  const emailLocal = (user?.email || '').split('@')[0] || '';
+  const parts = emailLocal.replace(/[._-]/g, ' ').split(' ').filter(Boolean);
+  const fallbackFirst = parts[0] ? parts[0][0].toUpperCase() + parts[0].slice(1) : '';
+  const fallbackLast = parts[1] ? parts[1][0].toUpperCase() + parts[1].slice(1) : '';
+  return {
+    first: fallbackFirst,
+    last: fallbackLast,
+    display: [fallbackFirst, fallbackLast].filter(Boolean).join(' ') || user?.email || 'User',
+  };
+}
+
 /* ── Skeleton shimmer keyframes (injected once) ── */
 const SHIMMER_ID = 'zai-shimmer-keyframes';
 function ensureShimmerStyle() {
@@ -200,6 +219,11 @@ const ecLabelStyle: React.CSSProperties = {
   color: EC_GRAY, marginBottom: '6px', display: 'block',
 };
 
+/* ── Experience Card image path ──
+   Save the experience card image to: apps/frontend/public/images/experience-card.png
+   If you don't have the file yet, use the external URL as fallback. */
+const EC_IMAGE = '/images/experience-card.png';
+
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const { user, isLoading } = useAppContext();
@@ -218,6 +242,9 @@ const Dashboard: React.FC = () => {
   const [ecClaimStatus, setEcClaimStatus] = useState<'none' | 'pending' | 'validated'>('none');
   const isAdmin = (user as any)?.role === 'admin' || (user as any)?.role === 'owner';
   const exclusive = hasExperienceCard || isAdmin;
+
+  // ── Derive display name (consistent with Sidebar) ──
+  const { first: userFirst, last: userLast, display: userDisplay } = user ? getDisplayName(user) : { first: '', last: '', display: '' };
 
   // Detect a pending or validated Experience Card claim so the CTA can show
   // "under review" instead of inviting another claim.
@@ -318,7 +345,6 @@ const Dashboard: React.FC = () => {
       setHasExperienceCard(ecFound);
 
       if (ecFound) {
-        // Store the card object if available, or a truthy flag
         const ecPayload = responseData?.experienceCard
           ? JSON.stringify(responseData.experienceCard)
           : 'true';
@@ -326,6 +352,7 @@ const Dashboard: React.FC = () => {
       } else {
         localStorage.removeItem('zai_experience_card');
       }
+      // Notify Sidebar immediately
       window.dispatchEvent(new Event('zai:experience-card-updated'));
 
       const eventsResponse = await apiService.get('/events', { params: { status: 'upcoming' } });
@@ -545,6 +572,9 @@ const Dashboard: React.FC = () => {
     return '#6a6a6a';
   };
 
+  /* ── Should we show the EC card image on the right? ── */
+  const showEcCardRight = hasExperienceCard && !isAdmin;
+
   return (
     <div style={{ maxWidth: 1100, margin: '0 auto', padding: '48px 48px 80px', fontFamily: "'Inter', sans-serif" }}>
       {/* Page Header */}
@@ -570,11 +600,11 @@ const Dashboard: React.FC = () => {
           </p>
         </div>
 
-        {/* ── GATED: Claim Product button ── */}
+        {/* ── GATED: Claim Product button (red with white text) ── */}
         {exclusive ? (
           <button
             style={{
-              background: '#7D1E2C',
+              background: '#7A222E',
               color: '#fff',
               border: 'none',
               padding: '13px 28px',
@@ -583,11 +613,13 @@ const Dashboard: React.FC = () => {
               textTransform: 'uppercase',
               cursor: 'pointer',
               fontFamily: "'Inter', sans-serif",
+              fontWeight: 600,
+              borderRadius: 4,
               transition: 'background 0.2s',
             }}
             onClick={() => navigate('/products')}
             onMouseEnter={(e) => (e.currentTarget.style.background = '#9a2535')}
-            onMouseLeave={(e) => (e.currentTarget.style.background = '#7D1E2C')}
+            onMouseLeave={(e) => (e.currentTarget.style.background = '#7A222E')}
           >
             Claim Product
           </button>
@@ -595,7 +627,7 @@ const Dashboard: React.FC = () => {
           <LockedOverlay locked message="Claim your Experience Card to unlock product claims.">
             <button
               style={{
-                background: '#7D1E2C',
+                background: '#7A222E',
                 color: '#fff',
                 border: 'none',
                 padding: '13px 28px',
@@ -603,6 +635,8 @@ const Dashboard: React.FC = () => {
                 letterSpacing: '0.15em',
                 textTransform: 'uppercase',
                 fontFamily: "'Inter', sans-serif",
+                fontWeight: 600,
+                borderRadius: 4,
               }}
             >
               Claim Product
@@ -617,7 +651,7 @@ const Dashboard: React.FC = () => {
         </div>
       )}
 
-      {/* Profile + Welcome */}
+      {/* Profile + Welcome (split layout: left profile, right welcome + optional EC card) */}
       <div
         style={{
           display: 'grid',
@@ -628,6 +662,7 @@ const Dashboard: React.FC = () => {
           marginBottom: '1px',
         }}
       >
+        {/* ── Left: User profile card ── */}
         <div
           style={{
             background: '#f0ede6',
@@ -654,17 +689,17 @@ const Dashboard: React.FC = () => {
               letterSpacing: '0.05em',
             }}
           >
-            {user.givenName?.[0]}{user.familyName?.[0]}
+            {userFirst?.[0]?.toUpperCase() || ''}{userLast?.[0]?.toUpperCase() || ''}
           </div>
           <div style={{ fontSize: '17px', fontWeight: 300, marginBottom: '2px' }}>
-            {user.givenName} {user.familyName}
+            {userDisplay}
           </div>
           <div style={{ fontSize: '11px', color: '#6a6a6a', marginBottom: '1.25rem' }}>
-            {user.email} · {user.city || 'Location not set'} - {user.country || 'Country not set'}
+            {user.city || 'Location not set'} · {user.country || 'Country not set'}
           </div>
           {/* ── Tier badge ── */}
           <div style={{ fontSize: '10px', display: 'flex', alignItems: 'center', gap: '5px' }}>
-            <div style={{ width: '4px', height: '4px', background: exclusive ? '#7A222E' : '#7A222E', borderRadius: '50%' }} />
+            <div style={{ width: '4px', height: '4px', background: '#7A222E', borderRadius: '50%' }} />
             <span style={{ color: exclusive ? '#7A222E' : '#6a6a6a', fontWeight: exclusive ? 600 : 400 }}>
               {isAdmin ? 'Admin' : hasExperienceCard ? 'Exclusive Member' : 'Member'} since {memberSince}
             </span>
@@ -699,25 +734,23 @@ const Dashboard: React.FC = () => {
               style={{
                 marginTop: '1rem',
                 padding: '10px 20px',
-                background: 'transparent',
-                border: '1px solid #7A222E',
-                color: '#7A222E',
+                background: '#7A222E',
+                border: 'none',
+                color: '#fff',
                 fontSize: '10px',
                 letterSpacing: '0.15em',
                 textTransform: 'uppercase',
                 cursor: 'pointer',
                 fontFamily: "'Inter', sans-serif",
                 fontWeight: 600,
-                transition: 'all 0.2s',
+                transition: 'background 0.2s',
                 borderRadius: 4,
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.background = '#7A222E';
-                e.currentTarget.style.color = '#fff';
+                e.currentTarget.style.background = '#9a2535';
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'transparent';
-                e.currentTarget.style.color = '#7A222E';
+                e.currentTarget.style.background = '#7A222E';
               }}
             >
               Claim your Exclusive Membership
@@ -732,11 +765,11 @@ const Dashboard: React.FC = () => {
               alignItems: 'center',
               gap: 6,
               padding: '6px 14px',
-              background: 'linear-gradient(135deg, #7A222E 0%, #dfc06e 100%)',
+              background: 'linear-gradient(135deg, #7A222E 0%, #9a2535 100%)',
               borderRadius: 4,
-              boxShadow: '0 1px 4px rgba(201,168,76,0.3)',
+              boxShadow: '0 1px 4px rgba(122,34,46,0.3)',
             }}>
-              <span style={{ fontSize: 12 }}>★</span>
+              <span style={{ fontSize: 12, color: '#fff' }}>★</span>
               <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#fff' }}>
                 Exclusive Member
               </span>
@@ -744,61 +777,97 @@ const Dashboard: React.FC = () => {
           )}
         </div>
 
+        {/* ── Right: Welcome panel (split into greeting + optional EC card) ── */}
         <div
           style={{
             background: '#1a1a1a',
             padding: '2rem',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'space-between',
+            display: 'grid',
+            gridTemplateColumns: showEcCardRight ? '1fr 1fr' : '1fr',
+            gap: showEcCardRight ? '2rem' : 0,
+            alignItems: 'center',
             color: '#fff',
           }}
         >
-          <div>
-            <div style={{ fontSize: '10px', letterSpacing: '0.3em', textTransform: 'uppercase', color: '#555', marginBottom: '0.75rem' }}>
-              Good to see you
-            </div>
-            <div style={{ fontSize: '28px', fontWeight: 200, lineHeight: 1.2, marginBottom: '1rem' }}>
-              Welcome back,<br />
-              <span style={{ color: '#f5f4f0' }}>{user.givenName}.</span>
-            </div>
-            <div style={{ fontSize: '12px', color: '#999', lineHeight: 1.8, maxWidth: '380px' }}>
-              {exclusive
-                ? 'Explore exclusive events, manage your registered products, and access the full zai experience club.'
-                : 'Claim your zai Experience Card to unlock your collection, exclusive events, and the full zai experience.'}
-            </div>
-          </div>
-          <div style={{ display: 'flex', gap: 0, border: '1px solid #2a2a2a', marginTop: '1.5rem', width: 'fit-content' }}>
-            <div style={{ padding: '1rem 1.5rem', borderRight: '1px solid #2a2a2a', textAlign: 'center' }}>
-              <div style={{ fontSize: '20px', fontWeight: 200, color: '#f5f4f0' }}>
-                {stats.productsClaimed}
+          {/* Left part: Greeting + stats */}
+          <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: '100%' }}>
+            <div>
+              <div style={{ fontSize: '10px', letterSpacing: '0.3em', textTransform: 'uppercase', color: '#555', marginBottom: '0.75rem' }}>
+                Good to see you
               </div>
-              <div style={{ fontSize: '9px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#555', marginTop: '2px' }}>
-                Products
+              <div style={{ fontSize: '28px', fontWeight: 200, lineHeight: 1.2, marginBottom: '1rem' }}>
+                Welcome back,<br />
+                <span style={{ color: '#f5f4f0' }}>{userFirst || userDisplay}.</span>
+              </div>
+              <div style={{ fontSize: '12px', color: '#999', lineHeight: 1.8, maxWidth: '380px' }}>
+                {exclusive
+                  ? 'Explore exclusive events, manage your registered products, and access the full zai experience club.'
+                  : 'Claim your zai Experience Card to unlock your collection, exclusive events, and the full zai experience.'}
               </div>
             </div>
-            {/* ── GATED: Events counter ── */}
-            <div style={{ padding: '1rem 1.5rem', textAlign: 'center', position: 'relative' }}>
-              {exclusive ? (
-                <>
-                  <div style={{ fontSize: '20px', fontWeight: 200, color: '#fff' }}>
-                    {stats.eventsAttended}
-                  </div>
-                  <div style={{ fontSize: '9px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#555', marginTop: '2px' }}>
-                    Events
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div style={{ fontSize: '20px', fontWeight: 200, color: '#333' }}>—</div>
-                  <div style={{ fontSize: '9px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#333', marginTop: '2px' }}>
-                    Events
-                  </div>
-                  <div style={{ position: 'absolute', top: 4, right: 4, fontSize: 10 }}>🔒</div>
-                </>
-              )}
+            <div style={{ display: 'flex', gap: 0, border: '1px solid #2a2a2a', marginTop: '1.5rem', width: 'fit-content' }}>
+              <div style={{ padding: '1rem 1.5rem', borderRight: '1px solid #2a2a2a', textAlign: 'center' }}>
+                <div style={{ fontSize: '20px', fontWeight: 200, color: '#f5f4f0' }}>
+                  {stats.productsClaimed}
+                </div>
+                <div style={{ fontSize: '9px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#555', marginTop: '2px' }}>
+                  Products
+                </div>
+              </div>
+              {/* ── GATED: Events counter ── */}
+              <div style={{ padding: '1rem 1.5rem', textAlign: 'center', position: 'relative' }}>
+                {exclusive ? (
+                  <>
+                    <div style={{ fontSize: '20px', fontWeight: 200, color: '#fff' }}>
+                      {stats.eventsAttended}
+                    </div>
+                    <div style={{ fontSize: '9px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#555', marginTop: '2px' }}>
+                      Events
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div style={{ fontSize: '20px', fontWeight: 200, color: '#333' }}>—</div>
+                    <div style={{ fontSize: '9px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#333', marginTop: '2px' }}>
+                      Events
+                    </div>
+                    <div style={{ position: 'absolute', top: 4, right: 4, fontSize: 10 }}>🔒</div>
+                  </>
+                )}
+              </div>
             </div>
           </div>
+
+          {/* Right part: Experience Card image (only for exclusive members) */}
+          {showEcCardRight && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              height: '100%',
+            }}>
+              <img
+                src={EC_IMAGE}
+                alt="ZAI Experience Club Card"
+                style={{
+                  width: '100%',
+                  maxWidth: 280,
+                  height: 'auto',
+                  borderRadius: 12,
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+                  objectFit: 'contain',
+                }}
+                onError={(e) => {
+                  // Fallback to external URL if local file missing
+                  const img = e.currentTarget;
+                  if (!img.dataset.fallback) {
+                    img.dataset.fallback = '1';
+                    img.src = 'https://www.genspark.ai/api/files/s/CUnNLapu';
+                  }
+                }}
+              />
+            </div>
+          )}
         </div>
       </div>
 
@@ -1094,7 +1163,7 @@ const Dashboard: React.FC = () => {
                 <button
                   onClick={() => { closeECModal(); fetchDashboardData(); }}
                   style={{
-                    background: EC_GOLD, color: '#fff', border: 'none',
+                    background: EC_RED, color: '#fff', border: 'none',
                     padding: '12px 28px', fontSize: 12, letterSpacing: '0.15em',
                     textTransform: 'uppercase', cursor: 'pointer', borderRadius: 4,
                     fontFamily: "'Inter', sans-serif", fontWeight: 600,
@@ -1110,7 +1179,7 @@ const Dashboard: React.FC = () => {
                 <div style={{
                   width: 32, height: 32,
                   border: `3px solid ${EC_BORDER}`,
-                  borderTopColor: EC_GOLD,
+                  borderTopColor: EC_RED,
                   borderRadius: '50%',
                   animation: 'zai-spin 0.8s linear infinite',
                   margin: '0 auto 16px',
@@ -1123,7 +1192,7 @@ const Dashboard: React.FC = () => {
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20, padding: '16px 0' }}>
                 <div style={{
                   fontSize: 10, letterSpacing: '0.3em', textTransform: 'uppercase',
-                  color: EC_GOLD, fontWeight: 600,
+                  color: EC_RED, fontWeight: 600,
                 }}>
                   Exclusive Membership
                 </div>
@@ -1166,7 +1235,7 @@ const Dashboard: React.FC = () => {
               <>
                 <div style={{
                   fontSize: 10, letterSpacing: '0.3em', textTransform: 'uppercase',
-                  color: EC_GOLD, marginBottom: 12, fontWeight: 600,
+                  color: EC_RED, marginBottom: 12, fontWeight: 600,
                 }}>
                   Exclusive Membership
                 </div>

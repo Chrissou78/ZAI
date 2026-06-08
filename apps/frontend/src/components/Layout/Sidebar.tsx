@@ -14,6 +14,25 @@ import {
 } from '../Icons/NavIcons';
 import { LogoutButton } from '../Auth/LogoutButton';
 
+/* ── Derive a clean display name from user fields ── */
+function getDisplayName(user: any): { first: string; last: string; display: string } {
+  const first = (user?.givenName || user?.firstName || '').trim();
+  const last = (user?.familyName || user?.lastName || '').trim();
+  if (first || last) {
+    return { first, last, display: [first, last].filter(Boolean).join(' ') };
+  }
+  // Fallback: extract from email
+  const emailLocal = (user?.email || '').split('@')[0] || '';
+  const parts = emailLocal.replace(/[._-]/g, ' ').split(' ').filter(Boolean);
+  const fallbackFirst = parts[0] ? parts[0][0].toUpperCase() + parts[0].slice(1) : '';
+  const fallbackLast = parts[1] ? parts[1][0].toUpperCase() + parts[1].slice(1) : '';
+  return {
+    first: fallbackFirst,
+    last: fallbackLast,
+    display: [fallbackFirst, fallbackLast].filter(Boolean).join(' ') || user?.email || 'User',
+  };
+}
+
 const Sidebar: React.FC = () => {
   const { user } = useAppContext();
   const location = useLocation();
@@ -32,13 +51,13 @@ const Sidebar: React.FC = () => {
     };
     check();
 
-    // Listen for updates from Products page
+    // Listen for updates from Dashboard / Products page
     const handler = () => check();
     window.addEventListener('zai:experience-card-updated', handler);
     window.addEventListener('storage', handler);
 
     // Also poll localStorage in case the event was missed
-    const interval = setInterval(check, 5000);
+    const interval = setInterval(check, 3000);
 
     return () => {
       window.removeEventListener('zai:experience-card-updated', handler);
@@ -99,6 +118,9 @@ const Sidebar: React.FC = () => {
       setAdminPendingCount(0);
     }
   }, [location.pathname, user]);
+
+  // ── Derive display name ──
+  const { first, last, display: displayName } = user ? getDisplayName(user) : { first: '', last: '', display: '' };
 
   const navSections = [
     {
@@ -178,13 +200,13 @@ const Sidebar: React.FC = () => {
           gap: '10px',
         }}>
           <UserAvatar
-            firstName={user.givenName || user.firstName}
-            lastName={user.familyName || user.lastName}
+            firstName={first}
+            lastName={last}
             size="sm"
           />
           <div>
             <div style={{ fontSize: '12px', color: '#f5f4f0', fontWeight: 500 }}>
-              {user.givenName || user.firstName || ''} {user.familyName || user.lastName || ''}
+              {displayName}
             </div>
             {/* Tier label */}
             <div style={{
