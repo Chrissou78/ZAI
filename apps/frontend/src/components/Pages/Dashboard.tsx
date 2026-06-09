@@ -1243,7 +1243,7 @@ const Dashboard: React.FC = () => {
                   {ecData?.name || 'ZAI Experience Club Card'}
                 </h3>
                 <p style={{ fontSize: 13, color: EC_GRAY, lineHeight: 1.6, marginBottom: 16 }}>
-                  Upload your proof of ownership. An admin will review it and mint your exclusive membership card.
+                  The zai Experience Club is an exclusive club for zai members who have spent more than CHF 500 on zai products. If you meet this criteria, please upload your invoice using one of the options below to submit your membership request.
                 </p>
 
                 {ecData?.image && (
