@@ -160,12 +160,39 @@ const formatClaimedDate = (d?: string | null): string => {
   return dt.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
 };
 
-/* ── Product category detection ── */
+/* ── Product category detection ──
+   The category comes straight from the RWA metadata (data.collection.value),
+   which the route already passes through as product.collection. That value is
+   the source of truth: "Ski", "Apparel" or "Accessory". We classify from it
+   first and only fall back to keyword guessing when collection is empty. */
+type Category = 'ski' | 'apparel' | 'accessory';
+
 const SKI_KEYWORDS = ['ski', 'alpine', 'cross-country', 'freeride', 'slalom', 'race', 'touring'];
-const isSkiProduct = (name?: string, collection?: string, type?: string): boolean => {
+const ACCESSORY_KEYWORDS = ['accessor', 'pole', 'bag', 'helmet', 'goggle', 'wax', 'strap', 'cover'];
+
+const getCategory = (name?: string, collection?: string, type?: string): Category => {
+  const col = (collection || '').trim().toLowerCase();
+  if (col.includes('ski')) return 'ski';
+  if (col.includes('accessor')) return 'accessory';
+  if (col.includes('apparel')) return 'apparel';
+
+  // No usable collection value — fall back to keyword guessing.
   const text = `${name || ''} ${collection || ''} ${type || ''}`.toLowerCase();
-  return SKI_KEYWORDS.some(kw => text.includes(kw));
+  if (SKI_KEYWORDS.some(kw => text.includes(kw))) return 'ski';
+  if (ACCESSORY_KEYWORDS.some(kw => text.includes(kw))) return 'accessory';
+  return 'apparel';
 };
+
+// Insurance is only available for ski products.
+const categorySupportsInsurance = (cat: Category) => cat === 'ski';
+
+const CATEGORY_META: Record<Category, { label: string; badgeBg: string }> = {
+  ski:       { label: 'SKI',       badgeBg: 'rgba(10,10,10,0.78)' },
+  apparel:   { label: 'APPAREL',   badgeBg: 'rgba(106,106,106,0.78)' },
+  accessory: { label: 'ACCESSORY', badgeBg: 'rgba(122,34,46,0.82)' },
+};
+
+const CATEGORY_ORDER: Category[] = ['ski', 'apparel', 'accessory'];
 
 const MAX_GRID_CARDS = 3;
 
@@ -202,7 +229,9 @@ const ProductCard: React.FC<{
   onActivateInsurance: (p: Product) => void;
   style?: React.CSSProperties;
 }> = ({ product, onSelect, onActivateInsurance, style: extraStyle }) => {
-  const isSki = isSkiProduct(product.name, product.collection, product.type);
+  const category = getCategory(product.name, product.collection, product.type);
+  const cat = CATEGORY_META[category];
+  const canInsure = categorySupportsInsurance(category);
 
   return (
     <div
@@ -235,13 +264,13 @@ const ProductCard: React.FC<{
         {/* Category badge */}
         <div style={{
           position: 'absolute', bottom: 8, right: 8,
-          background: isSki ? 'rgba(10,10,10,0.75)' : 'rgba(106,106,106,0.75)',
+          background: cat.badgeBg,
           color: '#fff', fontSize: 8, fontWeight: 700,
           letterSpacing: '0.12em', textTransform: 'uppercase',
           padding: '3px 8px', borderRadius: 2,
           backdropFilter: 'blur(4px)',
         }}>
-          {isSki ? 'SKI' : 'APPAREL'}
+          {cat.label}
         </div>
       </div>
 
@@ -270,7 +299,7 @@ const ProductCard: React.FC<{
       </div>
 
       <div style={{ padding: '0 14px 12px' }}>
-        {isSki ? (
+        {canInsure ? (
           !product.insurance?.active ? (
             <div
               onClick={(e) => { e.stopPropagation(); onActivateInsurance(product); }}
@@ -303,7 +332,7 @@ const ProductCard: React.FC<{
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={C.gray} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/>
             </svg>
-            APPAREL
+            {cat.label}
           </div>
         )}
       </div>
@@ -320,6 +349,7 @@ const Products: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [activeCategory, setActiveCategory] = useState<'all' | Category>('all');
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const [scrollPage, setScrollPage] = useState(0);
@@ -387,7 +417,22 @@ const Products: React.FC = () => {
     }
   }, [dismissedClaimIds]);
 
-  const needsCarousel = products.length > MAX_GRID_CARDS;
+  // Count products per category and apply the active filter. The carousel and
+  // grid render the filtered list, so switching tabs re-lays out the cards.
+  const categoryCounts = products.reduce(
+    (acc, p) => {
+      acc[getCategory(p.name, p.collection, p.type)] += 1;
+      return acc;
+    },
+    { ski: 0, apparel: 0, accessory: 0 } as Record<Category, number>
+  );
+
+  const visibleProducts =
+    activeCategory === 'all'
+      ? products
+      : products.filter(p => getCategory(p.name, p.collection, p.type) === activeCategory);
+
+  const needsCarousel = visibleProducts.length > MAX_GRID_CARDS;
 
   useEffect(() => {
     const id = 'zai-spin-keyframe';
@@ -418,7 +463,7 @@ const Products: React.FC = () => {
     const updatePages = () => {
       const cardWidth = 220 + 16;
       const visible = Math.max(1, Math.floor(el.clientWidth / cardWidth));
-      const totalCards = products.length + 1;
+      const totalCards = visibleProducts.length + 1;
       const pages = Math.max(1, Math.ceil(totalCards / visible));
       setTotalPages(pages);
       updateScrollButtons();
@@ -437,7 +482,13 @@ const Products: React.FC = () => {
       el.removeEventListener('scroll', handleScroll);
       window.removeEventListener('resize', updatePages);
     };
-  }, [products.length, needsCarousel, updateScrollButtons]);
+  }, [visibleProducts.length, activeCategory, needsCarousel, updateScrollButtons]);
+
+  // Reset carousel position when the category filter changes.
+  useEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollLeft = 0;
+    setScrollPage(0);
+  }, [activeCategory]);
 
   const scrollToPage = (page: number) => {
     const el = scrollRef.current;
@@ -1015,15 +1066,47 @@ const Products: React.FC = () => {
         <div style={sectionLabel}>your collection</div>
         <div style={{ height: 16 }} />
 
+        {/* ══════ CATEGORY FILTER ══════ */}
+        {products.length > 0 && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+            {([
+              { key: 'all' as const, label: 'All', count: products.length },
+              ...CATEGORY_ORDER
+                .filter(c => categoryCounts[c] > 0)
+                .map(c => ({ key: c, label: CATEGORY_META[c].label, count: categoryCounts[c] })),
+            ]).map(tab => {
+              const active = activeCategory === tab.key;
+              return (
+                <button
+                  key={tab.key}
+                  onClick={() => setActiveCategory(tab.key)}
+                  style={{
+                    padding: '6px 14px', borderRadius: 16, cursor: 'pointer',
+                    fontSize: 11, fontWeight: 600, letterSpacing: '0.08em',
+                    textTransform: 'uppercase', fontFamily: C.font,
+                    border: active ? `1px solid ${C.black}` : bdr,
+                    background: active ? C.black : C.pureWhite,
+                    color: active ? '#fff' : C.mid,
+                    transition: 'background 0.15s, color 0.15s, border-color 0.15s',
+                  }}
+                >
+                  {tab.label}
+                  <span style={{ marginLeft: 6, opacity: 0.6 }}>{tab.count}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
         {/* ══════ PRODUCT CARDS — grid or carousel ══════ */}
         {!needsCarousel ? (
           <div style={{
             display: 'grid',
-            gridTemplateColumns: `repeat(${products.length + 1}, 1fr)`,
+            gridTemplateColumns: `repeat(${visibleProducts.length + 1}, 1fr)`,
             gap: 16,
           }}>
             <ClaimCard onClaim={openReceiptModal} />
-            {products.map(product => (
+            {visibleProducts.map(product => (
               <ProductCard
                 key={product.id}
                 product={product}
@@ -1071,7 +1154,7 @@ const Products: React.FC = () => {
               }}
             >
               <ClaimCard onClaim={openReceiptModal} style={{ minWidth: 220, maxWidth: 220, scrollSnapAlign: 'start', flexShrink: 0 }} />
-              {products.map(product => (
+              {visibleProducts.map(product => (
                 <ProductCard
                   key={product.id}
                   product={product}
@@ -1165,7 +1248,9 @@ const Products: React.FC = () => {
 
       {/* ════════════ PRODUCT DETAIL MODAL ════════════ */}
       {selectedProduct && (() => {
-        const detailIsSki = isSkiProduct(selectedProduct.name, selectedProduct.collection, selectedProduct.type);
+        const detailCategory = getCategory(selectedProduct.name, selectedProduct.collection, selectedProduct.type);
+        const detailMeta = CATEGORY_META[detailCategory];
+        const detailIsSki = detailCategory === 'ski';
         return (
           <Modal isOpen onClose={() => setSelectedProduct(null)} title={selectedProduct.name}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -1231,14 +1316,14 @@ const Products: React.FC = () => {
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <line x1="12" y1="2" x2="12" y2="22"/>
                         </svg>
-                        SKI
+                        {detailMeta.label}
                       </>
                     ) : (
                       <>
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={C.gray} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/>
                         </svg>
-                        APPAREL
+                        {detailMeta.label}
                       </>
                     )}
                   </div>
@@ -1246,7 +1331,7 @@ const Products: React.FC = () => {
               </div>
 
               {/* Insurance section — only show for ski products */}
-              {detailIsSki && (
+              {categorySupportsInsurance(detailCategory) && (
                 <div style={{
                   padding: '14px 16px', borderRadius: 8, border: bdr,
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
@@ -1289,14 +1374,14 @@ const Products: React.FC = () => {
                 </div>
               )}
 
-              {/* Accessory note — show for non-ski products */}
-              {!detailIsSki && (
+              {/* No-insurance note — apparel and accessory */}
+              {!categorySupportsInsurance(detailCategory) && (
                 <div style={{
                   padding: '12px 16px', borderRadius: 8, border: bdr,
                   background: C.surface,
                 }}>
                   <div style={{ fontSize: 12, color: C.gray }}>
-                    Insurance is available for ski products only. This item is registered as an apparel.
+                    Insurance is available for ski products only. This item is registered as {detailCategory === 'accessory' ? 'an accessory' : 'apparel'}.
                   </div>
                 </div>
               )}
