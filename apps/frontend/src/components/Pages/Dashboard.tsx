@@ -753,7 +753,7 @@ const Dashboard: React.FC = () => {
                 e.currentTarget.style.background = '#7A222E';
               }}
             >
-              Claim your Exclusive Membership
+              CLAIM YOUR ZAI EXPERIENCE CLUB MEMBERSHIP
             </button>
           ) : null}
 

@@ -241,7 +241,7 @@ const ProductCard: React.FC<{
           padding: '3px 8px', borderRadius: 2,
           backdropFilter: 'blur(4px)',
         }}>
-          {isSki ? 'SKI' : 'ACCESSORY'}
+          {isSki ? 'SKI' : 'APPAREL'}
         </div>
       </div>
 
@@ -265,7 +265,7 @@ const ProductCard: React.FC<{
           color: product.insurance?.active ? C.green : C.gray,
         }}>
           <span style={{ width: 6, height: 6, borderRadius: '50%', background: product.insurance?.active ? C.green : C.gray }} />
-          {product.insurance?.active ? 'INSURED' : 'NOT INSURED'}
+          {product.insurance?.active ? 'INSURED' : ''}
         </div>
       </div>
 
@@ -303,7 +303,7 @@ const ProductCard: React.FC<{
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={C.gray} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/>
             </svg>
-            ACCESSORY
+            APPAREL
           </div>
         )}
       </div>
@@ -1238,7 +1238,7 @@ const Products: React.FC = () => {
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={C.gray} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/>
                         </svg>
-                        ACCESSORY
+                        APPAREL
                       </>
                     )}
                   </div>
@@ -1296,7 +1296,7 @@ const Products: React.FC = () => {
                   background: C.surface,
                 }}>
                   <div style={{ fontSize: 12, color: C.gray }}>
-                    Insurance is available for ski products only. This item is registered as an accessory.
+                    Insurance is available for ski products only. This item is registered as an apparel.
                   </div>
                 </div>
               )}
