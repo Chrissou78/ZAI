@@ -170,6 +170,11 @@ async function handleLogin(req, res) {
       if (db) {
         await db.initDB();
         orgRole = await db.getUserRole(userId);
+        // Auto-grant admin if this email is on the allowlist.
+        if (orgRole !== 'owner' && orgRole !== 'admin') {
+          const granted = await db.ensureAdminFromEmail(userId, userProfile.email);
+          if (granted) orgRole = 'admin';
+        }
       }
     } catch (dbErr) {
       console.error('[AUTH] DB role lookup failed (non-fatal):', dbErr.message);

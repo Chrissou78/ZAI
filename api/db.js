@@ -55,6 +55,39 @@ export async function getUserRole(userId, wallet) {
   }
 }
 
+// Auto-grant admin when a user's email is on the allowlist (the admin_emails
+// table or the ZAI_ADMIN_EMAILS env var). Lets you designate admins by email
+// before they have ever signed in; the grant happens on their first login.
+// Never downgrades an existing owner. Returns true if the user is now admin.
+export async function ensureAdminFromEmail(userId, email) {
+  const e = (email || '').trim().toLowerCase();
+  if (!userId || !e) return false;
+  try {
+    const envList = (process.env.ZAI_ADMIN_EMAILS || '')
+      .split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+    let allowed = envList.includes(e);
+    if (!allowed) {
+      const r = await getPool().query(
+        'SELECT 1 FROM admin_emails WHERE LOWER(email) = $1 LIMIT 1',
+        [e]
+      );
+      allowed = r.rows.length > 0;
+    }
+    if (!allowed) return false;
+    await getPool().query(
+      `INSERT INTO user_roles (user_id, role)
+       VALUES ($1, 'admin')
+       ON CONFLICT (user_id) DO UPDATE SET role = 'admin', updated_at = NOW()
+       WHERE user_roles.role <> 'owner'`,
+      [userId]
+    );
+    return true;
+  } catch (err) {
+    console.error('[DB] ensureAdminFromEmail failed:', err.message);
+    return false;
+  }
+}
+
 export async function initDB() {
   if (dbReady) return;
   const client = await getPool().connect();
@@ -177,6 +210,11 @@ export async function initDB() {
         user_id TEXT PRIMARY KEY,
         role TEXT NOT NULL DEFAULT 'member',
         updated_at TIMESTAMPTZ DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS admin_emails (
+        email TEXT PRIMARY KEY,
+        created_at TIMESTAMPTZ DEFAULT NOW()
       );
 
       CREATE TABLE IF NOT EXISTS product_claim_requests (
