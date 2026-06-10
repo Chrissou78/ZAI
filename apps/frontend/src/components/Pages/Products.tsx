@@ -1478,7 +1478,7 @@ const Products: React.FC = () => {
                           setReceiptProductName('');
                         }}
                         isOther={isCustomProduct}
-                        placeholder="Select a product\u2026"
+                        placeholder="Select a product"
                       />
                       {isCustomProduct && (
                         <input

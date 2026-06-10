@@ -322,27 +322,16 @@ const Home: React.FC = () => {
             </div>
           </div>
           {/* Experience Card */}
-          <div style={{ background: 'linear-gradient(135deg, #1a1a1a, #2a2a2a)', border: '1px solid #333', borderRadius: '14px', padding: '1.4rem 1.6rem', position: 'relative', overflow: 'hidden', color: '#fff', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', aspectRatio: '1.586' }}>
-            <div style={{ position: 'absolute', top: '-30px', right: '-30px', width: '100px', height: '100px', background: 'radial-gradient(circle, rgba(200,16,46,0.15), transparent 70%)' }} />
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <div style={{ width: '36px', height: '26px', background: 'linear-gradient(135deg, #888, #555)', borderRadius: '4px' }} />
-              <div style={{ fontSize: '14px', fontWeight: 200, letterSpacing: '0.15em' }}>
-                zai <span style={{ color: '#f5f4f0' }}>experience club</span>
-              </div>
-            </div>
-            <div style={{ fontSize: '11px', letterSpacing: '0.2em', color: 'rgba(255,255,255,0.35)', fontFamily: 'monospace' }}>
-              ZAI-2024 •••• 7823
-            </div>
-            <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
-              <div>
-                <div style={{ fontSize: '8px', letterSpacing: '0.2em', textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)', marginBottom: '2px' }}>
-                  Member
-                </div>
-                <div style={{ fontSize: '11px', letterSpacing: '0.12em', textTransform: 'uppercase' }}>ANNA KIRCHNER</div>
-              </div>
-            </div>
-            <div style={{ position: 'absolute', bottom: '0', left: '0', right: '0', height: '3px', background: 'linear-gradient(90deg, #7A222E, transparent)' }} />
-          </div>
+          <img
+            src="/images/experience-card.png"
+            alt="ZAI Experience Club Card"
+            style={{
+              width: '100%',
+              height: 'auto',
+              borderRadius: 14,
+              display: 'block',
+            }}
+          />
         </div>
         <div style={{ marginTop: '0.75rem', fontSize: '10px', color: '#6a6a6a', display: 'flex', alignItems: 'center', gap: '6px', maxWidth: '900px', margin: '0.75rem auto 0' }}>
           <div style={{ width: '4px', height: '4px', background: '#7A222E', borderRadius: '50%' }} />

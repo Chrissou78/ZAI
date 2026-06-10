@@ -1158,7 +1158,7 @@ const Dashboard: React.FC = () => {
                   Claim Submitted!
                 </h3>
                 <p style={{ fontSize: 13, color: EC_GRAY, lineHeight: 1.6, marginBottom: 20 }}>
-                  Your proof of ownership is being reviewed. Once validated, your ZAI Experience Club Card will be minted and your exclusive membership activated.
+                  Your proof of ownership is being reviewed. Once validated, your zai Experience Club Card will be minted and your exclusive membership activated.
                 </p>
                 <button
                   onClick={() => { closeECModal(); fetchDashboardData(); }}
@@ -1243,7 +1243,7 @@ const Dashboard: React.FC = () => {
                   {ecData?.name || 'ZAI Experience Club Card'}
                 </h3>
                 <p style={{ fontSize: 13, color: EC_GRAY, lineHeight: 1.6, marginBottom: 16 }}>
-                  The zai Experience Club is an exclusive club for zai members who have spent more than CHF 500 on zai products. If you meet this criteria, please upload your invoice using one of the options below to submit your membership request.
+                  The zai Experience Club is an exclusive club for zai members who have spent more than CHF 500 on zai products. If you feel like you meet this criteria, please upload your invoice using one of the options below to submit your membership request.
                 </p>
 
                 {ecData?.image && (

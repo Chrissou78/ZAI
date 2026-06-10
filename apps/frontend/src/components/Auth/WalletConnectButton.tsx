@@ -137,7 +137,7 @@ export function WalletConnectButton() {
           transition: 'all 0.2s',
         }}
       >
-        Log In
+        Sign Up
       </button>
 
       {showModal && (
