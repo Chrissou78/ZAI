@@ -77,12 +77,6 @@ interface InsuranceFormData {
   purchasingdate: string;
 }
 
-interface PendingMint {
-  nftId: string;
-  rwaName: string;
-  startedAt: number;
-}
-
 interface PendingClaimRequest {
   id: string;
   status: string;
@@ -358,13 +352,9 @@ const Products: React.FC = () => {
   const [canScrollRight, setCanScrollRight] = useState(false);
 
   // Old claim modal (kept but no longer triggered by default)
-  const [showClaimModal, setShowClaimModal] = useState(false);
   const [claimableRwas, setClaimableRwas] = useState<ClaimableRwa[]>([]);
   const [claimableLoading, setClaimableLoading] = useState(false);
   const [claimableError, setClaimableError] = useState<string | null>(null);
-
-  const [pendingMints, setPendingMints] = useState<PendingMint[]>([]);
-  const mintPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const [showInsuranceModal, setShowInsuranceModal] = useState(false);
   const [insuranceProduct, setInsuranceProduct] = useState<Product | null>(null);
@@ -587,41 +577,6 @@ const Products: React.FC = () => {
     };
   }, [user?.id]);
 
-  // ── Mint polling ──
-  useEffect(() => {
-    if (mintPollRef.current) {
-      clearInterval(mintPollRef.current);
-      mintPollRef.current = null;
-    }
-    if (pendingMints.length === 0) return;
-    mintPollRef.current = setInterval(async () => {
-      const stillPending: PendingMint[] = [];
-      let anyCompleted = false;
-      for (const mint of pendingMints) {
-        try {
-          const pollRes = await apiService.get(`/products/nft/${mint.nftId}`);
-          const nftData = (pollRes.data as any)?.data;
-          if (nftData?.isClaimed || nftData?.mintedTx) {
-            anyCompleted = true;
-          } else {
-            if (Date.now() - mint.startedAt > 300000) {
-              anyCompleted = true;
-            } else {
-              stillPending.push(mint);
-            }
-          }
-        } catch {
-          stillPending.push(mint);
-        }
-      }
-      if (anyCompleted) fetchUserProducts({ background: true });
-      setPendingMints(stillPending);
-    }, 5000);
-    return () => {
-      if (mintPollRef.current) { clearInterval(mintPollRef.current); mintPollRef.current = null; }
-    };
-  }, [pendingMints, fetchUserProducts]);
-
   const handleUsePhone = async () => {
     try {
       const res = await apiService.post('/products/claim-upload/create-token');
@@ -670,7 +625,7 @@ const Products: React.FC = () => {
     };
   }, [qrPolling, uploadToken]);
 
-  // ── Old claim flow (kept for backward compat but not triggered by UI) ──
+  // ── Fetch available RWA products for the product picker ──
   const fetchClaimableRwas = async () => {
     setClaimableLoading(true);
     setClaimableError(null);
@@ -688,27 +643,6 @@ const Products: React.FC = () => {
       setClaimableError(msg);
     } finally {
       setClaimableLoading(false);
-    }
-  };
-
-  const openClaimModal = () => {
-    setShowClaimModal(true);
-    setClaimableError(null);
-    setClaimableRwas([]);
-    setClaimableLoading(true);
-    setTimeout(() => fetchClaimableRwas(), 0);
-  };
-
-  const handleClaim = async (rwa: ClaimableRwa) => {
-    setShowClaimModal(false);
-    try {
-      const response = await apiService.post('/products/claim-nft', { rwaId: rwa.rwaId });
-      const payload = response.data as any;
-      if (!payload?.success) throw new Error(payload?.error || 'Claim request failed');
-      setPendingMints(prev => [...prev, { nftId: payload.nftId, rwaName: rwa.name, startedAt: Date.now() }]);
-    } catch (err: any) {
-      setShowClaimModal(true);
-      setClaimableError(err?.message || 'Claim failed. Please try again.');
     }
   };
 
@@ -890,32 +824,6 @@ const Products: React.FC = () => {
             + Claim Product
           </button>
         </div>
-
-        {/* ══════ PENDING MINTS BANNER ══════ */}
-        {pendingMints.length > 0 && (
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 12,
-            padding: '14px 20px', marginBottom: 24,
-            background: '#fef9e7', border: '1px solid #f0e68c', borderRadius: 8,
-          }}>
-            <div style={{
-              width: 20, height: 20, border: `2px solid ${C.red}`,
-              borderTopColor: 'transparent', borderRadius: '50%',
-              animation: 'zai-spin 0.8s linear infinite', flexShrink: 0,
-            }} />
-            <div style={{ flex: 1 }}>
-              {pendingMints.length === 1 ? (
-                <span style={{ fontSize: 14, fontWeight: 500 }}>
-                  Minting &ldquo;{pendingMints[0].rwaName}&rdquo;&hellip; This may take a moment.
-                </span>
-              ) : (
-                <span style={{ fontSize: 14, fontWeight: 500 }}>
-                  Minting {pendingMints.length} products&hellip; This may take a moment.
-                </span>
-              )}
-            </div>
-          </div>
-        )}
 
         {/* ══════ CLAIM NOTIFICATIONS ══════ */}
         {allClaims.filter(c => !dismissedClaimIds.has(c.id)).length > 0 && (
@@ -1632,88 +1540,6 @@ const Products: React.FC = () => {
                   </button>
                 </div>
               </>
-            )}
-          </div>
-        </Modal>
-      )}
-
-      {/* ════════════ OLD CLAIM MODAL (kept for backward compat) ════════════ */}
-      {showClaimModal && (
-        <Modal isOpen onClose={() => setShowClaimModal(false)} title="Claim a Product (Direct)">
-          <div style={{ minHeight: 200 }}>
-            {claimableLoading ? (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 48 }}>
-                <div style={{
-                  width: 32, height: 32, border: `3px solid ${C.border}`,
-                  borderTopColor: C.red, borderRadius: '50%',
-                  animation: 'zai-spin 0.8s linear infinite', marginBottom: 16,
-                }} />
-                <span style={{ fontSize: 13, color: C.gray }}>Loading claimable products&hellip;</span>
-              </div>
-            ) : claimableError ? (
-              <div style={{ textAlign: 'center', padding: 32 }}>
-                <p style={{ color: C.red, fontSize: 14, marginBottom: 16 }}>{claimableError}</p>
-                <Button onClick={() => { setClaimableError(null); fetchClaimableRwas(); }}>Try Again</Button>
-              </div>
-            ) : claimableRwas.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: 32, color: C.gray }}>
-                <p style={{ fontSize: 14 }}>No claimable products available right now.</p>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxHeight: 420, overflowY: 'auto' }}>
-                {claimableRwas.map(rwa => {
-                  const isMinting = pendingMints.some(m => m.rwaName === rwa.name);
-                  return (
-                    <div
-                      key={rwa.rwaId}
-                      style={{
-                        display: 'flex', gap: 14, padding: 12,
-                        border: bdr, borderRadius: 8,
-                        opacity: rwa.available ? 1 : 0.55, background: C.pureWhite,
-                      }}
-                    >
-                      <div style={{
-                        width: 64, height: 64, borderRadius: 6, overflow: 'hidden',
-                        background: C.surface, flexShrink: 0,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      }}>
-                        {rwa.image ? (
-                          <img src={rwa.image} alt={rwa.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                        ) : (
-                          <span style={{ fontSize: 24, color: C.border }}>&#x2B21;</span>
-                        )}
-                      </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {rwa.name}
-                        </div>
-                        {rwa.collection && <div style={{ fontSize: 11, color: C.gray, marginBottom: 4 }}>{rwa.collection}</div>}
-                        <div style={{ fontSize: 12, color: C.mid }}>
-                          {rwa.available ? <span style={{ color: C.green }}>Available</span> : <span style={{ color: C.gray }}>Out of stock</span>}
-                          {rwa.price && <span style={{ marginLeft: 8 }}>{rwa.currency || 'CHF'} {rwa.price}</span>}
-                        </div>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
-                        <button
-                          disabled={!rwa.available || isMinting}
-                          onClick={() => handleClaim(rwa)}
-                          style={{
-                            padding: '8px 16px', fontSize: 12, fontWeight: 600,
-                            border: 'none', borderRadius: 6,
-                            cursor: rwa.available && !isMinting ? 'pointer' : 'default',
-                            background: rwa.available ? C.red : C.border,
-                            color: rwa.available ? C.pureWhite : C.gray,
-                            opacity: isMinting ? 0.5 : 1,
-                            fontFamily: C.font, letterSpacing: '0.05em',
-                          }}
-                        >
-                          {isMinting ? 'Minting\u2026' : rwa.available ? 'Claim' : 'Unavailable'}
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
             )}
           </div>
         </Modal>
