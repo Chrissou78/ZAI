@@ -559,7 +559,7 @@ const Profile: React.FC = () => {
             </div>
             <div style={{ textAlign: 'center', padding: '1rem 0' }}>
               <div style={{ fontSize: '20px', fontWeight: 300, color: C.black }}>
-                {stats.eventsAttended}
+                {exclusive ? stats.eventsAttended : 0}
               </div>
               <div style={{ ...label, fontSize: '9px', marginTop: '2px', color: C.gray }}>
                 Events
