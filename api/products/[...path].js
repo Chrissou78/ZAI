@@ -779,58 +779,6 @@ export default async function handler(req, res) {
   }
 
   // ══════════════════════════════════════════════════════════════
-  // POST /api/products/claim-nft — mint NFT via RWA API
-  // ══════════════════════════════════════════════════════════════
-  if (fullPath === 'claim-nft' && req.method === 'POST') {
-    const decoded = authenticate(req);
-    if (!decoded) return res.status(401).json({ error: 'Unauthorized' });
-
-    // ── Rate limit: 3 req/min ──
-    if (applyRateLimit(req, res, 'products:r4', 3, 60000)) return;
-
-    try {
-      const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-      const { rwaId, wallet: mintWallet } = body;
-
-      if (!rwaId) return res.status(400).json({ error: 'rwaId is required' });
-
-      const targetWallet = mintWallet || decoded.wallet;
-      if (!targetWallet) return res.status(400).json({ error: 'No wallet address' });
-
-      const { status, data } = await apiFetch(RWA_BASE, `/rwa/${rwaId}/mint`, {
-        method: 'POST',
-        body: JSON.stringify({ address: targetWallet }),
-      });
-
-      if (status >= 400) {
-        return res.status(status).json({ error: 'Mint failed', detail: data });
-      }
-
-      // Record in DB
-      try {
-        const db = await getDB();
-        if (db) {
-          await db.initDB();
-          const pool = db.getPool();
-          await pool.query(
-            `INSERT INTO product_claims (id, user_id, product_id, claimed_at)
-             VALUES ($1, $2, $3, NOW())
-             ON CONFLICT (user_id, product_id) DO NOTHING`,
-            [genId(), decoded.userId, sanitizeString(rwaId)]
-          );
-        }
-      } catch (dbErr) {
-        console.error('[PRODUCTS] DB claim record failed:', dbErr.message);
-      }
-
-      return res.json({ success: true, data });
-    } catch (err) {
-      console.error('[PRODUCTS] claim-nft error:', err);
-      return res.status(500).json({ error: 'Mint failed', detail: err.message });
-    }
-  }
-
-  // ══════════════════════════════════════════════════════════════
   // GET /api/products/nft/:nftId — poll NFT mint status
   // ══════════════════════════════════════════════════════════════
   const nftStatusMatch = fullPath.match(/^nft\/(.+)$/);
