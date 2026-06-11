@@ -190,34 +190,48 @@ const PhotoZoomContent: React.FC<{
   bdr: string;
 }> = ({ selectedPhoto, user, isAdmin, deletePhoto, fmtFullDate, ReactionBar, timeAgo, deleteComment, newComment, setNewComment, addComment, C, bdr }) => {
   const [isLandscape, setIsLandscape] = React.useState<boolean | null>(null);
+  const [isSmallScreen, setIsSmallScreen] = React.useState(false);
+
+  // Track viewport size
+  React.useEffect(() => {
+    const check = () => setIsSmallScreen(window.innerHeight < 700 || window.innerWidth < 768);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
 
   const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
     const img = e.currentTarget;
     setIsLandscape(img.naturalWidth >= img.naturalHeight);
   };
 
+  // On small screens, always use vertical (stacked) layout regardless of image orientation
+  const useVerticalLayout = isSmallScreen || isLandscape;
+
   // Comments panel (shared between both layouts)
   const commentsPanel = (
     <div style={{
       display: 'flex', flexDirection: 'column',
-      borderLeft: isLandscape ? 'none' : bdr,
-      borderTop: isLandscape ? bdr : 'none',
-      maxHeight: isLandscape ? '40vh' : '90vh',
+      borderLeft: useVerticalLayout ? 'none' : bdr,
+      borderTop: useVerticalLayout ? bdr : 'none',
       width: '100%',
+      minHeight: 0, // allow flex shrink
+      flex: useVerticalLayout ? '1 1 auto' : '1 1 0%',
+      overflow: 'hidden',
     }}>
       {/* Author header */}
-      <div style={{ padding: '18px 20px', borderBottom: bdr }}>
+      <div style={{ padding: '14px 16px', borderBottom: bdr, flexShrink: 0 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{
-              width: 32, height: 32, borderRadius: '50%', background: C.mid, flexShrink: 0,
+              width: 28, height: 28, borderRadius: '50%', background: C.mid, flexShrink: 0,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: '12px', color: C.white, fontWeight: 500,
+              fontSize: '11px', color: C.white, fontWeight: 500,
             }}>
               {(selectedPhoto.authorName?.charAt(0) || 'M').toUpperCase()}
             </div>
             <div>
-              <div style={{ fontSize: '13px', fontWeight: 600, color: C.black }}>{selectedPhoto.authorName}</div>
+              <div style={{ fontSize: '12px', fontWeight: 600, color: C.black }}>{selectedPhoto.authorName}</div>
               <div style={{ fontSize: '10px', color: C.muted }}>{fmtFullDate(selectedPhoto.createdAt)}</div>
             </div>
           </div>
@@ -229,19 +243,27 @@ const PhotoZoomContent: React.FC<{
           )}
         </div>
         {selectedPhoto.caption && (
-          <p style={{ fontSize: '13px', color: C.gray, margin: '12px 0 0', lineHeight: 1.55, fontWeight: 300 }}>{selectedPhoto.caption}</p>
+          <p style={{
+            fontSize: '12px', color: C.gray, margin: '10px 0 0', lineHeight: 1.55, fontWeight: 300,
+            ...(isSmallScreen ? { maxHeight: '3em', overflow: 'hidden', textOverflow: 'ellipsis' } : {}),
+          }}>{selectedPhoto.caption}</p>
         )}
-        <div style={{ marginTop: 14 }}>
+        <div style={{ marginTop: 10 }}>
           <ReactionBar photo={selectedPhoto} />
         </div>
       </div>
-      {/* Comments list */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px' }}>
+      {/* Comments list — scrollable */}
+      <div style={{
+        flex: '1 1 auto',
+        overflowY: 'auto',
+        padding: '12px 16px',
+        minHeight: 0,
+      }}>
         {(!selectedPhoto.comments || selectedPhoto.comments.length === 0) ? (
-          <p style={{ fontSize: '12px', color: C.muted, textAlign: 'center', marginTop: 24 }}>No comments yet</p>
+          <p style={{ fontSize: '12px', color: C.muted, textAlign: 'center', marginTop: 16 }}>No comments yet</p>
         ) : (
           selectedPhoto.comments.map((c: any) => (
-            <div key={c.id} style={{ marginBottom: 16 }}>
+            <div key={c.id} style={{ marginBottom: 14 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontSize: '12px', fontWeight: 600, color: C.black }}>{c.authorName}</span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -257,15 +279,15 @@ const PhotoZoomContent: React.FC<{
           ))
         )}
       </div>
-      {/* Comment input */}
-      <div style={{ padding: '14px 20px', borderTop: bdr, display: 'flex', gap: '1px' }}>
+      {/* Comment input — always visible at bottom */}
+      <div style={{ padding: '10px 16px', borderTop: bdr, display: 'flex', gap: '1px', flexShrink: 0 }}>
         <input type="text" placeholder="Add a comment..." value={newComment}
           onChange={e => setNewComment(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && addComment()}
-          style={{ flex: 1, padding: '10px 12px', border: bdr, fontSize: '12px', fontFamily: "'Inter',sans-serif", background: C.pureWhite, color: C.black, outline: 'none', borderRadius: '4px 0 0 4px' }} />
+          style={{ flex: 1, padding: '9px 10px', border: bdr, fontSize: '12px', fontFamily: "'Inter',sans-serif", background: C.pureWhite, color: C.black, outline: 'none', borderRadius: '4px 0 0 4px' }} />
         <button onClick={addComment} disabled={!newComment.trim()}
           style={{
-            padding: '10px 18px', fontSize: '10px', letterSpacing: '0.12em', textTransform: 'uppercase',
+            padding: '9px 14px', fontSize: '10px', letterSpacing: '0.12em', textTransform: 'uppercase',
             background: newComment.trim() ? C.black : C.muted, color: C.white, border: 'none',
             cursor: newComment.trim() ? 'pointer' : 'not-allowed', fontFamily: "'Inter',sans-serif", fontWeight: 500,
             borderRadius: '0 4px 4px 0',
@@ -278,12 +300,14 @@ const PhotoZoomContent: React.FC<{
     <div onClick={e => e.stopPropagation()}
       style={{
         background: C.white,
-        maxWidth: isLandscape ? 960 : 860,
-        width: '100%',
-        maxHeight: '90vh',
-        display: isLandscape === null ? 'flex' : 'grid',
-        gridTemplateColumns: isLandscape ? '1fr' : '1fr 340px',
-        gridTemplateRows: isLandscape ? 'auto auto' : '1fr',
+        width: isSmallScreen ? '96vw' : 'min(92vw, 960px)',
+        maxWidth: useVerticalLayout ? 'min(92vw, 960px)' : 'min(92vw, 860px)',
+        height: isSmallScreen ? '92vh' : 'auto',
+        maxHeight: '92vh',
+        display: isLandscape === null ? 'flex' : (useVerticalLayout ? 'flex' : 'grid'),
+        flexDirection: useVerticalLayout ? 'column' : undefined,
+        gridTemplateColumns: useVerticalLayout ? undefined : `1fr clamp(260px, 35vw, 340px)`,
+        gridTemplateRows: useVerticalLayout ? undefined : '1fr',
         boxShadow: '0 24px 80px rgba(0,0,0,0.5)',
         overflow: 'hidden',
         borderRadius: 6,
@@ -313,19 +337,25 @@ const PhotoZoomContent: React.FC<{
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            minHeight: isLandscape ? 'auto' : 380,
-            maxHeight: isLandscape ? '55vh' : '90vh',
+            minHeight: useVerticalLayout ? 'auto' : 300,
+            maxHeight: isSmallScreen
+              ? '40vh'
+              : (useVerticalLayout ? '50vh' : 'none'),
             overflow: 'hidden',
+            flexShrink: 0,
           }}>
             <img
               src={selectedPhoto.url}
               alt={selectedPhoto.caption}
               onLoad={handleImageLoad}
               style={{
-                width: isLandscape ? '100%' : 'auto',
+                width: useVerticalLayout ? '100%' : 'auto',
                 maxWidth: '100%',
-                maxHeight: isLandscape ? '55vh' : '85vh',
+                maxHeight: isSmallScreen
+                  ? '40vh'
+                  : (useVerticalLayout ? '50vh' : '90vh'),
                 objectFit: 'contain',
+                display: 'block',
               }}
             />
           </div>
@@ -1037,29 +1067,30 @@ const Community: React.FC = () => {
       )}
 
       {/* ══════ PHOTO DETAIL MODAL ══════ */}
-      {selectedPhoto && (
-        <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(10,10,10,0.8)', backdropFilter: 'blur(6px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '2rem',
-        }}
-          onClick={() => { setSelectedPhoto(null); setEmojiPickerPhotoId(null); setEmojiPickerPos(null); }}>
-          <PhotoZoomContent
-            selectedPhoto={selectedPhoto}
-            user={user}
-            isAdmin={isAdmin}
-            deletePhoto={deletePhoto}
-            fmtFullDate={fmtFullDate}
-            ReactionBar={ReactionBar}
-            timeAgo={timeAgo}
-            deleteComment={deleteComment}
-            newComment={newComment}
-            setNewComment={setNewComment}
-            addComment={addComment}
-            C={C}
-            bdr={bdr}
-          />
-        </div>
-      )}
+        {selectedPhoto && (
+          <div style={{
+            position: 'fixed', inset: 0, background: 'rgba(10,10,10,0.8)', backdropFilter: 'blur(6px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000,
+            padding: 'clamp(0.5rem, 2vw, 2rem)',
+          }}
+            onClick={() => { setSelectedPhoto(null); setEmojiPickerPhotoId(null); setEmojiPickerPos(null); }}>
+            <PhotoZoomContent
+              selectedPhoto={selectedPhoto}
+              user={user}
+              isAdmin={isAdmin}
+              deletePhoto={deletePhoto}
+              fmtFullDate={fmtFullDate}
+              ReactionBar={ReactionBar}
+              timeAgo={timeAgo}
+              deleteComment={deleteComment}
+              newComment={newComment}
+              setNewComment={setNewComment}
+              addComment={addComment}
+              C={C}
+              bdr={bdr}
+            />
+          </div>
+        )}
 
       {/* ══════ EMOJI PICKER ══════ */}
       {emojiPickerPhotoId && emojiPickerPos && (

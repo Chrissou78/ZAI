@@ -39,19 +39,114 @@ interface CardInfo {
   tokenAddress: string;
 }
 
+/* ── Country list ── */
+const COUNTRIES = [
+  'Afghanistan','Albania','Algeria','Andorra','Angola','Argentina','Armenia','Australia',
+  'Austria','Azerbaijan','Bahrain','Bangladesh','Belgium','Bolivia','Bosnia and Herzegovina',
+  'Brazil','Bulgaria','Cambodia','Cameroon','Canada','Chile','China','Colombia','Costa Rica',
+  'Croatia','Cuba','Cyprus','Czech Republic','Denmark','Dominican Republic','Ecuador','Egypt',
+  'Estonia','Ethiopia','Finland','France','Georgia','Germany','Ghana','Greece','Guatemala',
+  'Hong Kong','Hungary','Iceland','India','Indonesia','Iran','Iraq','Ireland','Israel','Italy',
+  'Jamaica','Japan','Jordan','Kazakhstan','Kenya','Kuwait','Latvia','Lebanon','Libya',
+  'Liechtenstein','Lithuania','Luxembourg','Malaysia','Malta','Mexico','Moldova','Monaco',
+  'Mongolia','Montenegro','Morocco','Mozambique','Netherlands','New Zealand','Nigeria',
+  'North Macedonia','Norway','Oman','Pakistan','Panama','Paraguay','Peru','Philippines',
+  'Poland','Portugal','Qatar','Romania','Russia','Saudi Arabia','Senegal','Serbia','Singapore',
+  'Slovakia','Slovenia','South Africa','South Korea','Spain','Sri Lanka','Sweden','Switzerland',
+  'Taiwan','Thailand','Tunisia','Turkey','UAE','Uganda','Ukraine','United Kingdom',
+  'United States','Uruguay','Uzbekistan','Venezuela','Vietnam',
+];
+
+/* ── Phone country codes ── */
+const PHONE_CODES = [
+  { code: '+41',  label: '+41 (CH)' },
+  { code: '+33',  label: '+33 (FR)' },
+  { code: '+49',  label: '+49 (DE)' },
+  { code: '+39',  label: '+39 (IT)' },
+  { code: '+43',  label: '+43 (AT)' },
+  { code: '+44',  label: '+44 (UK)' },
+  { code: '+1',   label: '+1 (US/CA)' },
+  { code: '+34',  label: '+34 (ES)' },
+  { code: '+351', label: '+351 (PT)' },
+  { code: '+32',  label: '+32 (BE)' },
+  { code: '+31',  label: '+31 (NL)' },
+  { code: '+352', label: '+352 (LU)' },
+  { code: '+423', label: '+423 (LI)' },
+  { code: '+377', label: '+377 (MC)' },
+  { code: '+46',  label: '+46 (SE)' },
+  { code: '+47',  label: '+47 (NO)' },
+  { code: '+45',  label: '+45 (DK)' },
+  { code: '+358', label: '+358 (FI)' },
+  { code: '+354', label: '+354 (IS)' },
+  { code: '+48',  label: '+48 (PL)' },
+  { code: '+420', label: '+420 (CZ)' },
+  { code: '+36',  label: '+36 (HU)' },
+  { code: '+30',  label: '+30 (GR)' },
+  { code: '+353', label: '+353 (IE)' },
+  { code: '+81',  label: '+81 (JP)' },
+  { code: '+86',  label: '+86 (CN)' },
+  { code: '+82',  label: '+82 (KR)' },
+  { code: '+91',  label: '+91 (IN)' },
+  { code: '+971', label: '+971 (AE)' },
+  { code: '+966', label: '+966 (SA)' },
+  { code: '+974', label: '+974 (QA)' },
+  { code: '+65',  label: '+65 (SG)' },
+  { code: '+852', label: '+852 (HK)' },
+  { code: '+61',  label: '+61 (AU)' },
+  { code: '+64',  label: '+64 (NZ)' },
+  { code: '+55',  label: '+55 (BR)' },
+  { code: '+52',  label: '+52 (MX)' },
+  { code: '+27',  label: '+27 (ZA)' },
+  { code: '+7',   label: '+7 (RU)' },
+  { code: '+90',  label: '+90 (TR)' },
+  { code: '+380', label: '+380 (UA)' },
+];
+
+/* ── Helper: extract phone code from a stored phone number like "+41 79 123 4567" ── */
+function parsePhone(phoneNumber: string): { phoneCode: string; phoneLocal: string } {
+  if (!phoneNumber) return { phoneCode: '+41', phoneLocal: '' };
+  const trimmed = phoneNumber.trim();
+  // Try to match a known code at the start
+  for (const pc of PHONE_CODES) {
+    if (trimmed.startsWith(pc.code + ' ') || trimmed.startsWith(pc.code + '-')) {
+      return { phoneCode: pc.code, phoneLocal: trimmed.slice(pc.code.length).trim() };
+    }
+    if (trimmed === pc.code) {
+      return { phoneCode: pc.code, phoneLocal: '' };
+    }
+  }
+  // If starts with + but doesn't match known codes, try longest match
+  if (trimmed.startsWith('+')) {
+    const sorted = [...PHONE_CODES].sort((a, b) => b.code.length - a.code.length);
+    for (const pc of sorted) {
+      if (trimmed.startsWith(pc.code)) {
+        return { phoneCode: pc.code, phoneLocal: trimmed.slice(pc.code.length).trim() };
+      }
+    }
+    // Unknown code — keep as-is in local
+    return { phoneCode: '', phoneLocal: trimmed };
+  }
+  // No + prefix — treat as local number
+  return { phoneCode: '+41', phoneLocal: trimmed };
+}
+
 /* ── Helper to build formData from any user-shaped object ── */
-const toFormData = (src: any) => ({
-  givenName: src?.givenName || '',
-  familyName: src?.familyName || '',
-  email: src?.email || '',
-  phoneNumber: src?.phoneNumber || '',
-  address: src?.address || '',
-  city: src?.city || '',
-  country: src?.country || '',
-  postalCode: src?.postalCode || '',
-  birthdate: src?.birthdate || '',
-  isPublic: src?.isPublic || false,
-});
+const toFormData = (src: any) => {
+  const { phoneCode, phoneLocal } = parsePhone(src?.phoneNumber || '');
+  return {
+    givenName: src?.givenName || '',
+    familyName: src?.familyName || '',
+    email: src?.email || '',
+    phoneCode,
+    phoneLocal,
+    address: src?.address || '',
+    city: src?.city || '',
+    country: src?.country || '',
+    postalCode: src?.postalCode || '',
+    birthdate: src?.birthdate || '',
+    isPublic: src?.isPublic || false,
+  };
+};
 
 const Profile: React.FC = () => {
   const { user, setUser } = useAppContext();
@@ -132,11 +227,13 @@ const Profile: React.FC = () => {
         const res = await apiService.get('/users/me');
         const d = (res.data as any)?.data;
         if (d && !cancelled) {
+          const { phoneCode, phoneLocal } = parsePhone(d.phoneNumber || '');
           setFormData(prev => ({
             givenName: d.givenName || prev.givenName,
             familyName: d.familyName || prev.familyName,
             email: d.email || prev.email,
-            phoneNumber: d.phoneNumber || prev.phoneNumber,
+            phoneCode: phoneCode || prev.phoneCode,
+            phoneLocal: phoneLocal || prev.phoneLocal,
             address: d.address || prev.address,
             city: d.city || prev.city,
             country: d.country || prev.country,
@@ -181,16 +278,26 @@ const Profile: React.FC = () => {
     setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
   };
 
+  const handleSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
   const handleSave = async () => {
     if (!user?.id) return;
     setIsLoading(true);
     try {
+      // Combine phone code + local into a single phone number string for storage
+      const fullPhone = formData.phoneLocal
+        ? `${formData.phoneCode} ${formData.phoneLocal}`.trim()
+        : '';
+
       const res = await apiService.put('/users/me', {
         name: `${formData.givenName} ${formData.familyName}`.trim(),
         givenName: formData.givenName,
         familyName: formData.familyName,
         email: formData.email,
-        phoneNumber: formData.phoneNumber,
+        phoneNumber: fullPhone,
         address: formData.address,
         city: formData.city,
         country: formData.country,
@@ -210,7 +317,7 @@ const Profile: React.FC = () => {
           familyName: formData.familyName,
           name: `${formData.givenName} ${formData.familyName}`.trim(),
           email: formData.email,
-          phoneNumber: formData.phoneNumber,
+          phoneNumber: fullPhone,
           address: formData.address,
           city: formData.city,
           country: formData.country,
@@ -265,7 +372,15 @@ const Profile: React.FC = () => {
     if (formData.address) parts.push(formData.address);
     const cityZip = [formData.postalCode, formData.city].filter(Boolean).join(' ');
     if (cityZip) parts.push(cityZip);
+    if (formData.country) parts.push(formData.country);
     return parts.join(', ') || '—';
+  };
+
+  /* ── Display phone number (combined) ── */
+  const displayPhone = () => {
+    if (!formData.phoneLocal && !formData.phoneCode) return '—';
+    if (!formData.phoneLocal) return '—';
+    return `${formData.phoneCode} ${formData.phoneLocal}`.trim();
   };
 
   if (!user) {
@@ -287,6 +402,23 @@ const Profile: React.FC = () => {
   if (loc) bulletItems.push(loc);
   if ((user as any).nfcCardId) bulletItems.push(`NFC Card: ${(user as any).nfcCardId}`);
   bulletItems.push('CHF · Alpine region');
+
+  /* ── Shared dropdown style ── */
+  const selectStyle: React.CSSProperties = {
+    width: '100%',
+    background: '#fff',
+    border: 'none',
+    borderBottom: `1px solid ${C.border}`,
+    color: C.black,
+    fontFamily: C.font,
+    fontSize: '13px',
+    fontWeight: 400,
+    padding: '4px 0',
+    outline: 'none',
+    cursor: 'pointer',
+    boxSizing: 'border-box',
+    appearance: 'auto',
+  };
 
   return (
     <div style={{ maxWidth: 1100, margin: '0 auto', padding: '48px 48px 80px', fontFamily: C.font }}>
@@ -530,14 +662,68 @@ const Profile: React.FC = () => {
                 type={isEditing ? 'date' : 'text'}
                 onChange={handleChange}
               />
-              <FieldCell
-                label="Phone Number"
-                name="phoneNumber"
-                value={formData.phoneNumber}
-                editing={isEditing}
-                type="tel"
-                onChange={handleChange}
-              />
+
+              {/* ── Phone Number: dropdown code + local input in edit mode ── */}
+              {isEditing ? (
+                <div style={{ background: '#fff', padding: '1rem 1.25rem' }}>
+                  <div
+                    style={{
+                      fontSize: '10px',
+                      letterSpacing: '0.25em',
+                      textTransform: 'uppercase',
+                      color: C.gray,
+                      marginBottom: '6px',
+                      fontFamily: C.font,
+                    }}
+                  >
+                    Phone Number
+                  </div>
+                  <div style={{ display: 'flex', gap: '6px', alignItems: 'flex-end' }}>
+                    <select
+                      name="phoneCode"
+                      value={formData.phoneCode}
+                      onChange={handleSelectChange}
+                      style={{
+                        ...selectStyle,
+                        width: '115px',
+                        flexShrink: 0,
+                      }}
+                    >
+                      {PHONE_CODES.map(pc => (
+                        <option key={pc.code} value={pc.code}>{pc.label}</option>
+                      ))}
+                    </select>
+                    <input
+                      type="tel"
+                      name="phoneLocal"
+                      value={formData.phoneLocal}
+                      onChange={handleChange}
+                      placeholder="79 123 4567"
+                      style={{
+                        flex: 1,
+                        background: 'transparent',
+                        border: 'none',
+                        borderBottom: `1px solid ${C.border}`,
+                        color: C.black,
+                        fontFamily: C.font,
+                        fontSize: '13px',
+                        fontWeight: 400,
+                        padding: '4px 0',
+                        outline: 'none',
+                        boxSizing: 'border-box',
+                      }}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <FieldCell
+                  label="Phone Number"
+                  name="phoneNumber"
+                  value={displayPhone()}
+                  editing={false}
+                  onChange={() => {}}
+                />
+              )}
             </div>
 
             <FieldCell
@@ -580,13 +766,33 @@ const Profile: React.FC = () => {
                     editing={true}
                     onChange={handleChange}
                   />
-                  <FieldCell
-                    label="Country"
-                    name="country"
-                    value={formData.country}
-                    editing={true}
-                    onChange={handleChange}
-                  />
+
+                  {/* ── Country: dropdown in edit mode ── */}
+                  <div style={{ background: '#fff', padding: '1rem 1.25rem' }}>
+                    <div
+                      style={{
+                        fontSize: '10px',
+                        letterSpacing: '0.25em',
+                        textTransform: 'uppercase',
+                        color: C.gray,
+                        marginBottom: '6px',
+                        fontFamily: C.font,
+                      }}
+                    >
+                      Country
+                    </div>
+                    <select
+                      name="country"
+                      value={formData.country}
+                      onChange={handleSelectChange}
+                      style={selectStyle}
+                    >
+                      <option value="">Select country</option>
+                      {COUNTRIES.map(c => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               </>
             ) : (

@@ -814,27 +814,15 @@ const Dashboard: React.FC = () => {
                   Products
                 </div>
               </div>
-              {/* ── GATED: Events counter ── */}
-              <div style={{ padding: '1rem 1.5rem', textAlign: 'center', position: 'relative' }}>
-                {exclusive ? (
-                  <>
-                    <div style={{ fontSize: '20px', fontWeight: 200, color: '#fff' }}>
-                      {stats.eventsAttended}
-                    </div>
-                    <div style={{ fontSize: '9px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#555', marginTop: '2px' }}>
-                      Events
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div style={{ fontSize: '20px', fontWeight: 200, color: '#333' }}>—</div>
-                    <div style={{ fontSize: '9px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#333', marginTop: '2px' }}>
-                      Events
-                    </div>
-                    <div style={{ position: 'absolute', top: 4, right: 4, fontSize: 10 }}>🔒</div>
-                  </>
-                )}
-              </div>
+              {/* ── Events counter (always visible, shows 0 for standard users) ── */}
+                <div style={{ padding: '1rem 1.5rem', textAlign: 'center' }}>
+                  <div style={{ fontSize: '20px', fontWeight: 200, color: exclusive ? '#fff' : '#555' }}>
+                    {exclusive ? stats.eventsAttended : 0}
+                  </div>
+                  <div style={{ fontSize: '9px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#555', marginTop: '2px' }}>
+                    Events
+                  </div>
+                </div>
             </div>
           </div>
 
@@ -896,20 +884,20 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* ── GATED: Upcoming Events stat ── */}
-        <LockedOverlay locked={!exclusive} message="Access events tracking with the Experience Card membership.">
+        {/* ── Upcoming Events stat (always visible, shows 0 for standard users) ── */}
           <div style={{ background: '#fff', padding: '1.5rem 1.25rem' }}>
             <div style={{ fontSize: '32px', fontWeight: 200, lineHeight: 1, color: '#1a1a1a' }}>
-              {stats.eventsAttended}
+              {exclusive ? stats.eventsAttended : 0}
             </div>
             <div style={{ fontSize: '11px', letterSpacing: '0.25em', textTransform: 'uppercase', color: '#6a6a6a', marginTop: '6px' }}>
               Upcoming events
             </div>
             <div style={{ fontSize: '11px', color: '#6a6a6a', marginTop: '2px' }}>
-              {stats.eventsAttended === 0 ? 'Check upcoming events' : 'Registrations active'}
+              {exclusive
+                ? (stats.eventsAttended === 0 ? 'Check upcoming events' : 'Registrations active')
+                : '0 events'}
             </div>
           </div>
-        </LockedOverlay>
       </div>
 
       {/* Activity + Quick Actions */}
@@ -1033,87 +1021,85 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* ── GATED: Quick Actions ── */}
-        <LockedOverlay locked={!exclusive} message="Access exclusive content with the Experience Card membership.">
-          <div style={{ background: '#f0ede6', padding: '1.75rem' }}>
+        {/* ── Quick Actions (always accessible) ── */}
+        <div style={{ background: '#f0ede6', padding: '1.75rem' }}>
+          <div
+            style={{
+              fontSize: '11px',
+              letterSpacing: '0.3em',
+              textTransform: 'uppercase',
+              color: '#1a1a1a',
+              marginBottom: '1.25rem',
+              paddingBottom: '0.75rem',
+              borderBottom: '1px solid #e0ddd6',
+            }}
+          >
+            Quick actions
+          </div>
+          {[
+            {
+              title: 'Claim a product',
+              sub: 'NFC or serial number',
+              page: '/products',
+              icon: (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a1a1a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                  <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+                  <line x1="12" y1="22.08" x2="12" y2="12" />
+                </svg>
+              ),
+            },
+            {
+              title: 'Browse events',
+              sub: 'See upcoming events',
+              page: '/events',
+              icon: (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a1a1a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                  <line x1="16" y1="2" x2="16" y2="6" />
+                  <line x1="8" y1="2" x2="8" y2="6" />
+                  <line x1="3" y1="10" x2="21" y2="10" />
+                </svg>
+              ),
+            },
+          ].map((action, i) => (
             <div
+              key={i}
+              onClick={() => navigate(action.page)}
               style={{
-                fontSize: '11px',
-                letterSpacing: '0.3em',
-                textTransform: 'uppercase',
-                color: '#1a1a1a',
-                marginBottom: '1.25rem',
-                paddingBottom: '0.75rem',
-                borderBottom: '1px solid #e0ddd6',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                padding: '0.9rem 0',
+                borderBottom: i === 0 ? '1px solid #e0ddd6' : 'none',
+                cursor: 'pointer',
+                transition: 'opacity 0.2s',
               }}
+              onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.7')}
+              onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
             >
-              Quick actions
-            </div>
-            {[
-              {
-                title: 'Claim a product',
-                sub: 'NFC or serial number',
-                page: '/products',
-                icon: (
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a1a1a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-                    <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
-                    <line x1="12" y1="22.08" x2="12" y2="12" />
-                  </svg>
-                ),
-              },
-              {
-                title: 'Browse events',
-                sub: 'See upcoming events',
-                page: '/events',
-                icon: (
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a1a1a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-                    <line x1="16" y1="2" x2="16" y2="6" />
-                    <line x1="8" y1="2" x2="8" y2="6" />
-                    <line x1="3" y1="10" x2="21" y2="10" />
-                  </svg>
-                ),
-              },
-            ].map((action, i) => (
               <div
-                key={i}
-                onClick={() => navigate(action.page)}
                 style={{
+                  width: '32px',
+                  height: '32px',
+                  background: '#fff',
+                  border: '1px solid #e0ddd6',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '12px',
-                  padding: '0.9rem 0',
-                  borderBottom: i === 0 ? '1px solid #e0ddd6' : 'none',
-                  cursor: 'pointer',
-                  transition: 'opacity 0.2s',
+                  justifyContent: 'center',
+                  flexShrink: 0,
                 }}
-                onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.7')}
-                onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
               >
-                <div
-                  style={{
-                    width: '32px',
-                    height: '32px',
-                    background: '#fff',
-                    border: '1px solid #e0ddd6',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
-                  }}
-                >
-                  {action.icon}
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: '12px', fontWeight: 500 }}>{action.title}</div>
-                  <div style={{ fontSize: '11px', color: '#6a6a6a', marginTop: '1px' }}>{action.sub}</div>
-                </div>
-                <div style={{ marginLeft: 'auto', color: '#6a6a6a', fontSize: '14px' }}>›</div>
+                {action.icon}
               </div>
-            ))}
-          </div>
-        </LockedOverlay>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: '12px', fontWeight: 500 }}>{action.title}</div>
+                <div style={{ fontSize: '11px', color: '#6a6a6a', marginTop: '1px' }}>{action.sub}</div>
+              </div>
+              <div style={{ marginLeft: 'auto', color: '#6a6a6a', fontSize: '14px' }}>›</div>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* ══════ Experience Card Claim Modal (proof-of-purchase flow) ══════ */}
