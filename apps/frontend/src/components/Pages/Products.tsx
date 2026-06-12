@@ -247,14 +247,6 @@ const ProductCard: React.FC<{
         ) : (
           <span style={{ fontSize: 40, color: C.border }}>&#x2B21;</span>
         )}
-        {product.insurance?.active && (
-          <div style={{
-            position: 'absolute', top: 8, left: 8,
-            background: C.black, color: '#fff', fontSize: 8, fontWeight: 700,
-            letterSpacing: '0.15em', textTransform: 'uppercase',
-            padding: '3px 8px', borderRadius: 2,
-          }}>CLAIMED</div>
-        )}
         {/* Category badge */}
         <div style={{
           position: 'absolute', bottom: 8, right: 8,
@@ -275,9 +267,9 @@ const ProductCard: React.FC<{
         <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 6, lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {product.name}
         </div>
-        {product.price && (
+        {(product.price || product.priceRaw) && (
           <div style={{ fontSize: 13, color: C.mid, marginBottom: 8 }}>
-            {product.currency || 'CHF'} {product.price}
+            {product.currency || 'CHF'} {product.price && product.price !== '0' ? product.price : product.priceRaw || product.price}
           </div>
         )}
         <div style={{
@@ -1208,10 +1200,6 @@ const Products: React.FC = () => {
                     <div style={{ fontSize: 13, fontFamily: 'monospace' }}>{selectedProduct.serialNumber}</div>
                   </div>
                 )}
-                <div>
-                  <div style={lbl}>Claimed</div>
-                  <div style={{ fontSize: 13 }}>{formatClaimedDate(selectedProduct.claimedAt)}</div>
-                </div>
                 <div>
                   <div style={lbl}>Category</div>
                   <div style={{
