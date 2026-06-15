@@ -199,12 +199,12 @@ const Home: React.FC = () => {
             zai Experience Club
           </div>
           <h1 style={{ fontSize: 'clamp(60px, 6.5vw, 96px)', fontWeight: 300, lineHeight: 1.05, letterSpacing: '-0.02em', marginBottom: '1.5rem', color: '#fff' }}>
-            Your world.<br />Beyond the<br /><span style={{ color: '#f5f4f0' }}>mountain.</span>
+            Your world<br />beyond the<br /><span style={{ color: '#f5f4f0' }}>mountain.</span>
           </h1>
           <p style={{ color: '#999', fontSize: '18px', maxWidth: '900px', lineHeight: 1.8, marginBottom: '2rem' }}>
             Welcome to zai Experience Club. Claim your products, sign up for zai events, and <br />
             manage your personal zai ski collection all in one place. The zai Experience Club <br />
-            makes zai more personal, more interactive, and closer than ever!
+            makes zai more personal, more interactive, and closer than ever before!!
           </p>
           {user && (
             <div style={{ display: 'flex', gap: '0.75rem' }}>
@@ -279,7 +279,7 @@ const Home: React.FC = () => {
               <MountainIcon />
             </div>
             <div style={{ fontSize: '12px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#555', marginTop: '3px' }}>
-              Alpine Craft
+              Alpine Design
             </div>
           </div>
           <div style={{ flex: 1, padding: '1.25rem', textAlign: 'center' }}>

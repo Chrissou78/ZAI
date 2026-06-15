@@ -154,6 +154,32 @@ const formatClaimedDate = (d?: string | null): string => {
   return dt.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
 };
 
+/* ── Experience card detection for notification wording ──
+   If the claimed item is an "experience card" we say "card" instead of
+   "product" in every notification banner so users aren't confused. */
+const isExperienceCard = (name?: string): boolean => {
+  const n = (name || '').toLowerCase();
+  return n.includes('experience') && n.includes('card');
+};
+const getItemLabel = (name?: string): string =>
+  isExperienceCard(name) ? 'card' : 'product';
+const getItemLabelCap = (name?: string): string =>
+  isExperienceCard(name) ? 'Card' : 'Product';
+
+/* ── Robust price display ──
+   The backend may return price as "0" after a metadata update while the real
+   value lives in priceRaw, or vice-versa. This helper picks the first
+   meaningful value so the card never shows "CHF 0". */
+const getDisplayPrice = (price?: string, priceRaw?: string): string | null => {
+  const p = price?.trim();
+  const r = priceRaw?.trim();
+  // prefer formatted price, fall back to raw; skip "0" / empty
+  if (p && p !== '0' && p !== '0.00') return p;
+  if (r && r !== '0' && r !== '0.00') return r;
+  // both are zero / empty → return null so the UI hides the row entirely
+  return null;
+};
+
 /* ── Product category detection ──
    The category comes straight from the RWA metadata (data.collection.value),
    which the route already passes through as product.collection. That value is
@@ -226,6 +252,7 @@ const ProductCard: React.FC<{
   const category = getCategory(product.name, product.collection, product.type);
   const cat = CATEGORY_META[category];
   const canInsure = categorySupportsInsurance(category);
+  const displayPrice = getDisplayPrice(product.price, product.priceRaw);
 
   return (
     <div
@@ -247,6 +274,15 @@ const ProductCard: React.FC<{
         ) : (
           <span style={{ fontSize: 40, color: C.border }}>&#x2B21;</span>
         )}
+        {/* Insured badge — only shown when insurance is active */}
+        {product.insurance?.active && (
+          <div style={{
+            position: 'absolute', top: 8, left: 8,
+            background: 'rgba(76,175,125,0.9)', color: '#fff', fontSize: 8, fontWeight: 700,
+            letterSpacing: '0.15em', textTransform: 'uppercase',
+            padding: '3px 8px', borderRadius: 2,
+          }}>INSURED</div>
+        )}
         {/* Category badge */}
         <div style={{
           position: 'absolute', bottom: 8, right: 8,
@@ -267,9 +303,9 @@ const ProductCard: React.FC<{
         <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 6, lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {product.name}
         </div>
-        {(product.price || product.priceRaw) && (
+        {displayPrice && (
           <div style={{ fontSize: 13, color: C.mid, marginBottom: 8 }}>
-            {product.currency || 'CHF'} {product.price && product.price !== '0' ? product.price : product.priceRaw || product.price}
+            {product.currency || 'CHF'} {displayPrice}
           </div>
         )}
         <div style={{
@@ -343,7 +379,7 @@ const Products: React.FC = () => {
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
 
-  // Old claim modal (kept but no longer triggered by default)
+  // Claimable RWAs for the product picker
   const [claimableRwas, setClaimableRwas] = useState<ClaimableRwa[]>([]);
   const [claimableLoading, setClaimableLoading] = useState(false);
   const [claimableError, setClaimableError] = useState<string | null>(null);
@@ -360,7 +396,7 @@ const Products: React.FC = () => {
 
   const [zoomImage, setZoomImage] = useState<{ src: string; alt: string } | null>(null);
 
-  // ── NEW: Receipt-based claim flow ──
+  // ── Receipt-based claim flow ──
   const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [receiptImage, setReceiptImage] = useState<string | null>(null);
   const [receiptProductName, setReceiptProductName] = useState('');
@@ -399,8 +435,7 @@ const Products: React.FC = () => {
     }
   }, [dismissedClaimIds]);
 
-  // Count products per category and apply the active filter. The carousel and
-  // grid render the filtered list, so switching tabs re-lays out the cards.
+  // Count products per category and apply the active filter.
   const categoryCounts = products.reduce(
     (acc, p) => {
       acc[getCategory(p.name, p.collection, p.type)] += 1;
@@ -638,7 +673,7 @@ const Products: React.FC = () => {
     }
   };
 
-  // ── NEW: Receipt-based claim handlers ──
+  // ── Receipt-based claim handlers ──
   const openReceiptModal = () => {
     setShowReceiptModal(true);
     setReceiptImage(null);
@@ -834,7 +869,7 @@ const Products: React.FC = () => {
                     Claim pending review
                   </div>
                   <div style={{ fontSize: 11, color: C.gray, marginTop: 2 }}>
-                    {c.productName || 'Product'} — submitted {formatClaimedDate(c.createdAt)}
+                    {c.productName || getItemLabelCap(c.productName)} — submitted {formatClaimedDate(c.createdAt)}
                   </div>
                 </div>
               </div>
@@ -850,10 +885,10 @@ const Products: React.FC = () => {
                 <span style={{ fontSize: 18, flexShrink: 0 }}>⛏️</span>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: C.black }}>
-                    Minting your product…
+                    Minting your {getItemLabel(c.productName)}…
                   </div>
                   <div style={{ fontSize: 11, color: C.gray, marginTop: 2 }}>
-                    {c.productName || 'Product'} — your NFT is being created
+                    {c.productName || getItemLabelCap(c.productName)} — your NFT is being created
                   </div>
                 </div>
               </div>
@@ -869,10 +904,10 @@ const Products: React.FC = () => {
                 <span style={{ fontSize: 18, flexShrink: 0 }}>✅</span>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: C.green }}>
-                    Product added to your collection!
+                    {getItemLabelCap(c.productName)} added to your {isExperienceCard(c.productName) ? 'account' : 'collection'}!
                   </div>
                   <div style={{ fontSize: 11, color: C.gray, marginTop: 2 }}>
-                    {c.productName || 'Product'} — validated {c.reviewedAt ? new Date(c.reviewedAt).toLocaleDateString() : ''}
+                    {c.productName || getItemLabelCap(c.productName)} — validated {c.reviewedAt ? new Date(c.reviewedAt).toLocaleDateString() : ''}
                   </div>
                 </div>
                 <button
@@ -898,7 +933,7 @@ const Products: React.FC = () => {
                     Claim rejected
                   </div>
                   <div style={{ fontSize: 11, color: C.gray, marginTop: 2 }}>
-                    {c.productName || 'Product'}
+                    {c.productName || getItemLabelCap(c.productName)}
                     {c.adminNote ? ` — ${c.adminNote}` : ' — contact support for details'}
                   </div>
                 </div>
@@ -925,7 +960,7 @@ const Products: React.FC = () => {
                     Minting error — admin notified
                   </div>
                   <div style={{ fontSize: 11, color: C.gray, marginTop: 2 }}>
-                    {c.productName || 'Product'} — {c.adminNote || 'an error occurred during minting'}
+                    {c.productName || getItemLabelCap(c.productName)} — {c.adminNote || 'an error occurred during minting'}
                   </div>
                 </div>
                 <button
@@ -1151,6 +1186,7 @@ const Products: React.FC = () => {
         const detailCategory = getCategory(selectedProduct.name, selectedProduct.collection, selectedProduct.type);
         const detailMeta = CATEGORY_META[detailCategory];
         const detailIsSki = detailCategory === 'ski';
+        const detailPrice = getDisplayPrice(selectedProduct.price, selectedProduct.priceRaw);
         return (
           <Modal isOpen onClose={() => setSelectedProduct(null)} title={selectedProduct.name}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -1182,10 +1218,10 @@ const Products: React.FC = () => {
               )}
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                {selectedProduct.price && (
+                {detailPrice && (
                   <div>
                     <div style={lbl}>Price</div>
-                    <div style={{ fontSize: 14, fontWeight: 600 }}>{selectedProduct.currency || 'CHF'} {selectedProduct.price}</div>
+                    <div style={{ fontSize: 14, fontWeight: 600 }}>{selectedProduct.currency || 'CHF'} {detailPrice}</div>
                   </div>
                 )}
                 {selectedProduct.materials && (
@@ -1200,6 +1236,7 @@ const Products: React.FC = () => {
                     <div style={{ fontSize: 13, fontFamily: 'monospace' }}>{selectedProduct.serialNumber}</div>
                   </div>
                 )}
+                {/* "Claimed" row removed — product is in the collection so it's self-evident */}
                 <div>
                   <div style={lbl}>Category</div>
                   <div style={{
@@ -1286,7 +1323,7 @@ const Products: React.FC = () => {
         );
       })()}
 
-      {/* ════════════ RECEIPT UPLOAD MODAL (NEW CLAIM FLOW) ════════════ */}
+      {/* ════════════ RECEIPT UPLOAD MODAL (CLAIM FLOW) ════════════ */}
       {showReceiptModal && (
         <Modal isOpen onClose={() => { setShowReceiptModal(false); setShowQrLink(false); setQrPolling(false); }} title="Claim a Product">
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20, minHeight: 200 }}>
@@ -1296,7 +1333,7 @@ const Products: React.FC = () => {
                 <div style={{ fontSize: 48, marginBottom: 12 }}>&#x2713;</div>
                 <p style={{ fontSize: 16, fontWeight: 600, marginBottom: 8 }}>Claim Submitted!</p>
                 <p style={{ fontSize: 13, color: C.gray, marginBottom: 24 }}>
-                  Your proof of purchase is being reviewed. You&rsquo;ll be notified once your product is validated.
+                  Your proof of purchase is being reviewed. You&rsquo;ll be notified once your {getItemLabel(receiptProductName)} is validated.
                 </p>
                 <Button onClick={() => setShowReceiptModal(false)}>Done</Button>
               </div>
