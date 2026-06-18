@@ -403,6 +403,13 @@ export default async function handler(req, res) {
       // known ZAI contracts and only fall back to a per-NFT IPFS metadata
       // fetch for NFTs we can't resolve from the catalog or embedded data.
       // This keeps the common path free of slow IPFS round-trips. ──
+      const asValueObj = (field, fallback) => {
+        if (field && typeof field === 'object' && 'value' in field) return field;
+        if (typeof field === 'string' && field) return { value: field };
+        if (typeof fallback === 'string' && fallback) return { value: fallback };
+        return { value: '' };
+      };
+
       const needsIpfs = [];
       for (const nft of zaiNfts) {
         const addr = (nft.token_address || '').toLowerCase();
@@ -414,13 +421,13 @@ export default async function handler(req, res) {
             rwaId: rwa.id,
             rwa: { name: rwa.name },
             data: {
-              image:       rwaData.image       || { value: rwa.image || '' },
-              description: rwaData.description || { value: rwa.description || '' },
-              price:       rwaData.price       || { value: '' },
-              currency:    rwaData.currency    || { value: rwa.currencyId || '' },
-              materials:   rwaData.materials   || { value: '' },
-              collection:  rwaData.collection  || { value: '' },
-              insurance:   rwaData.insurance   || { value: '' },
+              image:       asValueObj(rwaData.image,       rwa.image),
+              description: asValueObj(rwaData.description, rwa.description),
+              price:       asValueObj(rwaData.price,       ''),
+              currency:    asValueObj(rwaData.currency,    rwa.currencyId),
+              materials:   asValueObj(rwaData.materials,   ''),
+              collection:  asValueObj(rwaData.collection,  ''),
+              insurance:   asValueObj(rwaData.insurance,   ''),
             },
           });
         } else if (!nft.metadata && nft.token_uri) {
