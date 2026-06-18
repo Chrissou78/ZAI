@@ -446,7 +446,20 @@ export default async function handler(req, res) {
       }
 
       const products = zaiNfts.map(nft => parseNftToProduct(nft, currencyMap));
-            // ── Step 3: Enrich with DB data (insurance, claim dates) ──
+      console.log('[PRODUCTS DEBUG] Sample product data:', products.slice(0, 2).map(p => ({
+        name: p.name,
+        image: p.image,
+        imageType: typeof p.image,
+        imageLength: (p.image || '').length,
+      })));
+      console.log('[PRODUCTS DEBUG] Sample raw NFT metadata:', zaiNfts.slice(0, 1).map(nft => {
+        try {
+          const m = typeof nft.metadata === 'string' ? JSON.parse(nft.metadata) : nft.metadata;
+          const img = m?.data?.image;
+          return { imageField: img, imageType: typeof img, rwaImage: zaiRwaMap.get((nft.token_address || '').toLowerCase())?.image };
+        } catch { return 'parse error'; }
+      }));
+      // ── Step 3: Enrich with DB data (insurance, claim dates) ──
       if (dbReady && pool) {
         try {
           const productIds = products.map(p => p.id);
