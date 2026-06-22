@@ -204,7 +204,7 @@ const Home: React.FC = () => {
           <p style={{ color: '#999', fontSize: '18px', maxWidth: '900px', lineHeight: 1.8, marginBottom: '2rem' }}>
             Welcome to zai Experience Club. Claim your products, sign up for zai events, and <br />
             manage your personal zai ski collection all in one place. The zai Experience Club <br />
-            makes zai more personal, more interactive, and closer than ever before!!
+            makes zai more personal, more interactive, and closer than ever before!
           </p>
           {user && (
             <div style={{ display: 'flex', gap: '0.75rem' }}>
@@ -304,13 +304,13 @@ const Home: React.FC = () => {
               Your key to<br />everything zai
             </div>
             <p style={{ color: '#6a6a6a', fontSize: '14px', lineHeight: 1.8, marginBottom: '2rem' }}>
-              Each zai product ships with a physical experience card — your passport to the zai ecosystem. Our dealers and boutiques remain our customers' primary contact. With purchases over CHF 500, zai customers receive the exclusive zai Experience Card, equipped with an NFC tag.
+              Customers who spend over CHF 500 on zai products are eligible to join the exclusive zai Experience Club. In-store customers receive a physical NFC-enabled zai Experience Card, while online customers can request membership through the zai Experience Club dashboard by submitting proof of purchase.
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               {[
-                { num: 1, text: 'Receive your physical zai experience card with every purchase over CHF 500' },
-                { num: 2, text: 'Tap the card with your NFC-enabled smartphone to activate instantly' },
-                { num: 3, text: 'Access your portal and unlock exclusive privileges' },
+                { num: 1, text: 'Spend over CHF 500 on zai products to become eligible for the zai Experience Club' },
+                { num: 2, text: 'Receive a physical NFC Experience Card from an authorized dealer or boutique, or, if you purchased online, visit the zai Experience Club dashboard to request your membership by submitting proof of purchase.' },
+                { num: 3, text: 'Access your mermbership portal and unlock exclusive member privileges' },
               ].map((step) => (
                 <div key={step.num} style={{ display: 'flex', gap: '10px' }}>
                   <div style={{ width: '20px', height: '20px', border: '1px solid #7A222E', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', color: '#7A222E', flexShrink: 0, marginTop: '2px' }}>
@@ -350,10 +350,10 @@ const Home: React.FC = () => {
           </h2>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1px', background: '#2a2a2a', border: '1px solid #2a2a2a' }}>
             {[
-              { num: 'Step 01', title: 'Tap your experience card with your phone', desc: 'Tap your zai Experience Card with your phone and access the zai world after signing up. By successfully claiming your card as a new client, you will have the chance to win a weekend getaway for two, revealed through a mystery box, each year.' },
-              { num: 'Step 02', title: 'Select your purchased items and get access', desc: 'Select your purchased zai items within the portal and access your zai Experience World to view exclusive benefits and track your collection.' },
-              { num: 'Step 03', title: 'Unlock exclusive benefits', desc: 'Activate your free ski insurance, access exclusive events — skiing experiences, factory tours, quarry visits, personal meet-and-greets, and more. Additional benefits revealed over time.' },
-              { num: 'Step 04', title: 'Experience zai', desc: 'Join us at a zai ski event to test our ski collection or come and visit us in our lab to experience the zai spirit.' },
+              { num: 'Step 01', title: 'Activate your membership', desc: 'Purchased in-store? Tap your NFC-enabled zai Experience Card to activate your membership. Purchased online? Visit the zai Experience Club dashboard and submit proof of purchase to request your membership.' },
+              { num: 'Step 02', title: 'Claim your purchased products', desc: 'Claim your zai products in the My Collection page to build your digital collection, verify ownership, and access product-specific experiences and benefits.' },
+              { num: 'Step 03', title: 'Unlock exclusive benefits', desc: 'Activate your complimentary ski insurance, register for exclusive events, discover member-only offers, and enjoy unique experiences. New benefits and rewards will continue to be revealed over time.' },
+              { num: 'Step 04', title: 'Be part of the community', desc: 'Connect with fellow zai owners, share your experiences, and discover stories from the global zai Experience Club community.' },
             ].map((step, i) => (
               <div key={i} style={{ background: '#1a1a1a', padding: '2rem 1.5rem' }}>
                 <div style={{ fontSize: '11px', letterSpacing: '0.2em', color: '#7A222E', marginBottom: '1rem', fontWeight: 500 }}>
@@ -408,10 +408,10 @@ const Home: React.FC = () => {
                 <LocationIcon />
               </div>
               <div style={{ fontSize: '13px', fontWeight: 500, marginBottom: '0.5rem', color: '#1a1a1a' }}>
-                Mystery Box
+                Rewards and Deals
               </div>
               <div style={{ fontSize: '12px', color: '#6a6a6a', lineHeight: 1.7 }}>
-                Each year, newly activated cards enter a draw for an exclusive weekend getaway for two.
+                Unlock exclusive rewards, seasonal offers, and special member benefits as part of the zai Experience Club.
               </div>
             </div>
           </div>
