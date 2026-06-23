@@ -103,7 +103,7 @@ function ensureDescStyles() {
     .zai-desc h1 { font-size: 1.3em; }
     .zai-desc h2 { font-size: 1.15em; }
     .zai-desc h3 { font-size: 1.05em; }
-    .zai-desc li { margin: 0 0 0 1.2em; list-style: disc; }
+    .zai-desc li { margin: 0; padding: 0; list-style: disc inside; }
     .zai-desc strong { font-weight: 600; }
     .zai-desc code { background: rgba(0,0,0,0.06); padding: 1px 4px; border-radius: 3px; font-size: 0.9em; }
     .zai-desc a { color: #7A222E; text-decoration: underline; }
