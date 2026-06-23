@@ -15,7 +15,7 @@ interface Event {
   startDate?: string;
   endDate?: string;
   description: string;
-  program?: string;
+  program?: string | string[];
   coverImage?: string | null;
   galleryImages?: string[];
   imageUrl?: string;
@@ -78,9 +78,11 @@ const sideArrowBase: React.CSSProperties = {
   padding: 0,
 };
 
-// ─── Shimmer ───
+// ─── Shimmer & Description styles ───
 
 const SHIMMER_ID = 'zai-events-shimmer';
+const DESC_CSS_ID = 'zai-events-desc-style';
+
 function ensureShimmer() {
   if (typeof document === 'undefined') return;
   if (document.getElementById(SHIMMER_ID)) return;
@@ -89,6 +91,29 @@ function ensureShimmer() {
   s.textContent = `@keyframes zaiShimmer{0%{background-position:-400px 0}100%{background-position:400px 0}}`;
   document.head.appendChild(s);
 }
+
+function ensureDescStyles() {
+  if (typeof document === 'undefined') return;
+  if (document.getElementById(DESC_CSS_ID)) return;
+  const s = document.createElement('style');
+  s.id = DESC_CSS_ID;
+  s.textContent = `
+    .zai-desc p { margin: 0 0 0.5em; }
+    .zai-desc p:last-child { margin-bottom: 0; }
+    .zai-desc br { display: block; content: ''; margin: 0.3em 0; }
+    .zai-desc h1, .zai-desc h2, .zai-desc h3 { margin: 0.8em 0 0.4em; font-weight: 600; }
+    .zai-desc h1 { font-size: 1.3em; }
+    .zai-desc h2 { font-size: 1.15em; }
+    .zai-desc h3 { font-size: 1.05em; }
+    .zai-desc li { margin: 0.2em 0 0.2em 1.2em; list-style: disc; }
+    .zai-desc strong { font-weight: 600; }
+    .zai-desc code { background: rgba(0,0,0,0.06); padding: 1px 4px; border-radius: 3px; font-size: 0.9em; }
+    .zai-desc a { color: #7A222E; text-decoration: underline; }
+    .zai-desc-card { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  `;
+  document.head.appendChild(s);
+}
+
 const shimmer: React.CSSProperties = {
   background: `linear-gradient(90deg,${C.surface} 25%,${C.surface2} 50%,${C.surface} 75%)`,
   backgroundSize: '800px 100%', animation: 'zaiShimmer 1.6s infinite ease-in-out',
@@ -128,6 +153,96 @@ function getTagColor(tag: string) {
   if (t.includes('factory')) return C.muted;
   if (t.includes('partner')) return '#f59e0b';
   return C.muted;
+}
+
+/* ── Parse BlockNote JSON → simple HTML ── */
+
+function blockNoteToHtml(raw: any): string {
+  if (!raw) return '';
+  if (typeof raw === 'string' && !raw.trim().startsWith('[')) return raw;
+
+  try {
+    const blocks = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    if (!Array.isArray(blocks)) return typeof raw === 'string' ? raw : '';
+
+    return blocks.map((block: any) => {
+      const text = (block.content && Array.isArray(block.content))
+        ? block.content.map((c: any) => {
+            let t = c.text || '';
+            if (!t) return '';
+            if (c.styles?.bold) t = `<strong>${t}</strong>`;
+            if (c.styles?.italic) t = `<em>${t}</em>`;
+            if (c.styles?.underline) t = `<u>${t}</u>`;
+            if (c.styles?.strikethrough) t = `<s>${t}</s>`;
+            if (c.styles?.code) t = `<code>${t}</code>`;
+            if (c.type === 'link' && c.href) t = `<a href="${c.href}" target="_blank" rel="noopener">${t}</a>`;
+            return t;
+          }).join('')
+        : '';
+
+      if (!text.trim()) return '<br/>';
+
+      switch (block.type) {
+        case 'heading': {
+          const level = block.props?.level || 3;
+          return `<h${level}>${text}</h${level}>`;
+        }
+        case 'bulletListItem':
+          return `<li>${text}</li>`;
+        case 'numberedListItem':
+          return `<li>${text}</li>`;
+        case 'checkListItem': {
+          const checked = block.props?.checked ? '☑' : '☐';
+          return `<p>${checked} ${text}</p>`;
+        }
+        default:
+          return `<p>${text}</p>`;
+      }
+    }).join('\n');
+  } catch {
+    return typeof raw === 'string' ? raw : '';
+  }
+}
+
+/* ── Check if a string is BlockNote JSON ── */
+
+function isBlockNoteJson(val: any): boolean {
+  if (typeof val !== 'string') return false;
+  const trimmed = val.trim();
+  if (!trimmed.startsWith('[')) return false;
+  try {
+    const parsed = JSON.parse(trimmed);
+    return Array.isArray(parsed) && parsed.length > 0 && parsed[0].type != null;
+  } catch {
+    return false;
+  }
+}
+
+/* ── Render description: HTML if BlockNote, plain text otherwise ── */
+
+function DescriptionBlock({ value, style, clamp }: { value: string; style?: React.CSSProperties; clamp?: boolean }) {
+  if (isBlockNoteJson(value)) {
+    const html = blockNoteToHtml(value);
+    return (
+      <div
+        className={`zai-desc${clamp ? ' zai-desc-card' : ''}`}
+        style={style}
+        dangerouslySetInnerHTML={{ __html: html }}
+      />
+    );
+  }
+  // Plain text — render with line breaks preserved
+  if (clamp) {
+    return (
+      <p style={{
+        ...style,
+        display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+      }}>
+        {value}
+      </p>
+    );
+  }
+  return <div style={style} dangerouslySetInnerHTML={{ __html: value.replace(/\n/g, '<br/>') }} />;
 }
 
 const parseProgramLines = (program: any): string[] => {
@@ -174,7 +289,7 @@ const Events: React.FC = () => {
     return Math.max(1, Math.ceil(upcoming.length / 3));
   }, [events]);
 
-  useEffect(() => { ensureShimmer(); }, []);
+  useEffect(() => { ensureShimmer(); ensureDescStyles(); }, []);
   useEffect(() => { fetchEvents(); }, []);
 
   // Scroll tracking
@@ -194,7 +309,6 @@ const Events: React.FC = () => {
       setScrollPage(page);
       updateScrollButtons();
     };
-    // Initial check
     updateScrollButtons();
     el.addEventListener('scroll', handleScroll, { passive: true });
     return () => el.removeEventListener('scroll', handleScroll);
@@ -325,13 +439,14 @@ const Events: React.FC = () => {
             <span style={{ color: C.red, fontSize: '6px' }}>●</span>
             {event.location}
           </div>
-          <p style={{
-            fontSize: '11px', color: C.muted, lineHeight: 1.65, flex: 1, margin: 0,
-            fontWeight: 300,
-            display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden',
-          }}>
-            {event.description}
-          </p>
+          <DescriptionBlock
+            value={event.description}
+            clamp
+            style={{
+              fontSize: '11px', color: C.muted, lineHeight: 1.65, flex: 1, margin: 0,
+              fontWeight: 300,
+            }}
+          />
           <div style={{ marginTop: 14, paddingTop: 12, borderTop: bdr }}>
             <span style={{ fontSize: '14px', color: C.muted }}>→</span>
           </div>
@@ -409,7 +524,6 @@ const Events: React.FC = () => {
           <p style={{ color: C.muted, fontSize: '12px', margin: 0 }}>Check back soon for new experiences.</p>
         </div>
       ) : !needsCarousel ? (
-        /* ── ≤3 events → stretch to fill, no carousel ── */
         <div style={{ marginBottom: 48 }}>
           <div style={{
             display: 'flex', border: bdr, borderRadius: 8, overflow: 'hidden',
@@ -425,7 +539,6 @@ const Events: React.FC = () => {
           </div>
         </div>
       ) : (
-        /* ── >3 events → carousel with side arrows ── */
         <div style={{ marginBottom: 48, position: 'relative' }}>
 
           {/* LEFT ARROW */}
@@ -476,7 +589,6 @@ const Events: React.FC = () => {
                     <EventCard key={event.id} event={event} isLast={isLastInPage} />
                   );
                 })}
-                {/* Fill remaining slots if page has <3 cards */}
                 {page.length < 3 && Array.from({ length: 3 - page.length }).map((_, i) => (
                   <div key={`empty-${i}`} style={{ flex: '0 0 calc(100% / 3)', background: C.cardBody }} />
                 ))}
@@ -605,9 +717,10 @@ const Events: React.FC = () => {
                 <div style={{ fontSize: 12, color: C.muted }}>{selectedEvent.location}</div>
               </div>
 
-              <p style={{ fontSize: 13, lineHeight: 1.7, color: C.mid, margin: '0 0 20px', fontWeight: 300 }}>
-                {selectedEvent.description}
-              </p>
+              <DescriptionBlock
+                value={selectedEvent.description}
+                style={{ fontSize: 13, lineHeight: 1.7, color: C.mid, margin: '0 0 20px', fontWeight: 300 }}
+              />
 
               {/* Program */}
               {(() => {

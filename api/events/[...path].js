@@ -51,7 +51,7 @@ async function w2Fetch(path, opts = {}) {
   }
 }
 
-/* ── parse BlockNote program JSON → plain text lines ─────── */
+/* ── parse BlockNote JSON → plain text lines (for program) ── */
 
 function parseProgramBlocks(raw) {
   if (!raw) return [];
@@ -73,6 +73,59 @@ function parseProgramBlocks(raw) {
   }
 }
 
+/* ── parse BlockNote JSON → simple HTML (for description) ── */
+
+function blockNoteToHtml(raw) {
+  if (!raw) return '';
+  // If it's not BlockNote JSON, return as-is
+  if (typeof raw === 'string' && !raw.trim().startsWith('[')) return raw;
+
+  try {
+    const blocks = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    if (!Array.isArray(blocks)) return typeof raw === 'string' ? raw : '';
+
+    return blocks.map(block => {
+      // Extract styled text from content array
+      const text = (block.content && Array.isArray(block.content))
+        ? block.content.map(c => {
+            let t = c.text || '';
+            if (!t) return '';
+            // Apply inline styles
+            if (c.styles?.bold) t = `<strong>${t}</strong>`;
+            if (c.styles?.italic) t = `<em>${t}</em>`;
+            if (c.styles?.underline) t = `<u>${t}</u>`;
+            if (c.styles?.strikethrough) t = `<s>${t}</s>`;
+            if (c.styles?.code) t = `<code>${t}</code>`;
+            // Handle links
+            if (c.type === 'link' && c.href) t = `<a href="${c.href}" target="_blank" rel="noopener">${t}</a>`;
+            return t;
+          }).join('')
+        : '';
+
+      // Skip completely empty blocks → render as line break
+      if (!text.trim()) return '<br/>';
+
+      // Map block types to HTML tags
+      switch (block.type) {
+        case 'heading':
+          const level = block.props?.level || 3;
+          return `<h${level}>${text}</h${level}>`;
+        case 'bulletListItem':
+          return `<li>${text}</li>`;
+        case 'numberedListItem':
+          return `<li>${text}</li>`;
+        case 'checkListItem':
+          const checked = block.props?.checked ? '☑' : '☐';
+          return `<p>${checked} ${text}</p>`;
+        default:
+          return `<p>${text}</p>`;
+      }
+    }).join('\n');
+  } catch {
+    return typeof raw === 'string' ? raw : '';
+  }
+}
+
 /* ── map WalletTwo event → frontend shape ────────────────── */
 
 function mapEvent(evt, userId, attendees) {
@@ -86,19 +139,13 @@ function mapEvent(evt, userId, attendees) {
   }
 
   const programLines = parseProgramBlocks(evt.program);
-
-  // Description may now be BlockNote JSON too — extract plain text
-  let description = evt.description || '';
-  if (typeof description === 'string' && description.trim().startsWith('[')) {
-    const parsed = parseProgramBlocks(description);
-    description = parsed.join('\n');
-  }
+  const descriptionHtml = blockNoteToHtml(evt.description);
 
   return {
     id: evt.id,
     title: evt.name || '',
     name: evt.name || '',
-    description,
+    description: descriptionHtml,
     program: programLines,
     location: evt.location || '',
     date: evt.startDate,
