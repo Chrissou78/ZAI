@@ -87,11 +87,18 @@ function mapEvent(evt, userId, attendees) {
 
   const programLines = parseProgramBlocks(evt.program);
 
+  // Description may now be BlockNote JSON too — extract plain text
+  let description = evt.description || '';
+  if (typeof description === 'string' && description.trim().startsWith('[')) {
+    const parsed = parseProgramBlocks(description);
+    description = parsed.join('\n');
+  }
+
   return {
     id: evt.id,
     title: evt.name || '',
     name: evt.name || '',
-    description: evt.description || '',
+    description,
     program: programLines,
     location: evt.location || '',
     date: evt.startDate,
