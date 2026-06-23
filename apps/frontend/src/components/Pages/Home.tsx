@@ -458,48 +458,6 @@ const Home: React.FC = () => {
             <div style={{ fontSize: '14px', fontWeight: 200, letterSpacing: '0.2em', marginBottom: '1.25rem', color: '#f5f4f0' }}>
               <ZaiLogo size={48} color="#333" />
             </div>
-            <div style={{ fontSize: '10px', letterSpacing: '0.25em', textTransform: 'uppercase', color: '#555', marginBottom: '0.6rem' }}>
-              Subscribe to our newsletter
-            </div>
-            <div style={{ display: 'flex', gap: '0', maxWidth: '280px' }}>
-              <input
-                type="email"
-                placeholder="Your email address"
-                style={{
-                  flex: 1,
-                  background: 'transparent',
-                  border: '1px solid #2a2a2a',
-                  borderRight: 'none',
-                  padding: '8px 12px',
-                  fontSize: '11px',
-                  color: '#fff',
-                  fontFamily: 'Inter, sans-serif',
-                  outline: 'none',
-                }}
-                onFocus={(e) => (e.currentTarget.style.borderColor = '#444')}
-                onBlur={(e) => (e.currentTarget.style.borderColor = '#2a2a2a')}
-              />
-              <button
-                onClick={() => alert('Subscribed!')}
-                style={{
-                  background: '#7D1E2C',
-                  color: '#fff',
-                  border: 'none',
-                  padding: '8px 14px',
-                  fontSize: '10px',
-                  letterSpacing: '0.15em',
-                  textTransform: 'uppercase',
-                  cursor: 'pointer',
-                  fontFamily: 'Inter, sans-serif',
-                  transition: 'background 0.2s',
-                  whiteSpace: 'nowrap',
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.background = '#9a2535')}
-                onMouseLeave={(e) => (e.currentTarget.style.background = '#7D1E2C')}
-              >
-                Subscribe
-              </button>
-            </div>
           </div>
           <div style={{ display: 'flex', gap: '3rem', flexWrap: 'wrap' }}>
             <div>
@@ -507,9 +465,9 @@ const Home: React.FC = () => {
                 Explore
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                <a href="#" style={{ fontSize: '11px', color: '#555', textDecoration: 'none', letterSpacing: '0.05em', transition: 'color 0.2s' }} onMouseEnter={(e) => (e.currentTarget.style.color = '#fff')} onMouseLeave={(e) => (e.currentTarget.style.color = '#555')}>Shop</a>
-                <a href="#" style={{ fontSize: '11px', color: '#555', textDecoration: 'none', letterSpacing: '0.05em', transition: 'color 0.2s' }} onMouseEnter={(e) => (e.currentTarget.style.color = '#fff')} onMouseLeave={(e) => (e.currentTarget.style.color = '#555')}>Dealers</a>
-                <a href="#" style={{ fontSize: '11px', color: '#555', textDecoration: 'none', letterSpacing: '0.05em', transition: 'color 0.2s' }} onMouseEnter={(e) => (e.currentTarget.style.color = '#fff')} onMouseLeave={(e) => (e.currentTarget.style.color = '#555')}>Contact</a>
+                <a href="https://www.zai.ch/shop" style={{ fontSize: '11px', color: '#555', textDecoration: 'none', letterSpacing: '0.05em', transition: 'color 0.2s' }} onMouseEnter={(e) => (e.currentTarget.style.color = '#fff')} onMouseLeave={(e) => (e.currentTarget.style.color = '#555')}>Shop</a>
+                <a href="https://www.zai.ch/dealer" style={{ fontSize: '11px', color: '#555', textDecoration: 'none', letterSpacing: '0.05em', transition: 'color 0.2s' }} onMouseEnter={(e) => (e.currentTarget.style.color = '#fff')} onMouseLeave={(e) => (e.currentTarget.style.color = '#555')}>Dealers</a>
+                <a href="https://www.zai.ch/contact" style={{ fontSize: '11px', color: '#555', textDecoration: 'none', letterSpacing: '0.05em', transition: 'color 0.2s' }} onMouseEnter={(e) => (e.currentTarget.style.color = '#fff')} onMouseLeave={(e) => (e.currentTarget.style.color = '#555')}>Contact</a>
               </div>
             </div>
             <div>
@@ -521,8 +479,7 @@ const Home: React.FC = () => {
                   { href: 'https://instagram.com/zaiski', title: 'Instagram', icon: <InstagramIcon /> },
                   { href: 'https://facebook.com/zaiski', title: 'Facebook', icon: <FacebookIcon /> },
                   { href: 'https://linkedin.com/company/zai-ski', title: 'LinkedIn', icon: <LinkedInIcon /> },
-                  { href: 'https://youtube.com/@zaiski', title: 'YouTube', icon: <YouTubeIcon /> },
-                  { href: 'https://wa.me/zaiski', title: 'WhatsApp', icon: <WhatsAppIcon /> },
+                  { href: 'https://www.youtube.com/user/ZaiDisentis', title: 'YouTube', icon: <YouTubeIcon /> },
                 ].map((social) => (
                   <a
                     key={social.title}
