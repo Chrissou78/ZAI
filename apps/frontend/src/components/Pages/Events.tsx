@@ -98,18 +98,15 @@ function ensureDescStyles() {
   const s = document.createElement('style');
   s.id = DESC_CSS_ID;
   s.textContent = `
-    .zai-desc p { margin: 0 0 0.5em; }
-    .zai-desc p:last-child { margin-bottom: 0; }
-    .zai-desc br { display: block; content: ''; margin: 0.3em 0; }
-    .zai-desc h1, .zai-desc h2, .zai-desc h3 { margin: 0.8em 0 0.4em; font-weight: 600; }
+    .zai-desc p { margin: 0; }
+    .zai-desc h1, .zai-desc h2, .zai-desc h3 { margin: 0.6em 0 0.2em; font-weight: 600; }
     .zai-desc h1 { font-size: 1.3em; }
     .zai-desc h2 { font-size: 1.15em; }
     .zai-desc h3 { font-size: 1.05em; }
-    .zai-desc li { margin: 0.2em 0 0.2em 1.2em; list-style: disc; }
+    .zai-desc li { margin: 0 0 0 1.2em; list-style: disc; }
     .zai-desc strong { font-weight: 600; }
     .zai-desc code { background: rgba(0,0,0,0.06); padding: 1px 4px; border-radius: 3px; font-size: 0.9em; }
     .zai-desc a { color: #7A222E; text-decoration: underline; }
-    .zai-desc-card { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
   `;
   document.head.appendChild(s);
 }
@@ -165,7 +162,9 @@ function blockNoteToHtml(raw: any): string {
     const blocks = typeof raw === 'string' ? JSON.parse(raw) : raw;
     if (!Array.isArray(blocks)) return typeof raw === 'string' ? raw : '';
 
-    return blocks.map((block: any) => {
+    const lines: string[] = [];
+
+    blocks.forEach((block: any) => {
       const text = (block.content && Array.isArray(block.content))
         ? block.content.map((c: any) => {
             let t = c.text || '';
@@ -180,25 +179,39 @@ function blockNoteToHtml(raw: any): string {
           }).join('')
         : '';
 
-      if (!text.trim()) return '';
+      // Empty block = blank line
+      if (!text.trim()) {
+        lines.push('<br/>');
+        return;
+      }
 
       switch (block.type) {
         case 'heading': {
           const level = block.props?.level || 3;
-          return `<h${level}>${text}</h${level}>`;
+          lines.push(`<h${level}>${text}</h${level}>`);
+          break;
         }
         case 'bulletListItem':
-          return `<li>${text}</li>`;
+          lines.push(`<li>${text}</li>`);
+          break;
         case 'numberedListItem':
-          return `<li>${text}</li>`;
+          lines.push(`<li>${text}</li>`);
+          break;
         case 'checkListItem': {
           const checked = block.props?.checked ? '☑' : '☐';
-          return `<p>${checked} ${text}</p>`;
+          lines.push(`${checked} ${text}`);
+          break;
         }
         default:
-          return `<p>${text}</p>`;
+          lines.push(text);
+          break;
       }
-    }).join('\n');
+    });
+
+    // Remove trailing <br/>
+    while (lines.length > 0 && lines[lines.length - 1] === '<br/>') lines.pop();
+
+    return lines.join('<br/>');
   } catch {
     return typeof raw === 'string' ? raw : '';
   }
@@ -243,33 +256,29 @@ function blockNoteToPlainText(raw: any): string {
 }
 
 function DescriptionBlock({ value, style, clamp }: { value: string; style?: React.CSSProperties; clamp?: boolean }) {
-  // Card preview: always use plain text for reliable clamping
-  if (clamp) {
-    const plain = blockNoteToPlainText(value);
-    return (
-      <p style={{
-        ...style,
-        display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden',
-      }}>
-        {plain}
-      </p>
-    );
-  }
+  let html: string;
 
-  // Detail modal: render rich HTML
   if (isBlockNoteJson(value)) {
-    const html = blockNoteToHtml(value);
-    return (
-      <div
-        className="zai-desc"
-        style={style}
-        dangerouslySetInnerHTML={{ __html: html }}
-      />
-    );
+    html = blockNoteToHtml(value);
+  } else {
+    html = value.replace(/\n/g, '<br/>');
   }
 
-  // Plain text or pre-rendered HTML from backend
-  return <div className="zai-desc" style={style} dangerouslySetInnerHTML={{ __html: value.replace(/\n/g, '<br/>') }} />;
+  return (
+    <div
+      className="zai-desc"
+      style={{
+        ...style,
+        ...(clamp ? {
+          display: '-webkit-box',
+          WebkitLineClamp: 3,
+          WebkitBoxOrient: 'vertical' as const,
+          overflow: 'hidden',
+        } : {}),
+      }}
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  );
 }
 
 const parseProgramLines = (program: any): string[] => {
