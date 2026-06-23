@@ -130,27 +130,26 @@ function getTagColor(tag: string) {
   return C.muted;
 }
 
-function parseProgramLines(program?: string): string[] {
+const parseProgramLines = (program: any): string[] => {
   if (!program) return [];
-  let lines: string[] = [];
-  try {
-    const raw = typeof program === 'string' ? program : '';
-    if (raw.trim().startsWith('[')) {
-      const blocks = JSON.parse(raw);
-      lines = blocks
-        .map((block: any) => {
-          if (!block.content || block.content.length === 0) return '';
-          return block.content.map((node: any) => node.text || '').join('');
-        })
-        .filter((line: string) => line.trim() !== '');
-    }
-  } catch {}
-  if (lines.length === 0) {
-    const raw = typeof program === 'string' ? program : '';
-    lines = raw.split('\n').filter((l: string) => l.trim());
+  if (Array.isArray(program)) return program.filter(Boolean);
+  if (typeof program === 'string') {
+    try {
+      const blocks = JSON.parse(program);
+      if (Array.isArray(blocks)) {
+        return blocks
+          .map((b: any) =>
+            b.content && Array.isArray(b.content)
+              ? b.content.map((c: any) => c.text || '').join('')
+              : ''
+          )
+          .filter((line: string) => line.trim() !== '');
+      }
+    } catch {}
+    return program.split('\n').filter(Boolean);
   }
-  return lines;
-}
+  return [];
+};
 
 // ═══════════════════════════════
 //  COMPONENT

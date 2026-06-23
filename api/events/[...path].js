@@ -29,7 +29,7 @@ function parseQuery(url) {
 
 async function w2Fetch(path, opts = {}) {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 5000); // 5s timeout
+  const timeout = setTimeout(() => controller.abort(), 5000);
 
   try {
     const res = await fetch(`${EVENTS_BASE}${path}`, {
@@ -51,6 +51,28 @@ async function w2Fetch(path, opts = {}) {
   }
 }
 
+/* ── parse BlockNote program JSON → plain text lines ─────── */
+
+function parseProgramBlocks(raw) {
+  if (!raw) return [];
+  try {
+    const blocks = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    if (!Array.isArray(blocks)) {
+      return typeof raw === 'string' ? raw.split('\n').filter(Boolean) : [];
+    }
+    return blocks
+      .map(block => {
+        if (block.content && Array.isArray(block.content)) {
+          return block.content.map(c => c.text || '').join('');
+        }
+        return '';
+      })
+      .filter(line => line.trim() !== '');
+  } catch {
+    return String(raw).split('\n').filter(Boolean);
+  }
+}
+
 /* ── map WalletTwo event → frontend shape ────────────────── */
 
 function mapEvent(evt, userId, attendees) {
@@ -63,12 +85,14 @@ function mapEvent(evt, userId, attendees) {
     registered = attendees.some((a) => a.attendeeId === userId);
   }
 
+  const programLines = parseProgramBlocks(evt.program);
+
   return {
     id: evt.id,
-    title: evt.name,
-    name: evt.name,
+    title: evt.name || '',
+    name: evt.name || '',
     description: evt.description || '',
-    program: evt.program || '',
+    program: programLines,
     location: evt.location || '',
     date: evt.startDate,
     startDate: evt.startDate,
@@ -80,7 +104,7 @@ function mapEvent(evt, userId, attendees) {
     maxAttendees: evt.maxAttendees || null,
     totalAttendees: evt.totalAttendees || 0,
     price: evt.price || 0,
-    currency: evt.currency || 'EUR',
+    currency: evt.currency || 'CHF',
     discountPrice: evt.discountPrice || null,
     discountPercentage: evt.discountPercentage || null,
     contractRequiredToAttend: evt.contractRequiredToAttend || [],
@@ -108,16 +132,8 @@ export default async function handler(req, res) {
       const userId = decoded?.userId || decoded?.id || null;
 
       const { data } = await w2Fetch('/event');
-      // ── TEMPORARY DEBUG ──
-console.log('[EVENTS DEBUG] Response type:', typeof data);
-console.log('[EVENTS DEBUG] Top-level keys:', data ? Object.keys(data) : 'null');
-console.log('[EVENTS DEBUG] Is array?', Array.isArray(data));
-const firstEvent = Array.isArray(data) ? data[0] : (data?.events?.[0] || data?.data?.[0] || data?.items?.[0]);
-console.log('[EVENTS DEBUG] First event keys:', firstEvent ? Object.keys(firstEvent) : 'no events');
-console.log('[EVENTS DEBUG] First event raw:', JSON.stringify(firstEvent).slice(0, 3000));
 
       if (!data || !data.events) {
-        // API unreachable — return empty list so the app doesn't break
         return res.status(200).json({
           success: true,
           data: [],
@@ -181,13 +197,16 @@ console.log('[EVENTS DEBUG] First event raw:', JSON.stringify(firstEvent).slice(
         return res.status(404).json({ success: false, error: 'Event not found' });
       }
 
+      // Single event response may be { event: {...} } or flat
+      const evtRaw = data.event || data;
+
       let attendees = [];
       try {
         const { data: attData } = await w2Fetch(`/event/${eventId}/attendees`);
         attendees = attData?.attendees || [];
       } catch {}
 
-      const event = mapEvent(data, userId, attendees);
+      const event = mapEvent(evtRaw, userId, attendees);
       event.totalAttendees = attendees.length;
       if (userId) {
         event.registered = attendees.some((a) => a.attendeeId === userId);
