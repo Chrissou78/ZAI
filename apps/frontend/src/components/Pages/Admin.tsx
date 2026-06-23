@@ -504,7 +504,7 @@ const Admin: React.FC = () => {
                       />
                       <div>
                         <div style={{ fontSize: 13, fontWeight: 600 }}>
-                          {ecCardInfo?.name || 'ZAI Experience Club Card'}
+                          {ecCardInfo?.name || 'zai Experience Club Card'}
                         </div>
                         <div style={{ fontSize: 11, color: C.gray }}>
                           Membership card · selected automatically

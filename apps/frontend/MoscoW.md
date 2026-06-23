@@ -1,8 +1,8 @@
-# 🏗️ ZAI Experience Club - Backend Architecture (MOSCOW)
+# 🏗️ zai Experience Club - Backend Architecture (MOSCOW)
 
 > **MOSCOW** stands for "Map Of System, Code, Web architecture, And Workflows"
 > 
-> This document details the complete backend infrastructure for the ZAI Experience Club, including API design, database schema, smart contracts, and server architecture.
+> This document details the complete backend infrastructure for the zai Experience Club, including API design, database schema, smart contracts, and server architecture.
 
 **Current Date**: April 23, 2026  
 **Status**: 🏗️ Design Phase  

@@ -1,4 +1,4 @@
-# 🏔️ ZAI Experience Club - React Web3 Application
+# 🏔️ zai Experience Club - React Web3 Application
 
 > A luxury Alpine skiing experience platform with blockchain-based product verification, NFT membership cards, and exclusive community features built with React, TypeScript, and Web3 integration.
 
@@ -24,7 +24,7 @@
 
 ## 🎯 Project Overview
 
-The **ZAI Experience Club** is a premium digital platform for luxury ski brand ZAI that enables customers to:
+The **zai Experience Club** is a premium digital platform for luxury ski brand ZAI that enables customers to:
 
 - **Claim Products**: Register skis and apparel via NFC cards or serial numbers on the blockchain
 - **Unlock Benefits**: Access exclusive events, factory tours, and warranty management
@@ -53,7 +53,7 @@ The **ZAI Experience Club** is a premium digital platform for luxury ski brand Z
 
 
 ┌─────────────────────────────────────────────────────────────────┐ 
-│                   ZAI Experience Club                           │ 
+│                   zai Experience Club                           │ 
 ├─────────────────────────────────────────────────────────────────┤ 
 │                                                                 │ 
 │      ┌──────────────────┐ ┌──────────────────────────────┐      │ 
@@ -181,7 +181,7 @@ nano apps/web/.env.local
 Required Environment Variables:
 
 # Application
-VITE_APP_NAME=ZAI Experience Club
+VITE_APP_NAME=zai Experience Club
 VITE_APP_URL=http://localhost:5173
 
 # API Configuration

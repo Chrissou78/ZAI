@@ -324,7 +324,7 @@ const Home: React.FC = () => {
           {/* Experience Card */}
           <img
             src="/images/experience-card.png"
-            alt="ZAI Experience Club Card"
+            alt="zai Experience Club Card"
             style={{
               width: '100%',
               height: 'auto',

@@ -751,7 +751,7 @@ export default async function handler(req, res) {
           card = {
             id: rwa.id,
             rwaId: rwa.id,
-            name: rwa.name || 'ZAI Experience Club Card',
+            name: rwa.name || 'zai Experience Club Card',
             contractAddress: addr,
             description: rwa.description || rwa.data?.description?.value || '',
             image: rwa.image || rwa.data?.image?.value || '',

@@ -484,7 +484,7 @@ const Dashboard: React.FC = () => {
     setEcError(null);
     try {
       const body: any = {
-        productName: ecData?.name || 'ZAI Experience Club Card',
+        productName: ecData?.name || 'zai Experience Club Card',
         productId: ecData?.rwaId || '',
       };
       if (ecCid) {
@@ -836,7 +836,7 @@ const Dashboard: React.FC = () => {
             }}>
               <img
                 src={EC_IMAGE}
-                alt="ZAI Experience Club Card"
+                alt="zai Experience Club Card"
                 style={{
                   width: '100%',
                   maxWidth: 280,
@@ -1226,7 +1226,7 @@ const Dashboard: React.FC = () => {
                   Exclusive Membership
                 </div>
                 <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 6, color: '#1a1a1a' }}>
-                  {ecData?.name || 'ZAI Experience Club Card'}
+                  {ecData?.name || 'zai Experience Club Card'}
                 </h3>
                 <p style={{ fontSize: 13, color: EC_GRAY, lineHeight: 1.6, marginBottom: 16 }}>
                   The zai Experience Club is an exclusive club for zai members who have spent more than CHF 500 on zai products. If you feel like you meet this criteria, please upload your invoice using one of the options below to submit your membership request.
