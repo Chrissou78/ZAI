@@ -169,6 +169,7 @@ function blockNoteToHtml(raw: any): string {
         ? block.content.map((c: any) => {
             let t = c.text || '';
             if (!t) return '';
+            t = t.replace(/\n/g, '<br/>');
             if (c.styles?.bold) t = `<strong>${t}</strong>`;
             if (c.styles?.italic) t = `<em>${t}</em>`;
             if (c.styles?.underline) t = `<u>${t}</u>`;
@@ -179,11 +180,8 @@ function blockNoteToHtml(raw: any): string {
           }).join('')
         : '';
 
-      // Empty block = blank line
-      if (!text.trim()) {
-        lines.push('<br/>');
-        return;
-      }
+      // Empty block = skip entirely
+      if (!text.trim()) return;
 
       switch (block.type) {
         case 'heading': {
@@ -207,9 +205,6 @@ function blockNoteToHtml(raw: any): string {
           break;
       }
     });
-
-    // Remove trailing <br/>
-    while (lines.length > 0 && lines[lines.length - 1] === '<br/>') lines.pop();
 
     return lines.join('<br/>');
   } catch {
