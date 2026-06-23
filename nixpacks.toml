@@ -1,0 +1,11 @@
+[phases.setup]
+nixPkgs = ["nodejs_20", "pnpm"]
+
+[phases.install]
+cmds = ["pnpm install --no-frozen-lockfile"]
+
+[phases.build]
+cmds = ["cd apps/frontend && pnpm exec vite build"]
+
+[start]
+cmd = "npx serve apps/frontend/dist -s -l 3000"
