@@ -108,6 +108,13 @@ export default async function handler(req, res) {
       const userId = decoded?.userId || decoded?.id || null;
 
       const { data } = await w2Fetch('/event');
+      // ── TEMPORARY DEBUG ──
+console.log('[EVENTS DEBUG] Response type:', typeof data);
+console.log('[EVENTS DEBUG] Top-level keys:', data ? Object.keys(data) : 'null');
+console.log('[EVENTS DEBUG] Is array?', Array.isArray(data));
+const firstEvent = Array.isArray(data) ? data[0] : (data?.events?.[0] || data?.data?.[0] || data?.items?.[0]);
+console.log('[EVENTS DEBUG] First event keys:', firstEvent ? Object.keys(firstEvent) : 'no events');
+console.log('[EVENTS DEBUG] First event raw:', JSON.stringify(firstEvent).slice(0, 3000));
 
       if (!data || !data.events) {
         // API unreachable — return empty list so the app doesn't break
