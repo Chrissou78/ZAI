@@ -180,7 +180,7 @@ function blockNoteToHtml(raw: any): string {
           }).join('')
         : '';
 
-      if (!text.trim()) return '<br/>';
+      if (!text.trim()) return '';
 
       switch (block.type) {
         case 'heading': {
@@ -218,31 +218,58 @@ function isBlockNoteJson(val: any): boolean {
   }
 }
 
-/* ── Render description: HTML if BlockNote, plain text otherwise ── */
+/* ── Strip HTML/BlockNote to plain text (for card previews) ── */
+
+function blockNoteToPlainText(raw: any): string {
+  if (!raw) return '';
+  if (typeof raw === 'string' && !raw.trim().startsWith('[')) {
+    // Already plain or pre-rendered HTML — strip tags
+    return raw.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+  try {
+    const blocks = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    if (!Array.isArray(blocks)) return typeof raw === 'string' ? raw : '';
+    return blocks
+      .map((block: any) =>
+        (block.content && Array.isArray(block.content))
+          ? block.content.map((c: any) => c.text || '').join('')
+          : ''
+      )
+      .filter((line: string) => line.trim() !== '')
+      .join(' ');
+  } catch {
+    return typeof raw === 'string' ? raw : '';
+  }
+}
 
 function DescriptionBlock({ value, style, clamp }: { value: string; style?: React.CSSProperties; clamp?: boolean }) {
-  if (isBlockNoteJson(value)) {
-    const html = blockNoteToHtml(value);
-    return (
-      <div
-        className={`zai-desc${clamp ? ' zai-desc-card' : ''}`}
-        style={style}
-        dangerouslySetInnerHTML={{ __html: html }}
-      />
-    );
-  }
-  // Plain text — render with line breaks preserved
+  // Card preview: always use plain text for reliable clamping
   if (clamp) {
+    const plain = blockNoteToPlainText(value);
     return (
       <p style={{
         ...style,
         display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden',
       }}>
-        {value}
+        {plain}
       </p>
     );
   }
-  return <div style={style} dangerouslySetInnerHTML={{ __html: value.replace(/\n/g, '<br/>') }} />;
+
+  // Detail modal: render rich HTML
+  if (isBlockNoteJson(value)) {
+    const html = blockNoteToHtml(value);
+    return (
+      <div
+        className="zai-desc"
+        style={style}
+        dangerouslySetInnerHTML={{ __html: html }}
+      />
+    );
+  }
+
+  // Plain text or pre-rendered HTML from backend
+  return <div className="zai-desc" style={style} dangerouslySetInnerHTML={{ __html: value.replace(/\n/g, '<br/>') }} />;
 }
 
 const parseProgramLines = (program: any): string[] => {
