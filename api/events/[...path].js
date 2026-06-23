@@ -91,7 +91,7 @@ function blockNoteToHtml(raw) {
             let t = c.text || '';
             if (!t) return '';
             // Convert inline newlines to <br/>
-            t = t.replace(/\n/g, '<br/>');
+            t = t.replace(/\n+/g, '<br/>');
             if (c.styles?.bold) t = `<strong>${t}</strong>`;
             if (c.styles?.italic) t = `<em>${t}</em>`;
             if (c.styles?.underline) t = `<u>${t}</u>`;
