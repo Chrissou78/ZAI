@@ -112,10 +112,10 @@ function blockNoteToHtml(raw) {
           break;
         }
         case 'bulletListItem':
-          lines.push(`<li>${text}</li>`);
+          lines.push(`• ${text}`);
           break;
         case 'numberedListItem':
-          lines.push(`<li>${text}</li>`);
+          lines.push(`${text}`);
           break;
         case 'checkListItem': {
           const checked = block.props?.checked ? '☑' : '☐';
