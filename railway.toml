@@ -1,0 +1,5 @@
+[build]
+buildCommand = "pnpm install --no-frozen-lockfile && cd apps/frontend && pnpm exec vite build"
+
+[deploy]
+startCommand = "echo 'Static site deployed'"

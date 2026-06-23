@@ -21,7 +21,7 @@
     "vite": "^4.5.14"
   },
   "scripts": {
-    "build": "cd ../../ && pnpm exec vite build --root apps/frontend",
+    "build": "vite build",
     "dev": "vite",
     "preview": "vite preview"
   }
