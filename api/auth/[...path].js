@@ -146,7 +146,7 @@ async function handleLogin(req, res) {
       return res.status(400).json({ error: 'Missing token, userId, or wallet' });
     }
 
-    const baseUrl = process.env.WALLETTWO_API_URL || 'https://api.wallettwo.com';
+    const baseUrl = process.env.VITE_WALLETTWO_URL || 'https://api.wallettwo.com';
     const exchangeUrl = `${baseUrl}/auth/api/auth/one-time-token/verify`;
 
     const exchangeResponse = await axios.post(exchangeUrl, { token }, {

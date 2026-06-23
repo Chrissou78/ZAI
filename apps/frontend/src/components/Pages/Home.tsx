@@ -346,7 +346,7 @@ const Home: React.FC = () => {
             how it works
           </div>
           <h2 style={{ fontSize: 'clamp(24px, 3.5vw, 40px)', fontWeight: 300, lineHeight: 1.15, color: '#fff', marginBottom: '3rem' }}>
-            Get your zai<br />experience card
+            Start Your<br />Membership Journey
           </h2>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1px', background: '#2a2a2a', border: '1px solid #2a2a2a' }}>
             {[

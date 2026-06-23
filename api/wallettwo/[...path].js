@@ -9,7 +9,7 @@ export default async function handler(req, res) {
     const accessToken = authHeader.replace('Bearer ', '');
 
     try {
-      const baseUrl = process.env.WALLETTWO_API_URL || 'https://api.wallettwo.com';
+      const baseUrl = process.env.VITE_WALLETTWO_URL || 'https://api.wallettwo.com';
       const response = await axios.get(`${baseUrl}/auth/api/auth/get-session`, {
         headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
       });
