@@ -77,50 +77,59 @@ function parseProgramBlocks(raw) {
 
 function blockNoteToHtml(raw) {
   if (!raw) return '';
-  // If it's not BlockNote JSON, return as-is
   if (typeof raw === 'string' && !raw.trim().startsWith('[')) return raw;
 
   try {
     const blocks = typeof raw === 'string' ? JSON.parse(raw) : raw;
     if (!Array.isArray(blocks)) return typeof raw === 'string' ? raw : '';
 
-    return blocks.map(block => {
-      // Extract styled text from content array
+    const lines = [];
+
+    blocks.forEach(block => {
       const text = (block.content && Array.isArray(block.content))
         ? block.content.map(c => {
             let t = c.text || '';
             if (!t) return '';
-            // Apply inline styles
+            // Convert inline newlines to <br/>
+            t = t.replace(/\n/g, '<br/>');
             if (c.styles?.bold) t = `<strong>${t}</strong>`;
             if (c.styles?.italic) t = `<em>${t}</em>`;
             if (c.styles?.underline) t = `<u>${t}</u>`;
             if (c.styles?.strikethrough) t = `<s>${t}</s>`;
             if (c.styles?.code) t = `<code>${t}</code>`;
-            // Handle links
             if (c.type === 'link' && c.href) t = `<a href="${c.href}" target="_blank" rel="noopener">${t}</a>`;
             return t;
           }).join('')
         : '';
 
-      // Skip completely empty blocks → render as line break
-      if (!text.trim()) return '<br/>';
+      // Empty block = skip entirely
+      if (!text.trim()) return;
 
-      // Map block types to HTML tags
       switch (block.type) {
-        case 'heading':
+        case 'heading': {
           const level = block.props?.level || 3;
-          return `<h${level}>${text}</h${level}>`;
+          lines.push(`<h${level}>${text}</h${level}>`);
+          break;
+        }
         case 'bulletListItem':
-          return `<li>${text}</li>`;
+          lines.push(`<li>${text}</li>`);
+          break;
         case 'numberedListItem':
-          return `<li>${text}</li>`;
-        case 'checkListItem':
+          lines.push(`<li>${text}</li>`);
+          break;
+        case 'checkListItem': {
           const checked = block.props?.checked ? '☑' : '☐';
-          return `<p>${checked} ${text}</p>`;
+          lines.push(`${checked} ${text}`);
+          break;
+        }
         default:
-          return `<p>${text}</p>`;
+          lines.push(text);
+          break;
       }
-    }).join('\n');
+    });
+
+    // Collapse any consecutive <br/> into one
+    return lines.join('<br/>').replace(/(<br\s*\/?>){2,}/gi, '<br/>');
   } catch {
     return typeof raw === 'string' ? raw : '';
   }
@@ -174,6 +183,7 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,DELETE,OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
+  res.setHeader('Cache-Control', 'no-store, max-age=0');
   if (req.method === 'OPTIONS') return res.status(204).end();
 
   const segments = parsePath(req.url);
@@ -198,7 +208,6 @@ export default async function handler(req, res) {
 
       let events = data.events.map((evt) => mapEvent(evt, userId, null));
 
-      // If user is logged in, check registration for each event
       if (userId) {
         const withRegistration = await Promise.all(
           events.map(async (evt) => {
@@ -251,7 +260,6 @@ export default async function handler(req, res) {
         return res.status(404).json({ success: false, error: 'Event not found' });
       }
 
-      // Single event response may be { event: {...} } or flat
       const evtRaw = data.event || data;
 
       let attendees = [];
