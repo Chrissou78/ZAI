@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAppContext } from '../../context/AppContext';
 import { apiService } from '../../services/api';
 
@@ -45,6 +45,7 @@ const REACTION_EMOJIS = [
 
 const MEMBER_DOT_COLORS = ['#7A222E','#2563eb','#f59e0b','#10b981','#8b5cf6','#ec4899','#06b6d4','#f97316'];
 const MEMBERS_PER_PAGE = 7;
+const PHOTOS_PER_PAGE = 20;
 
 // ─── Design tokens ───
 
@@ -174,6 +175,8 @@ const SearchIcon = ({ size = 14, color = C.muted }: { size?: number; color?: str
   </svg>
 );
 
+// ─── Photo Zoom (popup) ───
+
 const PhotoZoomContent: React.FC<{
   selectedPhoto: any;
   user: any;
@@ -192,7 +195,6 @@ const PhotoZoomContent: React.FC<{
   const [isLandscape, setIsLandscape] = React.useState<boolean | null>(null);
   const [isSmallScreen, setIsSmallScreen] = React.useState(false);
 
-  // Track viewport size
   React.useEffect(() => {
     const check = () => setIsSmallScreen(window.innerHeight < 700 || window.innerWidth < 768);
     check();
@@ -205,17 +207,16 @@ const PhotoZoomContent: React.FC<{
     setIsLandscape(img.naturalWidth >= img.naturalHeight);
   };
 
-  // On small screens, always use vertical (stacked) layout regardless of image orientation
   const useVerticalLayout = isSmallScreen || isLandscape;
 
-  // Comments panel (shared between both layouts)
+  // Comments panel
   const commentsPanel = (
     <div style={{
       display: 'flex', flexDirection: 'column',
       borderLeft: useVerticalLayout ? 'none' : bdr,
       borderTop: useVerticalLayout ? bdr : 'none',
       width: '100%',
-      minHeight: 0, // allow flex shrink
+      minHeight: 0,
       flex: useVerticalLayout ? '1 1 auto' : '1 1 0%',
       overflow: 'hidden',
     }}>
@@ -252,12 +253,9 @@ const PhotoZoomContent: React.FC<{
           <ReactionBar photo={selectedPhoto} />
         </div>
       </div>
-      {/* Comments list — scrollable */}
+      {/* Comments list */}
       <div style={{
-        flex: '1 1 auto',
-        overflowY: 'auto',
-        padding: '12px 16px',
-        minHeight: 0,
+        flex: '1 1 auto', overflowY: 'auto', padding: '12px 16px', minHeight: 0,
       }}>
         {(!selectedPhoto.comments || selectedPhoto.comments.length === 0) ? (
           <p style={{ fontSize: '12px', color: C.muted, textAlign: 'center', marginTop: 16 }}>No comments yet</p>
@@ -279,7 +277,7 @@ const PhotoZoomContent: React.FC<{
           ))
         )}
       </div>
-      {/* Comment input — always visible at bottom */}
+      {/* Comment input */}
       <div style={{ padding: '10px 16px', borderTop: bdr, display: 'flex', gap: '1px', flexShrink: 0 }}>
         <input type="text" placeholder="Add a comment..." value={newComment}
           onChange={e => setNewComment(e.target.value)}
@@ -315,32 +313,29 @@ const PhotoZoomContent: React.FC<{
         justifyContent: isLandscape === null ? 'center' : undefined,
       }}>
 
-      {/* Loading placeholder while we detect orientation */}
+      {/* Loading placeholder */}
       {isLandscape === null && (
         <div style={{ padding: 40, textAlign: 'center', color: C.gray, fontSize: 13 }}>
           Loading…
-          <img
-            src={selectedPhoto.url}
-            alt=""
-            onLoad={handleImageLoad}
-            style={{ display: 'none' }}
-          />
+          <img src={selectedPhoto.url} alt="" onLoad={handleImageLoad} style={{ display: 'none' }} />
         </div>
       )}
 
-      {/* Once orientation is known, render the proper layout */}
+      {/* Layout once orientation known */}
       {isLandscape !== null && (
         <>
-          {/* Image panel */}
+          {/* ── Image panel ── */}
           <div style={{
             background: C.black,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
+            /* Landscape: image spans the full container width */
+            width: '100%',
             minHeight: useVerticalLayout ? 'auto' : 300,
             maxHeight: isSmallScreen
-              ? '40vh'
-              : (useVerticalLayout ? '50vh' : 'none'),
+              ? '45vh'
+              : (useVerticalLayout ? '55vh' : 'none'),
             overflow: 'hidden',
             flexShrink: 0,
           }}>
@@ -349,17 +344,17 @@ const PhotoZoomContent: React.FC<{
               alt={selectedPhoto.caption}
               onLoad={handleImageLoad}
               style={{
-                width: useVerticalLayout ? '100%' : 'auto',
-                maxWidth: '100%',
+                /* KEY FIX: landscape images fill 100% width of the panel */
+                width: '100%',
+                height: useVerticalLayout ? 'auto' : '100%',
                 maxHeight: isSmallScreen
-                  ? '40vh'
-                  : (useVerticalLayout ? '50vh' : '90vh'),
-                objectFit: 'contain',
+                  ? '45vh'
+                  : (useVerticalLayout ? '55vh' : '90vh'),
+                objectFit: useVerticalLayout ? 'contain' : 'contain',
                 display: 'block',
               }}
             />
           </div>
-          {/* Comments panel */}
           {commentsPanel}
         </>
       )}
@@ -392,6 +387,9 @@ const Community: React.FC = () => {
   const [emojiPickerPos, setEmojiPickerPos] = useState<{top:number;left:number}|null>(null);
 
   const [isLoading, setIsLoading] = useState(true);
+
+  // Photo pagination
+  const [photoPage, setPhotoPage] = useState(1);
 
   // Members directory state
   const [memberSearch, setMemberSearch] = useState('');
@@ -426,7 +424,7 @@ const Community: React.FC = () => {
 
   const fetchPhotos = useCallback(async () => {
     try {
-      const res = await apiService.get('/community/gallery', { params: { limit: 50, offset: 0 } });
+      const res = await apiService.get('/community/gallery', { params: { limit: 200, offset: 0 } });
       if (res.data?.success) {
         setPhotos(res.data.data || []);
         if (res.data.isAdmin !== undefined) setIsAdmin(res.data.isAdmin);
@@ -441,6 +439,26 @@ const Community: React.FC = () => {
       setIsLoading(false);
     })();
   }, [fetchMembers, fetchStats, fetchPhotos]);
+
+  // ─── Photo pagination ───
+
+  const totalPhotoPages = Math.max(1, Math.ceil(photos.length / PHOTOS_PER_PAGE));
+
+  const pagedPhotos = useMemo(
+    () => photos.slice((photoPage - 1) * PHOTOS_PER_PAGE, photoPage * PHOTOS_PER_PAGE),
+    [photos, photoPage],
+  );
+
+  // Split paged photos into two columns for masonry
+  const leftCol = useMemo(() => pagedPhotos.filter((_, i) => i % 2 === 0), [pagedPhotos]);
+  const rightCol = useMemo(() => pagedPhotos.filter((_, i) => i % 2 !== 0), [pagedPhotos]);
+
+  // Scroll to top of feed when page changes
+  useEffect(() => {
+    if (photoPage > 1) {
+      document.getElementById('zai-feed-top')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [photoPage]);
 
   // ─── Gallery actions ───
 
@@ -463,6 +481,7 @@ const Community: React.FC = () => {
       const res = await apiService.post('/community/gallery', { image: uploadPreview, caption: uploadCaption });
       if (res.data?.success) {
         setPhotos(prev => [res.data.data, ...prev]);
+        setPhotoPage(1);   // go back to page 1 to see new post
         setShowUpload(false); setUploadCaption(''); setUploadFile(null); setUploadPreview(null);
         fetchStats();
       }
@@ -568,7 +587,6 @@ const Community: React.FC = () => {
   const totalMemberPages = Math.max(1, Math.ceil(filteredMembers.length / MEMBERS_PER_PAGE));
   const pagedMembers = filteredMembers.slice((memberPage - 1) * MEMBERS_PER_PAGE, memberPage * MEMBERS_PER_PAGE);
 
-  // Reset page when search changes
   useEffect(() => { setMemberPage(1); }, [memberSearch]);
 
   // ─── ReactionBar ───
@@ -612,13 +630,10 @@ const Community: React.FC = () => {
     const reactionCount = (photo.reactions || []).length;
     return (
       <div style={{ background: C.pureWhite, border: bdr, borderRadius: 6, overflow: 'hidden', breakInside: 'avoid', marginBottom: 20 }}>
-        {/* Image */}
         <div onClick={() => openPhoto(photo.id)} style={{ cursor: 'pointer', position: 'relative', overflow: 'hidden' }}>
-          <img src={photo.url} alt={photo.caption}
+          <img src={photo.url} alt={photo.caption} loading="lazy" decoding="async"
             style={{ width: '100%', display: 'block', objectFit: 'cover' }} />
         </div>
-
-        {/* Author row */}
         <div style={{ padding: '12px 14px 0', display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{
             width: 32, height: 32, borderRadius: '50%', background: C.mid, flexShrink: 0,
@@ -636,8 +651,6 @@ const Community: React.FC = () => {
               style={{ background: 'none', border: 'none', fontSize: '13px', color: C.red, cursor: 'pointer', padding: '2px 4px', flexShrink: 0 }}>×</button>
           )}
         </div>
-
-        {/* Caption */}
         {photo.caption && (
           <p style={{
             fontSize: '12px', color: C.gray, margin: 0, padding: '10px 14px 0',
@@ -646,21 +659,16 @@ const Community: React.FC = () => {
             &ldquo;{photo.caption}&rdquo;
           </p>
         )}
-
-        {/* Footer: location + actions */}
         <div style={{
           padding: '10px 14px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           borderTop: `1px solid ${C.surface2}`, marginTop: 10,
         }}>
-          {/* Location */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
             <MapPinIcon size={11} color={C.muted} />
             <span style={{ fontSize: '10px', color: C.muted, letterSpacing: '0.02em' }}>
               {photo.location || ''}
             </span>
           </div>
-
-          {/* Action icons + colored dots */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <button onClick={e => { e.stopPropagation(); openEmojiPicker(e, photo.id); }}
               style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3, padding: 0 }}>
@@ -675,8 +683,6 @@ const Community: React.FC = () => {
             <button style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 0 }}>
               <ShareIcon size={13} color={C.muted} />
             </button>
-
-            {/* Colored dots indicator */}
             <div style={{ display: 'flex', gap: 3, marginLeft: 4 }}>
               {MEMBER_DOT_COLORS.slice(0, Math.min(4, Math.max(1, reactionCount))).map((c, i) => (
                 <div key={i} style={{ width: 6, height: 6, borderRadius: '50%', background: c }} />
@@ -684,6 +690,93 @@ const Community: React.FC = () => {
             </div>
           </div>
         </div>
+      </div>
+    );
+  };
+
+  // ─── Pagination bar (shared) ───
+
+  const PaginationBar: React.FC<{
+    current: number;
+    total: number;
+    onChange: (p: number) => void;
+    itemCount: number;
+    label?: string;
+  }> = ({ current, total, onChange, itemCount, label = 'posts' }) => {
+    if (total <= 1) return null;
+
+    // Show max 7 page buttons with ellipsis
+    const pages: (number | '…')[] = [];
+    if (total <= 7) {
+      for (let i = 1; i <= total; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      if (current > 3) pages.push('…');
+      const start = Math.max(2, current - 1);
+      const end = Math.min(total - 1, current + 1);
+      for (let i = start; i <= end; i++) pages.push(i);
+      if (current < total - 2) pages.push('…');
+      pages.push(total);
+    }
+
+    return (
+      <div style={{
+        display: 'flex', justifyContent: 'center', alignItems: 'center',
+        gap: 6, padding: '28px 0 8px', flexWrap: 'wrap',
+      }}>
+        <button
+          disabled={current <= 1}
+          onClick={() => onChange(Math.max(1, current - 1))}
+          style={{
+            padding: '7px 14px', fontSize: 11, fontWeight: 600,
+            border: bdr, borderRadius: 4, fontFamily: "'Inter',sans-serif",
+            background: C.pureWhite,
+            color: current <= 1 ? C.border : C.mid,
+            cursor: current <= 1 ? 'default' : 'pointer',
+          }}
+        >
+          ← Prev
+        </button>
+
+        {pages.map((p, i) =>
+          p === '…' ? (
+            <span key={`e${i}`} style={{ fontSize: 12, color: C.muted, padding: '0 2px' }}>…</span>
+          ) : (
+            <button
+              key={p}
+              onClick={() => onChange(p as number)}
+              style={{
+                width: 32, height: 32, fontSize: 12,
+                fontWeight: p === current ? 700 : 500,
+                border: p === current ? `1px solid ${C.black}` : bdr,
+                borderRadius: 4, fontFamily: "'Inter',sans-serif",
+                background: p === current ? C.black : C.pureWhite,
+                color: p === current ? '#fff' : C.mid,
+                cursor: 'pointer', transition: 'all 0.15s',
+              }}
+            >
+              {p}
+            </button>
+          )
+        )}
+
+        <button
+          disabled={current >= total}
+          onClick={() => onChange(Math.min(total, current + 1))}
+          style={{
+            padding: '7px 14px', fontSize: 11, fontWeight: 600,
+            border: bdr, borderRadius: 4, fontFamily: "'Inter',sans-serif",
+            background: C.pureWhite,
+            color: current >= total ? C.border : C.mid,
+            cursor: current >= total ? 'default' : 'pointer',
+          }}
+        >
+          Next →
+        </button>
+
+        <span style={{ fontSize: 11, color: C.muted, marginLeft: 8 }}>
+          {itemCount} {label}
+        </span>
       </div>
     );
   };
@@ -714,14 +807,6 @@ const Community: React.FC = () => {
 
   const totalCount = stats.totalMembers || members.length;
 
-  // Split photos into two columns for masonry
-  const leftCol: Photo[] = [];
-  const rightCol: Photo[] = [];
-  photos.forEach((p, i) => {
-    if (i % 2 === 0) leftCol.push(p);
-    else rightCol.push(p);
-  });
-
   // ═══════════════════════════════
   //  RENDER
   // ═══════════════════════════════
@@ -741,7 +826,7 @@ const Community: React.FC = () => {
       </div>
 
       {/* ══════ TABS ══════ */}
-      <div style={{
+      <div id="zai-feed-top" style={{
         display: 'flex', alignItems: 'center', gap: 24, marginBottom: 28,
         borderBottom: bdr, paddingBottom: 0,
       }}>
@@ -760,10 +845,10 @@ const Community: React.FC = () => {
         </span>
       </div>
 
-      {/* ══════ MAIN GRID: Masonry feed + Right sidebar ══════ */}
+      {/* ══════ MAIN GRID ══════ */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 32, alignItems: 'start' }}>
 
-        {/* ──── LEFT: Masonry photo grid ──── */}
+        {/* ──── LEFT: Masonry photo grid (paginated) ──── */}
         <div>
           {photos.length === 0 ? (
             <div style={{ padding: '60px 24px', textAlign: 'center', background: C.surface, border: bdr, borderRadius: 6 }}>
@@ -772,14 +857,25 @@ const Community: React.FC = () => {
               <p style={{ color: C.muted, fontSize: '12px', margin: 0 }}>Be the first to share your zai moment!</p>
             </div>
           ) : (
-            <div style={{ display: 'flex', gap: 20 }}>
-              <div style={{ flex: 1 }}>
-                {leftCol.map(photo => <PhotoCard key={photo.id} photo={photo} />)}
+            <>
+              <div style={{ display: 'flex', gap: 20 }}>
+                <div style={{ flex: 1 }}>
+                  {leftCol.map(photo => <PhotoCard key={photo.id} photo={photo} />)}
+                </div>
+                <div style={{ flex: 1 }}>
+                  {rightCol.map(photo => <PhotoCard key={photo.id} photo={photo} />)}
+                </div>
               </div>
-              <div style={{ flex: 1 }}>
-                {rightCol.map(photo => <PhotoCard key={photo.id} photo={photo} />)}
-              </div>
-            </div>
+
+              {/* Photo feed pagination */}
+              <PaginationBar
+                current={photoPage}
+                total={totalPhotoPages}
+                onChange={setPhotoPage}
+                itemCount={photos.length}
+                label="posts"
+              />
+            </>
           )}
         </div>
 
@@ -814,32 +910,23 @@ const Community: React.FC = () => {
 
           {/* DIRECTORY — ZAI MEMBERS */}
           <div style={{ border: bdr, background: C.pureWhite, borderRadius: 6, overflow: 'hidden' }}>
-            {/* Header */}
             <div style={{ padding: '16px 20px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
               <span style={{ ...lbl, fontSize: '10px', letterSpacing: '0.22em', color: C.gray, fontWeight: 600 }}>DIRECTORY</span>
               <span style={{ ...lbl, fontSize: '9px', letterSpacing: '0.18em', color: C.red, fontWeight: 600 }}>ZAI MEMBERS</span>
             </div>
             <div style={{ padding: '0 20px 4px', fontSize: '10px', color: C.muted }}>{totalCount} registered</div>
-
-            {/* Search */}
             <div style={{ padding: '8px 20px 12px', position: 'relative' }}>
               <div style={{ position: 'absolute', left: 28, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
                 <SearchIcon size={12} color={C.muted} />
               </div>
-              <input
-                type="text"
-                placeholder="Search members or locations..."
-                value={memberSearch}
-                onChange={e => setMemberSearch(e.target.value)}
+              <input type="text" placeholder="Search members or locations..."
+                value={memberSearch} onChange={e => setMemberSearch(e.target.value)}
                 style={{
                   width: '100%', padding: '8px 10px 8px 28px', border: bdr, fontSize: '11px',
                   fontFamily: "'Inter',sans-serif", background: C.surface, color: C.black,
                   boxSizing: 'border-box', borderRadius: 4, outline: 'none',
-                }}
-              />
+                }} />
             </div>
-
-            {/* Member list */}
             <div style={{ borderTop: bdr }}>
               {pagedMembers.length === 0 ? (
                 <div style={{ padding: '20px', textAlign: 'center', fontSize: '11px', color: C.muted }}>No members found</div>
@@ -854,24 +941,16 @@ const Community: React.FC = () => {
                     }}
                       onMouseEnter={e => (e.currentTarget.style.background = C.surface)}
                       onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
-                      {/* Colored dot */}
                       <div style={{
                         width: 7, height: 7, borderRadius: '50%', flexShrink: 0,
                         background: m.isBlocked ? C.muted : getMemberDotColor(globalIdx),
                       }} />
-                      {/* Name + location */}
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: '12px', fontWeight: 500, color: C.black, display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
                           <span style={{
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                            maxWidth: 140,
-                            display: 'inline-block',
-                            flexShrink: 1,
-                          }}>
-                            {m.name}
-                          </span>
+                            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                            maxWidth: 140, display: 'inline-block', flexShrink: 1,
+                          }}>{m.name}</span>
                           {m.isBlocked && (
                             <span style={{
                               fontSize: '7px', padding: '1px 4px', letterSpacing: '0.1em', textTransform: 'uppercase',
@@ -882,15 +961,11 @@ const Community: React.FC = () => {
                         <div style={{
                           fontSize: '10px', color: C.muted, marginTop: 1,
                           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                        }}>
-                          {getMemberLocation(m)}
-                        </div>
+                        }}>{getMemberLocation(m)}</div>
                       </div>
-                      {/* Joined */}
                       <div style={{ fontSize: '10px', color: C.muted, flexShrink: 0, textAlign: 'right' }}>
                         {fmtDate(m.joinedAt)}
                       </div>
-                      {/* Admin actions */}
                       {isAdmin && (
                         <div style={{ flexShrink: 0, marginLeft: 4 }}>
                           {m.isBlocked ? (
@@ -911,40 +986,27 @@ const Community: React.FC = () => {
                 })
               )}
             </div>
-
-            {/* Pagination */}
             <div style={{
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
               padding: '10px 20px', borderTop: bdr,
             }}>
-              <button
-                onClick={() => setMemberPage(p => Math.max(1, p - 1))}
-                disabled={memberPage <= 1}
+              <button onClick={() => setMemberPage(p => Math.max(1, p - 1))} disabled={memberPage <= 1}
                 style={{
                   background: 'none', border: 'none', fontSize: '10px', color: memberPage <= 1 ? C.border : C.muted,
-                  cursor: memberPage <= 1 ? 'default' : 'pointer', fontFamily: "'Inter',sans-serif",
-                  letterSpacing: '0.05em',
-                }}>
-                ‹ PREV
-              </button>
-              <span style={{ fontSize: '10px', color: C.muted }}>
-                Page {memberPage} of {totalMemberPages}
-              </span>
-              <button
-                onClick={() => setMemberPage(p => Math.min(totalMemberPages, p + 1))}
-                disabled={memberPage >= totalMemberPages}
+                  cursor: memberPage <= 1 ? 'default' : 'pointer', fontFamily: "'Inter',sans-serif", letterSpacing: '0.05em',
+                }}>‹ PREV</button>
+              <span style={{ fontSize: '10px', color: C.muted }}>Page {memberPage} of {totalMemberPages}</span>
+              <button onClick={() => setMemberPage(p => Math.min(totalMemberPages, p + 1))} disabled={memberPage >= totalMemberPages}
                 style={{
                   background: 'none', border: 'none', fontSize: '10px',
                   color: memberPage >= totalMemberPages ? C.border : C.muted,
                   cursor: memberPage >= totalMemberPages ? 'default' : 'pointer',
                   fontFamily: "'Inter',sans-serif", letterSpacing: '0.05em',
-                }}>
-                NEXT ›
-              </button>
+                }}>NEXT ›</button>
             </div>
           </div>
 
-          {/* FOLLOW ZAI — STAY IN THE LOOP */}
+          {/* FOLLOW ZAI */}
           <div style={{ border: bdr, background: C.pureWhite, padding: '20px', borderRadius: 6 }}>
             <div style={{ ...lbl, fontSize: '9px', letterSpacing: '0.22em', marginBottom: 2, color: C.muted, fontWeight: 400 }}>
               FOLLOW ZAI
@@ -1067,30 +1129,30 @@ const Community: React.FC = () => {
       )}
 
       {/* ══════ PHOTO DETAIL MODAL ══════ */}
-        {selectedPhoto && (
-          <div style={{
-            position: 'fixed', inset: 0, background: 'rgba(10,10,10,0.8)', backdropFilter: 'blur(6px)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000,
-            padding: 'clamp(0.5rem, 2vw, 2rem)',
-          }}
-            onClick={() => { setSelectedPhoto(null); setEmojiPickerPhotoId(null); setEmojiPickerPos(null); }}>
-            <PhotoZoomContent
-              selectedPhoto={selectedPhoto}
-              user={user}
-              isAdmin={isAdmin}
-              deletePhoto={deletePhoto}
-              fmtFullDate={fmtFullDate}
-              ReactionBar={ReactionBar}
-              timeAgo={timeAgo}
-              deleteComment={deleteComment}
-              newComment={newComment}
-              setNewComment={setNewComment}
-              addComment={addComment}
-              C={C}
-              bdr={bdr}
-            />
-          </div>
-        )}
+      {selectedPhoto && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(10,10,10,0.8)', backdropFilter: 'blur(6px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000,
+          padding: 'clamp(0.5rem, 2vw, 2rem)',
+        }}
+          onClick={() => { setSelectedPhoto(null); setEmojiPickerPhotoId(null); setEmojiPickerPos(null); }}>
+          <PhotoZoomContent
+            selectedPhoto={selectedPhoto}
+            user={user}
+            isAdmin={isAdmin}
+            deletePhoto={deletePhoto}
+            fmtFullDate={fmtFullDate}
+            ReactionBar={ReactionBar}
+            timeAgo={timeAgo}
+            deleteComment={deleteComment}
+            newComment={newComment}
+            setNewComment={setNewComment}
+            addComment={addComment}
+            C={C}
+            bdr={bdr}
+          />
+        </div>
+      )}
 
       {/* ══════ EMOJI PICKER ══════ */}
       {emojiPickerPhotoId && emojiPickerPos && (

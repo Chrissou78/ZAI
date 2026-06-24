@@ -81,3 +81,25 @@ app.get('/img/*', async (req, res) => {
   }
 });
 
+// ── Image proxy for MinIO / external product images ──
+// Route: GET /api/products/image-proxy?url=<encoded-url>
+app.get('/api/products/image-proxy', authenticate, async (req, res) => {
+  const imageUrl = req.query.url;
+  if (!imageUrl) return res.status(400).json({ error: 'Missing url param' });
+
+  try {
+    const upstream = await fetch(imageUrl, { signal: AbortSignal.timeout(10000) });
+    if (!upstream.ok) return res.status(upstream.status).end();
+
+    // Forward content-type and cache aggressively
+    const ct = upstream.headers.get('content-type') || 'image/jpeg';
+    res.setHeader('Content-Type', ct);
+    res.setHeader('Cache-Control', 'private, max-age=86400'); // 24h browser cache
+
+    const buffer = Buffer.from(await upstream.arrayBuffer());
+    res.send(buffer);
+  } catch (err) {
+    console.error('[image-proxy]', err.message);
+    res.status(502).json({ error: 'Failed to fetch image' });
+  }
+});
