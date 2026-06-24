@@ -112,7 +112,7 @@ const resolveImage = async (url: string): Promise<string> => {
         // or fetch with auth headers
         const proxyUrl = url.startsWith('/api/')
           ? url
-          : `/api/products/image-proxy?url=${encodeURIComponent(url)}`;
+          : `/api/img-proxy?url=${encodeURIComponent(url)}`;
         const res = await apiService.get(proxyUrl, { responseType: 'blob' });
         blobUrl = URL.createObjectURL(res.data as unknown as Blob);
       } else {
