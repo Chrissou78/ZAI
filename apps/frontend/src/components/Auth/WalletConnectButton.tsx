@@ -9,7 +9,7 @@ export function WalletConnectButton() {
   const [showModal, setShowModal] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const logoutIframeRef = useRef<HTMLIFrameElement | null>(null);
+  const [iframeKey, setIframeKey] = useState(Date.now());
 
   React.useEffect(() => {
     if (!showModal) return;
@@ -23,7 +23,6 @@ export function WalletConnectButton() {
       const data = event.data;
       console.log('📨 WalletTwo message:', JSON.stringify(data, null, 2));
 
-      // Extract fields flexibly
       const token = data.token || data.code || data.accessToken || data.access_token;
       const type = data.type || data.event || data.action;
       const wallet = data.wallet || data.address || data.walletAddress;
@@ -118,25 +117,21 @@ export function WalletConnectButton() {
       .filter(k => k.includes('wallettwo') || k.includes('wallet_two'))
       .forEach(k => localStorage.removeItem(k));
 
-    // Step 1: Load a hidden logout iframe to kill the WalletTwo session
     setIsLoggingOut(true);
 
-    // Create hidden logout iframe
+    // Step 1: Logout iframe to kill WalletTwo session
     const logoutIframe = document.createElement('iframe');
-    logoutIframe.src = `https://wallet.wallettwo.com/auth/login?action=logout&iframe=true&auto_accept=true&companyId=${companyId}&_t=${Date.now()}`;
     logoutIframe.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:400px;height:600px;opacity:0;pointer-events:none;';
-    logoutIframe.style.display = 'none';
     logoutIframe.id = 'wallettwo-logout-iframe';
+    logoutIframe.src = `https://wallet.wallettwo.com/auth/login?action=logout&iframe=true&auto_accept=true&companyId=${companyId}&_t=${Date.now()}`;
     document.body.appendChild(logoutIframe);
 
-    // Listen for logout completion or timeout after 2s
     let logoutDone = false;
 
     const onLogoutMessage = (event: MessageEvent) => {
       if (!event.origin.includes('wallettwo.com')) return;
-      const data = event.data;
-      const type = data?.type || data?.event || data?.action;
-      console.log('🔓 Logout iframe message:', type, data);
+      const type = event.data?.type || event.data?.event;
+      console.log('🔓 Logout iframe message:', type, event.data);
 
       if (type === 'wallet_logout' || type === 'logout' || type === 'logged_out' || type === 'session_ended') {
         logoutDone = true;
@@ -154,28 +149,27 @@ export function WalletConnectButton() {
 
     window.addEventListener('message', onLogoutMessage);
 
-    // Timeout: if logout doesn't respond in 2s, proceed anyway
     setTimeout(() => {
       if (!logoutDone) {
         console.log('🔓 Logout iframe timeout, proceeding with login');
         cleanup();
         openLoginModal();
       }
-    }, 2000);
+    }, 3000);
   };
 
   const openLoginModal = () => {
+    // Fresh key forces iframe to remount with a new session
+    setIframeKey(Date.now());
     setShowModal(true);
   };
 
+  // Build the URL fresh each render using iframeKey for cache-busting
   const iframeUrl = new URL('https://wallet.wallettwo.com/auth/login');
-  iframeUrl.searchParams.append('action', 'login');
+  iframeUrl.searchParams.append('action', 'session');
   iframeUrl.searchParams.append('iframe', 'true');
   iframeUrl.searchParams.append('companyId', companyId);
-  iframeUrl.searchParams.append('prompt', 'login');
-  iframeUrl.searchParams.append('force', 'true');
-  iframeUrl.searchParams.append('new_session', 'true');
-  iframeUrl.searchParams.append('_t', Date.now().toString());
+  iframeUrl.searchParams.append('_t', iframeKey.toString());
 
   return (
     <>
@@ -281,6 +275,7 @@ export function WalletConnectButton() {
             )}
 
             <iframe
+              key={iframeKey}
               src={iframeUrl.toString()}
               id="wallettwo-auth-iframe"
               style={{
