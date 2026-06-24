@@ -53,6 +53,44 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(distPath, 'index.html'));
 });
 
+// ── Proxy & cache product images ──
+app.get('/img/*', function (req, res) {
+  var imageUrl;
+  try {
+    imageUrl = decodeURIComponent(req.path.replace('/img/', ''));
+  } catch (e) {
+    return res.status(400).end();
+  }
+
+  if (!imageUrl || !(imageUrl.startsWith('https://') || imageUrl.startsWith('http://'))) {
+    return res.status(400).end();
+  }
+
+  res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
+
+  var mod = imageUrl.startsWith('https') ? require('https') : require('http');
+
+  var request = mod.get(imageUrl, { timeout: 10000 }, function (upstream) {
+    if (upstream.statusCode !== 200) {
+      upstream.resume();
+      return res.status(upstream.statusCode || 502).end();
+    }
+    var ct = upstream.headers['content-type'];
+    if (ct) res.setHeader('Content-Type', ct);
+    upstream.pipe(res);
+  });
+
+  request.on('error', function (err) {
+    console.error('[img-proxy] error:', err.message);
+    if (!res.headersSent) res.status(502).end();
+  });
+
+  request.on('timeout', function () {
+    request.destroy();
+    if (!res.headersSent) res.status(504).end();
+  });
+});
+
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`[ZAI] Server running on port ${PORT}`);
   console.log(`[ZAI] API: http://0.0.0.0:${PORT}/api`);
