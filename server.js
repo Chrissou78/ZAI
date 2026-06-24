@@ -63,43 +63,58 @@ app.listen(PORT, '0.0.0.0', () => {
 app.get('/img/*', async (req, res) => {
   try {
     const imageUrl = decodeURIComponent(req.path.replace('/img/', ''));
-    
-    // Cache for 7 days
+    if (!imageUrl || !imageUrl.startsWith('http')) return res.status(400).end();
+
     res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
     res.setHeader('Vary', 'Accept-Encoding');
+
+    // Use https/http module instead of fetch for Node 16 compat
+    const https = require(imageUrl.startsWith('https') ? 'https' : 'http');
     
-    const response = await fetch(imageUrl);
-    if (!response.ok) return res.status(response.status).end();
-    
-    const contentType = response.headers.get('content-type');
-    if (contentType) res.setHeader('Content-Type', contentType);
-    
-    const buffer = Buffer.from(await response.arrayBuffer());
-    res.send(buffer);
+    https.get(imageUrl, { timeout: 10000 }, (upstream) => {
+      if (upstream.statusCode !== 200) {
+        res.status(upstream.statusCode || 502).end();
+        upstream.resume(); // drain
+        return;
+      }
+      const ct = upstream.headers['content-type'];
+      if (ct) res.setHeader('Content-Type', ct);
+      upstream.pipe(res);
+    }).on('error', () => {
+      if (!res.headersSent) res.status(502).end();
+    });
   } catch {
-    res.status(502).end();
+    if (!res.headersSent) res.status(502).end();
   }
 });
 
-// ── Image proxy for MinIO / external product images ──
-// Route: GET /api/products/image-proxy?url=<encoded-url>
+// ── Image proxy for MinIO / external product images (authenticated) ──
 app.get('/api/products/image-proxy', authenticate, async (req, res) => {
   const imageUrl = req.query.url;
-  if (!imageUrl) return res.status(400).json({ error: 'Missing url param' });
+  if (!imageUrl || !imageUrl.startsWith('http')) {
+    return res.status(400).json({ error: 'Missing or invalid url param' });
+  }
 
   try {
-    const upstream = await fetch(imageUrl, { signal: AbortSignal.timeout(10000) });
-    if (!upstream.ok) return res.status(upstream.status).end();
+    res.setHeader('Cache-Control', 'private, max-age=86400');
 
-    // Forward content-type and cache aggressively
-    const ct = upstream.headers.get('content-type') || 'image/jpeg';
-    res.setHeader('Content-Type', ct);
-    res.setHeader('Cache-Control', 'private, max-age=86400'); // 24h browser cache
+    const mod = require(imageUrl.startsWith('https') ? 'https' : 'http');
 
-    const buffer = Buffer.from(await upstream.arrayBuffer());
-    res.send(buffer);
+    mod.get(imageUrl, { timeout: 10000 }, (upstream) => {
+      if (upstream.statusCode !== 200) {
+        res.status(upstream.statusCode || 502).end();
+        upstream.resume();
+        return;
+      }
+      const ct = upstream.headers['content-type'] || 'image/jpeg';
+      res.setHeader('Content-Type', ct);
+      upstream.pipe(res);
+    }).on('error', (err) => {
+      console.error('[image-proxy]', err.message);
+      if (!res.headersSent) res.status(502).json({ error: 'Failed to fetch image' });
+    });
   } catch (err) {
     console.error('[image-proxy]', err.message);
-    res.status(502).json({ error: 'Failed to fetch image' });
+    if (!res.headersSent) res.status(502).json({ error: 'Failed to fetch image' });
   }
 });
