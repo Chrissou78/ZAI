@@ -46,8 +46,8 @@ const PAGE_TOURS: Record<string, PageTour> = {
     pageTitle: 'Your Products',
     stops: [
       { title: 'Product Carousel', description: 'Browse all your claimed zai products here. Each card shows the product image, name, and insurance status.', icon: '🎿' },
-      { title: 'Claim a Product', description: 'Click "+ Claim Product" or the "+" card to register a new product using your NFC Experience Card or serial number.', icon: '📦' },
-      { title: 'Activate Insurance', description: 'For each claimed product you can activate insurance through our partner Suisse Alpine Services.', icon: '🛡️' },
+      { title: 'Claim a Product', description: 'Click "+ Claim Product" or the "+" card to register a new product by uploading your purchase invoice and submitting it to the zai team for confirmation.', icon: '📦' },
+      { title: 'Activate Insurance', description: 'For skis purchased within the last two years, you can activate your complimentary ski insurance in just a few clicks.', icon: '🛡️' },
     ],
   },
   '/dashboard': {
