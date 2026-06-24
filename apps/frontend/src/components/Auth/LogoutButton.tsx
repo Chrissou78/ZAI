@@ -1,3 +1,4 @@
+// apps/frontend/src/components/Auth/LogoutButton.tsx
 import { useState } from 'react';
 import { useAppContext } from '../../context/AppContext';
 
@@ -8,6 +9,42 @@ export function LogoutButton() {
   const handleLogout = async () => {
     if (isLoading) return;
     setIsLoading(true);
+
+    // ── NEW: Kill WalletTwo session cookie via hidden iframe ──
+    try {
+      await new Promise<void>((resolve) => {
+        const iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        iframe.id = 'wallettwo-logout-iframe';
+        iframe.src =
+          'https://wallet.wallettwo.com/action/logout?iframe=true&auto_accept=true&companyId=p7IH5cVirHbWy1a0hPxeKro5j9bRSJtt';
+        document.body.appendChild(iframe);
+
+        const timeout = setTimeout(() => {
+          cleanup();
+          resolve();
+        }, 5000);
+
+        const onMessage = (event: MessageEvent) => {
+          if (event.origin !== 'https://wallet.wallettwo.com') return;
+          if (event.data?.type === 'wallet_logout') {
+            cleanup();
+            resolve();
+          }
+        };
+
+        const cleanup = () => {
+          clearTimeout(timeout);
+          window.removeEventListener('message', onMessage);
+          if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+        };
+
+        window.addEventListener('message', onMessage);
+      });
+    } catch (err) {
+      console.warn('WalletTwo logout iframe failed:', err);
+    }
+    // ── END NEW ──
 
     // 1. Clear ALL localStorage keys
     const keysToRemove = [
