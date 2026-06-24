@@ -10,6 +10,9 @@ export function WalletConnectButton() {
   const [isLoading, setIsLoading] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [iframeKey, setIframeKey] = useState(Date.now());
+  // false = session mode first, true = already got auto-session so show form
+  const [useFormMode, setUseFormMode] = useState(false);
+  const modalOpenedAt = useRef(0);
 
   React.useEffect(() => {
     if (!showModal) return;
@@ -33,7 +36,20 @@ export function WalletConnectButton() {
         return;
       }
 
-      console.log('✅ WalletTwo session received');
+      // ── AUTO-LOGIN GATE ──
+      // If wallet_session arrives within 3s of opening, it's an auto-login
+      // from an existing WalletTwo session cookie. Reject it and switch to
+      // form mode (no action=session) so the user must log in manually.
+      const elapsed = Date.now() - modalOpenedAt.current;
+      if (elapsed < 3000) {
+        console.log('🚫 Auto-session detected (' + elapsed + 'ms), switching to form mode');
+        window.removeEventListener('message', handleMessage);
+        setUseFormMode(true);
+        setIframeKey(Date.now());
+        return;
+      }
+
+      console.log('✅ WalletTwo session received (user-initiated)');
       setIsLoading(true);
 
       try {
@@ -75,7 +91,7 @@ export function WalletConnectButton() {
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [showModal, setUser, setWalletState, navigate]);
+  }, [showModal, iframeKey, setUser, setWalletState, navigate]);
 
   if (user) {
     const initials = `${user.givenName?.[0] ?? ''}${user.familyName?.[0] ?? ''}`.toUpperCase();
@@ -108,7 +124,6 @@ export function WalletConnectButton() {
   const companyId = import.meta.env.VITE_COMPANY_ID || 'p7IH5cVirHbWy1a0hPxeKro5j9bRSJtt';
 
   const handleOpenModal = () => {
-    // Clear local state
     localStorage.removeItem('zai_user');
     localStorage.removeItem('zai_token');
     localStorage.removeItem('zai_wallet');
@@ -117,56 +132,19 @@ export function WalletConnectButton() {
       .filter(k => k.includes('wallettwo') || k.includes('wallet_two'))
       .forEach(k => localStorage.removeItem(k));
 
-    setIsLoggingOut(true);
-
-    // Step 1: Logout iframe to kill WalletTwo session
-    const logoutIframe = document.createElement('iframe');
-    logoutIframe.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:400px;height:600px;opacity:0;pointer-events:none;';
-    logoutIframe.id = 'wallettwo-logout-iframe';
-    logoutIframe.src = `https://wallet.wallettwo.com/auth/login?action=logout&iframe=true&auto_accept=true&companyId=${companyId}&_t=${Date.now()}`;
-    document.body.appendChild(logoutIframe);
-
-    let logoutDone = false;
-
-    const onLogoutMessage = (event: MessageEvent) => {
-      if (!event.origin.includes('wallettwo.com')) return;
-      const type = event.data?.type || event.data?.event;
-      console.log('🔓 Logout iframe message:', type, event.data);
-
-      if (type === 'wallet_logout' || type === 'logout' || type === 'logged_out' || type === 'session_ended') {
-        logoutDone = true;
-        cleanup();
-        openLoginModal();
-      }
-    };
-
-    const cleanup = () => {
-      window.removeEventListener('message', onLogoutMessage);
-      const el = document.getElementById('wallettwo-logout-iframe');
-      if (el) el.remove();
-      setIsLoggingOut(false);
-    };
-
-    window.addEventListener('message', onLogoutMessage);
-
-    setTimeout(() => {
-      if (!logoutDone) {
-        console.log('🔓 Logout iframe timeout, proceeding with login');
-        cleanup();
-        openLoginModal();
-      }
-    }, 3000);
-  };
-
-  const openLoginModal = () => {
-    // Fresh key forces iframe to remount with a new session
+    // Reset to session mode for fresh attempt
+    setUseFormMode(false);
+    modalOpenedAt.current = Date.now();
     setIframeKey(Date.now());
     setShowModal(true);
   };
 
-  // Build the URL fresh each render using iframeKey for cache-busting
+  // If useFormMode: no action param → shows login form, waits for user input
+  // If !useFormMode: action=session → checks for existing session first
   const iframeUrl = new URL('https://wallet.wallettwo.com/auth/login');
-  //iframeUrl.searchParams.append('action', 'session');
+  if (!useFormMode) {
+    iframeUrl.searchParams.append('action', 'session');
+  }
   iframeUrl.searchParams.append('iframe', 'true');
   iframeUrl.searchParams.append('companyId', companyId);
   iframeUrl.searchParams.append('_t', iframeKey.toString());
