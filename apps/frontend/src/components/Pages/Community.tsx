@@ -192,7 +192,7 @@ const PhotoZoomContent: React.FC<{
   C: any;
   bdr: string;
 }> = ({ selectedPhoto, user, isAdmin, deletePhoto, fmtFullDate, ReactionBar, timeAgo, deleteComment, newComment, setNewComment, addComment, C, bdr }) => {
-  const [isLandscape, setIsLandscape] = React.useState<boolean | null>(null);
+  const [imgSize, setImgSize] = React.useState<{ w: number; h: number } | null>(null);
   const [isSmallScreen, setIsSmallScreen] = React.useState(false);
 
   React.useEffect(() => {
@@ -204,10 +204,31 @@ const PhotoZoomContent: React.FC<{
 
   const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
     const img = e.currentTarget;
-    setIsLandscape(img.naturalWidth >= img.naturalHeight);
+    setImgSize({ w: img.naturalWidth, h: img.naturalHeight });
   };
 
+  const isLandscape = imgSize ? imgSize.w >= imgSize.h : null;
   const useVerticalLayout = isSmallScreen || isLandscape;
+
+  // Calculate optimal popup width based on image aspect ratio
+  const getPopupWidth = (): string => {
+    if (!imgSize || isSmallScreen) return isSmallScreen ? '96vw' : 'min(92vw, 960px)';
+
+    if (isLandscape) {
+      // Landscape: let the image define the width
+      // Calculate what width the image needs at the max allowed height
+      const maxImgH = window.innerHeight * 0.5;
+      const ratio = imgSize.w / imgSize.h;
+      const naturalWidth = maxImgH * ratio;
+      // Clamp between 600px and 92vw
+      const maxVw = window.innerWidth * 0.92;
+      const clamped = Math.min(Math.max(naturalWidth, 600), maxVw, 960);
+      return `${clamped}px`;
+    }
+
+    // Portrait: use grid layout with side panel
+    return 'min(92vw, 860px)';
+  };
 
   // Comments panel
   const commentsPanel = (
@@ -217,7 +238,8 @@ const PhotoZoomContent: React.FC<{
       borderTop: useVerticalLayout ? bdr : 'none',
       width: '100%',
       minHeight: 0,
-      flex: useVerticalLayout ? '1 1 auto' : '1 1 0%',
+      flex: useVerticalLayout ? '0 1 auto' : '1 1 0%',
+      maxHeight: useVerticalLayout ? '40vh' : 'none',
       overflow: 'hidden',
     }}>
       {/* Author header */}
@@ -298,63 +320,43 @@ const PhotoZoomContent: React.FC<{
     <div onClick={e => e.stopPropagation()}
       style={{
         background: C.white,
-        width: isSmallScreen ? '96vw' : 'min(92vw, 960px)',
-        maxWidth: useVerticalLayout ? 'min(92vw, 960px)' : 'min(92vw, 860px)',
-        height: isSmallScreen ? '92vh' : 'auto',
+        width: getPopupWidth(),
         maxHeight: '92vh',
-        display: isLandscape === null ? 'flex' : (useVerticalLayout ? 'flex' : 'grid'),
+        display: imgSize === null ? 'flex' : (useVerticalLayout ? 'flex' : 'grid'),
         flexDirection: useVerticalLayout ? 'column' : undefined,
         gridTemplateColumns: useVerticalLayout ? undefined : `1fr clamp(260px, 35vw, 340px)`,
         gridTemplateRows: useVerticalLayout ? undefined : '1fr',
         boxShadow: '0 24px 80px rgba(0,0,0,0.5)',
-        overflow: 'hidden',
+        overflow: useVerticalLayout ? 'auto' : 'hidden',
         borderRadius: 6,
-        alignItems: isLandscape === null ? 'center' : undefined,
-        justifyContent: isLandscape === null ? 'center' : undefined,
+        alignItems: imgSize === null ? 'center' : undefined,
+        justifyContent: imgSize === null ? 'center' : undefined,
       }}>
 
       {/* Loading placeholder */}
-      {isLandscape === null && (
+      {imgSize === null && (
         <div style={{ padding: 40, textAlign: 'center', color: C.gray, fontSize: 13 }}>
           Loading…
           <img src={selectedPhoto.url} alt="" onLoad={handleImageLoad} style={{ display: 'none' }} />
         </div>
       )}
 
-      {/* Layout once orientation known */}
-      {isLandscape !== null && (
+      {/* Layout once dimensions known */}
+      {imgSize !== null && (
         <>
-          {/* ── Image panel ── */}
-          <div style={{
-            background: C.black,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            /* Landscape: image spans the full container width */
-            width: '100%',
-            minHeight: useVerticalLayout ? 'auto' : 300,
-            maxHeight: isSmallScreen
-              ? '45vh'
-              : (useVerticalLayout ? '55vh' : 'none'),
-            overflow: 'hidden',
-            flexShrink: 0,
-          }}>
-            <img
-              src={selectedPhoto.url}
-              alt={selectedPhoto.caption}
-              onLoad={handleImageLoad}
-              style={{
-                /* KEY FIX: landscape images fill 100% width of the panel */
-                width: '100%',
-                height: useVerticalLayout ? 'auto' : '100%',
-                maxHeight: isSmallScreen
-                  ? '45vh'
-                  : (useVerticalLayout ? '55vh' : '90vh'),
-                objectFit: useVerticalLayout ? 'contain' : 'contain',
-                display: 'block',
-              }}
-            />
-          </div>
+          {/* Image — full bleed, no black bars */}
+          <img
+            src={selectedPhoto.url}
+            alt={selectedPhoto.caption}
+            style={{
+              width: '100%',
+              height: 'auto',
+              maxHeight: isSmallScreen ? '45vh' : (useVerticalLayout ? '55vh' : '90vh'),
+              objectFit: useVerticalLayout ? 'cover' : 'contain',
+              display: 'block',
+              flexShrink: 0,
+            }}
+          />
           {commentsPanel}
         </>
       )}
