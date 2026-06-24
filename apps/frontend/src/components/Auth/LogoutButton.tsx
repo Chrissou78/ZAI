@@ -1,4 +1,3 @@
-// apps/frontend/src/components/Auth/LogoutButton.tsx
 import { useState } from 'react';
 import { useAppContext } from '../../context/AppContext';
 
@@ -10,23 +9,25 @@ export function LogoutButton() {
     if (isLoading) return;
     setIsLoading(true);
 
-    // ── NEW: Kill WalletTwo session cookie via hidden iframe ──
+    // ── Kill WalletTwo session cookie via off-screen iframe ──
     try {
       await new Promise<void>((resolve) => {
         const iframe = document.createElement('iframe');
-        iframe.style.display = 'none';
+        // NOT display:none — that prevents JS execution in Safari
+        iframe.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:400px;height:600px;opacity:0;pointer-events:none;';
         iframe.id = 'wallettwo-logout-iframe';
         iframe.src =
-          'https://wallet.wallettwo.com/action/logout?iframe=true&auto_accept=true&companyId=p7IH5cVirHbWy1a0hPxeKro5j9bRSJtt';
+          'https://wallet.wallettwo.com/auth/login?action=logout&iframe=true&auto_accept=true&companyId=p7IH5cVirHbWy1a0hPxeKro5j9bRSJtt&_t=' + Date.now();
         document.body.appendChild(iframe);
 
         const timeout = setTimeout(() => {
           cleanup();
           resolve();
-        }, 5000);
+        }, 6000);
 
         const onMessage = (event: MessageEvent) => {
           if (event.origin !== 'https://wallet.wallettwo.com') return;
+          console.log('🔓 Logout message:', event.data);
           if (event.data?.type === 'wallet_logout') {
             cleanup();
             resolve();
@@ -44,7 +45,6 @@ export function LogoutButton() {
     } catch (err) {
       console.warn('WalletTwo logout iframe failed:', err);
     }
-    // ── END NEW ──
 
     // 1. Clear ALL localStorage keys
     const keysToRemove = [
@@ -57,7 +57,6 @@ export function LogoutButton() {
     ];
     keysToRemove.forEach((k) => localStorage.removeItem(k));
 
-    // Also clear any wallettwo-related keys
     Object.keys(localStorage)
       .filter(k => k.includes('wallettwo') || k.includes('wallet_two'))
       .forEach(k => localStorage.removeItem(k));

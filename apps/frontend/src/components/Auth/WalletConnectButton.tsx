@@ -123,7 +123,8 @@ export function WalletConnectButton() {
 
     // Create hidden logout iframe
     const logoutIframe = document.createElement('iframe');
-    logoutIframe.src = `https://wallet.wallettwo.com/action/logout?iframe=true&auto_accept=true&companyId=${companyId}&_t=${Date.now()}`;
+    logoutIframe.src = `https://wallet.wallettwo.com/auth/login?action=logout&iframe=true&auto_accept=true&companyId=${companyId}&_t=${Date.now()}`;
+    logoutIframe.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:400px;height:600px;opacity:0;pointer-events:none;';
     logoutIframe.style.display = 'none';
     logoutIframe.id = 'wallettwo-logout-iframe';
     document.body.appendChild(logoutIframe);
