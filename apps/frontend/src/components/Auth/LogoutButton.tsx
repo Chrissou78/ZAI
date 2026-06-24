@@ -1,7 +1,8 @@
+// apps/frontend/src/components/Auth/LogoutButton.tsx
 import React, { useState } from 'react';
 import { useWalletTwo } from '@oc-labs/wallettwo-sdk';
 
-export default function LogoutButton() {
+export function LogoutButton() {
   const { logout: sdkLogout } = useWalletTwo();
   const [loggingOut, setLoggingOut] = useState(false);
 
@@ -20,7 +21,7 @@ export default function LogoutButton() {
     localStorage.removeItem('zai_token');
     localStorage.removeItem('zai_wallet');
     localStorage.removeItem('wallettwo_token');
-    
+
     // Clear everything wallettwo-related
     Object.keys(localStorage).forEach(key => {
       if (key.startsWith('wallettwo')) localStorage.removeItem(key);
