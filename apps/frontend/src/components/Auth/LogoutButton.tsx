@@ -1,9 +1,7 @@
-import { useWalletTwo } from '@oc-labs/wallettwo-sdk';
-import { useAppContext } from '../../context/AppContext';
 import { useState } from 'react';
+import { useAppContext } from '../../context/AppContext';
 
 export function LogoutButton() {
-  const { logout: sdkLogout } = useWalletTwo();
   const { setUser, setWalletState } = useAppContext();
   const [isLoading, setIsLoading] = useState(false);
 
@@ -11,14 +9,7 @@ export function LogoutButton() {
     if (isLoading) return;
     setIsLoading(true);
 
-    // 1. Best-effort SDK logout — never let it block
-    try {
-      await sdkLogout();
-    } catch (error) {
-      console.warn('WalletTwo SDK logout failed (continuing):', error);
-    }
-
-    // 2. Clear ALL localStorage keys in one shot before any state changes
+    // 1. Clear ALL localStorage keys
     const keysToRemove = [
       'zai_user',
       'zai_token',
@@ -28,9 +19,15 @@ export function LogoutButton() {
       'zai_experience_card',
     ];
     keysToRemove.forEach((k) => localStorage.removeItem(k));
+
+    // Also clear any wallettwo-related keys
+    Object.keys(localStorage)
+      .filter(k => k.includes('wallettwo') || k.includes('wallet_two'))
+      .forEach(k => localStorage.removeItem(k));
+
     sessionStorage.clear();
 
-    // 3. Clear React state (won't matter much since we're about to reload)
+    // 2. Clear React state
     setUser(null);
     setWalletState({
       isConnected: false,
@@ -40,7 +37,7 @@ export function LogoutButton() {
       error: null,
     });
 
-    // 4. Small tick to ensure storage is flushed before the reload
+    // 3. Redirect
     setTimeout(() => {
       window.location.href = '/';
     }, 50);
