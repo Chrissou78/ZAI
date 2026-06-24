@@ -141,10 +141,12 @@ async function handleLogin(req, res) {
     let body = req.body;
     if (typeof body === 'string') body = JSON.parse(body);
 
-    const { token, userId, wallet } = body;
-    if (!token || !userId || !wallet) {
-      return res.status(400).json({ error: 'Missing token, userId, or wallet' });
+    const { token, userId, wallet: bodyWallet } = body;
+    if (!token || !userId) {
+      return res.status(400).json({ error: 'Missing token or userId' });
     }
+
+    let wallet = bodyWallet || null;
 
     const baseUrl = process.env.VITE_WALLETTWO_URL || 'https://api.wallettwo.com';
     const exchangeUrl = `${baseUrl}/auth/api/auth/one-time-token/verify`;
@@ -159,8 +161,25 @@ async function handleLogin(req, res) {
     const sessionToken = exchangeResponse.data.session?.token;
     const userProfile = exchangeResponse.data.user || {};
 
+    console.log('[AUTH] Exchange response:', JSON.stringify({
+      keys: Object.keys(exchangeResponse.data),
+      userKeys: Object.keys(userProfile),
+      sessionKeys: exchangeResponse.data.session ? Object.keys(exchangeResponse.data.session) : [],
+      hasWallet: !!(userProfile.wallet || userProfile.walletAddress || userProfile.address),
+    }));
+
     if (!sessionToken) {
       return res.status(400).json({ error: 'Invalid exchange response' });
+    }
+
+    // Resolve wallet: body → user profile → exchange root → fallback to userId
+    if (!wallet) {
+      wallet = userProfile.wallet
+        || userProfile.walletAddress
+        || userProfile.address
+        || exchangeResponse.data.wallet
+        || exchangeResponse.data.address
+        || userId;
     }
 
     // ── Fetch role from DB ──

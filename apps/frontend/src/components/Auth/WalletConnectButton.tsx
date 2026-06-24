@@ -50,11 +50,10 @@ export function WalletConnectButton() {
       try {
         console.log('📤 Sending to backend:', { token: '***' + String(token).slice(-8), userId, wallet });
 
-        const response = await apiService.post('/auth/login', {
-          token,
-          userId,
-          wallet,
-        });
+        const payload: Record<string, string> = { token, userId };
+        if (wallet) payload.wallet = wallet;
+
+        const response = await apiService.post('/auth/login', payload);
 
         if (response.data?.success && response.data?.jwtToken) {
           console.log('✅ Login successful');
