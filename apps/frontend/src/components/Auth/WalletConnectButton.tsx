@@ -166,7 +166,7 @@ export function WalletConnectButton() {
 
   // Build the URL fresh each render using iframeKey for cache-busting
   const iframeUrl = new URL('https://wallet.wallettwo.com/auth/login');
-  iframeUrl.searchParams.append('action', 'session');
+  //iframeUrl.searchParams.append('action', 'session');
   iframeUrl.searchParams.append('iframe', 'true');
   iframeUrl.searchParams.append('companyId', companyId);
   iframeUrl.searchParams.append('_t', iframeKey.toString());
