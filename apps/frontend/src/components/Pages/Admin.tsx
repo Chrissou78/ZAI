@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useAppContext } from '../../context/AppContext';
 import { apiService } from '../../services/api';
 import Modal from '../Common/Modal';
@@ -70,6 +70,92 @@ const formatDate = (d: string) => {
   return dt.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 };
 
+/* ───── In-memory image blob cache ───── */
+
+const blobCache = new Map<string, string>();
+
+const getCachedBlobUrl = async (apiUrl: string): Promise<string> => {
+  if (blobCache.has(apiUrl)) return blobCache.get(apiUrl)!;
+  try {
+    const res = await apiService.get(apiUrl, { responseType: 'blob' });
+    const url = URL.createObjectURL(res.data as Blob);
+    blobCache.set(apiUrl, url);
+    return url;
+  } catch {
+    return '';
+  }
+};
+
+/* ───── LazyImage: IntersectionObserver + blob cache ───── */
+
+const LazyImage: React.FC<{
+  src: string;
+  alt: string;
+  style?: React.CSSProperties;
+  isAuthUrl?: boolean;   // true → fetch via apiService (auth proof images)
+  onClick?: () => void;
+}> = ({ src, alt, style, isAuthUrl = false, onClick }) => {
+  const ref = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
+
+  // Observe visibility
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) { setVisible(true); obs.disconnect(); } },
+      { rootMargin: '200px' },  // start loading 200px before visible
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
+  // Once visible, load image
+  useEffect(() => {
+    if (!visible || !src) return;
+    if (isAuthUrl) {
+      let cancelled = false;
+      getCachedBlobUrl(src).then(url => { if (!cancelled) setBlobUrl(url || null); });
+      return () => { cancelled = true; };
+    }
+    // For normal URLs, just let the browser handle it
+    setBlobUrl(src);
+  }, [visible, src, isAuthUrl]);
+
+  const placeholder = (
+    <div
+      ref={ref}
+      style={{
+        ...style,
+        background: C.surface,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        color: C.border, fontSize: 14,
+      }}
+      onClick={onClick}
+    >
+      {failed ? '✕' : ''}
+    </div>
+  );
+
+  if (!visible || !blobUrl) return placeholder;
+
+  return (
+    <div ref={ref} style={{ display: 'contents' }}>
+      <img
+        src={blobUrl}
+        alt={alt}
+        loading="lazy"
+        decoding="async"
+        onError={() => setFailed(true)}
+        onClick={onClick}
+        style={style}
+      />
+    </div>
+  );
+};
+
 /* ───── Product Thumbnail sub-component ───── */
 
 const ProductThumb: React.FC<{ src?: string; name?: string; size?: number }> = ({
@@ -84,6 +170,8 @@ const ProductThumb: React.FC<{ src?: string; name?: string; size?: number }> = (
       <img
         src={src}
         alt={name || 'Product'}
+        loading="lazy"
+        decoding="async"
         onError={() => setFailed(true)}
         style={{
           width: size, height: size, borderRadius: 4,
@@ -105,6 +193,10 @@ const ProductThumb: React.FC<{ src?: string; name?: string; size?: number }> = (
   );
 };
 
+/* ───── Pagination constants ───── */
+
+const PAGE_SIZE = 20;
+
 /* ───── Component ───── */
 
 const Admin: React.FC = () => {
@@ -113,6 +205,7 @@ const Admin: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<string>('pending');
+  const [page, setPage] = useState(1);
 
   const [selectedClaim, setSelectedClaim] = useState<ClaimRequest | null>(null);
   const [claimableProducts, setClaimableProducts] = useState<ClaimableProduct[]>([]);
@@ -125,6 +218,9 @@ const Admin: React.FC = () => {
   const [zoomImage, setZoomImage] = useState<string | null>(null);
 
   const isAdminUser = user?.role === 'admin' || user?.role === 'owner';
+
+  // Reset page when filter changes
+  useEffect(() => { setPage(1); }, [filter]);
 
   const fetchClaims = useCallback(async () => {
     try {
@@ -159,6 +255,13 @@ const Admin: React.FC = () => {
     fetchClaims();
   }, [fetchClaims]);
 
+  // Paginated slice
+  const totalPages = Math.max(1, Math.ceil(claims.length / PAGE_SIZE));
+  const paginatedClaims = useMemo(
+    () => claims.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+    [claims, page],
+  );
+
   const openReview = (claim: ClaimRequest) => {
     setSelectedClaim(claim);
     setSelectedRwaId(claim.rwaId || claim.productId || '');
@@ -169,8 +272,6 @@ const Admin: React.FC = () => {
     const n = (claim.productName || '').toLowerCase();
     const isEC = n.includes('experience') && n.includes('card');
     if (isEC) {
-      // Experience Card claims have a single, fixed product: the card itself.
-      // Resolve it and select it automatically — the admin gets no choice.
       apiService.get('/products/experience-card')
         .then(res => {
           const card = (res.data as any)?.data;
@@ -179,7 +280,7 @@ const Admin: React.FC = () => {
             setSelectedRwaId(card.rwaId);
           }
         })
-        .catch(() => { /* fall back to the id stored on the claim */ });
+        .catch(() => {});
     } else {
       fetchClaimableProducts();
     }
@@ -200,11 +301,9 @@ const Admin: React.FC = () => {
         adminNote,
       });
       if (res.data?.success) {
-        // Show mint result feedback if available
         const mintResult = (res.data as any).mintResult;
         if (mintResult && !mintResult.success) {
           setActionError(`Validated but mint issue: ${mintResult.error || 'Unknown error'}. Check admin notes.`);
-          // Still refresh the list since the status changed
           fetchClaims();
         } else {
           setSelectedClaim(null);
@@ -241,7 +340,6 @@ const Admin: React.FC = () => {
     }
   };
 
-  // Find the selected claimable product for preview in the modal
   const selectedClaimableProduct = claimableProducts.find(p => p.rwaId === selectedRwaId);
 
   if (!isAdminUser) {
@@ -323,75 +421,117 @@ const Admin: React.FC = () => {
           </div>
         )}
 
-        {/* Claims list */}
+        {/* Claims list — paginated */}
         {!isLoading && !error && claims.length > 0 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {claims.map(claim => {
-              const sc = statusColors[claim.status] || statusColors.pending;
-              return (
-                <div
-                  key={claim.id}
-                  onClick={() => openReview(claim)}
-                  style={{
-                    display: 'flex', gap: 16, padding: 16,
-                    border: bdr, borderRadius: 8, background: C.pureWhite,
-                    cursor: 'pointer', transition: 'box-shadow 0.2s',
-                    alignItems: 'center',
-                  }}
-                  onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08)')}
-                  onMouseLeave={e => (e.currentTarget.style.boxShadow = 'none')}
-                >
-                  {/* Product thumbnail */}
-                  <ProductThumb
-                    src={claim.productImage}
-                    name={claim.productName}
-                    size={56}
-                  />
-
-                  {/* Product name + user info */}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                      <span style={{
-                        fontSize: 14, fontWeight: 600,
-                        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                      }}>
-                        {claim.productName || 'Unnamed product'}
-                      </span>
-                      <span style={{
-                        fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase',
-                        padding: '2px 8px', borderRadius: 3, flexShrink: 0,
-                        background: sc.bg, color: sc.color,
-                      }}>
-                        {claim.status}
-                      </span>
-                    </div>
-                    <div style={{ fontSize: 12, color: C.mid, marginBottom: 2 }}>
-                      {claim.userName || claim.userId}
-                    </div>
-                    <div style={{ fontSize: 11, color: C.gray }}>
-                      Submitted {formatDate(claim.createdAt)}
-                    </div>
-                  </div>
-
-                  {/* Proof thumbnail (small) */}
-                  <div style={{
-                    width: 48, height: 48, borderRadius: 4, overflow: 'hidden',
-                    background: C.surface, flexShrink: 0,
-                    border: bdr,
-                  }}>
-                    <AuthImage
-                      src={`/api/products/claim-proof/${claim.id}`}
-                      alt="Proof"
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          <>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {paginatedClaims.map(claim => {
+                const sc = statusColors[claim.status] || statusColors.pending;
+                return (
+                  <div
+                    key={claim.id}
+                    onClick={() => openReview(claim)}
+                    style={{
+                      display: 'flex', gap: 16, padding: 16,
+                      border: bdr, borderRadius: 8, background: C.pureWhite,
+                      cursor: 'pointer', transition: 'box-shadow 0.2s',
+                      alignItems: 'center',
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08)')}
+                    onMouseLeave={e => (e.currentTarget.style.boxShadow = 'none')}
+                  >
+                    {/* Product thumbnail */}
+                    <ProductThumb
+                      src={claim.productImage}
+                      name={claim.productName}
+                      size={56}
                     />
-                  </div>
 
-                  {/* Arrow */}
-                  <div style={{ display: 'flex', alignItems: 'center', color: C.gray, fontSize: 18, flexShrink: 0 }}>→</div>
-                </div>
-              );
-            })}
-          </div>
+                    {/* Product name + user info */}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                        <span style={{
+                          fontSize: 14, fontWeight: 600,
+                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                        }}>
+                          {claim.productName || 'Unnamed product'}
+                        </span>
+                        <span style={{
+                          fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase',
+                          padding: '2px 8px', borderRadius: 3, flexShrink: 0,
+                          background: sc.bg, color: sc.color,
+                        }}>
+                          {claim.status}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: 12, color: C.mid, marginBottom: 2 }}>
+                        {claim.userName || claim.userId}
+                      </div>
+                      <div style={{ fontSize: 11, color: C.gray }}>
+                        Submitted {formatDate(claim.createdAt)}
+                      </div>
+                    </div>
+
+                    {/* Proof thumbnail — lazy + cached */}
+                    <div style={{
+                      width: 48, height: 48, borderRadius: 4, overflow: 'hidden',
+                      background: C.surface, flexShrink: 0, border: bdr,
+                    }}>
+                      <LazyImage
+                        src={`/api/products/claim-proof/${claim.id}`}
+                        alt="Proof"
+                        isAuthUrl
+                        style={{
+                          width: 48, height: 48, objectFit: 'cover',
+                          borderRadius: 4, display: 'block',
+                        }}
+                      />
+                    </div>
+
+                    {/* Arrow */}
+                    <div style={{ display: 'flex', alignItems: 'center', color: C.gray, fontSize: 18, flexShrink: 0 }}>→</div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Pagination controls */}
+            {totalPages > 1 && (
+              <div style={{
+                display: 'flex', justifyContent: 'center', alignItems: 'center',
+                gap: 12, padding: '24px 0 12px',
+              }}>
+                <button
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  disabled={page <= 1}
+                  style={{
+                    padding: '6px 14px', fontSize: 12, fontWeight: 600,
+                    border: bdr, borderRadius: 4, cursor: page <= 1 ? 'default' : 'pointer',
+                    background: C.pureWhite, color: page <= 1 ? C.border : C.mid,
+                    fontFamily: C.font, transition: 'all 0.2s',
+                  }}
+                >
+                  ← Prev
+                </button>
+                <span style={{ fontSize: 12, color: C.gray }}>
+                  Page {page} of {totalPages}
+                  <span style={{ marginLeft: 8, fontSize: 11 }}>({claims.length} total)</span>
+                </span>
+                <button
+                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                  disabled={page >= totalPages}
+                  style={{
+                    padding: '6px 14px', fontSize: 12, fontWeight: 600,
+                    border: bdr, borderRadius: 4, cursor: page >= totalPages ? 'default' : 'pointer',
+                    background: C.pureWhite, color: page >= totalPages ? C.border : C.mid,
+                    fontFamily: C.font, transition: 'all 0.2s',
+                  }}
+                >
+                  Next →
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
 
@@ -442,7 +582,7 @@ const Admin: React.FC = () => {
               </div>
             </div>
 
-            {/* Proof image */}
+            {/* Proof image — full-size in modal, still cached */}
             <div>
               <div style={{ ...lbl, marginBottom: 8 }}>Proof of Purchase</div>
               <div

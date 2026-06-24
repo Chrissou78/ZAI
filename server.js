@@ -58,3 +58,26 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`[ZAI] API: http://0.0.0.0:${PORT}/api`);
   console.log(`[ZAI] Frontend: http://0.0.0.0:${PORT}`);
 });
+
+// ── Proxy & cache product images ──
+app.get('/img/*', async (req, res) => {
+  try {
+    const imageUrl = decodeURIComponent(req.path.replace('/img/', ''));
+    
+    // Cache for 7 days
+    res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
+    res.setHeader('Vary', 'Accept-Encoding');
+    
+    const response = await fetch(imageUrl);
+    if (!response.ok) return res.status(response.status).end();
+    
+    const contentType = response.headers.get('content-type');
+    if (contentType) res.setHeader('Content-Type', contentType);
+    
+    const buffer = Buffer.from(await response.arrayBuffer());
+    res.send(buffer);
+  } catch {
+    res.status(502).end();
+  }
+});
+
