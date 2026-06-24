@@ -13,28 +13,46 @@ export function WalletConnectButton() {
     if (!showModal) return;
 
     const handleMessage = async (event: MessageEvent) => {
+      // Log EVERYTHING from wallettwo origin
+      if (event.origin.includes('wallettwo')) {
+        console.log('📨 [DEBUG] origin:', event.origin);
+        console.log('📨 [DEBUG] full data:', JSON.stringify(event.data, null, 2));
+        console.log('📨 [DEBUG] data type:', typeof event.data);
+        if (event.data && typeof event.data === 'object') {
+          console.log('📨 [DEBUG] keys:', Object.keys(event.data));
+        }
+      }
+
       if (event.origin !== 'https://wallet.wallettwo.com') return;
 
       const iframe = document.getElementById('wallettwo-auth-iframe') as HTMLIFrameElement;
       if (!iframe || event.source !== iframe.contentWindow) return;
 
-      const { token, type, user, wallet } = event.data;
+      const data = event.data;
+      console.log('📨 [DEBUG] Passed source check. Data:', JSON.stringify(data, null, 2));
 
-      if (type !== 'wallet_session') return;
+      // Try to extract token from ANY field name
+      const token = data.token || data.code || data.accessToken || data.access_token || data.session_token || data.sessionToken;
+      const type = data.type || data.event || data.action || data.message;
+      const wallet = data.wallet || data.address || data.walletAddress || data.wallet_address;
+      const userId = data.user || data.userId || data.user_id || data.id || wallet;
+
+      console.log('📨 [DEBUG] Extracted:', { type, hasToken: !!token, wallet, userId });
+
+      if (!token) {
+        console.log('📨 [DEBUG] No token found in message, ignoring');
+        return;
+      }
 
       console.log('✅ WalletTwo session received');
       setIsLoading(true);
 
       try {
-        if (!token || !user || !wallet) {
-          throw new Error('Missing token, user, or wallet from WalletTwo');
-        }
-
-        console.log('📤 Sending to backend:', { token, userId: user, wallet });
+        console.log('📤 Sending to backend:', { token: '***' + String(token).slice(-8), userId, wallet });
 
         const response = await apiService.post('/auth/login', {
           token,
-          userId: user,
+          userId,
           wallet,
         });
 
@@ -59,8 +77,9 @@ export function WalletConnectButton() {
             navigate('/dashboard');
           }, 500);
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('❌ Login error:', error);
+        console.error('❌ Response:', error?.response?.data);
         setIsLoading(false);
         alert('Login failed. Please try again.');
       }

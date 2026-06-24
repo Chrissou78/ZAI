@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "type": "module",
   "dependencies": {
-    "@oc-labs/wallettwo-sdk": "^0.0.30",
+    "@oc-labs/wallettwo-sdk": "^0.0.36",
     "axios": "^1.15.2",
     "ethers": "^6.7.0",
     "qrcode.react": "^4.2.0",
