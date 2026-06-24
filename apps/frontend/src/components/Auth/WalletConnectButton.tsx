@@ -169,7 +169,7 @@ export function WalletConnectButton() {
   };
 
   const iframeUrl = new URL('https://wallet.wallettwo.com/auth/login');
-  iframeUrl.searchParams.append('action', 'session');
+  iframeUrl.searchParams.append('action', 'login');
   iframeUrl.searchParams.append('iframe', 'true');
   iframeUrl.searchParams.append('companyId', companyId);
   iframeUrl.searchParams.append('prompt', 'login');
