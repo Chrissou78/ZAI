@@ -456,7 +456,7 @@ const Home: React.FC = () => {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '2rem', paddingBottom: '2rem', borderBottom: '1px solid #2e2e2e', flexWrap: 'wrap', marginBottom: '1.25rem', maxWidth: '1200px', margin: '0 auto 1.25rem' }}>
           <div>
             <div style={{ fontSize: '14px', fontWeight: 200, letterSpacing: '0.2em', marginBottom: '1.25rem', color: '#f5f4f0' }}>
-              <ZaiLogo size={100} color="#333" />
+              <ZaiLogo size={200} color="#333" />
             </div>
           </div>
           <div style={{ display: 'flex', gap: '3rem', flexWrap: 'wrap' }}>
