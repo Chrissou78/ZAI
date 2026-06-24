@@ -8,4 +8,4 @@ cmds = ["pnpm install --no-frozen-lockfile"]
 cmds = ["cd apps/frontend && pnpm exec vite build"]
 
 [start]
-cmd = "npx serve apps/frontend/dist -s -l 3000"
+cmd = "node server.js"
