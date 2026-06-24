@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useAppContext } from '../../context/AppContext';
 import { useNavigate } from 'react-router-dom';
 import { apiService } from '../../services/api';
@@ -8,39 +8,29 @@ export function WalletConnectButton() {
   const navigate = useNavigate();
   const [showModal, setShowModal] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const logoutIframeRef = useRef<HTMLIFrameElement | null>(null);
 
   React.useEffect(() => {
     if (!showModal) return;
 
     const handleMessage = async (event: MessageEvent) => {
-      // Log EVERYTHING from wallettwo origin
-      if (event.origin.includes('wallettwo')) {
-        console.log('📨 [DEBUG] origin:', event.origin);
-        console.log('📨 [DEBUG] full data:', JSON.stringify(event.data, null, 2));
-        console.log('📨 [DEBUG] data type:', typeof event.data);
-        if (event.data && typeof event.data === 'object') {
-          console.log('📨 [DEBUG] keys:', Object.keys(event.data));
-        }
-      }
-
-      if (event.origin !== 'https://wallet.wallettwo.com') return;
+      if (!event.origin.includes('wallettwo.com')) return;
 
       const iframe = document.getElementById('wallettwo-auth-iframe') as HTMLIFrameElement;
       if (!iframe || event.source !== iframe.contentWindow) return;
 
       const data = event.data;
-      console.log('📨 [DEBUG] Passed source check. Data:', JSON.stringify(data, null, 2));
+      console.log('📨 WalletTwo message:', JSON.stringify(data, null, 2));
 
-      // Try to extract token from ANY field name
-      const token = data.token || data.code || data.accessToken || data.access_token || data.session_token || data.sessionToken;
-      const type = data.type || data.event || data.action || data.message;
-      const wallet = data.wallet || data.address || data.walletAddress || data.wallet_address;
+      // Extract fields flexibly
+      const token = data.token || data.code || data.accessToken || data.access_token;
+      const type = data.type || data.event || data.action;
+      const wallet = data.wallet || data.address || data.walletAddress;
       const userId = data.user || data.userId || data.user_id || data.id || wallet;
 
-      console.log('📨 [DEBUG] Extracted:', { type, hasToken: !!token, wallet, userId });
-
       if (!token) {
-        console.log('📨 [DEBUG] No token found in message, ignoring');
+        console.log('📨 No token in message, ignoring. Type:', type);
         return;
       }
 
@@ -48,8 +38,6 @@ export function WalletConnectButton() {
       setIsLoading(true);
 
       try {
-        console.log('📤 Sending to backend:', { token: '***' + String(token).slice(-8), userId, wallet });
-
         const payload: Record<string, string> = { token, userId };
         if (wallet) payload.wallet = wallet;
 
@@ -61,7 +49,7 @@ export function WalletConnectButton() {
           setUser(response.data.user as any);
           setWalletState({
             isConnected: true,
-            address: wallet,
+            address: response.data.user?.wallet || response.data.user?.walletAddress || wallet,
             token: jwtToken,
             isLoading: false,
             error: null,
@@ -94,7 +82,6 @@ export function WalletConnectButton() {
     const initials = `${user.givenName?.[0] ?? ''}${user.familyName?.[0] ?? ''}`.toUpperCase();
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-        {/* Avatar — no gold, dark bg with white text */}
         <div
           style={{
             width: '32px',
@@ -114,33 +101,86 @@ export function WalletConnectButton() {
         </div>
         <div style={{ fontSize: '12px' }}>
           <div style={{ fontWeight: 500, color: '#fff' }}>{user.givenName}</div>
-          {/* Role label removed */}
         </div>
       </div>
     );
   }
 
+  const companyId = import.meta.env.VITE_COMPANY_ID || 'p7IH5cVirHbWy1a0hPxeKro5j9bRSJtt';
+
   const handleOpenModal = () => {
-    document.cookie = 'wallettwo_session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.wallettwo.com;';
-    document.cookie = 'wallettwo_token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.wallettwo.com;';
-    
-    const keysToRemove = Object.keys(localStorage).filter(k => k.includes('wallettwo') || k.includes('wallet_two'));
-    keysToRemove.forEach(k => localStorage.removeItem(k));
-    
+    // Clear local state
+    localStorage.removeItem('zai_user');
+    localStorage.removeItem('zai_token');
+    localStorage.removeItem('zai_wallet');
+    localStorage.removeItem('zai_wallet_state');
+    Object.keys(localStorage)
+      .filter(k => k.includes('wallettwo') || k.includes('wallet_two'))
+      .forEach(k => localStorage.removeItem(k));
+
+    // Step 1: Load a hidden logout iframe to kill the WalletTwo session
+    setIsLoggingOut(true);
+
+    // Create hidden logout iframe
+    const logoutIframe = document.createElement('iframe');
+    logoutIframe.src = `https://wallet.wallettwo.com/auth/logout?iframe=true&companyId=${companyId}&auto_accept=true&_t=${Date.now()}`;
+    logoutIframe.style.display = 'none';
+    logoutIframe.id = 'wallettwo-logout-iframe';
+    document.body.appendChild(logoutIframe);
+
+    // Listen for logout completion or timeout after 2s
+    let logoutDone = false;
+
+    const onLogoutMessage = (event: MessageEvent) => {
+      if (!event.origin.includes('wallettwo.com')) return;
+      const data = event.data;
+      const type = data?.type || data?.event || data?.action;
+      console.log('🔓 Logout iframe message:', type, data);
+
+      if (type === 'wallet_logout' || type === 'logout' || type === 'logged_out' || type === 'session_ended') {
+        logoutDone = true;
+        cleanup();
+        openLoginModal();
+      }
+    };
+
+    const cleanup = () => {
+      window.removeEventListener('message', onLogoutMessage);
+      const el = document.getElementById('wallettwo-logout-iframe');
+      if (el) el.remove();
+      setIsLoggingOut(false);
+    };
+
+    window.addEventListener('message', onLogoutMessage);
+
+    // Timeout: if logout doesn't respond in 2s, proceed anyway
+    setTimeout(() => {
+      if (!logoutDone) {
+        console.log('🔓 Logout iframe timeout, proceeding with login');
+        cleanup();
+        openLoginModal();
+      }
+    }, 2000);
+  };
+
+  const openLoginModal = () => {
     setShowModal(true);
   };
 
-  const companyId = import.meta.env.VITE_COMPANY_ID || 'p7IH5cVirHbWy1a0hPxeKro5j9bRSJtt';
   const iframeUrl = new URL('https://wallet.wallettwo.com/auth/login');
   iframeUrl.searchParams.append('action', 'session');
   iframeUrl.searchParams.append('iframe', 'true');
   iframeUrl.searchParams.append('companyId', companyId);
+  iframeUrl.searchParams.append('prompt', 'login');
+  iframeUrl.searchParams.append('force', 'true');
+  iframeUrl.searchParams.append('new_session', 'true');
   iframeUrl.searchParams.append('_t', Date.now().toString());
 
   return (
     <>
       <button
         onClick={handleOpenModal}
+        disabled={isLoggingOut}
         style={{
           background: '#7A222E',
           color: '#fff',
@@ -151,11 +191,12 @@ export function WalletConnectButton() {
           letterSpacing: '0.1em',
           textTransform: 'uppercase',
           borderRadius: '4px',
-          cursor: 'pointer',
+          cursor: isLoggingOut ? 'wait' : 'pointer',
           transition: 'all 0.2s',
+          opacity: isLoggingOut ? 0.7 : 1,
         }}
       >
-        Sign Up / Log In
+        {isLoggingOut ? 'Preparing...' : 'Sign Up / Log In'}
       </button>
 
       {showModal && (
@@ -223,7 +264,6 @@ export function WalletConnectButton() {
                   gap: '1rem',
                 }}
               >
-                {/* Spinner — gold replaced with red */}
                 <div
                   style={{
                     width: '40px',
