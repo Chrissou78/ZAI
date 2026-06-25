@@ -8,11 +8,6 @@ export function WalletConnectButton() {
   const navigate = useNavigate();
   const [showModal, setShowModal] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const [iframeKey, setIframeKey] = useState(Date.now());
-  // false = session mode first, true = already got auto-session so show form
-  const [useFormMode, setUseFormMode] = useState(false);
-  const modalOpenedAt = useRef(0);
 
   React.useEffect(() => {
     if (!showModal) return;
@@ -26,8 +21,16 @@ export function WalletConnectButton() {
       const data = event.data;
       console.log('📨 WalletTwo message:', JSON.stringify(data, null, 2));
 
-      const token = data.token || data.code || data.accessToken || data.access_token;
       const type = data.type || data.event || data.action;
+
+      // Auth flow steps — iframe is showing a form, keep waiting
+      if (['login_required', 'pin_required', 'register_required',
+           'email_verification_required', 'wallet_required'].includes(type)) {
+        console.log('📨 Auth step:', type, '— waiting for completion');
+        return;
+      }
+
+      const token = data.token || data.code || data.accessToken || data.access_token;
       const wallet = data.wallet || data.address || data.walletAddress;
       const userId = data.user || data.userId || data.user_id || data.id || wallet;
 
@@ -36,62 +39,52 @@ export function WalletConnectButton() {
         return;
       }
 
-      // ── AUTO-LOGIN GATE ──
-      // If wallet_session arrives within 3s of opening, it's an auto-login
-      // from an existing WalletTwo session cookie. Reject it and switch to
-      // form mode (no action=session) so the user must log in manually.
-      const elapsed = Date.now() - modalOpenedAt.current;
-      if (elapsed < 3000) {
-        console.log('🚫 Auto-session detected (' + elapsed + 'ms), switching to form mode');
-        window.removeEventListener('message', handleMessage);
-        setUseFormMode(true);
-        setIframeKey(Date.now());
-        return;
-      }
-
-      console.log('✅ WalletTwo session received (user-initiated)');
-      setIsLoading(true);
-
-      try {
-        const payload: Record<string, string> = { token, userId };
-        if (wallet) payload.wallet = wallet;
-
-        const response = await apiService.post('/auth/login', payload);
-
-        if (response.data?.success && response.data?.jwtToken) {
-          console.log('✅ Login successful');
-          const jwtToken = response.data.jwtToken;
-          setUser(response.data.user as any);
-          setWalletState({
-            isConnected: true,
-            address: response.data.user?.wallet || response.data.user?.walletAddress || wallet,
-            token: jwtToken,
-            isLoading: false,
-            error: null,
-          });
-          localStorage.setItem('zai_user', JSON.stringify(response.data.user));
-          localStorage.setItem('zai_token', jwtToken);
-
-          setShowModal(false);
-
-          setTimeout(() => {
-            setIsLoading(false);
-            navigate('/dashboard');
-          }, 500);
-        }
-      } catch (error: any) {
-        console.error('❌ Login error:', error);
-        console.error('❌ Response:', error?.response?.data);
-        setIsLoading(false);
-        alert('Login failed. Please try again.');
-      }
-
+      console.log('✅ WalletTwo session received');
       window.removeEventListener('message', handleMessage);
+      await processLogin(token, userId, wallet);
     };
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [showModal, iframeKey, setUser, setWalletState, navigate]);
+  }, [showModal]);
+
+  const processLogin = async (token: string, userId: string, wallet?: string) => {
+    setIsLoading(true);
+
+    try {
+      const payload: Record<string, string> = { token, userId };
+      if (wallet) payload.wallet = wallet;
+
+      const response = await apiService.post('/auth/login', payload);
+
+      if (response.data?.success && response.data?.jwtToken) {
+        console.log('✅ Login successful');
+        const jwtToken = response.data.jwtToken;
+        setUser(response.data.user as any);
+        setWalletState({
+          isConnected: true,
+          address: response.data.user?.wallet || response.data.user?.walletAddress || wallet,
+          token: jwtToken,
+          isLoading: false,
+          error: null,
+        });
+        localStorage.setItem('zai_user', JSON.stringify(response.data.user));
+        localStorage.setItem('zai_token', jwtToken);
+
+        setShowModal(false);
+        setIsLoading(false);
+        navigate('/dashboard');
+      } else {
+        setIsLoading(false);
+        alert('Login failed. Please try again.');
+      }
+    } catch (error: any) {
+      console.error('❌ Login error:', error);
+      console.error('❌ Response:', error?.response?.data);
+      setIsLoading(false);
+      alert('Login failed. Please try again.');
+    }
+  };
 
   if (user) {
     const initials = `${user.givenName?.[0] ?? ''}${user.familyName?.[0] ?? ''}`.toUpperCase();
@@ -124,36 +117,19 @@ export function WalletConnectButton() {
   const companyId = import.meta.env.VITE_COMPANY_ID || 'p7IH5cVirHbWy1a0hPxeKro5j9bRSJtt';
 
   const handleOpenModal = () => {
-    localStorage.removeItem('zai_user');
-    localStorage.removeItem('zai_token');
-    localStorage.removeItem('zai_wallet');
-    localStorage.removeItem('zai_wallet_state');
-    Object.keys(localStorage)
-      .filter(k => k.includes('wallettwo') || k.includes('wallet_two'))
-      .forEach(k => localStorage.removeItem(k));
-
-    // Reset to session mode for fresh attempt
-    setUseFormMode(false);
-    modalOpenedAt.current = Date.now();
-    setIframeKey(Date.now());
     setShowModal(true);
   };
 
-  // If useFormMode: no action param → shows login form, waits for user input
-  // If !useFormMode: action=session → checks for existing session first
   const iframeUrl = new URL('https://wallet.wallettwo.com/auth/login');
-  if (!useFormMode) {
-    iframeUrl.searchParams.append('action', 'session');
-  }
+  iframeUrl.searchParams.append('action', 'session');
   iframeUrl.searchParams.append('iframe', 'true');
   iframeUrl.searchParams.append('companyId', companyId);
-  iframeUrl.searchParams.append('_t', iframeKey.toString());
+  iframeUrl.searchParams.append('_t', Date.now().toString());
 
   return (
     <>
       <button
         onClick={handleOpenModal}
-        disabled={isLoggingOut}
         style={{
           background: '#7A222E',
           color: '#fff',
@@ -164,12 +140,11 @@ export function WalletConnectButton() {
           letterSpacing: '0.1em',
           textTransform: 'uppercase',
           borderRadius: '4px',
-          cursor: isLoggingOut ? 'wait' : 'pointer',
+          cursor: 'pointer',
           transition: 'all 0.2s',
-          opacity: isLoggingOut ? 0.7 : 1,
         }}
       >
-        {isLoggingOut ? 'Preparing...' : 'Sign Up / Log In'}
+        Sign Up / Log In
       </button>
 
       {showModal && (
@@ -253,7 +228,6 @@ export function WalletConnectButton() {
             )}
 
             <iframe
-              key={iframeKey}
               src={iframeUrl.toString()}
               id="wallettwo-auth-iframe"
               style={{
