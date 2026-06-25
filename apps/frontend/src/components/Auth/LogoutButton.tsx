@@ -1,23 +1,29 @@
 import { useState } from 'react';
 import { useAppContext } from '../../context/AppContext';
-import { useNavigate } from 'react-router-dom';
 
 export function LogoutButton() {
   const { setUser, setWalletState } = useAppContext();
   const [isLoading, setIsLoading] = useState(false);
-  const navigate = useNavigate();
 
   const handleLogout = async () => {
     if (isLoading) return;
     setIsLoading(true);
 
-    const companyId = import.meta.env?.VITE_COMPANY_ID || 'p7IH5cVirHbWy1a0hPxeKro5j9bRSJtt';
-
-    // ── Kill WalletTwo session via popup window ──
+    // ── Kill WalletTwo session cookie via off-screen iframe ──
     try {
       await new Promise<void>((resolve) => {
-        const logoutUrl = `https://wallet.wallettwo.com/auth/login?action=logout&iframe=true&auto_accept=true&companyId=${companyId}&_t=${Date.now()}`;
-        const popup = window.open(logoutUrl, 'wallettwo_logout', 'width=1,height=1,left=-100,top=-100');
+        const iframe = document.createElement('iframe');
+        // NOT display:none — that prevents JS execution in Safari
+        iframe.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:400px;height:600px;opacity:0;pointer-events:none;';
+        iframe.id = 'wallettwo-logout-iframe';
+        iframe.src =
+          'https://wallet.wallettwo.com/auth/login?action=logout&iframe=true&auto_accept=true&companyId=p7IH5cVirHbWy1a0hPxeKro5j9bRSJtt&_t=' + Date.now();
+        document.body.appendChild(iframe);
+
+        const timeout = setTimeout(() => {
+          cleanup();
+          resolve();
+        }, 6000);
 
         const onMessage = (event: MessageEvent) => {
           if (event.origin !== 'https://wallet.wallettwo.com') return;
@@ -31,21 +37,16 @@ export function LogoutButton() {
         const cleanup = () => {
           clearTimeout(timeout);
           window.removeEventListener('message', onMessage);
-          try { if (popup && !popup.closed) popup.close(); } catch (e) {}
+          if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
         };
 
         window.addEventListener('message', onMessage);
-
-        const timeout = setTimeout(() => {
-          cleanup();
-          resolve();
-        }, 5000);
       });
     } catch (err) {
-      console.warn('WalletTwo logout failed:', err);
+      console.warn('WalletTwo logout iframe failed:', err);
     }
 
-    // Clear ALL localStorage keys
+    // 1. Clear ALL localStorage keys
     const keysToRemove = [
       'zai_user',
       'zai_token',
@@ -62,7 +63,7 @@ export function LogoutButton() {
 
     sessionStorage.clear();
 
-    // Clear React state
+    // 2. Clear React state
     setUser(null);
     setWalletState({
       isConnected: false,
@@ -72,10 +73,10 @@ export function LogoutButton() {
       error: null,
     });
 
-    setIsLoading(false);
-
-    // Navigate without page reload
-    navigate('/');
+    // 3. Redirect
+    setTimeout(() => {
+      window.location.href = '/';
+    }, 50);
   };
 
   return (
