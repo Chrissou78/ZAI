@@ -84,16 +84,6 @@ interface PendingClaimRequest {
   createdAt: string;
 }
 
-// Preload pages the user is likely to visit next
-useEffect(() => {
-    const timer = setTimeout(() => {
-    import('../Pages/Products');
-    import('../Pages/Events');
-  }, 2000); // Wait 2s after dashboard renders, then preload
-  return () => clearTimeout(timer);
-}, []);
-
-
 const DEVICE_TYPES = [
   { id: 1, label: 'Ski Alpine' },
   { id: 2, label: 'Snowboard' },
@@ -472,6 +462,15 @@ const Products: React.FC = () => {
       `;
       document.head.appendChild(style);
     }
+  }, []);
+
+  // Preload pages the user is likely to visit next
+  useEffect(() => {
+      const timer = setTimeout(() => {
+      import('../Pages/Products');
+      import('../Pages/Events');
+    }, 2000); // Wait 2s after dashboard renders, then preload
+    return () => clearTimeout(timer);
   }, []);
 
   /* ── Scroll tracking for carousel ── */

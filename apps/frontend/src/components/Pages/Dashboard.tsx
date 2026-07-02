@@ -19,8 +19,6 @@ interface Activity {
   icon: string;
 }
 
-
-
 /* ── Derive a clean display name from user fields ── */
 function getDisplayName(user: any): { first: string; last: string; display: string } {
   const first = (user?.givenName || user?.firstName || '').trim();
@@ -267,6 +265,16 @@ const Dashboard: React.FC = () => {
     })();
     return () => { cancelled = true; };
   }, [user?.id, isAdmin, hasExperienceCard]);
+
+  // Preload pages the user is likely to visit next
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      import('../Pages/Products');
+      import('../Pages/Events');
+    }, 2000); // Wait 2s after dashboard renders, then preload
+    return () => clearTimeout(timer);
+  }, []);
+
   const [showECModal, setShowECModal] = useState(false);
   const [ecData, setEcData] = useState<any>(null);
   const [ecLoading, setEcLoading] = useState(false);
