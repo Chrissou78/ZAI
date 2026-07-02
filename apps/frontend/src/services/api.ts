@@ -3,11 +3,6 @@ import { ApiResponse } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 
-// ── Request deduplication cache ──
-// Prevents the same GET request from being fired multiple times simultaneously
-// (e.g. Dashboard + Sidebar both fetching /products/user/123)
-const inflightRequests = new Map<string, Promise<AxiosResponse<any>>>();
-
 class APIService {
   private client: AxiosInstance;
 
@@ -42,17 +37,7 @@ class APIService {
   }
 
   get<T = any>(url: string, config?: AxiosRequestConfig): Promise<AxiosResponse<ApiResponse<T>>> {
-    // Deduplicate identical GET requests that are already in-flight
-    const cacheKey = url + (config?.params ? JSON.stringify(config.params) : '');
-    const inflight = inflightRequests.get(cacheKey);
-    if (inflight) return inflight as Promise<AxiosResponse<ApiResponse<T>>>;
-
-    const request = this.client.get<ApiResponse<T>>(url, config).finally(() => {
-      inflightRequests.delete(cacheKey);
-    });
-
-    inflightRequests.set(cacheKey, request);
-    return request;
+    return this.client.get(url, config);
   }
 
   post<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<AxiosResponse<ApiResponse<T>>> {
