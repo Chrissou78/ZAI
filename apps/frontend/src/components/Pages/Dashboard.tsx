@@ -345,23 +345,7 @@ const Dashboard: React.FC = () => {
       setDashboardLoading(true);
       setError(null);
 
-      // Show cached data instantly while fetching fresh data
-      const cached = sessionStorage.getItem(`zai_dashboard_${user?.id}`);
-      if (cached) {
-        try {
-          const { stats: cachedStats, activity: cachedActivity, hasEc } = JSON.parse(cached);
-          setStats(cachedStats);
-          setActivity(cachedActivity);
-          setHasExperienceCard(hasEc);
-          setDashboardLoading(false); // Show cached data immediately
-        } catch {}
-      }
-
-      const [productsResponse, eventsResponse] = await Promise.all([
-        apiService.get(`/products/user/${user?.id}`),
-        apiService.get('/events', { params: { status: 'upcoming' } }),
-      ]);
-
+      const productsResponse = await apiService.get(`/products/user/${user?.id}`);
       const responseData = productsResponse.data as any;
       const products = responseData?.data || [];
 
@@ -378,6 +362,7 @@ const Dashboard: React.FC = () => {
       }
       window.dispatchEvent(new Event('zai:experience-card-updated'));
 
+      const eventsResponse = await apiService.get('/events', { params: { status: 'upcoming' } });
       const upcomingEvents = (eventsResponse.data as any)?.data || [];
 
       const recentActivity: Activity[] = [];
@@ -418,22 +403,13 @@ const Dashboard: React.FC = () => {
         return timeB - timeA;
       });
 
-      const newStats = {
+      setStats({
         productsClaimed: products.length,
         eventsAttended: upcomingEvents.length,
         insuranceActive: products.filter((p: any) => p.insurance?.active).length,
-      };
+      });
 
-      setStats(newStats);
       setActivity(recentActivity);
-
-      // Cache for instant display on next visit
-      sessionStorage.setItem(`zai_dashboard_${user?.id}`, JSON.stringify({
-        stats: newStats,
-        activity: recentActivity,
-        hasEc: ecFound,
-      }));
-
     } catch (err: any) {
       console.error('Error fetching dashboard data:', err);
       setError(err.response?.data?.error || 'Failed to load dashboard');
