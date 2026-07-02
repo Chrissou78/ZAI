@@ -19,14 +19,7 @@ interface Activity {
   icon: string;
 }
 
-// Preload pages the user is likely to visit next
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      import('../Pages/Products');
-      import('../Pages/Events');
-    }, 2000); // Wait 2s after dashboard renders, then preload
-    return () => clearTimeout(timer);
-  }, []);
+
 
 /* ── Derive a clean display name from user fields ── */
 function getDisplayName(user: any): { first: string; last: string; display: string } {
