@@ -84,6 +84,16 @@ interface PendingClaimRequest {
   createdAt: string;
 }
 
+// Preload pages the user is likely to visit next
+useEffect(() => {
+    const timer = setTimeout(() => {
+    import('../Pages/Products');
+    import('../Pages/Events');
+  }, 2000); // Wait 2s after dashboard renders, then preload
+  return () => clearTimeout(timer);
+}, []);
+
+
 const DEVICE_TYPES = [
   { id: 1, label: 'Ski Alpine' },
   { id: 2, label: 'Snowboard' },
@@ -596,7 +606,7 @@ const Products: React.FC = () => {
     };
 
     fetchClaimRequests();
-    const interval = setInterval(fetchClaimRequests, 15000);
+    const interval = setInterval(fetchClaimRequests, 600000);
 
     return () => {
       active = false;
@@ -1202,6 +1212,8 @@ const Products: React.FC = () => {
                   <img
                     src={selectedProduct.image}
                     alt={selectedProduct.name}
+                    loading="lazy"
+                    decoding="async"
                     style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                   />
                 </div>
@@ -1522,6 +1534,8 @@ const Products: React.FC = () => {
                         <img
                           src={receiptImage!}
                           alt="Receipt preview"
+                          loading="lazy"
+                          decoding="async"
                           style={{ width: '100%', maxHeight: 300, objectFit: 'contain', borderRadius: 8, background: C.surface }}
                         />
                       )}
