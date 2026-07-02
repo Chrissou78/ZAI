@@ -30,7 +30,6 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   return <>{children}</>;
 };
 
-/* ── Exclusive route guard — experience card holders + admins only ── */
 const ExclusiveRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user } = useAppContext();
   const isAdminUser = user?.role === 'admin' || user?.role === 'owner';
