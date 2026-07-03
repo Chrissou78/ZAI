@@ -464,15 +464,6 @@ const Products: React.FC = () => {
     }
   }, []);
 
-  // Preload pages the user is likely to visit next
-  useEffect(() => {
-      const timer = setTimeout(() => {
-      import('../Pages/Products');
-      import('../Pages/Events');
-    }, 2000); // Wait 2s after dashboard renders, then preload
-    return () => clearTimeout(timer);
-  }, []);
-
   /* ── Scroll tracking for carousel ── */
   const updateScrollButtons = useCallback(() => {
     const el = scrollRef.current;
