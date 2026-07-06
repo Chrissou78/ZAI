@@ -261,6 +261,120 @@ export async function initDB() {
       ALTER TABLE product_claim_requests ALTER COLUMN proof_image_url DROP NOT NULL;
     `);
 
+    // ══════════════════════════════════════════════════════════
+    // REWARDS, DEALS, COLLECTIBLES, MEDIA
+    // ══════════════════════════════════════════════════════════
+
+    await client.query(`
+      -- ── Points ledger ──
+      CREATE TABLE IF NOT EXISTS points_ledger (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        amount INT NOT NULL,
+        type TEXT NOT NULL,
+        description TEXT DEFAULT '',
+        related_id TEXT DEFAULT '',
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_points_user ON points_ledger(user_id);
+      CREATE INDEX IF NOT EXISTS idx_points_created ON points_ledger(created_at DESC);
+
+      -- ── Deals (admin-managed) ──
+      CREATE TABLE IF NOT EXISTS deals (
+        id TEXT PRIMARY KEY,
+        title TEXT NOT NULL,
+        description TEXT DEFAULT '',
+        category TEXT DEFAULT 'accessories',
+        price_chf NUMERIC(10,2) NOT NULL,
+        max_points_discount INT DEFAULT 0,
+        image_url TEXT DEFAULT '',
+        ends_at TIMESTAMPTZ,
+        spots_total INT DEFAULT 0,
+        spots_left INT DEFAULT 0,
+        members_only BOOLEAN DEFAULT true,
+        featured BOOLEAN DEFAULT false,
+        active BOOLEAN DEFAULT true,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_deals_active ON deals(active, ends_at);
+
+      -- ── Deal redemptions ──
+      CREATE TABLE IF NOT EXISTS deal_redemptions (
+        id TEXT PRIMARY KEY,
+        deal_id TEXT NOT NULL REFERENCES deals(id) ON DELETE CASCADE,
+        user_id TEXT NOT NULL,
+        points_used INT DEFAULT 0,
+        amount_chf NUMERIC(10,2) NOT NULL,
+        stripe_session_id TEXT DEFAULT '',
+        stripe_payment_intent TEXT DEFAULT '',
+        status TEXT NOT NULL DEFAULT 'pending',
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_redemptions_user ON deal_redemptions(user_id);
+      CREATE INDEX IF NOT EXISTS idx_redemptions_deal ON deal_redemptions(deal_id);
+      CREATE INDEX IF NOT EXISTS idx_redemptions_stripe ON deal_redemptions(stripe_session_id);
+
+      -- ── Collectible drops (metadata; NFT itself lives on Engage) ──
+      CREATE TABLE IF NOT EXISTS collectible_series (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        season INT DEFAULT 1,
+        total_cards INT DEFAULT 6,
+        description TEXT DEFAULT '',
+        active BOOLEAN DEFAULT true,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
+
+      CREATE TABLE IF NOT EXISTS collectible_cards (
+        id TEXT PRIMARY KEY,
+        series_id TEXT NOT NULL REFERENCES collectible_series(id) ON DELETE CASCADE,
+        card_number INT NOT NULL,
+        name TEXT NOT NULL,
+        rarity TEXT DEFAULT 'common',
+        points_reward INT DEFAULT 0,
+        image_url TEXT DEFAULT '',
+        engage_rwa_id TEXT DEFAULT '',
+        requires_product_contract TEXT DEFAULT '',
+        requires_product_name TEXT DEFAULT '',
+        requires_event_id TEXT DEFAULT '',
+        available_from TIMESTAMPTZ,
+        edition_closed BOOLEAN DEFAULT false,
+        active BOOLEAN DEFAULT true,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_cards_series ON collectible_cards(series_id);
+
+      CREATE TABLE IF NOT EXISTS collectible_claims (
+        id TEXT PRIMARY KEY,
+        card_id TEXT NOT NULL REFERENCES collectible_cards(id) ON DELETE CASCADE,
+        user_id TEXT NOT NULL,
+        points_earned INT DEFAULT 0,
+        claimed_at TIMESTAMPTZ DEFAULT NOW(),
+        UNIQUE(card_id, user_id)
+      );
+      CREATE INDEX IF NOT EXISTS idx_cclaims_user ON collectible_claims(user_id);
+
+      -- ── Media stories (admin-managed) ──
+      CREATE TABLE IF NOT EXISTS media_stories (
+        id TEXT PRIMARY KEY,
+        title TEXT NOT NULL,
+        media_type TEXT NOT NULL DEFAULT 'article',
+        category TEXT DEFAULT 'editorial',
+        description TEXT DEFAULT '',
+        media_url TEXT DEFAULT '',
+        thumbnail_url TEXT DEFAULT '',
+        duration TEXT DEFAULT '',
+        exclusive BOOLEAN DEFAULT true,
+        published_at TIMESTAMPTZ DEFAULT NOW(),
+        featured BOOLEAN DEFAULT false,
+        active BOOLEAN DEFAULT true,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_media_published ON media_stories(published_at DESC);
+    `);
+
     await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_product_claims_user_product ON product_claims(user_id, product_id)`);
 
     // ── Seed owner role from env var (no hardcoded ID) ──

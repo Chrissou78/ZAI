@@ -11,6 +11,8 @@ import {
   CommunityIcon,
   ProfileIcon,
   SettingsIcon,
+  RewardsIcon,
+  UpdatesIcon,
 } from '../Icons/NavIcons';
 import { LogoutButton } from '../Auth/LogoutButton';
 
@@ -130,13 +132,14 @@ const Sidebar: React.FC = () => {
         { path: '/dashboard', label: 'Dashboard', icon: <DashboardIcon /> },
       ],
     },
-    // ── zai Exclusive — only for experience card holders + admins ──
     ...(showExclusive ? [{
       section: 'zai Exclusive',
       items: [
         { path: '/products', label: 'My Collection', icon: <ProductsIcon /> },
         { path: '/events', label: 'Events', icon: <EventsIcon /> },
         { path: '/community', label: 'Community', icon: <CommunityIcon />, badge: communityNewCount },
+        { path: '/rewards', label: 'Rewards', icon: <RewardsIcon /> },
+        { path: '/updates', label: 'Updates & Deals', icon: <UpdatesIcon /> },
       ],
     }] : []),
     {
@@ -146,7 +149,6 @@ const Sidebar: React.FC = () => {
         { path: '/settings', label: 'Settings', icon: <SettingsIcon /> },
       ],
     },
-    // ── Admin section — only visible to admin/owner ──
     ...(isAdminUser ? [{
       section: 'Admin',
       items: [
