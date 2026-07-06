@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AppContext';
+import { useAppContext  } from '../../context/AppContext';
 
 // ── Design tokens (match your existing De/Ze) ──
 const C = {
@@ -31,7 +31,7 @@ function tierIndex(name: string) {
 }
 
 export default function Rewards() {
-  const { user } = useAuth();
+  const { user } = useAppContext();
   const navigate = useNavigate();
   const [data, setData] = useState<any>(null);
   const [history, setHistory] = useState<any[]>([]);
