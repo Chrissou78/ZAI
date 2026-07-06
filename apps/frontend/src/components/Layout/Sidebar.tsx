@@ -153,6 +153,7 @@ const Sidebar: React.FC = () => {
       section: 'Admin',
       items: [
         { path: '/admin', label: 'Claim Requests', icon: <ProductsIcon />, badge: adminPendingCount },
+        { path: '/admin/store', label: 'Store & Content', icon: <UpdatesIcon /> },
       ],
     }] : []),
   ];

@@ -11,6 +11,7 @@ import Community from './components/Pages/Community';
 import Profile from './components/Pages/Profile';
 import Settings from './components/Pages/Settings';
 import Admin from './components/Pages/Admin';
+import AdminStore from './components/Pages/AdminStore';
 import Rewards from './components/Pages/Rewards';
 import Updates from './components/Pages/Updates';
 
@@ -69,6 +70,7 @@ const Router: React.FC = () => {
             <Route path="/profile" element={<Profile />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/admin" element={<Admin />} />
+            <Route path="/admin/store" element={<AdminStore />} />
           </Route>
 
           <Route path="*" element={<Navigate to="/" replace />} />
