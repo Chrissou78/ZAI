@@ -1,6 +1,7 @@
 // api/products/[...path].js
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
+import nodemailer from 'nodemailer';
 import {
   authenticate,
   applyRateLimit,
@@ -180,8 +181,6 @@ function formatPrice(raw) {
     : num.toLocaleString('en-CH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-// The Experience Card may be named "Experience Card" or "Experience Club
-// Card". Match on both keywords so detection is consistent everywhere.
 function isExperienceCardName(name) {
   const s = (name || '').toLowerCase();
   return s.includes('experience') && s.includes('card');
@@ -280,41 +279,187 @@ async function fetchSasMakes() {
   return response.json();
 }
 
-// ── Email notification ──
-async function sendAdminNotificationEmail({ claimId, userName, productName, proofUrl }) {
-  const RESEND_API_KEY = process.env.RESEND_API_KEY;
-  const ADMIN_EMAIL = process.env.ADMIN_NOTIFICATION_EMAIL || 'christopher.fourquier@onchainlabs.ch';
+// ── Email notifications (Google SMTP via nodemailer) ──
+let _transporter = null;
 
-  if (!RESEND_API_KEY) {
-    console.log('[EMAIL] No RESEND_API_KEY configured — skipping email notification');
+function getTransporter() {
+  if (!_transporter) {
+    _transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST || 'smtp-relay.gmail.com',
+      port: Number(process.env.SMTP_PORT) || 587,
+      secure: false,
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+      },
+    });
+  }
+  return _transporter;
+}
+
+const EMAIL_FROM = '"zai Experience Club" <no-reply@zai.ch>';
+const ADMIN_INBOX = 'info@zai.ch';
+const FRONTEND = () => process.env.VITE_API_URL || 'https://zai-chi.vercel.app';
+
+function emailWrap(title, body) {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f5f4f0;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
+  <div style="max-width:580px;margin:0 auto;padding:40px 20px;">
+    <div style="text-align:center;margin-bottom:32px;">
+      <div style="font-size:28px;font-weight:300;letter-spacing:0.15em;color:#0a0a0a;">zai</div>
+      <div style="font-size:9px;letter-spacing:0.3em;text-transform:uppercase;color:#6a6a6a;margin-top:2px;">Experience Club</div>
+    </div>
+    <div style="background:#ffffff;border-radius:8px;padding:32px 28px;border:1px solid #e0ddd6;">
+      <h1 style="font-size:20px;font-weight:400;color:#0a0a0a;margin:0 0 20px;">${title}</h1>
+      ${body}
+    </div>
+    <div style="text-align:center;margin-top:28px;font-size:11px;color:#6a6a6a;">
+      <p style="margin:0;">&copy; ${new Date().getFullYear()} zai Experience Club</p>
+      <p style="margin:4px 0 0;">This is an automated notification — please do not reply.</p>
+    </div>
+  </div>
+</body></html>`;
+}
+
+function emailTable(rows) {
+  return `<table style="width:100%;border-collapse:collapse;background:#f0ede6;border-radius:6px;margin:16px 0;">
+    ${rows.map(([l, v]) => `<tr>
+      <td style="padding:8px 12px;font-size:10px;letter-spacing:0.12em;text-transform:uppercase;color:#6a6a6a;white-space:nowrap;vertical-align:top;">${l}</td>
+      <td style="padding:8px 12px;font-size:13px;color:#0a0a0a;">${v}</td>
+    </tr>`).join('')}
+  </table>`;
+}
+
+function emailBtn(text, url) {
+  return `<div style="text-align:center;margin:24px 0 8px;">
+    <a href="${url}" style="display:inline-block;padding:14px 28px;background:#7A222E;color:#fff;text-decoration:none;font-size:11px;font-weight:600;letter-spacing:0.15em;text-transform:uppercase;border-radius:4px;">${text}</a>
+  </div>`;
+}
+
+function emailP(text) {
+  return `<p style="font-size:14px;color:#0a0a0a;line-height:1.6;margin:0 0 14px;">${text}</p>`;
+}
+
+async function sendEmail(to, subject, html) {
+  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+    console.log('[EMAIL] SMTP not configured — skipping:', subject);
     return;
   }
-
-  const response = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${RESEND_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      from: 'ZAI Club <noreply@zai.ch>',
-      to: [ADMIN_EMAIL],
-      subject: `[ZAI] New claim request from ${sanitizeString(userName)}`,
-      html: `
-        <h2>New Product Claim Request</h2>
-        <p><strong>User:</strong> ${sanitizeString(userName)}</p>
-        <p><strong>Product:</strong> ${sanitizeString(productName)}</p>
-        <p><strong>Claim ID:</strong> ${sanitizeString(claimId)}</p>
-        <p><strong>Proof of purchase:</strong><br/><img src="${sanitizeString(proofUrl)}" style="max-width:400px;border-radius:8px;" /></p>
-        <p><a href="https://zai-club.vercel.app/admin">Review in Admin Panel →</a></p>
-      `,
-    }),
-  });
-
-  if (!response.ok) {
-    const err = await response.text();
-    throw new Error(`Email send failed: ${err}`);
+  try {
+    await getTransporter().sendMail({ from: EMAIL_FROM, to, subject, html });
+    console.log(`[EMAIL] ✓ "${subject}" → ${to}`);
+  } catch (err) {
+    console.error(`[EMAIL] ✗ "${subject}" → ${to}:`, err.message);
   }
+}
+
+function notifyAll(userEmail, subject, userHtml, adminHtml) {
+  const sends = [sendEmail(ADMIN_INBOX, subject, adminHtml)];
+  if (userEmail && userEmail !== ADMIN_INBOX) {
+    sends.push(sendEmail(userEmail, subject, userHtml));
+  }
+  Promise.all(sends).catch(() => {});
+}
+
+function notifyClaimReceived(userEmail, userName, productName) {
+  const safeName = sanitizeString(userName);
+  const safeProduct = sanitizeString(productName) || 'Not specified';
+
+  const userBody =
+    emailP(`Hi ${safeName},`) +
+    emailP(`We've received your claim for <strong>${safeProduct}</strong>. Our team will review your proof of purchase and get back to you shortly.`) +
+    emailTable([
+      ['Product', safeProduct],
+      ['Status', '<span style="color:#e6a817;font-weight:600;">Pending Review</span>'],
+    ]) +
+    emailP('<span style="color:#6a6a6a;font-size:13px;">You\'ll receive another email once your claim has been reviewed.</span>');
+
+  const adminBody =
+    emailP(`<strong>${safeName}</strong> (${sanitizeString(userEmail) || 'no email'}) submitted a new product claim.`) +
+    emailTable([
+      ['Member', safeName],
+      ['Email', sanitizeString(userEmail) || '—'],
+      ['Product', safeProduct],
+      ['Status', '<span style="color:#e6a817;font-weight:600;">Pending Review</span>'],
+    ]) +
+    emailBtn('Review Claims', `${FRONTEND()}/admin`);
+
+  notifyAll(
+    userEmail,
+    `New claim — ${safeProduct}`,
+    emailWrap('Claim Received', userBody),
+    emailWrap('New Claim Submitted', adminBody)
+  );
+}
+
+function notifyClaimValidated(userEmail, userName, productName) {
+  const safeName = sanitizeString(userName);
+  const safeProduct = sanitizeString(productName);
+  const isCard = isExperienceCardName(productName);
+
+  const userBody =
+    emailP(`Hi ${safeName},`) +
+    emailP(`Great news — your claim for <strong>${safeProduct}</strong> has been approved! Your ${isCard ? 'Experience Card is now active' : 'product has been added to your collection'}.`) +
+    emailTable([
+      ['Product', safeProduct],
+      ['Status', '<span style="color:#4caf7d;font-weight:600;">Validated ✓</span>'],
+    ]) +
+    emailBtn(isCard ? 'View Your Card' : 'View Your Collection', `${FRONTEND()}/${isCard ? 'dashboard' : 'products'}`);
+
+  const adminBody =
+    emailP(`Claim for <strong>${safeProduct}</strong> by <strong>${safeName}</strong> has been approved and minted.`) +
+    emailTable([
+      ['Member', safeName],
+      ['Email', sanitizeString(userEmail) || '—'],
+      ['Product', safeProduct],
+      ['Status', '<span style="color:#4caf7d;font-weight:600;">Validated ✓</span>'],
+    ]);
+
+  notifyAll(
+    userEmail,
+    `Claim approved — ${safeProduct}`,
+    emailWrap('Claim Approved!', userBody),
+    emailWrap('Claim Approved', adminBody)
+  );
+}
+
+function notifyClaimRejected(userEmail, userName, productName, adminNote) {
+  const safeName = sanitizeString(userName);
+  const safeProduct = sanitizeString(productName) || 'Not specified';
+  const safeNote = sanitizeString(adminNote);
+
+  const userRows = [
+    ['Product', safeProduct],
+    ['Status', '<span style="color:#7A222E;font-weight:600;">Rejected</span>'],
+  ];
+  if (safeNote) userRows.push(['Reason', safeNote]);
+
+  const userBody =
+    emailP(`Hi ${safeName},`) +
+    emailP(`Unfortunately, your claim for <strong>${safeProduct}</strong> could not be validated.`) +
+    emailTable(userRows) +
+    emailP('<span style="color:#6a6a6a;font-size:13px;">If you believe this was a mistake, please submit again with a clearer proof of purchase image.</span>');
+
+  const adminRows = [
+    ['Member', safeName],
+    ['Email', sanitizeString(userEmail) || '—'],
+    ['Product', safeProduct],
+    ['Status', '<span style="color:#7A222E;font-weight:600;">Rejected</span>'],
+  ];
+  if (safeNote) adminRows.push(['Reason', safeNote]);
+
+  const adminBody =
+    emailP(`Claim for <strong>${safeProduct}</strong> by <strong>${safeName}</strong> has been rejected.`) +
+    emailTable(adminRows);
+
+  notifyAll(
+    userEmail,
+    `Claim update — ${safeProduct}`,
+    emailWrap('Claim Not Approved', userBody),
+    emailWrap('Claim Rejected', adminBody)
+  );
 }
 
 // ── Helper: resolve proof image URL ──
@@ -342,7 +487,6 @@ export default async function handler(req, res) {
     const decoded = authenticate(req);
     if (!decoded) return res.status(401).json({ error: 'No token provided' });
 
-    // ── Rate limit: 30 req/min ──
     if (applyRateLimit(req, res, 'products:r1', 30, 60000)) return;
 
     try {
@@ -364,9 +508,6 @@ export default async function handler(req, res) {
         return res.json({ success: true, data: [], stats: { totalProducts: 0 }, _debug: { error: 'No wallet in JWT' } });
       }
 
-      // Keep the profile wallet in sync with the live session wallet. The
-      // collection always follows decoded.wallet, so admin-side minting
-      // (which falls back to the profile wallet) targets the same address.
       if (dbReady && pool) {
         try {
           await pool.query(
@@ -379,9 +520,6 @@ export default async function handler(req, res) {
         }
       }
 
-      // ── Steps 1 + 1b + 2 prep: run the on-chain NFT fetch and the
-      // catalog lookups together so a cold request does not pay for them
-      // one after another. ──
       const [nftResult, zaiRwaMap, currencyMap] = await Promise.all([
         apiFetch(BLOCKCHAIN_BASE, `/nft?address=${wallet}&chainId=${chainId}`),
         getZaiRwaMap(),
@@ -394,15 +532,10 @@ export default async function handler(req, res) {
 
       const zaiContracts = getZaiContractsFromMap(zaiRwaMap);
 
-      // ── Filter to ZAI NFTs only, then parse ──
       const zaiNfts = zaiContracts.size > 0
         ? rawNfts.filter(nft => zaiContracts.has((nft.token_address || '').toLowerCase()))
         : rawNfts;
 
-      // ── Build products. Prefer the cached RWA catalog (no network) for
-      // known ZAI contracts and only fall back to a per-NFT IPFS metadata
-      // fetch for NFTs we can't resolve from the catalog or embedded data.
-      // This keeps the common path free of slow IPFS round-trips. ──
       const asValueObj = (field, fallback) => {
         if (field && typeof field === 'object' && 'value' in field) return field;
         if (typeof field === 'string' && field) return { value: field };
@@ -435,7 +568,6 @@ export default async function handler(req, res) {
         }
       }
 
-      // Only unknown NFTs hit IPFS, in parallel with a bounded timeout.
       if (needsIpfs.length > 0) {
         await Promise.all(
           needsIpfs.map(async (nft) => {
@@ -459,12 +591,11 @@ export default async function handler(req, res) {
           return { imageField: img, imageType: typeof img, rwaImage: zaiRwaMap.get((nft.token_address || '').toLowerCase())?.image };
         } catch { return 'parse error'; }
       }));
-      // ── Step 3: Enrich with DB data (insurance, claim dates) ──
+
       if (dbReady && pool) {
         try {
           const productIds = products.map(p => p.id);
           if (productIds.length > 0) {
-            // Insurance registrations
             const insResult = await pool.query(
               `SELECT product_id, sas_status AS status, created_at FROM insurance_registrations
                WHERE user_id = $1 AND product_id = ANY($2)
@@ -482,7 +613,6 @@ export default async function handler(req, res) {
               }
             }
 
-            // Claim dates
             const claimResult = await pool.query(
               `SELECT product_id, claimed_at FROM product_claims
                WHERE user_id = $1 AND product_id = ANY($2)`,
@@ -501,7 +631,6 @@ export default async function handler(req, res) {
         }
       }
 
-      // ── Step 3b: Back-fill missing claim dates from blockchain timestamp ──
       for (const p of products) {
         if (!p.claimedAt && p.metadata?.block_timestamp) {
           p.claimedAt = p.metadata.block_timestamp;
@@ -510,9 +639,6 @@ export default async function handler(req, res) {
 
       console.log('[PRODUCTS] Returning', products.length, 'products for wallet', wallet);
 
-      // Separate the Experience Card from the regular collection. The card
-      // is a membership artifact, not a catalogue product, and the frontend
-      // reads it from `experienceCard` to drive exclusive access.
       const experienceCard = products.find(p => isExperienceCardName(p.name)) || null;
       const collection = experienceCard
         ? products.filter(p => p.id !== experienceCard.id)
@@ -541,11 +667,9 @@ export default async function handler(req, res) {
     const decoded = authenticate(req);
     if (!decoded) return res.status(401).json({ error: 'Unauthorized' });
 
-    // ── Rate limit: 5 req/min ──
     if (applyRateLimit(req, res, 'products:r2', 5, 60000)) return;
 
-    // ── Body size guard ──
-    if (checkBodySize(req, res, 1 * 1024 * 1024)) return; // 1 MB
+    if (checkBodySize(req, res, 1 * 1024 * 1024)) return;
 
     const productId = insuranceActivateMatch[1];
 
@@ -557,7 +681,6 @@ export default async function handler(req, res) {
 
       const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
 
-      // Sanitize user-provided strings
       const sasPayload = {
         make: sanitizeString(body.make || ''),
         model: sanitizeString(body.model || ''),
@@ -567,7 +690,6 @@ export default async function handler(req, res) {
         currency: sanitizeString(body.currency || 'CHF'),
       };
 
-      // Check for existing registration
       const existing = await pool.query(
         `SELECT id, status FROM insurance_registrations
          WHERE user_id = $1 AND product_id = $2
@@ -594,7 +716,6 @@ export default async function handler(req, res) {
         registrationId = insId;
       }
 
-      // Call SAS API
       try {
         const sasResult = await callSasApi(sasPayload);
         await pool.query(
@@ -669,12 +790,11 @@ export default async function handler(req, res) {
     const decoded = authenticate(req);
     if (!decoded) return res.status(401).json({ error: 'Unauthorized' });
 
-    // ── Rate limit: 10 req/min ──
     if (applyRateLimit(req, res, 'products:r3', 10, 60000)) return;
 
     try {
       const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-      const { claims } = body; // array of { productId, tokenAddress, tokenId }
+      const { claims } = body;
 
       if (!Array.isArray(claims) || claims.length === 0) {
         return res.status(400).json({ error: 'No claims provided' });
@@ -737,7 +857,7 @@ export default async function handler(req, res) {
   }
 
   // ══════════════════════════════════════════════════════════════
-  // GET /api/products/claimable
+  // GET /api/products/experience-card
   // ══════════════════════════════════════════════════════════════
   if (fullPath === 'experience-card' && req.method === 'GET') {
     const decoded = authenticate(req);
@@ -768,6 +888,9 @@ export default async function handler(req, res) {
     }
   }
 
+  // ══════════════════════════════════════════════════════════════
+  // GET /api/products/claimable
+  // ══════════════════════════════════════════════════════════════
   if (fullPath === 'claimable' && req.method === 'GET') {
     try {
       const rwaMap = await getZaiRwaMap();
@@ -775,7 +898,6 @@ export default async function handler(req, res) {
       const claimable = [];
 
       for (const [addr, rwa] of rwaMap) {
-        // Skip experience card
         if (isExperienceCardName(rwa.name)) continue;
 
         claimable.push({
@@ -824,10 +946,8 @@ export default async function handler(req, res) {
     const decoded = authenticate(req);
     if (!decoded) return res.status(401).json({ error: 'Unauthorized' });
 
-    // ── Rate limit: 5 req/min ──
     if (applyRateLimit(req, res, 'products:r5', 5, 60000)) return;
 
-    // ── Body size guard: 10 MB ──
     if (checkBodySize(req, res, 10 * 1024 * 1024)) return;
 
     try {
@@ -840,25 +960,20 @@ export default async function handler(req, res) {
       const {
         productId,
         productName,
-        proofImage,      // base64 string
-        proofImageCid,   // pre-uploaded IPFS CID
-        preUploadedCid,  // phone-upload flow: IPFS CID
-        preUploadedKey,  // phone-upload flow: encryption key
+        proofImage,
+        proofImageCid,
+        preUploadedCid,
+        preUploadedKey,
         note,
       } = body;
 
-      // Product name/id are optional: the admin assigns the product at
-      // validation time. What we require is a proof of purchase.
       if (!proofImage && !proofImageCid && !preUploadedCid) {
         return res.status(400).json({ error: 'Proof of purchase is required' });
       }
 
-      // Sanitize user inputs
       const safeProductName = sanitizeString(productName || '');
       const safeNote = sanitizeString(note || '');
 
-      // Resolve the submitter's name and email so admins can see who sent
-      // the request instead of a bare user id.
       let userName = (decoded.name || `${decoded.givenName || ''} ${decoded.familyName || ''}`).trim();
       let userEmail = '';
       try {
@@ -877,14 +992,12 @@ export default async function handler(req, res) {
       let encryptionKey = preUploadedKey || '';
       let imageUrl = '';
 
-      // If base64 image provided, encrypt and upload to Pinata
       if (proofImage && !imageCid) {
         const imgBuffer = Buffer.from(proofImage.replace(/^data:image\/\w+;base64,/, ''), 'base64');
 
         const { encryptedBuffer, keyHex } = encryptBuffer(imgBuffer);
         encryptionKey = keyHex;
 
-        // Upload to Pinata
         const PINATA_JWT = process.env.PINATA_JWT;
         if (PINATA_JWT) {
           const formData = new FormData();
@@ -910,7 +1023,6 @@ export default async function handler(req, res) {
         imageUrl = `https://ipfs.io/ipfs/${imageCid}`;
       }
 
-      // Store in DB
       await pool.query(
         `INSERT INTO product_claim_requests
           (id, user_id, user_name, user_email, product_id, product_name, proof_image_cid, proof_image_url, encryption_key, note, wallet, status, created_at)
@@ -930,13 +1042,8 @@ export default async function handler(req, res) {
         ]
       );
 
-      // Send admin notification email (non-blocking)
-      sendAdminNotificationEmail({
-        claimId,
-        userName: decoded.name || decoded.userId,
-        productName: safeProductName,
-        proofUrl: imageUrl,
-      }).catch(err => console.error('[EMAIL] notification failed:', err.message));
+      // Notify user + info@zai.ch (non-blocking)
+      notifyClaimReceived(userEmail, userName, safeProductName);
 
       return res.json({ success: true, claimId, status: 'pending' });
     } catch (err) {
@@ -952,7 +1059,6 @@ export default async function handler(req, res) {
     const decoded = authenticate(req);
     if (!decoded) return res.status(401).json({ error: 'Unauthorized' });
 
-    // ── Rate limit: 30 req/min ──
     if (applyRateLimit(req, res, 'products:r6', 30, 60000)) return;
 
     try {
@@ -968,15 +1074,12 @@ export default async function handler(req, res) {
       let query;
       let params;
 
-      // ── Admin sees all; non-admin only sees their own ──
       const isAdminUser = await db.isAdmin(decoded);
 
       if (mine === 'true' || !isAdminUser) {
-        // User's own claims
         query = `SELECT * FROM product_claim_requests WHERE user_id = $1 ORDER BY created_at DESC`;
         params = [decoded.userId];
       } else {
-        // Admin: all claims
         query = `SELECT * FROM product_claim_requests ORDER BY created_at DESC`;
         params = [];
       }
@@ -1008,7 +1111,6 @@ export default async function handler(req, res) {
           proofImageUrl: resolveProofImageUrl(row),
         };
 
-        // Only admin gets the decryption key
         if (isAdminUser && row.encryption_key) {
           item.encryptionKey = row.encryption_key;
         }
@@ -1050,20 +1152,17 @@ export default async function handler(req, res) {
 
       const claim = result.rows[0];
 
-      // ── Owner or admin check ──
       const isAdminUser = await db.isAdmin(decoded);
       if (claim.user_id !== decoded.userId && !isAdminUser) {
         return res.status(403).json({ error: 'Forbidden' });
       }
 
-      // If not encrypted, redirect to IPFS
       if (!claim.encryption_key) {
         const url = resolveProofImageUrl(claim);
         if (url) return res.redirect(url);
         return res.status(404).json({ error: 'No proof image available' });
       }
 
-      // Fetch encrypted image from IPFS and decrypt
       const ipfsUrl = claim.proof_image_cid
         ? `https://ipfs.io/ipfs/${claim.proof_image_cid}`
         : claim.proof_image_url;
@@ -1097,7 +1196,6 @@ export default async function handler(req, res) {
     const decoded = authenticate(req);
     if (!decoded) return res.status(401).json({ error: 'Unauthorized' });
 
-    // ── Admin DB check ──
     const db = await getDB();
     if (!db) return res.status(503).json({ error: 'Database not available' });
     await db.initDB();
@@ -1106,7 +1204,6 @@ export default async function handler(req, res) {
     const isAdminUser = await db.isAdmin(decoded);
     if (!isAdminUser) return res.status(403).json({ error: 'Admin access required' });
 
-    // ── Rate limit: 20 req/min ──
     if (applyRateLimit(req, res, 'products:r7', 20, 60000)) return;
 
     const requestId = validateMatch[1];
@@ -1115,7 +1212,6 @@ export default async function handler(req, res) {
       const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
       const adminNote = sanitizeString(body.adminNote || '');
 
-      // Fetch the claim request
       const claimResult = await pool.query(
         `SELECT * FROM product_claim_requests WHERE id = $1`,
         [requestId]
@@ -1131,12 +1227,8 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: `Claim is already ${claimReq.status}` });
       }
 
-      // Determine which RWA to mint: the admin's selection wins, otherwise
-      // the product id stored on the claim. This makes the admin's choice
-      // authoritative and lets free-text claims (no stored id) still mint.
       const rwaIdToMint = (body.rwaId && String(body.rwaId).trim()) || claimReq.product_id || '';
 
-      // Persist it so the claim record reflects what was minted.
       if (rwaIdToMint && rwaIdToMint !== claimReq.product_id) {
         await pool.query(
           `UPDATE product_claim_requests SET product_id = $1 WHERE id = $2`,
@@ -1144,14 +1236,10 @@ export default async function handler(req, res) {
         );
       }
 
-      // Trigger NFT mint if an RWA id is available
       let mintResult = null;
       let minted = false;
       if (rwaIdToMint) {
         try {
-          // Prefer the wallet captured on the claim (the user's session
-          // wallet, which is also what the collection queries). Fall back
-          // to the profile wallet for older claims that predate this.
           let userWallet = claimReq.wallet;
           if (!userWallet) {
             const userResult = await pool.query(
@@ -1201,9 +1289,6 @@ export default async function handler(req, res) {
         mintResult = { success: false, error: 'No product selected to mint' };
       }
 
-      // Only mark the claim validated once the mint actually succeeded.
-      // On failure the claim stays pending so the admin can fix the cause
-      // and retry, or reject it, instead of it being stuck as "validated".
       if (minted) {
         await pool.query(
           `UPDATE product_claim_requests
@@ -1211,6 +1296,9 @@ export default async function handler(req, res) {
            WHERE id = $2`,
           [adminNote, requestId]
         );
+
+        // Notify user + info@zai.ch
+        notifyClaimValidated(claimReq.user_email, claimReq.user_name, claimReq.product_name);
       } else {
         await pool.query(
           `UPDATE product_claim_requests
@@ -1240,7 +1328,6 @@ export default async function handler(req, res) {
     const decoded = authenticate(req);
     if (!decoded) return res.status(401).json({ error: 'Unauthorized' });
 
-    // ── Admin DB check ──
     const db = await getDB();
     if (!db) return res.status(503).json({ error: 'Database not available' });
     await db.initDB();
@@ -1249,7 +1336,6 @@ export default async function handler(req, res) {
     const isAdminUser = await db.isAdmin(decoded);
     if (!isAdminUser) return res.status(403).json({ error: 'Admin access required' });
 
-    // ── Rate limit: 20 req/min ──
     if (applyRateLimit(req, res, 'products:r8', 20, 60000)) return;
 
     const requestId = rejectMatch[1];
@@ -1259,7 +1345,7 @@ export default async function handler(req, res) {
       const adminNote = sanitizeString(body.adminNote || body.reason || '');
 
       const result = await pool.query(
-        `SELECT status FROM product_claim_requests WHERE id = $1`,
+        `SELECT status, user_email, user_name, product_name FROM product_claim_requests WHERE id = $1`,
         [requestId]
       );
 
@@ -1277,6 +1363,10 @@ export default async function handler(req, res) {
          WHERE id = $2`,
         [adminNote, requestId]
       );
+
+      // Notify user + info@zai.ch
+      const row = result.rows[0];
+      notifyClaimRejected(row.user_email, row.user_name, row.product_name, adminNote);
 
       return res.json({ success: true, status: 'rejected' });
     } catch (err) {
@@ -1318,7 +1408,6 @@ export default async function handler(req, res) {
     const decoded = authenticate(req);
     if (!decoded) return res.status(401).json({ error: 'Unauthorized' });
 
-    // ── Rate limit: 10 req/min ──
     if (applyRateLimit(req, res, 'products:r9', 10, 60000)) return;
 
     try {
@@ -1328,7 +1417,7 @@ export default async function handler(req, res) {
       const pool = db.getPool();
 
       const token = crypto.randomBytes(24).toString('hex');
-      const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 min
+      const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
 
       await pool.query(
         `CREATE TABLE IF NOT EXISTS upload_tokens (
@@ -1342,8 +1431,6 @@ export default async function handler(req, res) {
         )`
       );
 
-      // Defensive migrations: a pre-existing table may lack newer columns,
-      // and CREATE TABLE IF NOT EXISTS will not add them.
       await pool.query(`
         ALTER TABLE upload_tokens ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'pending';
         ALTER TABLE upload_tokens ADD COLUMN IF NOT EXISTS proof_image_cid TEXT;
@@ -1417,10 +1504,8 @@ export default async function handler(req, res) {
   if (uploadMatch && req.method === 'POST') {
     const token = uploadMatch[1];
 
-    // ── Rate limit: 5 req/min (by token, not by IP since this is phone upload) ──
     if (applyRateLimit(req, res, 'products:r10', 5, 60000)) return;
 
-    // ── Body size guard: 10 MB ──
     if (checkBodySize(req, res, 10 * 1024 * 1024)) return;
 
     try {
@@ -1449,14 +1534,13 @@ export default async function handler(req, res) {
       }
 
       const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-      const { image } = body; // base64 image
+      const { image } = body;
 
       if (!image) return res.status(400).json({ error: 'image is required' });
 
       const imgBuffer = Buffer.from(image.replace(/^data:image\/\w+;base64,/, ''), 'base64');
       const { encryptedBuffer, keyHex } = encryptBuffer(imgBuffer);
 
-      // Upload to Pinata
       let cid = '';
       const PINATA_JWT = process.env.PINATA_JWT;
 
@@ -1483,7 +1567,6 @@ export default async function handler(req, res) {
         return res.status(503).json({ error: 'IPFS upload not configured' });
       }
 
-      // Update token record
       await pool.query(
         `UPDATE upload_tokens
          SET status = 'completed', proof_image_cid = $1, encryption_key = $2
@@ -1505,7 +1588,6 @@ export default async function handler(req, res) {
   if (uploadPageMatch && req.method === 'GET') {
     const token = uploadPageMatch[1];
 
-    // Verify token exists and is valid
     try {
       const db = await getDB();
       if (db) {
