@@ -45,25 +45,25 @@ const TIERS = [
     name: 'Blue',
     color: '#3B6B9E',
     minPoints: 0,
-    perks: ['Free ski insurance', 'Community access', 'Event invitations'],
+    perks: ['Product registration', 'Event newsletter', 'Digital warranty'],
   },
   {
     name: 'Red',
     color: '#7D1E2C',
-    minPoints: 5000,
-    perks: ['Priority event booking', '5% store discount', 'Exclusive drops access'],
+    minPoints: 15000,
+    perks: ['Priority event access', 'Maintenance discount', 'Partner benefits', 'Dedicated support'],
   },
   {
     name: 'Black',
     color: '#1a1a1a',
-    minPoints: 15000,
-    perks: ['10% store discount', 'VIP event access', 'Limited edition offers'],
+    minPoints: 30000,
+    perks: ['VIP event invitations', 'Early product launches', 'Custom fitting service', 'Referral bonuses'],
   },
   {
     name: 'Diamond',
     color: '#8B7D6B',
     minPoints: 50000,
-    perks: ['15% store discount', 'Private factory tours', 'Bespoke concierge service'],
+    perks: ['Factory visits, Pontresina', 'Bespoke commission', 'Personal zai ambassador', 'Annual zai retreat'],
   },
 ];
 

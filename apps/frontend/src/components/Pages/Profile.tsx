@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAppContext } from '../../context/AppContext';
 import { apiService } from '../../services/api';
 
@@ -40,12 +40,65 @@ interface CardInfo {
   tokenAddress: string;
 }
 
-/* ── Tier definitions ── */
+/* ── Helper: sanitize Engage values — replace literal "true" with dash ── */
+function clean(val: any): string {
+  if (val === true || val === 'true') return '';
+  if (val === false || val === 'false') return '';
+  if (val === null || val === undefined) return '';
+  return String(val);
+}
+
+/* ── Tier definitions (matching the design) ── */
 const TIERS = [
-  { name: 'Blue', color: '#3B6B9E', min: 0 },
-  { name: 'Red', color: '#7D1E2C', min: 5000 },
-  { name: 'Black', color: '#1a1a1a', min: 15000 },
-  { name: 'Diamond', color: '#8B7D6B', min: 50000 },
+  {
+    name: 'Blue',
+    color: '#3B6B9E',
+    min: 0,
+    max: 14999,
+    benefits: [
+      'Product registration',
+      'Event newsletter',
+      'Digital warranty',
+    ],
+  },
+  {
+    name: 'Red',
+    color: '#7D1E2C',
+    min: 15000,
+    max: 29999,
+    benefits: [
+      'Priority event access',
+      'Maintenance discount',
+      'Partner benefits',
+      'Dedicated support',
+    ],
+  },
+  {
+    name: 'Black',
+    color: '#1a1a1a',
+    min: 30000,
+    max: 49999,
+    benefits: [
+      'VIP event invitations',
+      'Early product launches',
+      'Custom fitting service',
+      'Partner elite access',
+      'Referral bonuses',
+    ],
+  },
+  {
+    name: 'Diamond',
+    color: '#8B7D6B',
+    min: 50000,
+    max: Infinity,
+    benefits: [
+      'Factory visits, Pontresina',
+      'Bespoke commission',
+      'Personal zai ambassador',
+      'All partner elite benefits',
+      'Annual zai retreat',
+    ],
+  },
 ];
 
 function getTier(points: number) {
@@ -59,14 +112,6 @@ function getNextTier(points: number) {
   const current = getTier(points);
   if (current.index >= TIERS.length - 1) return null;
   return TIERS[current.index + 1];
-}
-
-/* ── Helper: sanitize Engage values — replace literal "true" with dash ── */
-function clean(val: any): string {
-  if (val === true || val === 'true') return '';
-  if (val === false || val === 'false') return '';
-  if (val === null || val === undefined) return '';
-  return String(val);
 }
 
 /* ── Country list ── */
@@ -132,7 +177,7 @@ const PHONE_CODES = [
   { code: '+380', label: '+380 (UA)' },
 ];
 
-/* ── Helper: extract phone code from a stored phone number like "+41 79 123 4567" ── */
+/* ── Helper: extract phone code ── */
 function parsePhone(phoneNumber: string): { phoneCode: string; phoneLocal: string } {
   if (!phoneNumber) return { phoneCode: '+41', phoneLocal: '' };
   const trimmed = phoneNumber.trim();
@@ -156,7 +201,7 @@ function parsePhone(phoneNumber: string): { phoneCode: string; phoneLocal: strin
   return { phoneCode: '+41', phoneLocal: trimmed };
 }
 
-/* ── Helper to build formData from any user-shaped object ── */
+/* ── Helper to build formData ── */
 const toFormData = (src: any) => {
   const { phoneCode, phoneLocal } = parsePhone(clean(src?.phoneNumber));
   return {
@@ -172,6 +217,358 @@ const toFormData = (src: any) => {
     birthdate: clean(src?.birthdate),
     isPublic: src?.isPublic === true,
   };
+};
+
+/* ═══════════════════════════════════════════════════════════
+   TIER DISPLAY — matches the provided screenshot design
+   ═══════════════════════════════════════════════════════════ */
+const TierDisplay: React.FC<{ points: number }> = ({ points }) => {
+  const tier = getTier(points);
+  const next = getNextTier(points);
+  const progress = next
+    ? ((points - tier.min) / (next.min - tier.min)) * 100
+    : 100;
+
+  return (
+    <div>
+      {/* Header banner */}
+      <div
+        style={{
+          background: C.black,
+          padding: '28px 28px 24px',
+          borderRadius: '4px 4px 0 0',
+        }}
+      >
+        <div
+          style={{
+            fontSize: 10,
+            letterSpacing: '0.3em',
+            textTransform: 'uppercase',
+            color: '#777',
+            marginBottom: 8,
+            fontFamily: C.font,
+          }}
+        >
+          Your Current Standing
+        </div>
+        <div
+          style={{
+            fontSize: 'clamp(28px, 3vw, 36px)',
+            fontWeight: 300,
+            color: '#fff',
+            lineHeight: 1.15,
+          }}
+        >
+          {tier.name} Tier
+        </div>
+      </div>
+
+      {/* 4 tier cards */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(4, 1fr)',
+          gap: 0,
+          border: `1px solid ${C.border}`,
+          borderTop: 'none',
+        }}
+      >
+        {TIERS.map((t, i) => {
+          const isActive = tier.name === t.name;
+          const num = String(i + 1).padStart(2, '0');
+
+          return (
+            <div
+              key={t.name}
+              style={{
+                background: isActive ? C.black : '#fff',
+                padding: '24px 20px 20px',
+                borderRight:
+                  i < TIERS.length - 1
+                    ? `1px solid ${isActive ? '#333' : C.border}`
+                    : 'none',
+                position: 'relative',
+              }}
+            >
+              {isActive && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: 10,
+                    right: 10,
+                    fontSize: 8,
+                    letterSpacing: '0.15em',
+                    textTransform: 'uppercase',
+                    fontWeight: 700,
+                    color: '#fff',
+                    background: C.red,
+                    padding: '3px 8px',
+                    fontFamily: C.font,
+                  }}
+                >
+                  Your Tier
+                </div>
+              )}
+
+              <div
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: '50%',
+                  border: `2px solid ${isActive ? '#fff' : t.color}`,
+                  background: isActive ? t.color : 'transparent',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: 18,
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: isActive ? '#fff' : t.color,
+                    fontFamily: C.font,
+                  }}
+                >
+                  {num}
+                </span>
+              </div>
+
+              <div
+                style={{
+                  fontSize: 14,
+                  fontWeight: 700,
+                  letterSpacing: '0.05em',
+                  color: isActive ? '#fff' : C.black,
+                  marginBottom: 4,
+                  textTransform: 'uppercase',
+                }}
+              >
+                {t.name}
+              </div>
+
+              <div
+                style={{
+                  fontSize: 11,
+                  color: isActive ? '#999' : C.gray,
+                  marginBottom: 16,
+                  fontStyle: 'italic',
+                }}
+              >
+                {t.max === Infinity
+                  ? `${t.min.toLocaleString()}+ points`
+                  : `${t.min.toLocaleString()} – ${t.max.toLocaleString()} points`}
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {t.benefits.map((b, j) => (
+                  <div
+                    key={j}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: 8,
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: 5,
+                        height: 5,
+                        borderRadius: '50%',
+                        background: isActive ? C.red : t.color,
+                        flexShrink: 0,
+                        marginTop: 5,
+                      }}
+                    />
+                    <span
+                      style={{
+                        fontSize: 12,
+                        color: isActive ? '#ccc' : C.gray,
+                        lineHeight: 1.4,
+                      }}
+                    >
+                      {b}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Progress section */}
+      <div
+        style={{
+          border: `1px solid ${C.border}`,
+          borderTop: 'none',
+          padding: '28px',
+          borderRadius: '0 0 4px 4px',
+          background: '#fff',
+        }}
+      >
+        {next ? (
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: 32,
+              alignItems: 'flex-end',
+            }}
+          >
+            <div>
+              <div
+                style={{
+                  fontSize: 10,
+                  letterSpacing: '0.3em',
+                  textTransform: 'uppercase',
+                  color: C.gray,
+                  marginBottom: 10,
+                  fontFamily: C.font,
+                }}
+              >
+                Progress to {next.name}
+              </div>
+              <div style={{ marginBottom: 8 }}>
+                <span
+                  style={{
+                    fontSize: 'clamp(24px, 2.5vw, 32px)',
+                    fontWeight: 300,
+                    color: C.black,
+                  }}
+                >
+                  {points.toLocaleString()}
+                </span>
+                <span
+                  style={{
+                    fontSize: 'clamp(24px, 2.5vw, 32px)',
+                    fontWeight: 300,
+                    color: C.gray,
+                  }}
+                >
+                  {' '}/ {next.min.toLocaleString()} points
+                </span>
+              </div>
+              <div style={{ fontSize: 12, color: C.mid, lineHeight: 1.6 }}>
+                Claim a new ski (+500 pts) or attend an event (+150 pts) to
+                accelerate your progress.
+              </div>
+            </div>
+
+            <div>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  fontSize: 10,
+                  color: C.gray,
+                  marginBottom: 6,
+                  fontFamily: C.font,
+                }}
+              >
+                <span>Current</span>
+                <span>{next.name}</span>
+              </div>
+
+              <div
+                style={{
+                  height: 6,
+                  background: C.border,
+                  overflow: 'hidden',
+                  marginBottom: 4,
+                  position: 'relative',
+                }}
+              >
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    height: '100%',
+                    width: `${Math.min(progress, 100)}%`,
+                    background:
+                      tier.color === '#1a1a1a' ? C.red : tier.color,
+                    transition: 'width 0.6s ease',
+                  }}
+                />
+              </div>
+
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  fontSize: 10,
+                  color: C.mid,
+                  marginBottom: 20,
+                }}
+              >
+                <span>{points.toLocaleString()} pts</span>
+                <span>{next.min.toLocaleString()} pts</span>
+              </div>
+
+              <button
+                onClick={() => {
+                  window.location.href = '/products';
+                }}
+                style={{
+                  width: '100%',
+                  padding: '14px 24px',
+                  fontSize: 10,
+                  fontWeight: 700,
+                  letterSpacing: '0.15em',
+                  textTransform: 'uppercase',
+                  border: 'none',
+                  background: C.red,
+                  color: '#fff',
+                  cursor: 'pointer',
+                  fontFamily: C.font,
+                  transition: 'background 0.2s',
+                }}
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.background = '#9a2535')
+                }
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.background = C.red)
+                }
+              >
+                Claim Product · +500 pts
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div style={{ textAlign: 'center', padding: '12px 0' }}>
+            <div
+              style={{
+                fontSize: 10,
+                letterSpacing: '0.3em',
+                textTransform: 'uppercase',
+                color: C.gray,
+                marginBottom: 10,
+                fontFamily: C.font,
+              }}
+            >
+              Maximum Tier Reached
+            </div>
+            <div
+              style={{
+                fontSize: 'clamp(24px, 2.5vw, 32px)',
+                fontWeight: 300,
+                color: C.black,
+                marginBottom: 8,
+              }}
+            >
+              {points.toLocaleString()} points
+            </div>
+            <div style={{ fontSize: 12, color: C.mid }}>
+              Welcome to Diamond. You have access to all zai benefits and
+              experiences.
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 };
 
 /* ═══════════════════════════════════════════════════════════
@@ -198,7 +595,6 @@ const ReferralProgram: React.FC<{ userId: string }> = ({ userId }) => {
     return () => { cancelled = true; };
   }, [userId]);
 
-  /* Pre-fill from localStorage if arrived via ?ref= */
   useEffect(() => {
     const stored = localStorage.getItem('zai_referral_code');
     if (stored && !data?.appliedCode) {
@@ -228,9 +624,8 @@ const ReferralProgram: React.FC<{ userId: string }> = ({ userId }) => {
     try {
       const r = await apiService.post('/store/referrals/apply', { code: referralInput.trim() });
       if (r.data?.success) {
-        setApplyMsg('Referral applied! You'll earn bonus points on your first product claim.');
+        setApplyMsg("Referral applied! You'll earn bonus points on your first product claim.");
         localStorage.removeItem('zai_referral_code');
-        // Reload stats
         const s = await apiService.get('/store/referrals/stats');
         if (s.data?.success) setData(s.data.data);
       } else {
@@ -322,7 +717,6 @@ const ReferralProgram: React.FC<{ userId: string }> = ({ userId }) => {
         </div>
       </div>
 
-      {/* ── Apply someone else's referral code ── */}
       {!data.appliedCode && (
         <div style={{ marginTop: 20 }}>
           <div style={{
@@ -462,7 +856,6 @@ const Profile: React.FC = () => {
             tokenAddress: ec.tokenAddress || '',
           });
         }
-        // Load stored card number from profile if available
         if (d?.profile?.card_number) {
           setCardNumberStored(d.profile.card_number);
         }
@@ -494,7 +887,7 @@ const Profile: React.FC = () => {
     return () => { cancelled = true; };
   }, [user?.id]);
 
-  /* ── Sync user into form + fetch fresh profile from DB ── */
+  /* ── Sync user into form + fetch fresh profile ── */
   useEffect(() => {
     let cancelled = false;
     if (user) {
@@ -739,12 +1132,6 @@ const Profile: React.FC = () => {
     appearance: 'auto',
   };
 
-  const tier = getTier(points);
-  const nextTier = getNextTier(points);
-  const progress = nextTier
-    ? ((points - tier.min) / (nextTier.min - tier.min)) * 100
-    : 100;
-
   return (
     <div style={{ maxWidth: 1100, margin: '0 auto', padding: '48px 48px 80px', fontFamily: C.font }}>
 
@@ -781,28 +1168,15 @@ const Profile: React.FC = () => {
 
         <button
           onClick={() => {
-            if (isEditing) {
-              handleSave();
-            } else {
-              setIsEditing(true);
-            }
+            if (isEditing) { handleSave(); } else { setIsEditing(true); }
           }}
           disabled={isLoading}
           style={{
-            background: C.black,
-            color: '#fff',
-            border: 'none',
-            padding: '14px 28px',
-            fontSize: '10px',
-            letterSpacing: '0.2em',
-            textTransform: 'uppercase',
-            cursor: isLoading ? 'wait' : 'pointer',
-            fontFamily: C.font,
-            fontWeight: 500,
-            transition: 'background 0.2s',
-            whiteSpace: 'nowrap',
-            marginTop: '0.5rem',
-            opacity: isLoading ? 0.7 : 1,
+            background: C.black, color: '#fff', border: 'none',
+            padding: '14px 28px', fontSize: '10px', letterSpacing: '0.2em',
+            textTransform: 'uppercase', cursor: isLoading ? 'wait' : 'pointer',
+            fontFamily: C.font, fontWeight: 500, transition: 'background 0.2s',
+            whiteSpace: 'nowrap', marginTop: '0.5rem', opacity: isLoading ? 0.7 : 1,
           }}
           onMouseEnter={e => { if (!isLoading) e.currentTarget.style.background = '#1a1a1a'; }}
           onMouseLeave={e => (e.currentTarget.style.background = C.black)}
@@ -833,19 +1207,11 @@ const Profile: React.FC = () => {
         >
           <div
             style={{
-              width: '80px',
-              height: '80px',
-              borderRadius: '50%',
-              background: C.surface2,
-              border: `2px solid ${C.border}`,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '22px',
-              fontWeight: 300,
-              color: C.black,
-              letterSpacing: '0.05em',
-              marginBottom: '1rem',
+              width: '80px', height: '80px', borderRadius: '50%',
+              background: C.surface2, border: `2px solid ${C.border}`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: '22px', fontWeight: 300, color: C.black,
+              letterSpacing: '0.05em', marginBottom: '1rem',
             }}
           >
             {initials}
@@ -860,80 +1226,58 @@ const Profile: React.FC = () => {
 
           <div
             style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr 1fr',
-              width: '100%',
-              borderTop: `1px solid ${C.border}`,
-              borderBottom: `1px solid ${C.border}`,
+              display: 'grid', gridTemplateColumns: '1fr 1fr', width: '100%',
+              borderTop: `1px solid ${C.border}`, borderBottom: `1px solid ${C.border}`,
               marginBottom: '1.5rem',
             }}
           >
-            <div
-              style={{
-                textAlign: 'center',
-                padding: '1rem 0',
-                borderRight: `1px solid ${C.border}`,
-              }}
-            >
-              <div style={{ fontSize: '20px', fontWeight: 300, color: C.black }}>
-                {stats.productsClaimed}
-              </div>
-              <div style={{ ...label, fontSize: '9px', marginTop: '2px', color: C.gray }}>
-                Products
-              </div>
+            <div style={{ textAlign: 'center', padding: '1rem 0', borderRight: `1px solid ${C.border}` }}>
+              <div style={{ fontSize: '20px', fontWeight: 300, color: C.black }}>{stats.productsClaimed}</div>
+              <div style={{ ...label, fontSize: '9px', marginTop: '2px', color: C.gray }}>Products</div>
             </div>
             <div style={{ textAlign: 'center', padding: '1rem 0' }}>
-              <div style={{ fontSize: '20px', fontWeight: 300, color: C.black }}>
-                {exclusive ? stats.eventsAttended : 0}
-              </div>
-              <div style={{ ...label, fontSize: '9px', marginTop: '2px', color: C.gray }}>
-                Events
-              </div>
+              <div style={{ fontSize: '20px', fontWeight: 300, color: C.black }}>{exclusive ? stats.eventsAttended : 0}</div>
+              <div style={{ ...label, fontSize: '9px', marginTop: '2px', color: C.gray }}>Events</div>
             </div>
           </div>
 
           {/* ── Tier badge in sidebar ── */}
           {!loadingPoints && (
             <div style={{
-              width: '100%',
-              padding: '12px 0',
-              borderBottom: `1px solid ${C.border}`,
-              marginBottom: '1rem',
+              width: '100%', padding: '12px 0',
+              borderBottom: `1px solid ${C.border}`, marginBottom: '1rem',
               textAlign: 'center',
             }}>
-              <div style={{
-                display: 'inline-flex', alignItems: 'center', gap: 8,
-              }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                 <div style={{
                   width: 24, height: 24, borderRadius: '50%',
-                  background: tier.color,
+                  background: getTier(points).color,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  border: getTier(points).name === 'Black' ? '1px solid #555' : 'none',
                 }}>
-                  <span style={{ fontSize: 10, color: '#fff', fontWeight: 700 }}>
-                    {tier.name[0]}
+                  <span style={{ fontSize: 9, color: '#fff', fontWeight: 700 }}>
+                    {String(getTier(points).index + 1).padStart(2, '0')}
                   </span>
                 </div>
                 <span style={{ fontSize: 13, fontWeight: 500, color: C.black }}>
-                  {tier.name} Tier
+                  {getTier(points).name} Tier
                 </span>
               </div>
               <div style={{ fontSize: 11, color: C.gray, marginTop: 4 }}>
                 {points.toLocaleString()} pts
               </div>
-              {/* Mini progress bar */}
-              {nextTier && (
+              {getNextTier(points) && (
                 <div style={{ marginTop: 8, padding: '0 8px' }}>
-                  <div style={{
-                    height: 3, background: C.border, borderRadius: 2, overflow: 'hidden',
-                  }}>
+                  <div style={{ height: 3, background: C.border, borderRadius: 2, overflow: 'hidden' }}>
                     <div style={{
-                      height: '100%', width: `${Math.min(progress, 100)}%`,
-                      background: tier.color, borderRadius: 2,
-                      transition: 'width 0.6s ease',
+                      height: '100%',
+                      width: `${Math.min(((points - getTier(points).min) / (getNextTier(points)!.min - getTier(points).min)) * 100, 100)}%`,
+                      background: getTier(points).color === '#1a1a1a' ? C.red : getTier(points).color,
+                      borderRadius: 2, transition: 'width 0.6s ease',
                     }} />
                   </div>
                   <div style={{ fontSize: 9, color: C.mid, marginTop: 4 }}>
-                    {(nextTier.min - points).toLocaleString()} pts to {nextTier.name}
+                    {(getNextTier(points)!.min - points).toLocaleString()} pts to {getNextTier(points)!.name}
                   </div>
                 </div>
               )}
@@ -942,405 +1286,115 @@ const Profile: React.FC = () => {
 
           <div style={{ width: '100%' }}>
             {bulletItems.map((item, i) => (
-              <div
-                key={i}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px',
-                  padding: '8px 0',
-                  fontSize: '12px',
-                  color: C.black,
-                  fontWeight: 300,
-                }}
-              >
-                <div
-                  style={{
-                    width: '5px',
-                    height: '5px',
-                    background: C.red,
-                    borderRadius: '50%',
-                    flexShrink: 0,
-                  }}
-                />
+              <div key={i} style={{
+                display: 'flex', alignItems: 'center', gap: '10px',
+                padding: '8px 0', fontSize: '12px', color: C.black, fontWeight: 300,
+              }}>
+                <div style={{ width: '5px', height: '5px', background: C.red, borderRadius: '50%', flexShrink: 0 }} />
                 {item}
               </div>
             ))}
           </div>
         </div>
 
-        {/* ── RIGHT — PERSONAL INFORMATION + EXPERIENCE CARD ── */}
+        {/* ── RIGHT — PERSONAL INFORMATION + SECTIONS ── */}
         <div style={{ background: '#fff', padding: '2.5rem 2rem' }}>
 
           {/* ── Personal Information ── */}
-          <div
-            style={{
-              ...label,
-              color: C.black,
-              fontSize: '11px',
-              marginBottom: '1.5rem',
-              paddingBottom: '0.75rem',
-              borderBottom: `1px solid ${C.border}`,
-            }}
-          >
+          <div style={{ ...label, color: C.black, fontSize: '11px', marginBottom: '1.5rem', paddingBottom: '0.75rem', borderBottom: `1px solid ${C.border}` }}>
             Personal Information
           </div>
 
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '1px',
-              background: C.border,
-              border: `1px solid ${C.border}`,
-            }}
-          >
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
-                gap: '1px',
-                background: C.border,
-              }}
-            >
-              <FieldCell
-                label="First Name"
-                name="givenName"
-                value={formData.givenName}
-                editing={isEditing}
-                onChange={handleChange}
-              />
-              <FieldCell
-                label="Family Name"
-                name="familyName"
-                value={formData.familyName}
-                editing={isEditing}
-                onChange={handleChange}
-              />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', background: C.border, border: `1px solid ${C.border}` }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1px', background: C.border }}>
+              <FieldCell label="First Name" name="givenName" value={formData.givenName} editing={isEditing} onChange={handleChange} />
+              <FieldCell label="Family Name" name="familyName" value={formData.familyName} editing={isEditing} onChange={handleChange} />
             </div>
 
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
-                gap: '1px',
-                background: C.border,
-              }}
-            >
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1px', background: C.border }}>
               <FieldCell
-                label="Date of Birth"
-                name="birthdate"
+                label="Date of Birth" name="birthdate"
                 value={isEditing ? formData.birthdate : formatBirthdate(formData.birthdate)}
-                editing={isEditing}
-                type={isEditing ? 'date' : 'text'}
-                onChange={handleChange}
+                editing={isEditing} type={isEditing ? 'date' : 'text'} onChange={handleChange}
               />
-
               {isEditing ? (
                 <div style={{ background: '#fff', padding: '1rem 1.25rem' }}>
-                  <div
-                    style={{
-                      fontSize: '10px',
-                      letterSpacing: '0.25em',
-                      textTransform: 'uppercase',
-                      color: C.gray,
-                      marginBottom: '6px',
-                      fontFamily: C.font,
-                    }}
-                  >
+                  <div style={{ fontSize: '10px', letterSpacing: '0.25em', textTransform: 'uppercase', color: C.gray, marginBottom: '6px', fontFamily: C.font }}>
                     Phone Number
                   </div>
                   <div style={{ display: 'flex', gap: '6px', alignItems: 'flex-end' }}>
-                    <select
-                      name="phoneCode"
-                      value={formData.phoneCode}
-                      onChange={handleSelectChange}
-                      style={{
-                        ...selectStyle,
-                        width: '115px',
-                        flexShrink: 0,
-                      }}
-                    >
-                      {PHONE_CODES.map(pc => (
-                        <option key={pc.code} value={pc.code}>{pc.label}</option>
-                      ))}
+                    <select name="phoneCode" value={formData.phoneCode} onChange={handleSelectChange}
+                      style={{ ...selectStyle, width: '115px', flexShrink: 0 }}>
+                      {PHONE_CODES.map(pc => (<option key={pc.code} value={pc.code}>{pc.label}</option>))}
                     </select>
-                    <input
-                      type="tel"
-                      name="phoneLocal"
-                      value={formData.phoneLocal}
-                      onChange={handleChange}
+                    <input type="tel" name="phoneLocal" value={formData.phoneLocal} onChange={handleChange}
                       placeholder="79 123 4567"
-                      style={{
-                        flex: 1,
-                        background: 'transparent',
-                        border: 'none',
-                        borderBottom: `1px solid ${C.border}`,
-                        color: C.black,
-                        fontFamily: C.font,
-                        fontSize: '13px',
-                        fontWeight: 400,
-                        padding: '4px 0',
-                        outline: 'none',
-                        boxSizing: 'border-box',
-                      }}
+                      style={{ flex: 1, background: 'transparent', border: 'none', borderBottom: `1px solid ${C.border}`, color: C.black, fontFamily: C.font, fontSize: '13px', fontWeight: 400, padding: '4px 0', outline: 'none', boxSizing: 'border-box' }}
                     />
                   </div>
                 </div>
               ) : (
-                <FieldCell
-                  label="Phone Number"
-                  name="phoneNumber"
-                  value={displayPhone()}
-                  editing={false}
-                  onChange={() => {}}
-                />
+                <FieldCell label="Phone Number" name="phoneNumber" value={displayPhone()} editing={false} onChange={() => {}} />
               )}
             </div>
 
-            <FieldCell
-              label="Email Address"
-              name="email"
-              value={formData.email}
-              editing={isEditing}
-              type="email"
-              onChange={handleChange}
-            />
+            <FieldCell label="Email Address" name="email" value={formData.email} editing={isEditing} type="email" onChange={handleChange} />
 
             {isEditing ? (
               <>
-                <FieldCell
-                  label="Street Address"
-                  name="address"
-                  value={formData.address}
-                  editing={true}
-                  onChange={handleChange}
-                />
-                <div
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: '1fr 1fr 1fr',
-                    gap: '1px',
-                    background: C.border,
-                  }}
-                >
-                  <FieldCell
-                    label="Postal Code"
-                    name="postalCode"
-                    value={formData.postalCode}
-                    editing={true}
-                    onChange={handleChange}
-                  />
-                  <FieldCell
-                    label="City"
-                    name="city"
-                    value={formData.city}
-                    editing={true}
-                    onChange={handleChange}
-                  />
-
+                <FieldCell label="Street Address" name="address" value={formData.address} editing={true} onChange={handleChange} />
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1px', background: C.border }}>
+                  <FieldCell label="Postal Code" name="postalCode" value={formData.postalCode} editing={true} onChange={handleChange} />
+                  <FieldCell label="City" name="city" value={formData.city} editing={true} onChange={handleChange} />
                   <div style={{ background: '#fff', padding: '1rem 1.25rem' }}>
-                    <div
-                      style={{
-                        fontSize: '10px',
-                        letterSpacing: '0.25em',
-                        textTransform: 'uppercase',
-                        color: C.gray,
-                        marginBottom: '6px',
-                        fontFamily: C.font,
-                      }}
-                    >
-                      Country
-                    </div>
-                    <select
-                      name="country"
-                      value={formData.country}
-                      onChange={handleSelectChange}
-                      style={selectStyle}
-                    >
+                    <div style={{ fontSize: '10px', letterSpacing: '0.25em', textTransform: 'uppercase', color: C.gray, marginBottom: '6px', fontFamily: C.font }}>Country</div>
+                    <select name="country" value={formData.country} onChange={handleSelectChange} style={selectStyle}>
                       <option value="">Select country</option>
-                      {COUNTRIES.map(c => (
-                        <option key={c} value={c}>{c}</option>
-                      ))}
+                      {COUNTRIES.map(c => (<option key={c} value={c}>{c}</option>))}
                     </select>
                   </div>
                 </div>
               </>
             ) : (
-              <FieldCell
-                label="Home Address"
-                name="address"
-                value={homeAddress()}
-                editing={false}
-                onChange={() => {}}
-              />
+              <FieldCell label="Home Address" name="address" value={homeAddress()} editing={false} onChange={() => {}} />
             )}
           </div>
 
           {isEditing && (
             <div style={{ marginTop: '1.5rem' }}>
-              <button
-                onClick={handleCancel}
-                style={{
-                  background: 'transparent',
-                  border: `1px solid ${C.border}`,
-                  color: C.black,
-                  padding: '12px 24px',
-                  fontSize: '10px',
-                  letterSpacing: '0.2em',
-                  textTransform: 'uppercase',
-                  cursor: 'pointer',
-                  fontFamily: C.font,
-                  transition: 'border-color 0.2s',
-                }}
+              <button onClick={handleCancel} style={{
+                background: 'transparent', border: `1px solid ${C.border}`, color: C.black,
+                padding: '12px 24px', fontSize: '10px', letterSpacing: '0.2em',
+                textTransform: 'uppercase', cursor: 'pointer', fontFamily: C.font, transition: 'border-color 0.2s',
+              }}
                 onMouseEnter={e => (e.currentTarget.style.borderColor = C.black)}
                 onMouseLeave={e => (e.currentTarget.style.borderColor = C.border)}
-              >
-                Cancel
-              </button>
+              >Cancel</button>
             </div>
           )}
 
           {/* ═══ REWARDS & TIER SECTION ═══ */}
           {exclusive && (
             <>
-              <div
-                style={{
-                  ...label,
-                  color: C.black,
-                  fontSize: '11px',
-                  marginTop: '3rem',
-                  marginBottom: '1.5rem',
-                  paddingBottom: '0.75rem',
-                  borderBottom: `1px solid ${C.border}`,
-                }}
-              >
+              <div style={{ ...label, color: C.black, fontSize: '11px', marginTop: '3rem', marginBottom: '1.5rem', paddingBottom: '0.75rem', borderBottom: `1px solid ${C.border}` }}>
                 Rewards & Tier
               </div>
-
               {loadingPoints ? (
                 <div style={{ padding: '20px 0', fontSize: 13, color: C.gray }}>Loading…</div>
               ) : (
-                <div>
-                  {/* Tier + points row */}
-                  <div style={{
-                    display: 'flex', alignItems: 'center', gap: 16, marginBottom: 16,
-                  }}>
-                    <div style={{
-                      width: 44, height: 44, borderRadius: '50%',
-                      background: tier.color,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      flexShrink: 0,
-                    }}>
-                      <span style={{ fontSize: 16, color: '#fff', fontWeight: 700 }}>
-                        {tier.name[0]}
-                      </span>
-                    </div>
-                    <div>
-                      <div style={{ fontSize: 16, fontWeight: 500, color: C.black }}>
-                        {tier.name} Tier
-                      </div>
-                      <div style={{ fontSize: 12, color: C.gray }}>
-                        {points.toLocaleString()} points
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Progress bar */}
-                  {nextTier && (
-                    <div style={{ marginBottom: 16 }}>
-                      <div style={{
-                        display: 'flex', justifyContent: 'space-between',
-                        fontSize: 10, color: C.gray, marginBottom: 5,
-                      }}>
-                        <span>{tier.name}</span>
-                        <span>{(nextTier.min - points).toLocaleString()} pts to {nextTier.name}</span>
-                      </div>
-                      <div style={{
-                        height: 5, background: C.border, borderRadius: 3, overflow: 'hidden',
-                      }}>
-                        <div style={{
-                          height: '100%', width: `${Math.min(progress, 100)}%`,
-                          background: tier.color, borderRadius: 3,
-                          transition: 'width 0.6s ease',
-                        }} />
-                      </div>
-                    </div>
-                  )}
-                  {!nextTier && (
-                    <div style={{
-                      padding: '10px 14px', background: C.surface,
-                      border: `1px solid ${C.border}`, borderRadius: 6,
-                      fontSize: 12, color: C.gray, marginBottom: 16,
-                    }}>
-                      You've reached the highest tier.
-                    </div>
-                  )}
-
-                  {/* All 4 tiers mini-grid */}
-                  <div style={{
-                    display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)',
-                    gap: '1px', background: C.border, border: `1px solid ${C.border}`,
-                  }}>
-                    {TIERS.map(t => {
-                      const active = tier.name === t.name;
-                      return (
-                        <div key={t.name} style={{
-                          background: active ? C.surface : '#fff',
-                          padding: '14px 12px', textAlign: 'center',
-                          position: 'relative',
-                        }}>
-                          {active && (
-                            <div style={{
-                              position: 'absolute', top: 0, left: 0, right: 0,
-                              height: 3, background: t.color,
-                            }} />
-                          )}
-                          <div style={{
-                            width: 22, height: 22, borderRadius: '50%',
-                            background: t.color, margin: '0 auto 6px',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            opacity: active ? 1 : 0.35,
-                          }}>
-                            <span style={{ fontSize: 9, color: '#fff', fontWeight: 700 }}>
-                              {t.name[0]}
-                            </span>
-                          </div>
-                          <div style={{
-                            fontSize: 11, fontWeight: active ? 700 : 400,
-                            color: active ? C.black : C.gray,
-                          }}>
-                            {t.name}
-                          </div>
-                          <div style={{ fontSize: 9, color: C.mid, marginTop: 2 }}>
-                            {t.min === 0 ? 'Start' : `${t.min.toLocaleString()}+`}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
+                <TierDisplay points={points} />
               )}
             </>
           )}
 
-          {/* ═══ EXPERIENCE CARD SECTION — exclusive members & admins only ═══ */}
+          {/* ═══ EXPERIENCE CARD SECTION ═══ */}
           {exclusive && (
             <>
-              <div
-                style={{
-                  ...label,
-                  color: C.black,
-                  fontSize: '11px',
-                  marginTop: '3rem',
-                  marginBottom: '1.5rem',
-                  paddingBottom: '0.75rem',
-                  borderBottom: `1px solid ${C.border}`,
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                }}
-              >
+              <div style={{
+                ...label, color: C.black, fontSize: '11px', marginTop: '3rem', marginBottom: '1.5rem',
+                paddingBottom: '0.75rem', borderBottom: `1px solid ${C.border}`,
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              }}>
                 <span>Experience Card</span>
                 {!editingCardNum && (
                   <button
@@ -1360,31 +1414,20 @@ const Profile: React.FC = () => {
                 )}
               </div>
 
-              {/* Card image — same as dashboard */}
+              {/* Card image */}
               <img
                 src="/images/experience-card.png"
                 alt="zai Experience Card"
-                style={{
-                  width: '100%',
-                  maxWidth: 420,
-                  height: 'auto',
-                  borderRadius: 12,
-                  display: 'block',
-                  marginBottom: '1.5rem',
-                }}
+                style={{ width: '100%', maxWidth: 420, height: 'auto', borderRadius: 12, display: 'block', marginBottom: '1.5rem' }}
               />
 
-              {/* ── Card number editing ── */}
+              {/* Card number editing */}
               {editingCardNum && (
                 <div style={{
                   background: C.surface, borderRadius: 8,
-                  padding: '16px 18px', border: `1px solid ${C.border}`,
-                  marginBottom: '1.5rem',
+                  padding: '16px 18px', border: `1px solid ${C.border}`, marginBottom: '1.5rem',
                 }}>
-                  <div style={{
-                    fontSize: 10, letterSpacing: '0.25em', textTransform: 'uppercase',
-                    color: C.gray, marginBottom: 8, fontFamily: C.font,
-                  }}>
+                  <div style={{ fontSize: 10, letterSpacing: '0.25em', textTransform: 'uppercase', color: C.gray, marginBottom: 8, fontFamily: C.font }}>
                     CARD NUMBER
                   </div>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10 }}>
@@ -1394,29 +1437,23 @@ const Profile: React.FC = () => {
                       placeholder="Enter card number or scan via NFC"
                       maxLength={32}
                       style={{
-                        flex: 1, padding: '10px 12px',
-                        border: `1px solid ${C.border}`, fontSize: 13,
-                        fontFamily: C.font, borderRadius: 4,
+                        flex: 1, padding: '10px 12px', border: `1px solid ${C.border}`,
+                        fontSize: 13, fontFamily: C.font, borderRadius: 4,
                         boxSizing: 'border-box' as const, background: '#fff',
                       }}
                     />
                     {nfcSupported && (
-                      <button
-                        onClick={startNfcRead}
-                        disabled={nfcReading}
-                        style={{
-                          display: 'flex', alignItems: 'center', gap: 6,
-                          padding: '10px 14px', fontSize: 10, fontWeight: 600,
-                          letterSpacing: '0.1em', textTransform: 'uppercase',
-                          border: `1px solid ${C.border}`, borderRadius: 4,
-                          background: 'transparent', color: C.black,
-                          cursor: nfcReading ? 'wait' : 'pointer',
-                          fontFamily: C.font, whiteSpace: 'nowrap',
-                          opacity: nfcReading ? 0.6 : 1,
-                        }}
-                      >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
-                          stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <button onClick={startNfcRead} disabled={nfcReading} style={{
+                        display: 'flex', alignItems: 'center', gap: 6,
+                        padding: '10px 14px', fontSize: 10, fontWeight: 600,
+                        letterSpacing: '0.1em', textTransform: 'uppercase',
+                        border: `1px solid ${C.border}`, borderRadius: 4,
+                        background: 'transparent', color: C.black,
+                        cursor: nfcReading ? 'wait' : 'pointer',
+                        fontFamily: C.font, whiteSpace: 'nowrap',
+                        opacity: nfcReading ? 0.6 : 1,
+                      }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M6 8.32a7.43 7.43 0 0 1 0 7.36" />
                           <path d="M9.46 6.21a11.76 11.76 0 0 1 0 11.58" />
                           <path d="M12.91 4.1a16.1 16.1 0 0 1 0 15.8" />
@@ -1427,118 +1464,69 @@ const Profile: React.FC = () => {
                     )}
                   </div>
                   {nfcReading && (
-                    <div style={{
-                      fontSize: 12, color: C.red, marginBottom: 10,
-                      display: 'flex', alignItems: 'center', gap: 8,
-                    }}>
-                      <span style={{
-                        display: 'inline-block', width: 8, height: 8,
-                        borderRadius: '50%', background: C.red,
-                        animation: 'pulse 1.5s infinite',
-                      }} />
+                    <div style={{ fontSize: 12, color: C.red, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: C.red, animation: 'pulse 1.5s infinite' }} />
                       Hold your card near the device…
                     </div>
                   )}
                   <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                    <button
-                      onClick={() => { setEditingCardNum(false); setNfcReading(false); }}
-                      style={{
-                        background: 'transparent', border: `1px solid ${C.border}`,
-                        color: C.black, padding: '8px 16px', fontSize: '10px',
-                        letterSpacing: '0.15em', textTransform: 'uppercase',
-                        cursor: 'pointer', fontFamily: C.font, borderRadius: 3,
-                      }}
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={saveCardNumber}
-                      disabled={savingCardNum || !cardNumInput.trim()}
-                      style={{
-                        background: C.red, border: 'none', color: '#fff',
-                        padding: '8px 16px', fontSize: '10px',
-                        letterSpacing: '0.15em', textTransform: 'uppercase',
-                        cursor: savingCardNum ? 'wait' : 'pointer',
-                        fontFamily: C.font, borderRadius: 3,
-                        opacity: savingCardNum || !cardNumInput.trim() ? 0.5 : 1,
-                      }}
-                    >
-                      {savingCardNum ? 'Saving…' : 'Save'}
-                    </button>
+                    <button onClick={() => { setEditingCardNum(false); setNfcReading(false); }} style={{
+                      background: 'transparent', border: `1px solid ${C.border}`, color: C.black,
+                      padding: '8px 16px', fontSize: '10px', letterSpacing: '0.15em',
+                      textTransform: 'uppercase', cursor: 'pointer', fontFamily: C.font, borderRadius: 3,
+                    }}>Cancel</button>
+                    <button onClick={saveCardNumber} disabled={savingCardNum || !cardNumInput.trim()} style={{
+                      background: C.red, border: 'none', color: '#fff',
+                      padding: '8px 16px', fontSize: '10px', letterSpacing: '0.15em',
+                      textTransform: 'uppercase', cursor: savingCardNum ? 'wait' : 'pointer',
+                      fontFamily: C.font, borderRadius: 3,
+                      opacity: savingCardNum || !cardNumInput.trim() ? 0.5 : 1,
+                    }}>{savingCardNum ? 'Saving…' : 'Save'}</button>
                   </div>
                 </div>
               )}
 
-              {/* Card number display (when not editing) */}
+              {/* Card number display */}
               {!editingCardNum && cardNumberStored && (
                 <div style={{
                   display: 'flex', alignItems: 'center', gap: 10,
                   padding: '10px 14px', background: C.surface,
-                  border: `1px solid ${C.border}`, borderRadius: 6,
-                  marginBottom: '1.5rem',
+                  border: `1px solid ${C.border}`, borderRadius: 6, marginBottom: '1.5rem',
                 }}>
-                  <div style={{ fontSize: 10, letterSpacing: '0.15em', color: C.gray, textTransform: 'uppercase' }}>
-                    Card #
-                  </div>
-                  <div style={{
-                    fontSize: 14, fontWeight: 500, fontFamily: "'Courier New', monospace",
-                    letterSpacing: '0.08em', color: C.black,
-                  }}>
+                  <div style={{ fontSize: 10, letterSpacing: '0.15em', color: C.gray, textTransform: 'uppercase' }}>Card #</div>
+                  <div style={{ fontSize: 14, fontWeight: 500, fontFamily: "'Courier New', monospace", letterSpacing: '0.08em', color: C.black }}>
                     {cardNumberStored}
                   </div>
                 </div>
               )}
 
               {/* Card detail rows */}
-              <div style={{
-                display: 'flex',
-                flexDirection: 'column',
-                border: `1px solid ${C.border}`,
-              }}>
-                <div style={{
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  padding: '1.25rem', borderBottom: `1px solid ${C.border}`,
-                }}>
+              <div style={{ display: 'flex', flexDirection: 'column', border: `1px solid ${C.border}` }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.25rem', borderBottom: `1px solid ${C.border}` }}>
                   <div>
                     <div style={{ fontSize: '13px', color: C.black, fontWeight: 400 }}>Status</div>
                     <div style={{ fontSize: '11px', color: C.gray, marginTop: '3px' }}>NFC Experience Card</div>
                   </div>
-                  <span style={{
-                    fontSize: '10px', letterSpacing: '0.2em', textTransform: 'uppercase',
-                    color: card.isActive ? C.green : C.gray, fontWeight: 500,
-                  }}>
+                  <span style={{ fontSize: '10px', letterSpacing: '0.2em', textTransform: 'uppercase', color: card.isActive ? C.green : C.gray, fontWeight: 500 }}>
                     {card.isActive ? 'Active' : 'Inactive'}
                   </span>
                 </div>
-
                 <div style={{
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  padding: '1.25rem',
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.25rem',
                   borderBottom: card.isActive && card.tokenAddress ? `1px solid ${C.border}` : 'none',
                 }}>
                   <div>
                     <div style={{ fontSize: '13px', color: C.black, fontWeight: 400 }}>NFC</div>
                     <div style={{ fontSize: '11px', color: C.gray, marginTop: '3px' }}>Contactless product claim and access</div>
                   </div>
-                  <span style={{
-                    fontSize: '10px', letterSpacing: '0.2em', textTransform: 'uppercase',
-                    color: card.nfcEnabled && card.isActive ? C.green : C.gray, fontWeight: 500,
-                  }}>
+                  <span style={{ fontSize: '10px', letterSpacing: '0.2em', textTransform: 'uppercase', color: card.nfcEnabled && card.isActive ? C.green : C.gray, fontWeight: 500 }}>
                     {card.nfcEnabled && card.isActive ? 'Enabled' : 'Disabled'}
                   </span>
                 </div>
-
                 {card.isActive && card.tokenAddress && (
                   <div style={{ padding: '1.25rem' }}>
-                    <div style={{ fontSize: '13px', color: C.black, fontWeight: 400, marginBottom: '3px' }}>
-                      Contract
-                    </div>
-                    <div style={{
-                      fontSize: '11px', color: C.gray, fontFamily: 'monospace',
-                      wordBreak: 'break-all',
-                    }}>
-                      {card.tokenAddress}
-                    </div>
+                    <div style={{ fontSize: '13px', color: C.black, fontWeight: 400, marginBottom: '3px' }}>Contract</div>
+                    <div style={{ fontSize: '11px', color: C.gray, fontFamily: 'monospace', wordBreak: 'break-all' }}>{card.tokenAddress}</div>
                   </div>
                 )}
               </div>
@@ -1576,49 +1564,15 @@ interface FieldCellProps {
 
 const FieldCell: React.FC<FieldCellProps> = ({ label: lbl, name, value, editing, type = 'text', onChange }) => (
   <div style={{ background: '#fff', padding: '1rem 1.25rem' }}>
-    <div
-      style={{
-        fontSize: '10px',
-        letterSpacing: '0.25em',
-        textTransform: 'uppercase',
-        color: C.gray,
-        marginBottom: '6px',
-        fontFamily: C.font,
-      }}
-    >
+    <div style={{ fontSize: '10px', letterSpacing: '0.25em', textTransform: 'uppercase', color: C.gray, marginBottom: '6px', fontFamily: C.font }}>
       {lbl}
     </div>
     {editing ? (
-      <input
-        type={type}
-        name={name}
-        value={value}
-        onChange={onChange}
-        placeholder="—"
-        style={{
-          width: '100%',
-          background: 'transparent',
-          border: 'none',
-          borderBottom: `1px solid ${C.border}`,
-          color: C.black,
-          fontFamily: C.font,
-          fontSize: '13px',
-          fontWeight: 400,
-          padding: '4px 0',
-          outline: 'none',
-          boxSizing: 'border-box',
-        }}
+      <input type={type} name={name} value={value} onChange={onChange} placeholder="—"
+        style={{ width: '100%', background: 'transparent', border: 'none', borderBottom: `1px solid ${C.border}`, color: C.black, fontFamily: C.font, fontSize: '13px', fontWeight: 400, padding: '4px 0', outline: 'none', boxSizing: 'border-box' }}
       />
     ) : (
-      <div
-        style={{
-          fontSize: '13px',
-          fontWeight: 400,
-          color: C.black,
-          padding: '4px 0',
-          minHeight: '20px',
-        }}
-      >
+      <div style={{ fontSize: '13px', fontWeight: 400, color: C.black, padding: '4px 0', minHeight: '20px' }}>
         {value || '—'}
       </div>
     )}
