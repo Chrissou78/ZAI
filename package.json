@@ -13,7 +13,8 @@
     "jsonwebtoken": "^9.0.2",
     "nodemailer": "^9.0.3",
     "otplib": "^13.4.0",
-    "pg": "^8.13.0"
+    "pg": "^8.13.0",
+    "stripe": "^22.3.0"
   },
   "scripts": {
     "dev": "pnpm --filter zai-frontend dev",

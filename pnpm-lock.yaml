@@ -26,6 +26,9 @@ importers:
       pg:
         specifier: ^8.13.0
         version: 8.20.0
+      stripe:
+        specifier: ^22.3.0
+        version: 22.3.0
     devDependencies:
       '@types/nodemailer':
         specifier: ^8.0.1
@@ -7332,6 +7335,16 @@ packages:
   /strip-json-comments@2.0.1:
     resolution: {integrity: sha512-4gB8na07fecVVkOI6Rs4e7T6NOTki5EmL7TUduTs6bu3EdnSycntVJ4re8kgZA+wx9IueI2Y11bfbgwtzuE0KQ==}
     engines: {node: '>=0.10.0'}
+    dev: false
+
+  /stripe@22.3.0:
+    resolution: {integrity: sha512-ypO6xjVrMWs9SmIMeHr8naCx3dAQ0clxMdUTxn7Ejd7hmY9meBGfE+N4pVHkf9sUNebAHp6uJo6mV3GxDIc2cA==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      '@types/node': '>=18'
+    peerDependenciesMeta:
+      '@types/node':
+        optional: true
     dev: false
 
   /structured-headers@0.4.1:
