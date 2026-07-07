@@ -23,7 +23,7 @@ function DealModal({ deal, onClose }: { deal: any; onClose: () => void }) {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    fetch('/api/rewards/balance', { headers: authHeaders() })
+    fetch('/api/store/rewards/balance', { headers: authHeaders() })
       .then(r => r.json()).then(d => { if (d.success) setBalance(d.data.balance); });
   }, []);
 
@@ -34,7 +34,7 @@ function DealModal({ deal, onClose }: { deal: any; onClose: () => void }) {
   const handleConfirm = async () => {
     setLoading(true);
     try {
-      const r = await fetch(`/api/deals/${deal.id}/redeem`, {
+      const r = await fetch(`/api/store/deals/${deal.id}/redeem`, {
         method: 'POST', headers: authHeaders(),
         body: JSON.stringify({ pointsToUse: points }),
       });
@@ -220,9 +220,9 @@ export default function Updates() {
   useEffect(() => {
     const h = authHeaders();
     Promise.all([
-      fetch('/api/deals', { headers: h }).then(r => r.json()),
-      fetch('/api/collectibles/series', { headers: h }).then(r => r.json()),
-      fetch('/api/media', { headers: h }).then(r => r.json()),
+      fetch('/api/store/deals', { headers: h }).then(r => r.json()),
+      fetch('/api/store/collectibles/series', { headers: h }).then(r => r.json()),
+      fetch('/api/store/media', { headers: h }).then(r => r.json()),
     ]).then(([dRes, cRes, mRes]) => {
       if (dRes.success) setDeals(dRes.data);
       if (cRes.success) setSeries(cRes.data);
@@ -244,14 +244,14 @@ export default function Updates() {
 
   const handleClaimCollectible = async (cardId: string) => {
     try {
-      const r = await fetch(`/api/collectibles/${cardId}/claim`, {
+      const r = await fetch(`/api/store/collectibles/${cardId}/claim`, {
         method: 'POST', headers: authHeaders(),
       });
       const json = await r.json();
       if (json.success) {
         alert(`Claimed! +${json.data.pointsEarned} pts`);
         // Refresh series
-        const cRes = await fetch('/api/collectibles/series', { headers: authHeaders() }).then(r => r.json());
+        const cRes = await fetch('/api/store/collectibles/series', { headers: authHeaders() }).then(r => r.json());
         if (cRes.success) setSeries(cRes.data);
       } else {
         alert(json.error || 'Claim failed');
@@ -408,6 +408,13 @@ export default function Updates() {
                 </div>
               </div>
             ))}
+
+            {/* Empty state */}
+            {deals.length === 0 && series.length === 0 && (
+              <div style={{ textAlign: 'center', padding: 48, color: C.gray, fontSize: 14 }}>
+                No deals or drops available yet. Check back soon.
+              </div>
+            )}
           </>
         )}
 
