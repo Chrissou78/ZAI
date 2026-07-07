@@ -7,6 +7,7 @@
     { "src": "/api/community/(.*)", "dest": "/api/community/[...path]" },
     { "src": "/api/events(?:/(.*)|$)", "dest": "/api/events/[...path]" },
     { "src": "/api/products/(.*)", "dest": "/api/products/[...path]" },
+    { "src": "/api/store/(.*)", "dest": "/api/store/[...path]" },
     { "src": "/api/users/(.*)", "dest": "/api/users/[...path]" },
     { "src": "/api/wallettwo/(.*)", "dest": "/api/wallettwo/[...path]" },
     { "src": "/api/health", "dest": "/api/health.js" },
