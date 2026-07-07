@@ -534,7 +534,7 @@ export const config = {
 };
 
 export default async function handler(req, res) {
-   // ── CORS preflight ──
+  // ── CORS preflight ──
   if (req.method === 'OPTIONS') {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
@@ -544,18 +544,15 @@ export default async function handler(req, res) {
 
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  
+
   try { await initDB(); } catch (e) {
     console.error('[store] DB init failed:', e.message);
     return res.status(500).json({ error: 'DB init failed', detail: e.message });
   }
 
-  // ── Normalize path segments ──
-  let raw = req.query.path || [];
-  if (typeof raw === 'string') raw = raw.split('/').filter(Boolean);
-  if (!Array.isArray(raw)) raw = [raw];
-  
-  const allSegments = raw.filter(Boolean);
+  // ── Parse path from req.url (same approach as products handler) ──
+  const fullPath = req.url.split('?')[0].replace(/^\/api\/store\/?/, '').replace(/\/$/, '');
+  const allSegments = fullPath.split('/').filter(Boolean);
   const domain = allSegments[0];
   const segments = allSegments.slice(1);
   const method = req.method;
@@ -576,19 +573,31 @@ export default async function handler(req, res) {
   }
 
   // Everything else requires auth
-  const decoded = authenticate (req);
+  let decoded;
+  try {
+    decoded = authenticate(req);
+  } catch (e) {
+    console.error('[store] authenticate threw:', e.message);
+    return res.status(401).json({ error: 'Auth failed', detail: e.message });
+  }
   if (!decoded) return res.status(401).json({ error: 'Unauthorized' });
   const userId = decoded.userId || decoded.sub;
 
-  switch (domain) {
-    case 'rewards':      return handleRewards(req, res, segments, method, userId);
-    case 'deals':        return handleDeals(req, res, segments, method, userId, decoded);
-    case 'collectibles': return handleCollectibles(req, res, segments, method, userId);
-    case 'media':        return handleMedia(req, res, segments, method, decoded);
-    case 'referrals':    return handleReferrals(req, res, segments, method, userId, decoded);
-    default:             return res.status(404).json({ error: 'Not found' });
+  try {
+    switch (domain) {
+      case 'rewards':      return await handleRewards(req, res, segments, method, userId);
+      case 'deals':        return await handleDeals(req, res, segments, method, userId, decoded);
+      case 'collectibles': return await handleCollectibles(req, res, segments, method, userId);
+      case 'media':        return await handleMedia(req, res, segments, method, decoded);
+      case 'referrals':    return await handleReferrals(req, res, segments, method, userId, decoded);
+      default:             return res.status(404).json({ error: 'Not found', path: fullPath });
+    }
+  } catch (err) {
+    console.error(`[store] ${domain} error:`, err);
+    return res.status(500).json({ error: err.message || 'Internal error' });
   }
 }
+
 
 // ── REFERRALS ───────────────────────────────────────────
 const REFERRER_BONUS = 200;
