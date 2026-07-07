@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAppContext } from '../../context/AppContext';
 import { apiService } from '../../services/api';
 
@@ -61,13 +61,178 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
   );
 }
 
+/* ── Product Dropdown ─────────────────────────────────── */
+interface Product {
+  id: string;
+  name: string;
+  image: string;
+  description: string;
+  price: string;
+  currency: string;
+}
+
+function inferCategory(name: string): string {
+  const n = name.toLowerCase();
+  if (n.includes('ski suit') || n.includes('hoodie') || n.includes('gilet') || n.includes('midlayer') || n.includes('shirt') || n.includes('beanie')) return 'apparel';
+  if (n.includes('goggle') || n.includes('helmet') || n.includes('capalina') || n.includes('carbon')) return 'accessories';
+  if (n.includes('experience')) return 'experience';
+  return 'skis';
+}
+
+function ProductDropdown({
+  products,
+  selectedId,
+  onSelect,
+}: {
+  products: Product[];
+  selectedId: string | null;
+  onSelect: (p: Product | null) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  const selected = products.find(p => p.id === selectedId);
+  const filtered = products.filter(p =>
+    p.name.toLowerCase().includes(search.toLowerCase())
+  );
+
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      {/* Trigger */}
+      <div
+        onClick={() => setOpen(!open)}
+        style={{
+          ...INPUT,
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          minHeight: 42,
+          background: C.pureWhite,
+        }}
+      >
+        {selected ? (
+          <>
+            <img
+              src={selected.image}
+              alt=""
+              style={{ width: 28, height: 28, borderRadius: 4, objectFit: 'cover', flexShrink: 0 }}
+            />
+            <span style={{ fontSize: 13, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {selected.name}
+            </span>
+            <span style={{ fontSize: 11, color: C.gray, flexShrink: 0 }}>
+              CHF {selected.price}
+            </span>
+          </>
+        ) : (
+          <span style={{ fontSize: 13, color: C.gray }}>Select a product…</span>
+        )}
+        <span style={{ marginLeft: 'auto', fontSize: 10, color: C.gray, flexShrink: 0 }}>▼</span>
+      </div>
+
+      {/* Clear button */}
+      {selected && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onSelect(null); }}
+          style={{
+            position: 'absolute', right: 32, top: '50%', transform: 'translateY(-50%)',
+            background: 'none', border: 'none', fontSize: 14, cursor: 'pointer',
+            color: C.gray, padding: '0 4px',
+          }}
+          title="Clear selection"
+        >
+          ×
+        </button>
+      )}
+
+      {/* Dropdown */}
+      {open && (
+        <div style={{
+          position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 100,
+          background: C.pureWhite, border: BR, borderRadius: '0 0 8px 8px',
+          boxShadow: '0 8px 24px rgba(0,0,0,0.12)', maxHeight: 320, overflow: 'hidden',
+          display: 'flex', flexDirection: 'column',
+        }}>
+          {/* Search */}
+          <div style={{ padding: '8px 10px', borderBottom: BR }}>
+            <input
+              autoFocus
+              placeholder="Search products…"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              style={{
+                ...INPUT,
+                border: 'none',
+                background: C.surface,
+                borderRadius: 6,
+                fontSize: 12,
+                padding: '8px 10px',
+              }}
+            />
+          </div>
+          {/* List */}
+          <div style={{ overflowY: 'auto', maxHeight: 260 }}>
+            {filtered.length === 0 && (
+              <div style={{ padding: 16, textAlign: 'center', fontSize: 12, color: C.gray }}>
+                No products match "{search}"
+              </div>
+            )}
+            {filtered.map(p => (
+              <div
+                key={p.id}
+                onClick={() => { onSelect(p); setOpen(false); setSearch(''); }}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '8px 12px', cursor: 'pointer',
+                  transition: 'background 0.15s',
+                  background: p.id === selectedId ? C.surface : 'transparent',
+                }}
+                onMouseEnter={e => (e.currentTarget.style.background = C.surface)}
+                onMouseLeave={e => (e.currentTarget.style.background = p.id === selectedId ? C.surface : 'transparent')}
+              >
+                <img
+                  src={p.image}
+                  alt=""
+                  style={{ width: 36, height: 36, borderRadius: 4, objectFit: 'cover', flexShrink: 0 }}
+                />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{
+                    fontSize: 13, fontWeight: 500, overflow: 'hidden',
+                    textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                  }}>
+                    {p.name}
+                  </div>
+                  <div style={{ fontSize: 11, color: C.gray }}>
+                    CHF {p.price} · {inferCategory(p.name)}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ═══════════════════════════════════════════════════════════
 // DEALS MANAGER
 // ═══════════════════════════════════════════════════════════
 function DealsManager() {
   const [deals, setDeals] = useState<any[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [editing, setEditing] = useState<any>(null); // null = closed, {} = new, {id:...} = edit
+  const [editing, setEditing] = useState<any>(null);
   const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
@@ -78,7 +243,20 @@ function DealsManager() {
     } catch {} finally { setLoading(false); }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  const loadProducts = useCallback(async () => {
+    try {
+      const r = await apiService.get('/products/catalog');
+      if (r.data?.success) {
+        // Filter out the experience card since it's not a sellable deal
+        const catalog = (r.data.data || []).filter(
+          (p: Product) => !p.name.toLowerCase().includes('experience club card')
+        );
+        setProducts(catalog);
+      }
+    } catch {}
+  }, []);
+
+  useEffect(() => { load(); loadProducts(); }, [load, loadProducts]);
 
   const save = async () => {
     setSaving(true);
@@ -105,6 +283,22 @@ function DealsManager() {
 
   const set = (key: string, val: any) => setEditing((p: any) => ({ ...p, [key]: val }));
 
+  const handleProductSelect = (product: Product | null) => {
+    if (!product) {
+      set('product_id', null);
+      return;
+    }
+    setEditing((prev: any) => ({
+      ...prev,
+      product_id: product.id,
+      title: prev.title || product.name,
+      description: prev.description || product.description || `Exclusive deal on ${product.name}`,
+      category: inferCategory(product.name),
+      image_url: product.image || '',
+      price_chf: product.price ? product.price.replace(/'/g, '') : prev.price_chf,
+    }));
+  };
+
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
@@ -112,7 +306,7 @@ function DealsManager() {
         <button style={BTN_PRIMARY} onClick={() => setEditing({
           title: '', description: '', category: 'accessories', price_chf: '',
           max_points_discount: 0, image_url: '', ends_at: '', spots_total: 0,
-          members_only: true, featured: false,
+          featured: false, product_id: null,
         })}>+ New Deal</button>
       </div>
 
@@ -128,16 +322,20 @@ function DealsManager() {
           padding: '14px 16px', border: BR, borderRadius: 8, marginBottom: 8,
           background: C.pureWhite,
         }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-              <span style={{ fontSize: 14, fontWeight: 600 }}>{d.title}</span>
-              {d.featured && <span style={{ fontSize: 8, fontWeight: 700, padding: '2px 6px', background: C.red, color: '#fff', borderRadius: 2, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Featured</span>}
-              {d.members_only && <span style={{ fontSize: 8, fontWeight: 700, padding: '2px 6px', background: C.black, color: '#fff', borderRadius: 2, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Members</span>}
-            </div>
-            <div style={{ fontSize: 12, color: C.gray }}>
-              CHF {parseFloat(d.price_chf).toLocaleString('de-CH')} · {d.category}
-              {d.ends_at && ` · Ends ${new Date(d.ends_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`}
-              {d.spots_total > 0 && ` · ${d.spots_left}/${d.spots_total} spots`}
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center', flex: 1, minWidth: 0 }}>
+            {d.image_url && (
+              <img src={d.image_url} alt="" style={{ width: 40, height: 40, borderRadius: 4, objectFit: 'cover', flexShrink: 0 }} />
+            )}
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                <span style={{ fontSize: 14, fontWeight: 600 }}>{d.title}</span>
+                {d.featured && <span style={{ fontSize: 8, fontWeight: 700, padding: '2px 6px', background: C.red, color: '#fff', borderRadius: 2, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Featured</span>}
+              </div>
+              <div style={{ fontSize: 12, color: C.gray }}>
+                CHF {parseFloat(d.price_chf).toLocaleString('de-CH')} · {d.category}
+                {d.ends_at && ` · Ends ${new Date(d.ends_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`}
+                {d.spots_total > 0 && ` · ${d.spots_left}/${d.spots_total} spots`}
+              </div>
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
@@ -149,6 +347,37 @@ function DealsManager() {
 
       {editing && (
         <Modal title={editing.id ? 'Edit Deal' : 'New Deal'} onClose={() => setEditing(null)}>
+          {/* ── Product selection ── */}
+          <Field label="Link to Product (optional — auto-fills fields)">
+            <ProductDropdown
+              products={products}
+              selectedId={editing.product_id || null}
+              onSelect={handleProductSelect}
+            />
+          </Field>
+
+          {/* Inherited preview */}
+          {editing.product_id && editing.image_url && (
+            <div style={{
+              display: 'flex', gap: 12, alignItems: 'center',
+              padding: '10px 14px', background: C.surface, borderRadius: 8,
+              marginBottom: 16, border: BR,
+            }}>
+              <img
+                src={editing.image_url}
+                alt=""
+                style={{ width: 48, height: 48, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }}
+              />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 11, color: C.gray, marginBottom: 2 }}>Inherited from product</div>
+                <div style={{ fontSize: 13, fontWeight: 500 }}>
+                  {editing.title} — CHF {editing.price_chf}
+                </div>
+                <div style={{ fontSize: 11, color: C.gray }}>{editing.category}</div>
+              </div>
+            </div>
+          )}
+
           <Field label="Title">
             <input style={INPUT} value={editing.title || ''} onChange={e => set('title', e.target.value)} placeholder="zai Sunglasses" />
           </Field>
@@ -185,10 +414,6 @@ function DealsManager() {
           </Field>
           <div style={{ display: 'flex', gap: 16, marginBottom: 20 }}>
             <label style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
-              <input type="checkbox" checked={editing.members_only !== false} onChange={e => set('members_only', e.target.checked)} />
-              Members Only
-            </label>
-            <label style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
               <input type="checkbox" checked={editing.featured === true} onChange={e => set('featured', e.target.checked)} />
               Featured
             </label>
@@ -221,9 +446,6 @@ function CollectiblesManager() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
-
-  // For now, collectibles are managed via Engage (NFTs) + DB seed.
-  // This panel shows current state and allows future inline editing.
 
   return (
     <div>
@@ -360,7 +582,6 @@ function MediaManager() {
               </div>
               <div style={{ fontSize: 12, color: C.gray }}>
                 {s.media_type} · {s.category} · {fmtDate(s.published_at)}
-                {s.exclusive && ' · Exclusive'}
               </div>
             </div>
           </div>

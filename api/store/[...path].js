@@ -568,6 +568,127 @@ export default async function handler(req, res) {
     case 'deals':        return handleDeals(req, res, segments, method, userId, decoded);
     case 'collectibles': return handleCollectibles(req, res, segments, method, userId);
     case 'media':        return handleMedia(req, res, segments, method, decoded);
+    case 'referrals':    return handleReferrals(req, res, segments, method, userId, decoded);
     default:             return res.status(404).json({ error: 'Not found' });
   }
+}
+
+// ── REFERRALS ───────────────────────────────────────────
+const REFERRER_BONUS = 200;
+const REFERRED_BONUS = 100;
+
+function generateReferralCode(name) {
+  const clean = (name || 'ZAI')
+    .replace(/[^a-zA-Z]/g, '')
+    .toUpperCase()
+    .slice(0, 8) || 'ZAI';
+  const num = Math.floor(1000 + Math.random() * 9000);
+  return `ZAI-${clean}-${num}`;
+}
+
+async function handleReferrals(req, res, segments, method, userId, decoded) {
+
+  // GET /api/store/referrals/code — get or create the user's referral code
+  if (method === 'GET' && segments[0] === 'code') {
+    let r = await getPool().query(
+      'SELECT code FROM referral_codes WHERE user_id = $1', [userId]
+    );
+
+    if (!r.rows.length) {
+      // Get user name for code generation
+      const userRes = await getPool().query(
+        'SELECT given_name, family_name, name FROM user_profiles WHERE user_id = $1',
+        [userId]
+      );
+      const u = userRes.rows[0] || {};
+      const name = u.given_name || u.name || '';
+
+      // Generate unique code with retry
+      let code;
+      let attempts = 0;
+      while (attempts < 5) {
+        code = generateReferralCode(name);
+        try {
+          await getPool().query(
+            'INSERT INTO referral_codes (user_id, code) VALUES ($1, $2)',
+            [userId, code]
+          );
+          break;
+        } catch (e) {
+          if (e.code === '23505') { attempts++; continue; } // unique violation, retry
+          throw e;
+        }
+      }
+
+      r = await getPool().query(
+        'SELECT code FROM referral_codes WHERE user_id = $1', [userId]
+      );
+    }
+
+    return res.json({ success: true, data: { code: r.rows[0]?.code || '' } });
+  }
+
+  // GET /api/store/referrals/stats — referral stats for current user
+  if (method === 'GET' && segments[0] === 'stats') {
+    const [codeRes, statsRes] = await Promise.all([
+      getPool().query('SELECT code FROM referral_codes WHERE user_id = $1', [userId]),
+      getPool().query(
+        `SELECT
+           COUNT(*)::int AS total_referrals,
+           COUNT(*) FILTER (WHERE status = 'completed')::int AS completed_referrals,
+           COALESCE(SUM(referrer_points) FILTER (WHERE status = 'completed'), 0)::int AS bonus_points
+         FROM referrals WHERE referrer_id = $1`,
+        [userId]
+      ),
+    ]);
+
+    const stats = statsRes.rows[0];
+    const valueCHF = (stats.bonus_points / 100).toFixed(0); // 1pt = CHF 0.01
+
+    return res.json({
+      success: true,
+      data: {
+        code: codeRes.rows[0]?.code || '',
+        referralsSent: stats.total_referrals,
+        completedReferrals: stats.completed_referrals,
+        bonusPoints: stats.bonus_points,
+        valueUnlockedCHF: valueCHF,
+      },
+    });
+  }
+
+  // POST /api/store/referrals/apply — apply a referral code (called when a new user signs up or claims first product)
+  if (method === 'POST' && segments[0] === 'apply') {
+    const { code } = req.body || {};
+    if (!code) return res.status(400).json({ error: 'Code required' });
+
+    // Find the referrer
+    const codeRes = await getPool().query(
+      'SELECT user_id FROM referral_codes WHERE code = $1', [code.toUpperCase().trim()]
+    );
+    if (!codeRes.rows.length) return res.status(404).json({ error: 'Invalid referral code' });
+
+    const referrerId = codeRes.rows[0].user_id;
+
+    // Can't refer yourself
+    if (referrerId === userId) return res.status(400).json({ error: 'Cannot use your own code' });
+
+    // Check if already referred
+    const existing = await getPool().query(
+      'SELECT 1 FROM referrals WHERE referred_id = $1', [userId]
+    );
+    if (existing.rows.length) return res.status(400).json({ error: 'Already used a referral code' });
+
+    // Create referral (pending — completed when they claim first product)
+    const id = randomUUID();
+    await getPool().query(
+      `INSERT INTO referrals (id, referrer_id, referred_id, referrer_points, referred_points, status)
+       VALUES ($1, $2, $3, $4, $5, 'pending')`,
+      [id, referrerId, userId, REFERRER_BONUS, REFERRED_BONUS]
+    );
+
+    return res.json({ success: true, data: { referralId: id } });
+  }
+
+  return res.status(404).json({ error: 'Not found' });
 }

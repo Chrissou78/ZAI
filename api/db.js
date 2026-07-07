@@ -373,6 +373,28 @@ export async function initDB() {
         created_at TIMESTAMPTZ DEFAULT NOW()
       );
       CREATE INDEX IF NOT EXISTS idx_media_published ON media_stories(published_at DESC);
+
+        -- ── Referral codes ──
+      CREATE TABLE IF NOT EXISTS referral_codes (
+        user_id TEXT PRIMARY KEY,
+        code TEXT UNIQUE NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_referral_code ON referral_codes(code);
+
+      -- ── Referral tracking ──
+      CREATE TABLE IF NOT EXISTS referrals (
+        id TEXT PRIMARY KEY,
+        referrer_id TEXT NOT NULL,
+        referred_id TEXT NOT NULL,
+        referrer_points INT DEFAULT 200,
+        referred_points INT DEFAULT 100,
+        status TEXT DEFAULT 'pending',
+        completed_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        UNIQUE(referred_id)
+      );
+      CREATE INDEX IF NOT EXISTS idx_referrals_referrer ON referrals(referrer_id);
     `);
 
     await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_product_claims_user_product ON product_claims(user_id, product_id)`);

@@ -1297,6 +1297,51 @@ export default async function handler(req, res) {
           [adminNote, requestId]
         );
 
+        // ── Award loyalty points: 2.7× CHF price ──
+        try {
+          const { addPoints, pointsFromCHF } = await import('../store/[...path].js');
+          // Try to get the product price from RWA data
+          let priceCHF = 0;
+          try {
+            const rwaMap = await getZaiRwaMap();
+            for (const [, rwa] of rwaMap) {
+              if (rwa.id === rwaIdToMint) {
+                priceCHF = parseFloat(rwa.data?.price?.value || 0);
+                break;
+              }
+            }
+          } catch {}
+          const pts = pointsFromCHF(priceCHF);
+          if (pts > 0) {
+            await addPoints(claimReq.user_id, pts, 'product_claim', `Claimed: ${claimReq.product_name}`, requestId);
+            console.log(`[REWARDS] +${pts}pts → ${claimReq.user_id} for ${claimReq.product_name} (CHF ${priceCHF})`);
+          }
+        } catch (e) {
+          console.error('[REWARDS] Failed to award points:', e.message);
+        }
+
+        // ── Complete pending referral (first product claim triggers bonus) ──
+        try {
+          const { addPoints: addPts } = await import('../store/[...path].js');
+          const refRes = await pool.query(
+            `SELECT id, referrer_id, referrer_points, referred_points
+             FROM referrals WHERE referred_id = $1 AND status = 'pending' LIMIT 1`,
+            [claimReq.user_id]
+          );
+          if (refRes.rows.length) {
+            const ref = refRes.rows[0];
+            await addPts(ref.referrer_id, ref.referrer_points, 'referral', `Referral bonus: friend claimed a product`, ref.id);
+            await addPts(claimReq.user_id, ref.referred_points, 'referral', `Welcome bonus: referred by a friend`, ref.id);
+            await pool.query(
+              `UPDATE referrals SET status = 'completed', completed_at = NOW() WHERE id = $1`,
+              [ref.id]
+            );
+            console.log(`[REFERRAL] ✓ ${ref.referrer_id} +${ref.referrer_points}pts, ${claimReq.user_id} +${ref.referred_points}pts`);
+          }
+        } catch (e) {
+          console.error('[REFERRAL] Failed:', e.message);
+        }
+
         // Notify user + info@zai.ch
         notifyClaimValidated(claimReq.user_email, claimReq.user_name, claimReq.product_name);
       } else {
