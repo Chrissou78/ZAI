@@ -534,11 +534,28 @@ export const config = {
 };
 
 export default async function handler(req, res) {
-  try { await initDB(); } catch (e) {
-    console.error('[store] DB init:', e.message);
+   // ── CORS preflight ──
+  if (req.method === 'OPTIONS') {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    return res.status(200).end();
   }
 
-  const allSegments = (req.query.path || []).filter(Boolean);
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  
+  try { await initDB(); } catch (e) {
+    console.error('[store] DB init failed:', e.message);
+    return res.status(500).json({ error: 'DB init failed', detail: e.message });
+  }
+
+  // ── Normalize path segments ──
+  let raw = req.query.path || [];
+  if (typeof raw === 'string') raw = raw.split('/').filter(Boolean);
+  if (!Array.isArray(raw)) raw = [raw];
+  
+  const allSegments = raw.filter(Boolean);
   const domain = allSegments[0];
   const segments = allSegments.slice(1);
   const method = req.method;
