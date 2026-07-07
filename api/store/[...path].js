@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto';
 import { getPool, initDB, requireAdmin } from '../db.js';
-import { verifyToken } from '../middleware.js';
+import { authenticate } from '../middleware.js';
 
 // ══════════════════════════════════════════════════════════
 // TIER DEFINITIONS
@@ -559,7 +559,7 @@ export default async function handler(req, res) {
   }
 
   // Everything else requires auth
-  const decoded = verifyToken(req);
+  const decoded = authenticate (req);
   if (!decoded) return res.status(401).json({ error: 'Unauthorized' });
   const userId = decoded.userId || decoded.sub;
 
