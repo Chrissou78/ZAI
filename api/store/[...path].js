@@ -137,13 +137,39 @@ async function handleDeals(req, res, segments, method, userId, decoded) {
 
   // GET /api/store/deals
   if (method === 'GET' && segments.length === 0) {
-    const r = await getPool().query(
-      `SELECT id, title, description, category, price_chf, max_points_discount,
-              image_url, ends_at, spots_total, spots_left, members_only, featured
-       FROM deals WHERE active = true
-       ORDER BY featured DESC, created_at DESC`
-    );
-    return res.json({ success: true, data: r.rows });
+    const adminUser = await isAdmin(decoded).catch(() => false);
+
+    if (adminUser) {
+      // Admin sees all deals with computed status
+      const r = await getPool().query(
+        `SELECT id, title, description, category, price_chf, max_points_discount,
+                image_url, ends_at, spots_total, spots_left, members_only, featured, active,
+                created_at,
+                CASE
+                  WHEN active = false THEN 'archived'
+                  WHEN ends_at IS NOT NULL AND ends_at < NOW() THEN 'expired'
+                  WHEN spots_total > 0 AND spots_left <= 0 THEN 'sold_out'
+                  ELSE 'active'
+                END AS deal_status
+         FROM deals
+         ORDER BY
+           CASE WHEN active = true AND (ends_at IS NULL OR ends_at > NOW()) THEN 0 ELSE 1 END,
+           featured DESC, created_at DESC`
+      );
+      return res.json({ success: true, data: r.rows });
+    } else {
+      // Members only see live deals
+      const r = await getPool().query(
+        `SELECT id, title, description, category, price_chf, max_points_discount,
+                image_url, ends_at, spots_total, spots_left, members_only, featured
+         FROM deals
+         WHERE active = true
+           AND (ends_at IS NULL OR ends_at > NOW())
+           AND (spots_total = 0 OR spots_left > 0)
+         ORDER BY featured DESC, created_at DESC`
+      );
+      return res.json({ success: true, data: r.rows });
+    }
   }
 
   // GET /api/store/deals/:id
@@ -168,9 +194,9 @@ async function handleDeals(req, res, segments, method, userId, decoded) {
 
     // spots_total = 0 means unlimited supply
     if (deal.spots_total > 0 && deal.spots_left <= 0)
-      return res.status(400).json({ error: 'No spots remaining' });
+      return res.status(400).json({ error: 'Sold out' });
     if (deal.ends_at && new Date(deal.ends_at) < new Date())
-      return res.status(400).json({ error: 'Deal has ended' });
+      return res.status(400).json({ error: 'Deal has expired' });
 
     const pts = Math.max(0, Math.min(parseInt(pointsToUse) || 0, deal.max_points_discount));
     const discountCHF = pts / 100;
@@ -185,26 +211,22 @@ async function handleDeals(req, res, segments, method, userId, decoded) {
 
     const redemptionId = randomUUID();
 
-    // Build line item
-    const lineItem = {
-      price_data: {
-        currency: 'chf',
-        product_data: {
-          name: deal.title,
-          description: deal.description || undefined,
-          images: deal.image_url?.length ? [deal.image_url] : undefined,
-        },
-        unit_amount: Math.round(finalCHF * 100),
-      },
-      quantity: 1,
-    };
-
-    // Build session config
     const sessionConfig = {
       mode: 'payment',
       customer_email: decoded.email || undefined,
       metadata: { redemptionId, dealId, userId, pointsUsed: String(pts) },
-      line_items: [lineItem],
+      line_items: [{
+        price_data: {
+          currency: 'chf',
+          product_data: {
+            name: deal.title,
+            description: deal.description || undefined,
+            images: deal.image_url?.length ? [deal.image_url] : undefined,
+          },
+          unit_amount: Math.round(finalCHF * 100),
+        },
+        quantity: 1,
+      }],
       success_url: `${process.env.VITE_API_URL || 'https://zai-chi.vercel.app'}/updates?payment=success&rid=${redemptionId}`,
       cancel_url: `${process.env.VITE_API_URL || 'https://zai-chi.vercel.app'}/updates?payment=cancelled`,
     };
@@ -254,25 +276,51 @@ async function handleDeals(req, res, segments, method, userId, decoded) {
   // PUT /api/store/deals/admin/:id
   if (method === 'PUT' && segments[0] === 'admin' && segments.length === 2) {
     await requireAdmin(decoded);
-    const { title, description, category, price_chf, max_points_discount,
-            image_url, ends_at, spots_total, spots_left, members_only, featured, active } = req.body;
+    const b = req.body;
+
+    // Build dynamic SET clauses — supports explicit null for ends_at
+    const fields = [];
+    const values = [segments[1]]; // $1 = id
+    let idx = 2;
+
+    const set = (col, val) => {
+      if (val !== undefined) {
+        fields.push(`${col} = $${idx}`);
+        values.push(val);
+        idx++;
+      }
+    };
+
+    set('title', b.title);
+    set('description', b.description);
+    set('category', b.category);
+    set('price_chf', b.price_chf);
+    set('max_points_discount', b.max_points_discount);
+    set('image_url', b.image_url);
+    set('spots_total', b.spots_total);
+    set('spots_left', b.spots_left);
+    set('members_only', b.members_only);
+    set('featured', b.featured);
+    set('active', b.active);
+
+    // ends_at: allow explicit null to clear
+    if (b.ends_at !== undefined) {
+      fields.push(`ends_at = $${idx}`);
+      values.push(b.ends_at); // null clears it, date string sets it
+      idx++;
+    }
+
+    if (fields.length === 0) return res.json({ success: true });
+
+    fields.push('updated_at = NOW()');
     await getPool().query(
-      `UPDATE deals SET
-         title = COALESCE($2, title), description = COALESCE($3, description),
-         category = COALESCE($4, category), price_chf = COALESCE($5, price_chf),
-         max_points_discount = COALESCE($6, max_points_discount),
-         image_url = COALESCE($7, image_url), ends_at = COALESCE($8, ends_at),
-         spots_total = COALESCE($9, spots_total), spots_left = COALESCE($10, spots_left),
-         members_only = COALESCE($11, members_only), featured = COALESCE($12, featured),
-         active = COALESCE($13, active), updated_at = NOW()
-       WHERE id = $1`,
-      [segments[1], title, description, category, price_chf, max_points_discount,
-       image_url, ends_at, spots_total, spots_left, members_only, featured, active]
+      `UPDATE deals SET ${fields.join(', ')} WHERE id = $1`,
+      values
     );
     return res.json({ success: true });
   }
 
-  // DELETE /api/store/deals/admin/:id
+  // DELETE /api/store/deals/admin/:id (soft-delete = archive)
   if (method === 'DELETE' && segments[0] === 'admin' && segments.length === 2) {
     await requireAdmin(decoded);
     await getPool().query(
