@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto';
-import { getPool, initDB, requireAdmin } from '../db.js';
+import { getPool, initDB, requireAdmin, isAdmin } from '../db.js';
 import { authenticate } from '../middleware.js';
 
 // ══════════════════════════════════════════════════════════
