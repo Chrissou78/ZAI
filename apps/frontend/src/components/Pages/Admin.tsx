@@ -1,9 +1,8 @@
-import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAppContext } from '../../context/AppContext';
 import { apiService } from '../../services/api';
 import Modal from '../Common/Modal';
 import Button from '../Common/Button';
-import AuthImage from '../Common/AuthImage';
 import ProductPicker from '../Common/ProductPicker';
 
 /* ───── Types ───── */
@@ -16,7 +15,6 @@ interface ClaimRequest {
   rwaId: string | null;
   productId: string | null;
   productName: string;
-  productImage: string;
   proofImageUrl: string;
   status: 'pending' | 'minting' | 'validated' | 'rejected' | 'error';
   adminNote: string;
@@ -31,6 +29,15 @@ interface ClaimRequest {
 interface ClaimableProduct {
   rwaId: string;
   name: string;
+  image: string;
+  price: string;
+  currency: string;
+}
+
+interface CatalogProduct {
+  id: string;
+  name: string;
+  contractAddress: string;
   image: string;
   price: string;
   currency: string;
@@ -75,29 +82,14 @@ const formatDate = (d: string) => {
    IMAGE CACHE + BUFFER SYSTEM
    ═══════════════════════════════════════════ */
 
-/*  Blob URL cache — survives re-renders, avoids re-fetching.
-    Key = original URL or API path, Value = blob: URL              */
 const imgCache = new Map<string, string>();
-
-/*  Tracks in-flight fetches so we don't duplicate requests        */
 const imgInflight = new Map<string, Promise<string>>();
 
-/**
- * Determine if a URL needs authenticated (proxied) fetching.
- * MinIO internal URLs and /api/ proof paths both need the auth proxy.
- */
-const needsAuthFetch = (url: string): boolean => {
-  if (!url) return false;
-  if (url.startsWith('/api/')) return true;
-  if (url.includes('minio') || url.includes(':9000')) return true;
-  // Anything that is NOT http(s) starting with our own domain or a CDN
-  if (url.startsWith('http') && !url.includes(window.location.hostname)) return true;
-  return false;
-};
+const getAuthToken = () => localStorage.getItem('zai_token') || '';
 
 /**
  * Resolve a single image URL → blob URL (cached).
- * Auth images go through apiService; public ones through fetch.
+ * Uses raw fetch with auth for /api/ paths and proof images.
  */
 const resolveImage = async (url: string): Promise<string> => {
   if (!url) return '';
@@ -106,26 +98,40 @@ const resolveImage = async (url: string): Promise<string> => {
 
   const work = (async () => {
     try {
-      let blobUrl: string;
-      if (needsAuthFetch(url)) {
-        // For MinIO / internal URLs, proxy through our API image endpoint
-        // or fetch with auth headers
-        const proxyUrl = url.startsWith('/api/')
-          ? url
-          : `/api/img-proxy?url=${encodeURIComponent(url)}`;
-        const res = await apiService.get(proxyUrl, { responseType: 'blob' });
-        blobUrl = URL.createObjectURL(res.data as unknown as Blob);
+      let blob: Blob;
+
+      if (url.startsWith('/api/')) {
+        // Auth-required endpoint — use raw fetch with bearer token
+        const res = await fetch(url, {
+          headers: { Authorization: `Bearer ${getAuthToken()}` },
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        blob = await res.blob();
+      } else if (url.includes('minio') || url.includes(':9000')) {
+        // Internal MinIO — proxy through API
+        const res = await fetch(`/api/img-proxy?url=${encodeURIComponent(url)}`, {
+          headers: { Authorization: `Bearer ${getAuthToken()}` },
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        blob = await res.blob();
       } else {
-        // Public URL — simple fetch
+        // Public URL
         const res = await fetch(url);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const blob = await res.blob();
-        blobUrl = URL.createObjectURL(blob);
+        blob = await res.blob();
       }
+
+      // Only create blob URL if we actually got an image
+      if (blob.size === 0 || blob.type.startsWith('application/json') || blob.type.startsWith('text/html')) {
+        imgCache.set(url, '');
+        return '';
+      }
+
+      const blobUrl = URL.createObjectURL(blob);
       imgCache.set(url, blobUrl);
       return blobUrl;
     } catch {
-      imgCache.set(url, '');       // cache failure too to avoid retries
+      imgCache.set(url, '');
       return '';
     } finally {
       imgInflight.delete(url);
@@ -136,10 +142,6 @@ const resolveImage = async (url: string): Promise<string> => {
   return work;
 };
 
-/**
- * Prefetch an array of image URLs in the background (fire-and-forget).
- * Used to buffer the next page of images while the user views the current one.
- */
 const prefetchImages = (urls: string[]) => {
   urls.forEach(u => { if (u && !imgCache.has(u)) resolveImage(u); });
 };
@@ -217,7 +219,7 @@ const CachedImg: React.FC<{
    ═══════════════════════════════════════════ */
 
 const PAGE_SIZE = 20;
-const PREFETCH_AHEAD = 1;   // prefetch N pages ahead
+const PREFETCH_AHEAD = 1;
 
 /* ═══════════════════════════════════════════
    ADMIN COMPONENT
@@ -226,6 +228,7 @@ const PREFETCH_AHEAD = 1;   // prefetch N pages ahead
 const Admin: React.FC = () => {
   const { user } = useAppContext();
   const [claims, setClaims] = useState<ClaimRequest[]>([]);
+  const [catalog, setCatalog] = useState<CatalogProduct[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<string>('pending');
@@ -242,6 +245,38 @@ const Admin: React.FC = () => {
 
   const isAdminUser = user?.role === 'admin' || user?.role === 'owner';
 
+  /* ── Build a lookup map: productId/productName → catalog image ── */
+
+  const productImageMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const p of catalog) {
+      if (p.id && p.image) map.set(p.id, p.image);
+      if (p.name && p.image) map.set(p.name.toLowerCase(), p.image);
+    }
+    return map;
+  }, [catalog]);
+
+  /** Resolve the best product image for a claim */
+  const getProductImage = useCallback((claim: ClaimRequest): string => {
+    // Try by productId
+    if (claim.productId && productImageMap.has(claim.productId)) {
+      return productImageMap.get(claim.productId)!;
+    }
+    // Try by product name (case-insensitive)
+    const nameLower = (claim.productName || '').toLowerCase();
+    if (nameLower && productImageMap.has(nameLower)) {
+      return productImageMap.get(nameLower)!;
+    }
+    // Fuzzy: find catalog entry whose name is contained in claim name or vice versa
+    for (const p of catalog) {
+      const pName = p.name.toLowerCase();
+      if (nameLower && (pName.includes(nameLower) || nameLower.includes(pName))) {
+        return p.image;
+      }
+    }
+    return '';
+  }, [catalog, productImageMap]);
+
   /* ── Pagination helpers ── */
 
   const totalPages = Math.max(1, Math.ceil(claims.length / PAGE_SIZE));
@@ -251,26 +286,33 @@ const Admin: React.FC = () => {
     [claims, page],
   );
 
-  // Reset page when filter changes
   useEffect(() => { setPage(1); }, [filter]);
 
   /* ── Prefetch next page images when current page changes ── */
 
   useEffect(() => {
     if (claims.length === 0) return;
-
-    // Prefetch images for current page (should already be loading via CachedImg)
-    // Plus the next PREFETCH_AHEAD pages
     for (let p = page; p <= Math.min(page + PREFETCH_AHEAD, totalPages); p++) {
       const slice = claims.slice((p - 1) * PAGE_SIZE, p * PAGE_SIZE);
       const urls: string[] = [];
       slice.forEach(c => {
-        if (c.productImage) urls.push(c.productImage);
+        const prodImg = getProductImage(c);
+        if (prodImg) urls.push(prodImg);
         urls.push(`/api/products/claim-proof/${c.id}`);
       });
       prefetchImages(urls);
     }
-  }, [claims, page, totalPages]);
+  }, [claims, page, totalPages, getProductImage]);
+
+  /* ── Fetch catalog (once) ── */
+
+  useEffect(() => {
+    apiService.get('/products/catalog')
+      .then(res => {
+        if (res.data?.success) setCatalog((res.data as any).data || []);
+      })
+      .catch(() => {});
+  }, []);
 
   /* ── Fetch claims ── */
 
@@ -384,8 +426,6 @@ const Admin: React.FC = () => {
     }
   };
 
-  const selectedClaimableProduct = claimableProducts.find(p => p.rwaId === selectedRwaId);
-
   /* ── Access gate ── */
 
   if (!isAdminUser) {
@@ -436,7 +476,6 @@ const Admin: React.FC = () => {
             );
           })}
 
-          {/* Count badge */}
           {!isLoading && claims.length > 0 && (
             <span style={{
               display: 'flex', alignItems: 'center', fontSize: 11,
@@ -480,6 +519,7 @@ const Admin: React.FC = () => {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {paginatedClaims.map(claim => {
                 const sc = statusColors[claim.status] || statusColors.pending;
+                const prodImg = getProductImage(claim);
                 return (
                   <div
                     key={claim.id}
@@ -493,19 +533,27 @@ const Admin: React.FC = () => {
                     onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08)')}
                     onMouseLeave={e => (e.currentTarget.style.boxShadow = 'none')}
                   >
-                    {/* Product image — cached + proxied */}
+                    {/* Product image — resolved from catalog */}
                     <div style={{
                       width: 56, height: 56, borderRadius: 6, overflow: 'hidden',
                       flexShrink: 0, border: bdr, background: C.surface,
                     }}>
-                      <CachedImg
-                        src={claim.productImage}
-                        alt={claim.productName || 'Product'}
-                        style={{
-                          width: 56, height: 56, objectFit: 'cover',
-                          borderRadius: 6, display: 'block',
-                        }}
-                      />
+                      {prodImg ? (
+                        <CachedImg
+                          src={prodImg}
+                          alt={claim.productName || 'Product'}
+                          style={{
+                            width: 56, height: 56, objectFit: 'cover',
+                            borderRadius: 6, display: 'block',
+                          }}
+                        />
+                      ) : (
+                        <div style={{
+                          width: 56, height: 56, display: 'flex',
+                          alignItems: 'center', justifyContent: 'center',
+                          color: C.border, fontSize: 16, background: C.surface,
+                        }}>&#x2B21;</div>
+                      )}
                     </div>
 
                     {/* Info */}
@@ -533,7 +581,7 @@ const Admin: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* Proof thumbnail — cached + proxied */}
+                    {/* Proof thumbnail */}
                     <div style={{
                       width: 48, height: 48, borderRadius: 4, overflow: 'hidden',
                       background: C.surface, flexShrink: 0, border: bdr,
@@ -563,7 +611,6 @@ const Admin: React.FC = () => {
                 display: 'flex', justifyContent: 'center', alignItems: 'center',
                 gap: 8, padding: '28px 0 16px', flexWrap: 'wrap',
               }}>
-                {/* Prev */}
                 <button
                   disabled={page <= 1}
                   onClick={() => setPage(p => Math.max(1, p - 1))}
@@ -578,7 +625,6 @@ const Admin: React.FC = () => {
                   ← Prev
                 </button>
 
-                {/* Page numbers */}
                 {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
                   <button
                     key={p}
@@ -596,7 +642,6 @@ const Admin: React.FC = () => {
                   </button>
                 ))}
 
-                {/* Next */}
                 <button
                   disabled={page >= totalPages}
                   onClick={() => setPage(p => Math.min(totalPages, p + 1))}
@@ -628,7 +673,7 @@ const Admin: React.FC = () => {
             }}>
               <div style={{ width: 64, height: 64, borderRadius: 6, overflow: 'hidden', flexShrink: 0, border: bdr }}>
                 <CachedImg
-                  src={selectedClaim.productImage}
+                  src={getProductImage(selectedClaim)}
                   alt={selectedClaim.productName || 'Product'}
                   style={{ width: 64, height: 64, objectFit: 'cover', borderRadius: 6, display: 'block' }}
                 />
@@ -724,7 +769,7 @@ const Admin: React.FC = () => {
                     }}>
                       <div style={{ width: 36, height: 36, borderRadius: 4, overflow: 'hidden', flexShrink: 0, border: bdr }}>
                         <CachedImg
-                          src={ecCardInfo?.image || selectedClaim.productImage}
+                          src={ecCardInfo?.image || getProductImage(selectedClaim)}
                           alt={ecCardInfo?.name || 'Experience Card'}
                           style={{ width: 36, height: 36, objectFit: 'cover', borderRadius: 4, display: 'block' }}
                         />
