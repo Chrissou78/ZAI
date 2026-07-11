@@ -101,21 +101,14 @@ const resolveImage = async (url: string): Promise<string> => {
       let blob: Blob;
 
       if (url.startsWith('/api/')) {
-        // Auth-required endpoint — use raw fetch with bearer token
+        // Auth-required API endpoint — fetch with bearer token
         const res = await fetch(url, {
           headers: { Authorization: `Bearer ${getAuthToken()}` },
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         blob = await res.blob();
-      } else if (url.includes('minio') || url.includes(':9000')) {
-        // Internal MinIO — proxy through API
-        const res = await fetch(`/api/img-proxy?url=${encodeURIComponent(url)}`, {
-          headers: { Authorization: `Bearer ${getAuthToken()}` },
-        });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        blob = await res.blob();
       } else {
-        // Public URL
+        // All external URLs (MinIO, IPFS, CDN, etc.) — fetch directly
         const res = await fetch(url);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         blob = await res.blob();
