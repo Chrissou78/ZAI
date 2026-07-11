@@ -166,7 +166,8 @@ async function handleDeals(req, res, segments, method, userId, decoded) {
     if (!dr.rows.length) return res.status(404).json({ error: 'Deal not found' });
     const deal = dr.rows[0];
 
-    if (deal.spots_left !== null && deal.spots_left <= 0)
+    // spots_total = 0 means unlimited supply
+    if (deal.spots_total > 0 && deal.spots_left <= 0)
       return res.status(400).json({ error: 'No spots remaining' });
     if (deal.ends_at && new Date(deal.ends_at) < new Date())
       return res.status(400).json({ error: 'Deal has ended' });
@@ -183,31 +184,42 @@ async function handleDeals(req, res, segments, method, userId, decoded) {
     const PLATFORM_FEE_PERCENT = parseFloat(process.env.PLATFORM_FEE_PERCENT || '5');
 
     const redemptionId = randomUUID();
-    const session = await stripe.checkout.sessions.create({
+
+    // Build line item
+    const lineItem = {
+      price_data: {
+        currency: 'chf',
+        product_data: {
+          name: deal.title,
+          description: deal.description || undefined,
+          images: deal.image_url?.length ? [deal.image_url] : undefined,
+        },
+        unit_amount: Math.round(finalCHF * 100),
+      },
+      quantity: 1,
+    };
+
+    // Build session config
+    const sessionConfig = {
       mode: 'payment',
       customer_email: decoded.email || undefined,
       metadata: { redemptionId, dealId, userId, pointsUsed: String(pts) },
-      line_items: [{
-        price_data: {
-          currency: 'chf',
-          product_data: {
-            name: deal.title,
-            description: deal.description || undefined,
-            images: deal.image_url?.length ? [deal.image_url] : undefined,
-          },
-          unit_amount: Math.round(finalCHF * 100),
-        },
-        quantity: 1,
-      }],
-      payment_intent_data: {
+      line_items: [lineItem],
+      success_url: `${process.env.VITE_API_URL || 'https://zai-chi.vercel.app'}/updates?payment=success&rid=${redemptionId}`,
+      cancel_url: `${process.env.VITE_API_URL || 'https://zai-chi.vercel.app'}/updates?payment=cancelled`,
+    };
+
+    // Only add platform fee + connected account if configured
+    if (process.env.STRIPE_CONNECTED_ACCOUNT_ID && finalCHF > 0) {
+      sessionConfig.payment_intent_data = {
         application_fee_amount: Math.round(finalCHF * 100 * PLATFORM_FEE_PERCENT / 100),
         transfer_data: {
           destination: process.env.STRIPE_CONNECTED_ACCOUNT_ID,
         },
-      },
-      success_url: `${process.env.VITE_API_URL}/updates?payment=success&rid=${redemptionId}`,
-      cancel_url: `${process.env.VITE_API_URL}/updates?payment=cancelled`,
-    });
+      };
+    }
+
+    const session = await stripe.checkout.sessions.create(sessionConfig);
 
     await getPool().query(
       `INSERT INTO deal_redemptions (id, deal_id, user_id, points_used, amount_chf, stripe_session_id, status)
@@ -226,13 +238,15 @@ async function handleDeals(req, res, segments, method, userId, decoded) {
     const { title, description, category, price_chf, max_points_discount,
             image_url, ends_at, spots_total, members_only, featured } = req.body;
     const id = randomUUID();
+    const spotsVal = parseInt(spots_total) || 0;
     await getPool().query(
       `INSERT INTO deals (id, title, description, category, price_chf, max_points_discount,
                           image_url, ends_at, spots_total, spots_left, members_only, featured)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$9,$10,$11)`,
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
       [id, title, description || '', category || 'accessories',
        price_chf, max_points_discount || 0, image_url || '',
-       ends_at || null, spots_total || 0, members_only !== false, featured === true]
+       ends_at || null, spotsVal, spotsVal,
+       members_only !== false, featured === true]
     );
     return res.json({ success: true, data: { id } });
   }
@@ -507,7 +521,7 @@ async function handleStripe(req, res, segments) {
 
       await getPool().query(
         `UPDATE deals SET spots_left = GREATEST(0, spots_left - 1), updated_at = NOW()
-         WHERE id = $1 AND spots_left > 0`,
+        WHERE id = $1 AND spots_total > 0`,
         [dealId]
       );
 
