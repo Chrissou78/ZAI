@@ -1,13 +1,11 @@
 import { useState, useEffect } from 'react';
-import { loadStripe } from '@stripe/stripe-js';
 import {
   Elements,
   PaymentElement,
   useStripe,
   useElements,
 } from '@stripe/react-stripe-js';
-
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
+import type { Stripe } from '@stripe/stripe-js';
 
 const C = {
   black: '#0a0a0a', white: '#f5f4f0', red: '#7A222E',
@@ -34,7 +32,6 @@ function CheckoutForm({ onSuccess, onCancel, amount }: {
     setError('');
 
     try {
-      // Validate form fields first
       const { error: submitError } = await elements.submit();
       if (submitError) {
         setError(submitError.message || 'Please check your payment details');
@@ -42,7 +39,6 @@ function CheckoutForm({ onSuccess, onCancel, amount }: {
         return;
       }
 
-      // Confirm the payment
       const { error: confirmError, paymentIntent } = await stripe.confirmPayment({
         elements,
         confirmParams: {
@@ -57,8 +53,6 @@ function CheckoutForm({ onSuccess, onCancel, amount }: {
       } else if (paymentIntent && paymentIntent.status === 'succeeded') {
         onSuccess();
       } else if (paymentIntent && paymentIntent.status === 'requires_action') {
-        // 3D Secure or other action — Stripe handles this automatically
-        // If we get here after redirect: 'if_required', it means it needs a redirect
         const { error: actionError } = await stripe.confirmPayment({
           elements,
           confirmParams: {
@@ -70,7 +64,6 @@ function CheckoutForm({ onSuccess, onCancel, amount }: {
           setLoading(false);
         }
       } else {
-        // processing, requires_capture, etc.
         onSuccess();
       }
     } catch (err: any) {
@@ -83,16 +76,17 @@ function CheckoutForm({ onSuccess, onCancel, amount }: {
     <form onSubmit={handleSubmit}>
       <PaymentElement
         onReady={() => setReady(true)}
-        options={{
-          layout: 'tabs',
-        }}
+        options={{ layout: 'tabs' }}
       />
 
       {!ready && (
-        <div style={{
-          textAlign: 'center', padding: '24px 0', color: C.gray, fontSize: 13,
-        }}>
-          Loading payment form…
+        <div style={{ textAlign: 'center', padding: '24px 0', color: C.gray, fontSize: 13 }}>
+          <div style={{
+            width: 20, height: 20, border: `2px solid ${C.border}`, borderTopColor: C.red,
+            borderRadius: '50%', animation: 'stripe-spin 0.6s linear infinite',
+            margin: '0 auto 8px', display: 'inline-block',
+          }} />
+          <div>Loading payment form…</div>
         </div>
       )}
 
@@ -127,8 +121,7 @@ function CheckoutForm({ onSuccess, onCancel, amount }: {
             background: (!stripe || !ready || loading) ? '#999' : C.red,
             color: '#fff', cursor: (!stripe || !ready || loading) ? 'default' : 'pointer',
             fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase',
-            borderRadius: 6, fontFamily: C.font,
-            transition: 'background 0.2s',
+            borderRadius: 6, fontFamily: C.font, transition: 'background 0.2s',
           }}
         >
           {loading ? (
@@ -157,7 +150,8 @@ function CheckoutForm({ onSuccess, onCancel, amount }: {
   );
 }
 
-export default function StripePaymentModal({ clientSecret, amount, onSuccess, onCancel }: {
+export default function StripePaymentModal({ stripePromise, clientSecret, amount, onSuccess, onCancel }: {
+  stripePromise: Promise<Stripe | null>;
   clientSecret: string;
   amount: number;
   onSuccess: () => void;
@@ -194,8 +188,7 @@ export default function StripePaymentModal({ clientSecret, amount, onSuccess, on
         }}>×</button>
 
         <h3 style={{
-          fontSize: 18, fontWeight: 400, margin: '0 0 4px', color: C.black,
-          fontFamily: C.font,
+          fontSize: 18, fontWeight: 400, margin: '0 0 4px', color: C.black, fontFamily: C.font,
         }}>
           Complete Payment
         </h3>
@@ -216,14 +209,8 @@ export default function StripePaymentModal({ clientSecret, amount, onSuccess, on
                 borderRadius: '6px',
               },
               rules: {
-                '.Input': {
-                  border: `1px solid ${C.border}`,
-                  boxShadow: 'none',
-                },
-                '.Input:focus': {
-                  border: `1px solid ${C.red}`,
-                  boxShadow: `0 0 0 1px ${C.red}`,
-                },
+                '.Input': { border: `1px solid ${C.border}`, boxShadow: 'none' },
+                '.Input:focus': { border: `1px solid ${C.red}`, boxShadow: `0 0 0 1px ${C.red}` },
               },
             },
           }}
@@ -232,9 +219,7 @@ export default function StripePaymentModal({ clientSecret, amount, onSuccess, on
         </Elements>
       </div>
 
-      <style>{`
-        @keyframes stripe-spin { 100% { transform: rotate(360deg); } }
-      `}</style>
+      <style>{`@keyframes stripe-spin { 100% { transform: rotate(360deg); } }`}</style>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import StripePaymentModal from '../StripePaymentModal';
+import { stripePromise } from '../../lib/stripe';
 
 const C = {
   black: '#0a0a0a', white: '#f5f4f0', red: '#7A222E',
@@ -533,12 +534,13 @@ export default function Updates() {
 
       {/* Stripe embedded payment modal */}
       {paymentData && (
-        <StripePaymentModal
-          clientSecret={paymentData.clientSecret}
-          amount={paymentData.amount}
-          onSuccess={handlePaymentSuccess}
-          onCancel={() => setPaymentData(null)}
-        />
+          <StripePaymentModal
+            stripePromise={stripePromise}
+            clientSecret={paymentData.clientSecret}
+            amount={paymentData.amount}
+            onSuccess={handlePaymentSuccess}
+            onCancel={() => setPaymentData(null)}
+          />
       )}
 
       <style>{`@keyframes zai-spin { 100% { transform: rotate(360deg); } }`}</style>
