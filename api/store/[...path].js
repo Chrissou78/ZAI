@@ -140,7 +140,6 @@ async function handleDeals(req, res, segments, method, userId, decoded) {
     const adminUser = await isAdmin(decoded).catch(() => false);
 
     if (adminUser) {
-      // Admin sees all deals with computed status
       const r = await getPool().query(
         `SELECT id, title, description, category, price_chf, max_points_discount,
                 image_url, ends_at, spots_total, spots_left, members_only, featured, active,
@@ -158,7 +157,6 @@ async function handleDeals(req, res, segments, method, userId, decoded) {
       );
       return res.json({ success: true, data: r.rows });
     } else {
-      // Members only see live deals
       const r = await getPool().query(
         `SELECT id, title, description, category, price_chf, max_points_discount,
                 image_url, ends_at, spots_total, spots_left, members_only, featured
@@ -192,7 +190,6 @@ async function handleDeals(req, res, segments, method, userId, decoded) {
     if (!dr.rows.length) return res.status(404).json({ error: 'Deal not found' });
     const deal = dr.rows[0];
 
-    // spots_total = 0 means unlimited supply
     if (deal.spots_total > 0 && deal.spots_left <= 0)
       return res.status(400).json({ error: 'Sold out' });
     if (deal.ends_at && new Date(deal.ends_at) < new Date())
@@ -211,45 +208,38 @@ async function handleDeals(req, res, segments, method, userId, decoded) {
 
     const redemptionId = randomUUID();
 
-    const sessionConfig = {
-      mode: 'payment',
-      customer_email: decoded.email || undefined,
+    // ── Create a PaymentIntent (embedded payment, no redirect) ──
+    const piConfig = {
+      amount: Math.round(finalCHF * 100),
+      currency: 'chf',
+      automatic_payment_methods: { enabled: true },
       metadata: { redemptionId, dealId, userId, pointsUsed: String(pts) },
-      line_items: [{
-        price_data: {
-          currency: 'chf',
-          product_data: {
-            name: deal.title,
-            description: deal.description || undefined,
-            images: deal.image_url?.length ? [deal.image_url] : undefined,
-          },
-          unit_amount: Math.round(finalCHF * 100),
-        },
-        quantity: 1,
-      }],
-      success_url: `${process.env.VITE_API_URL || 'https://zai-chi.vercel.app'}/updates?payment=success&rid=${redemptionId}`,
-      cancel_url: `${process.env.VITE_API_URL || 'https://zai-chi.vercel.app'}/updates?payment=cancelled`,
     };
 
     // Only add platform fee + connected account if configured
     if (process.env.STRIPE_CONNECTED_ACCOUNT_ID && finalCHF > 0) {
-      sessionConfig.payment_intent_data = {
-        application_fee_amount: Math.round(finalCHF * 100 * PLATFORM_FEE_PERCENT / 100),
-        transfer_data: {
-          destination: process.env.STRIPE_CONNECTED_ACCOUNT_ID,
-        },
+      piConfig.application_fee_amount = Math.round(finalCHF * 100 * PLATFORM_FEE_PERCENT / 100);
+      piConfig.transfer_data = {
+        destination: process.env.STRIPE_CONNECTED_ACCOUNT_ID,
       };
     }
 
-    const session = await stripe.checkout.sessions.create(sessionConfig);
+    const paymentIntent = await stripe.paymentIntents.create(piConfig);
 
     await getPool().query(
       `INSERT INTO deal_redemptions (id, deal_id, user_id, points_used, amount_chf, stripe_session_id, status)
        VALUES ($1, $2, $3, $4, $5, $6, 'pending')`,
-      [redemptionId, dealId, userId, pts, finalCHF, session.id]
+      [redemptionId, dealId, userId, pts, finalCHF, paymentIntent.id]
     );
 
-    return res.json({ success: true, data: { checkoutUrl: session.url, redemptionId } });
+    return res.json({
+      success: true,
+      data: {
+        clientSecret: paymentIntent.client_secret,
+        redemptionId,
+        amount: finalCHF,
+      },
+    });
   }
 
   // ── ADMIN CRUD ──
@@ -278,9 +268,8 @@ async function handleDeals(req, res, segments, method, userId, decoded) {
     await requireAdmin(decoded);
     const b = req.body;
 
-    // Build dynamic SET clauses — supports explicit null for ends_at
     const fields = [];
-    const values = [segments[1]]; // $1 = id
+    const values = [segments[1]];
     let idx = 2;
 
     const set = (col, val) => {
@@ -303,10 +292,9 @@ async function handleDeals(req, res, segments, method, userId, decoded) {
     set('featured', b.featured);
     set('active', b.active);
 
-    // ends_at: allow explicit null to clear
     if (b.ends_at !== undefined) {
       fields.push(`ends_at = $${idx}`);
-      values.push(b.ends_at); // null clears it, date string sets it
+      values.push(b.ends_at);
       idx++;
     }
 
@@ -546,6 +534,44 @@ async function handleStripe(req, res, segments) {
       return res.status(400).json({ error: 'Invalid signature' });
     }
 
+    // ── Handle PaymentIntent succeeded (embedded payment flow) ──
+    if (event.type === 'payment_intent.succeeded') {
+      const pi = event.data.object;
+      const { redemptionId, dealId, userId, pointsUsed } = pi.metadata || {};
+      if (!redemptionId) return res.json({ received: true });
+
+      const pts = parseInt(pointsUsed) || 0;
+
+      if (pts > 0) {
+        try {
+          await spendPoints(userId, pts, 'deal_redeem', `Deal purchase: ${dealId}`, redemptionId);
+        } catch (e) {
+          console.error('[stripe] Points deduction failed:', e.message);
+        }
+      }
+
+      await getPool().query(
+        `UPDATE deal_redemptions SET status = 'paid', stripe_payment_intent = $2, updated_at = NOW()
+         WHERE id = $1`,
+        [redemptionId, pi.id]
+      );
+
+      await getPool().query(
+        `UPDATE deals SET spots_left = GREATEST(0, spots_left - 1), updated_at = NOW()
+         WHERE id = $1 AND spots_total > 0`,
+        [dealId]
+      );
+
+      const amountCHF = (pi.amount || 0) / 100;
+      const earnedPts = Math.round(amountCHF * 2.7);
+      if (earnedPts > 0) {
+        await addPoints(userId, earnedPts, 'purchase', `Purchase: ${dealId}`, redemptionId);
+      }
+
+      console.log(`[stripe] ✓ Redemption ${redemptionId} paid — ${pts}pts spent, ${earnedPts}pts earned`);
+    }
+
+    // ── Keep backward compat for any existing Checkout Sessions ──
     if (event.type === 'checkout.session.completed') {
       const session = event.data.object;
       const { redemptionId, dealId, userId, pointsUsed } = session.metadata || {};
@@ -569,7 +595,7 @@ async function handleStripe(req, res, segments) {
 
       await getPool().query(
         `UPDATE deals SET spots_left = GREATEST(0, spots_left - 1), updated_at = NOW()
-        WHERE id = $1 AND spots_total > 0`,
+         WHERE id = $1 AND spots_total > 0`,
         [dealId]
       );
 
@@ -579,7 +605,7 @@ async function handleStripe(req, res, segments) {
         await addPoints(userId, earnedPts, 'purchase', `Purchase: ${dealId}`, redemptionId);
       }
 
-      console.log(`[stripe] ✓ Redemption ${redemptionId} paid — ${pts}pts spent, ${earnedPts}pts earned`);
+      console.log(`[stripe] ✓ (legacy) Redemption ${redemptionId} paid — ${pts}pts spent, ${earnedPts}pts earned`);
     }
 
     return res.json({ received: true });
@@ -592,7 +618,7 @@ async function handleStripe(req, res, segments) {
 // MAIN ROUTER
 // ══════════════════════════════════════════════════════════
 export const config = {
-  api: { bodyParser: false }, // needed for Stripe webhook raw body
+  api: { bodyParser: false },
 };
 
 export default async function handler(req, res) {
@@ -612,7 +638,7 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'DB init failed', detail: e.message });
   }
 
-  // ── Parse path from req.url (same approach as products handler) ──
+  // ── Parse path from req.url ──
   const fullPath = req.url.split('?')[0].replace(/^\/api\/store\/?/, '').replace(/\/$/, '');
   const allSegments = fullPath.split('/').filter(Boolean);
   const domain = allSegments[0];
@@ -660,7 +686,6 @@ export default async function handler(req, res) {
   }
 }
 
-
 // ── REFERRALS ───────────────────────────────────────────
 const REFERRER_BONUS = 200;
 const REFERRED_BONUS = 100;
@@ -676,14 +701,13 @@ function generateReferralCode(name) {
 
 async function handleReferrals(req, res, segments, method, userId, decoded) {
 
-  // GET /api/store/referrals/code — get or create the user's referral code
+  // GET /api/store/referrals/code
   if (method === 'GET' && segments[0] === 'code') {
     let r = await getPool().query(
       'SELECT code FROM referral_codes WHERE user_id = $1', [userId]
     );
 
     if (!r.rows.length) {
-      // Get user name for code generation
       const userRes = await getPool().query(
         'SELECT given_name, family_name, name FROM user_profiles WHERE user_id = $1',
         [userId]
@@ -691,7 +715,6 @@ async function handleReferrals(req, res, segments, method, userId, decoded) {
       const u = userRes.rows[0] || {};
       const name = u.given_name || u.name || '';
 
-      // Generate unique code with retry
       let code;
       let attempts = 0;
       while (attempts < 5) {
@@ -703,7 +726,7 @@ async function handleReferrals(req, res, segments, method, userId, decoded) {
           );
           break;
         } catch (e) {
-          if (e.code === '23505') { attempts++; continue; } // unique violation, retry
+          if (e.code === '23505') { attempts++; continue; }
           throw e;
         }
       }
@@ -716,7 +739,7 @@ async function handleReferrals(req, res, segments, method, userId, decoded) {
     return res.json({ success: true, data: { code: r.rows[0]?.code || '' } });
   }
 
-  // GET /api/store/referrals/stats — referral stats for current user
+  // GET /api/store/referrals/stats
   if (method === 'GET' && segments[0] === 'stats') {
     const [codeRes, statsRes] = await Promise.all([
       getPool().query('SELECT code FROM referral_codes WHERE user_id = $1', [userId]),
@@ -731,7 +754,7 @@ async function handleReferrals(req, res, segments, method, userId, decoded) {
     ]);
 
     const stats = statsRes.rows[0];
-    const valueCHF = (stats.bonus_points / 100).toFixed(0); // 1pt = CHF 0.01
+    const valueCHF = (stats.bonus_points / 100).toFixed(0);
 
     return res.json({
       success: true,
@@ -745,12 +768,11 @@ async function handleReferrals(req, res, segments, method, userId, decoded) {
     });
   }
 
-  // POST /api/store/referrals/apply — apply a referral code (called when a new user signs up or claims first product)
+  // POST /api/store/referrals/apply
   if (method === 'POST' && segments[0] === 'apply') {
     const { code } = req.body || {};
     if (!code) return res.status(400).json({ error: 'Code required' });
 
-    // Find the referrer
     const codeRes = await getPool().query(
       'SELECT user_id FROM referral_codes WHERE code = $1', [code.toUpperCase().trim()]
     );
@@ -758,16 +780,13 @@ async function handleReferrals(req, res, segments, method, userId, decoded) {
 
     const referrerId = codeRes.rows[0].user_id;
 
-    // Can't refer yourself
     if (referrerId === userId) return res.status(400).json({ error: 'Cannot use your own code' });
 
-    // Check if already referred
     const existing = await getPool().query(
       'SELECT 1 FROM referrals WHERE referred_id = $1', [userId]
     );
     if (existing.rows.length) return res.status(400).json({ error: 'Already used a referral code' });
 
-    // Create referral (pending — completed when they claim first product)
     const id = randomUUID();
     await getPool().query(
       `INSERT INTO referrals (id, referrer_id, referred_id, referrer_points, referred_points, status)
