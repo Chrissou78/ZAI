@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import StripePaymentModal from '../StripePaymentModal';
+import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { stripePromise } from '../../lib/stripe';
 
 const C = {
@@ -18,15 +18,119 @@ const RED_LABEL: React.CSSProperties = {
 const token = () => localStorage.getItem('zai_token') || '';
 const authHeaders = () => ({ Authorization: `Bearer ${token()}`, 'Content-Type': 'application/json' });
 
-// ─── Deal Modal ───
-function DealModal({ deal, onClose, onPayment }: {
+// ─── Inline Payment Form ───
+function InlinePaymentForm({ onSuccess, onBack, amount }: {
+  onSuccess: () => void;
+  onBack: () => void;
+  amount: number;
+}) {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [loading, setLoading] = useState(false);
+  const [ready, setReady] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!stripe || !elements || loading) return;
+
+    setLoading(true);
+    setError('');
+
+    try {
+      const { error: submitError } = await elements.submit();
+      if (submitError) {
+        setError(submitError.message || 'Please check your payment details');
+        setLoading(false);
+        return;
+      }
+
+      const { error: confirmError, paymentIntent } = await stripe.confirmPayment({
+        elements,
+        confirmParams: {
+          return_url: window.location.origin + '/updates?payment=success',
+        },
+        redirect: 'if_required',
+      });
+
+      if (confirmError) {
+        setError(confirmError.message || 'Payment failed');
+        setLoading(false);
+      } else if (paymentIntent?.status === 'succeeded') {
+        onSuccess();
+      } else {
+        onSuccess();
+      }
+    } catch (err: any) {
+      setError(err?.message || 'An unexpected error occurred');
+      setLoading(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <PaymentElement onReady={() => setReady(true)} options={{ layout: 'tabs' }} />
+
+      {!ready && (
+        <div style={{ textAlign: 'center', padding: '20px 0', color: C.gray, fontSize: 13 }}>
+          <div style={{
+            width: 18, height: 18, border: `2px solid ${C.border}`, borderTopColor: C.red,
+            borderRadius: '50%', animation: 'zai-spin 0.6s linear infinite',
+            margin: '0 auto 8px', display: 'inline-block',
+          }} />
+          <div>Loading…</div>
+        </div>
+      )}
+
+      {error && (
+        <div style={{
+          color: '#e53935', marginTop: 14, fontSize: 13, padding: '10px 14px',
+          background: 'rgba(229,57,53,0.08)', borderRadius: 6,
+        }}>
+          {error}
+        </div>
+      )}
+
+      <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
+        <button type="button" onClick={onBack} disabled={loading} style={{
+          flex: 1, padding: '14px', border: `1px solid ${C.border}`, background: C.pureWhite,
+          color: C.black, cursor: 'pointer', fontSize: 12, fontWeight: 600,
+          letterSpacing: '0.08em', textTransform: 'uppercase', borderRadius: 6,
+          fontFamily: C.font, opacity: loading ? 0.5 : 1,
+        }}>Back</button>
+        <button type="submit" disabled={!stripe || !ready || loading} style={{
+          flex: 1, padding: '14px', border: 'none',
+          background: (!stripe || !ready || loading) ? '#999' : C.red,
+          color: '#fff', cursor: (!stripe || !ready || loading) ? 'default' : 'pointer',
+          fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase',
+          borderRadius: 6, fontFamily: C.font,
+        }}>
+          {loading ? 'Processing…' : `Pay CHF ${amount.toFixed(2)}`}
+        </button>
+      </div>
+
+      <div style={{ textAlign: 'center', fontSize: 11, color: C.gray, marginTop: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={C.gray} strokeWidth="2">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+        </svg>
+        Secured by Stripe
+      </div>
+    </form>
+  );
+}
+
+// ─── Deal Modal (2 steps in one modal) ───
+function DealModal({ deal, onClose, onSuccess }: {
   deal: any;
   onClose: () => void;
-  onPayment: (data: { clientSecret: string; amount: number; redemptionId: string }) => void;
+  onSuccess: () => void;
 }) {
   const [balance, setBalance] = useState(0);
   const [points, setPoints] = useState(0);
+  const [step, setStep] = useState<'points' | 'pay'>('points');
   const [loading, setLoading] = useState(false);
+  const [paymentData, setPaymentData] = useState<{ clientSecret: string; amount: number } | null>(null);
 
   useEffect(() => {
     fetch('/api/store/rewards/balance', { headers: authHeaders() })
@@ -46,12 +150,8 @@ function DealModal({ deal, onClose, onPayment }: {
       });
       const json = await r.json();
       if (json.success && json.data.clientSecret) {
-        onClose();
-        onPayment({
-          clientSecret: json.data.clientSecret,
-          amount: json.data.amount,
-          redemptionId: json.data.redemptionId,
-        });
+        setPaymentData({ clientSecret: json.data.clientSecret, amount: json.data.amount });
+        setStep('pay');
       } else {
         alert(json.error || 'Failed to create payment');
       }
@@ -62,10 +162,27 @@ function DealModal({ deal, onClose, onPayment }: {
     }
   };
 
+  const elementsOptions = useMemo(() => paymentData ? {
+    clientSecret: paymentData.clientSecret,
+    appearance: {
+      theme: 'stripe' as const,
+      variables: {
+        colorPrimary: C.red,
+        colorText: C.black,
+        fontFamily: C.font,
+        borderRadius: '6px',
+      },
+      rules: {
+        '.Input': { border: `1px solid ${C.border}`, boxShadow: 'none' },
+        '.Input:focus': { border: `1px solid ${C.red}`, boxShadow: `0 0 0 1px ${C.red}` },
+      },
+    },
+  } : null, [paymentData]);
+
   return (
     <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
          onClick={onClose}>
-      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)' }} />
+      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }} />
       <div style={{
         position: 'relative', background: C.pureWhite, borderRadius: 12, padding: '32px 28px',
         width: '100%', maxWidth: 440, maxHeight: '90vh', overflow: 'auto',
@@ -78,58 +195,84 @@ function DealModal({ deal, onClose, onPayment }: {
         <div style={RED_LABEL}>{deal.category}</div>
         <h2 style={{ fontSize: 20, fontWeight: 400, margin: '4px 0 20px' }}>{deal.title}</h2>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
-          <div style={LABEL}>FULL PRICE</div>
-          <div style={LABEL}>YOUR BALANCE</div>
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 24 }}>
-          <div style={{ fontSize: 28, fontWeight: 300 }}>CHF {parseFloat(deal.price_chf).toLocaleString('de-CH', { minimumFractionDigits: 0 })}</div>
-          <div style={{ fontSize: 16, fontWeight: 500 }}>{balance.toLocaleString('de-CH')} pts</div>
-        </div>
-
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-          <div style={LABEL}>POINTS TO APPLY</div>
-          <div style={{ fontSize: 16, fontWeight: 500 }}>{points.toLocaleString('de-CH')} pts</div>
-        </div>
-        <input type="range" min={0} max={max} step={50} value={points}
-               onChange={e => setPoints(parseInt(e.target.value))}
-               style={{ width: '100%', accentColor: C.red, marginBottom: 4 }} />
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: C.gray, marginBottom: 20 }}>
-          <span>0 pts</span>
-          <span>{max.toLocaleString('de-CH')} pts max</span>
-        </div>
-
-        <div style={{
-          border: `1px solid ${C.border}`, borderRadius: 8, padding: '16px 20px', marginBottom: 20,
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 8, color: C.gray }}>
-            <span>Full price</span>
-            <span>CHF {parseFloat(deal.price_chf).toLocaleString('de-CH', { minimumFractionDigits: 2 })}</span>
-          </div>
-          {points > 0 && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 8, color: C.red }}>
-              <span>Points discount ({points.toLocaleString('de-CH')} pts)</span>
-              <span>– CHF {discount.toLocaleString('de-CH', { minimumFractionDigits: 2 })}</span>
+        {/* ── Step 1: Points selection ── */}
+        {step === 'points' && (
+          <>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
+              <div style={LABEL}>FULL PRICE</div>
+              <div style={LABEL}>YOUR BALANCE</div>
             </div>
-          )}
-          <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 10, display: 'flex', justifyContent: 'space-between', fontSize: 14 }}>
-            <span style={{ fontWeight: 500 }}>You pay</span>
-            <span style={{ fontSize: 18, fontWeight: 600 }}>CHF {finalPrice.toLocaleString('de-CH', { minimumFractionDigits: 2 })}</span>
-          </div>
-        </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 24 }}>
+              <div style={{ fontSize: 28, fontWeight: 300 }}>CHF {parseFloat(deal.price_chf).toLocaleString('de-CH', { minimumFractionDigits: 0 })}</div>
+              <div style={{ fontSize: 16, fontWeight: 500 }}>{balance.toLocaleString('de-CH')} pts</div>
+            </div>
 
-        <button onClick={handleConfirm} disabled={loading} style={{
-          width: '100%', padding: '16px', background: C.red, color: '#fff', border: 'none',
-          fontSize: 12, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase',
-          borderRadius: 6, cursor: loading ? 'default' : 'pointer', fontFamily: C.font,
-          opacity: loading ? 0.6 : 1,
-        }}>
-          {loading ? 'Processing…' : `CONFIRM, CHF ${finalPrice.toLocaleString('de-CH', { minimumFractionDigits: 2 })}`}
-        </button>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+              <div style={LABEL}>POINTS TO APPLY</div>
+              <div style={{ fontSize: 16, fontWeight: 500 }}>{points.toLocaleString('de-CH')} pts</div>
+            </div>
+            <input type="range" min={0} max={max} step={50} value={points}
+                   onChange={e => setPoints(parseInt(e.target.value))}
+                   style={{ width: '100%', accentColor: C.red, marginBottom: 4 }} />
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: C.gray, marginBottom: 20 }}>
+              <span>0 pts</span>
+              <span>{max.toLocaleString('de-CH')} pts max</span>
+            </div>
 
-        <div style={{ textAlign: 'center', fontSize: 11, color: C.gray, marginTop: 10 }}>
-          1 pt = CHF 0.01 · Points deducted from your balance on confirmation
-        </div>
+            <div style={{
+              border: `1px solid ${C.border}`, borderRadius: 8, padding: '16px 20px', marginBottom: 20,
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 8, color: C.gray }}>
+                <span>Full price</span>
+                <span>CHF {parseFloat(deal.price_chf).toLocaleString('de-CH', { minimumFractionDigits: 2 })}</span>
+              </div>
+              {points > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 8, color: C.red }}>
+                  <span>Points discount ({points.toLocaleString('de-CH')} pts)</span>
+                  <span>– CHF {discount.toLocaleString('de-CH', { minimumFractionDigits: 2 })}</span>
+                </div>
+              )}
+              <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 10, display: 'flex', justifyContent: 'space-between', fontSize: 14 }}>
+                <span style={{ fontWeight: 500 }}>You pay</span>
+                <span style={{ fontSize: 18, fontWeight: 600 }}>CHF {finalPrice.toLocaleString('de-CH', { minimumFractionDigits: 2 })}</span>
+              </div>
+            </div>
+
+            <button onClick={handleConfirm} disabled={loading} style={{
+              width: '100%', padding: '16px', background: C.red, color: '#fff', border: 'none',
+              fontSize: 12, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase',
+              borderRadius: 6, cursor: loading ? 'default' : 'pointer', fontFamily: C.font,
+              opacity: loading ? 0.6 : 1,
+            }}>
+              {loading ? 'Processing…' : `CONTINUE TO PAYMENT`}
+            </button>
+
+            <div style={{ textAlign: 'center', fontSize: 11, color: C.gray, marginTop: 10 }}>
+              1 pt = CHF 0.01 · Points deducted from your balance on confirmation
+            </div>
+          </>
+        )}
+
+        {/* ── Step 2: Payment form ── */}
+        {step === 'pay' && paymentData && elementsOptions && (
+          <>
+            <div style={{
+              border: `1px solid ${C.border}`, borderRadius: 8, padding: '12px 16px', marginBottom: 20,
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            }}>
+              <span style={{ fontSize: 13, color: C.gray }}>Total to pay</span>
+              <span style={{ fontSize: 18, fontWeight: 600 }}>CHF {paymentData.amount.toFixed(2)}</span>
+            </div>
+
+            <Elements stripe={stripePromise} options={elementsOptions}>
+              <InlinePaymentForm
+                amount={paymentData.amount}
+                onSuccess={() => { onClose(); onSuccess(); }}
+                onBack={() => { setStep('points'); setPaymentData(null); }}
+              />
+            </Elements>
+          </>
+        )}
       </div>
     </div>
   );
@@ -224,11 +367,6 @@ export default function Updates() {
   const [selectedDeal, setSelectedDeal] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  // Stripe embedded payment state
-  const [paymentData, setPaymentData] = useState<{
-    clientSecret: string; amount: number; redemptionId: string;
-  } | null>(null);
-
   useEffect(() => {
     const h = authHeaders();
     Promise.all([
@@ -247,7 +385,6 @@ export default function Updates() {
   const featuredStory = stories.find(s => s.featured) || stories[0];
   const regularStories = stories.filter(s => s !== featuredStory);
 
-  // Payment result toast
   useEffect(() => {
     const p = searchParams.get('payment');
     if (p === 'success') alert('Payment successful! Points have been updated.');
@@ -255,9 +392,8 @@ export default function Updates() {
   }, [searchParams]);
 
   const handlePaymentSuccess = () => {
-    setPaymentData(null);
+    setSelectedDeal(null);
     alert('Payment successful! Points have been updated.');
-    // Refresh deals
     const h = authHeaders();
     fetch('/api/store/deals', { headers: h }).then(r => r.json()).then(d => {
       if (d.success) setDeals(d.data);
@@ -320,7 +456,6 @@ export default function Updates() {
         {/* ═══ DEALS & DROPS TAB ═══ */}
         {tab === 'deals' && (
           <>
-            {/* Featured Deal */}
             {featuredDeal && (
               <div style={{
                 background: C.black, borderRadius: 10, padding: '40px 36px',
@@ -345,7 +480,6 @@ export default function Updates() {
               </div>
             )}
 
-            {/* Member Deals */}
             {regularDeals.length > 0 && (
               <div style={{ marginBottom: 48 }}>
                 <div style={RED_LABEL}>MEMBER DEALS</div>
@@ -402,7 +536,6 @@ export default function Updates() {
               </div>
             )}
 
-            {/* Collectible Drops */}
             {series.map(s => (
               <div key={s.id} style={{ marginBottom: 48 }}>
                 <div style={RED_LABEL}>COLLECTIBLE DROPS</div>
@@ -429,7 +562,6 @@ export default function Updates() {
               </div>
             ))}
 
-            {/* Empty state */}
             {deals.length === 0 && series.length === 0 && (
               <div style={{ textAlign: 'center', padding: 48, color: C.gray, fontSize: 14 }}>
                 No deals or drops available yet. Check back soon.
@@ -441,7 +573,6 @@ export default function Updates() {
         {/* ═══ MEDIA & STORIES TAB ═══ */}
         {tab === 'media' && (
           <>
-            {/* Top Story */}
             {featuredStory && (
               <>
                 <div style={RED_LABEL}>TOP STORY</div>
@@ -474,7 +605,6 @@ export default function Updates() {
               </>
             )}
 
-            {/* All Stories */}
             <div style={RED_LABEL}>ALL STORIES</div>
             <div style={{ marginTop: 16 }}>
               {regularStories.map(story => (
@@ -523,24 +653,12 @@ export default function Updates() {
         )}
       </div>
 
-      {/* Deal points selection modal */}
       {selectedDeal && (
         <DealModal
           deal={selectedDeal}
           onClose={() => setSelectedDeal(null)}
-          onPayment={(data) => setPaymentData(data)}
+          onSuccess={handlePaymentSuccess}
         />
-      )}
-
-      {/* Stripe embedded payment modal */}
-      {paymentData && (
-          <StripePaymentModal
-            stripePromise={stripePromise}
-            clientSecret={paymentData.clientSecret}
-            amount={paymentData.amount}
-            onSuccess={handlePaymentSuccess}
-            onCancel={() => setPaymentData(null)}
-          />
       )}
 
       <style>{`@keyframes zai-spin { 100% { transform: rotate(360deg); } }`}</style>
