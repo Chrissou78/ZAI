@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import StripePaymentModal from '../StripePaymentModal';
 
 const C = {
   black: '#0a0a0a', white: '#f5f4f0', red: '#7A222E',
@@ -17,7 +18,11 @@ const token = () => localStorage.getItem('zai_token') || '';
 const authHeaders = () => ({ Authorization: `Bearer ${token()}`, 'Content-Type': 'application/json' });
 
 // ─── Deal Modal ───
-function DealModal({ deal, onClose }: { deal: any; onClose: () => void }) {
+function DealModal({ deal, onClose, onPayment }: {
+  deal: any;
+  onClose: () => void;
+  onPayment: (data: { clientSecret: string; amount: number; redemptionId: string }) => void;
+}) {
   const [balance, setBalance] = useState(0);
   const [points, setPoints] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -39,10 +44,15 @@ function DealModal({ deal, onClose }: { deal: any; onClose: () => void }) {
         body: JSON.stringify({ pointsToUse: points }),
       });
       const json = await r.json();
-      if (json.success && json.data.checkoutUrl) {
-        window.location.href = json.data.checkoutUrl;
+      if (json.success && json.data.clientSecret) {
+        onClose();
+        onPayment({
+          clientSecret: json.data.clientSecret,
+          amount: json.data.amount,
+          redemptionId: json.data.redemptionId,
+        });
       } else {
-        alert(json.error || 'Failed to create checkout');
+        alert(json.error || 'Failed to create payment');
       }
     } catch {
       alert('Something went wrong');
@@ -141,21 +151,18 @@ function CollectibleCard({ card, onClaim }: { card: any; onClaim: (id: string) =
       background: isLocked ? '#e8e5de' : C.pureWhite,
       opacity: isLocked ? 0.7 : 1, position: 'relative', minWidth: 160,
     }}>
-      {/* Rarity badge */}
       <div style={{
         position: 'absolute', top: 10, right: 10, fontSize: 8, fontWeight: 700,
         letterSpacing: '0.1em', textTransform: 'uppercase', padding: '3px 8px',
         background: rarityColors[card.rarity] || '#888', color: '#fff', borderRadius: 3,
       }}>{card.rarity}</div>
 
-      {/* Card number */}
       <div style={{
         position: 'absolute', top: 10, left: 12, fontSize: 10, color: isLocked ? '#999' : C.gray,
       }}>
         {String(card.cardNumber).padStart(2, '0')} / 06
       </div>
 
-      {/* Image area */}
       <div style={{
         height: 150, background: isLocked ? '#d5d2cb' : C.black,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -169,7 +176,6 @@ function CollectibleCard({ card, onClaim }: { card: any; onClaim: (id: string) =
         )}
       </div>
 
-      {/* Info */}
       <div style={{ padding: '14px 14px 16px' }}>
         <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>{card.name}</div>
         {isLocked && (
@@ -217,6 +223,11 @@ export default function Updates() {
   const [selectedDeal, setSelectedDeal] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
+  // Stripe embedded payment state
+  const [paymentData, setPaymentData] = useState<{
+    clientSecret: string; amount: number; redemptionId: string;
+  } | null>(null);
+
   useEffect(() => {
     const h = authHeaders();
     Promise.all([
@@ -242,6 +253,16 @@ export default function Updates() {
     if (p === 'cancelled') alert('Payment was cancelled.');
   }, [searchParams]);
 
+  const handlePaymentSuccess = () => {
+    setPaymentData(null);
+    alert('Payment successful! Points have been updated.');
+    // Refresh deals
+    const h = authHeaders();
+    fetch('/api/store/deals', { headers: h }).then(r => r.json()).then(d => {
+      if (d.success) setDeals(d.data);
+    });
+  };
+
   const handleClaimCollectible = async (cardId: string) => {
     try {
       const r = await fetch(`/api/store/collectibles/${cardId}/claim`, {
@@ -250,7 +271,6 @@ export default function Updates() {
       const json = await r.json();
       if (json.success) {
         alert(`Claimed! +${json.data.pointsEarned} pts`);
-        // Refresh series
         const cRes = await fetch('/api/store/collectibles/series', { headers: authHeaders() }).then(r => r.json());
         if (cRes.success) setSeries(cRes.data);
       } else {
@@ -305,7 +325,6 @@ export default function Updates() {
                 background: C.black, borderRadius: 10, padding: '40px 36px',
                 color: C.white, marginBottom: 40, position: 'relative', overflow: 'hidden',
               }}>
-                {/* Decorative mountain shapes */}
                 <div style={{ position: 'absolute', bottom: 0, right: 0, width: '50%', height: '100%', opacity: 0.15, background: 'linear-gradient(135deg, transparent 40%, #7A222E 100%)' }} />
                 <div style={{ ...LABEL, color: '#888', marginBottom: 16 }}>— FEATURED DEAL</div>
                 <div style={{ position: 'absolute', top: 16, right: 16, fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', padding: '5px 12px', border: '1px solid rgba(255,255,255,0.3)', color: '#ccc' }}>NEW DEAL</div>
@@ -503,7 +522,25 @@ export default function Updates() {
         )}
       </div>
 
-      {selectedDeal && <DealModal deal={selectedDeal} onClose={() => setSelectedDeal(null)} />}
+      {/* Deal points selection modal */}
+      {selectedDeal && (
+        <DealModal
+          deal={selectedDeal}
+          onClose={() => setSelectedDeal(null)}
+          onPayment={(data) => setPaymentData(data)}
+        />
+      )}
+
+      {/* Stripe embedded payment modal */}
+      {paymentData && (
+        <StripePaymentModal
+          clientSecret={paymentData.clientSecret}
+          amount={paymentData.amount}
+          onSuccess={handlePaymentSuccess}
+          onCancel={() => setPaymentData(null)}
+        />
+      )}
+
       <style>{`@keyframes zai-spin { 100% { transform: rotate(360deg); } }`}</style>
     </div>
   );
