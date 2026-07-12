@@ -7,7 +7,7 @@ import {
   useElements,
 } from '@stripe/react-stripe-js';
 
-const stripePromise = loadStripe(import.meta.env.STRIPE_PUBLIC_KEY);
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
 
 const C = {
   black: '#0a0a0a', white: '#f5f4f0', red: '#7A222E',
