@@ -315,6 +315,7 @@ export async function initDB() {
       CREATE INDEX IF NOT EXISTS idx_redemptions_user ON deal_redemptions(user_id);
       CREATE INDEX IF NOT EXISTS idx_redemptions_deal ON deal_redemptions(deal_id);
       CREATE INDEX IF NOT EXISTS idx_redemptions_stripe ON deal_redemptions(stripe_session_id);
+      ALTER TABLE deals ADD COLUMN IF NOT EXISTS contract_address TEXT DEFAULT '';
 
       -- ── Collectible drops (metadata; NFT itself lives on Engage) ──
       CREATE TABLE IF NOT EXISTS collectible_series (

@@ -69,6 +69,7 @@ interface Product {
   description: string;
   price: string;
   currency: string;
+  contractAddress?: string;
 }
 
 function inferCategory(name: string): string {
@@ -107,7 +108,6 @@ function ProductDropdown({
 
   return (
     <div ref={ref} style={{ position: 'relative' }}>
-      {/* Trigger */}
       <div
         onClick={() => setOpen(!open)}
         style={{
@@ -140,7 +140,6 @@ function ProductDropdown({
         <span style={{ marginLeft: 'auto', fontSize: 10, color: C.gray, flexShrink: 0 }}>▼</span>
       </div>
 
-      {/* Clear button */}
       {selected && (
         <button
           onClick={(e) => { e.stopPropagation(); onSelect(null); }}
@@ -155,7 +154,6 @@ function ProductDropdown({
         </button>
       )}
 
-      {/* Dropdown */}
       {open && (
         <div style={{
           position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 100,
@@ -163,7 +161,6 @@ function ProductDropdown({
           boxShadow: '0 8px 24px rgba(0,0,0,0.12)', maxHeight: 320, overflow: 'hidden',
           display: 'flex', flexDirection: 'column',
         }}>
-          {/* Search */}
           <div style={{ padding: '8px 10px', borderBottom: BR }}>
             <input
               autoFocus
@@ -180,7 +177,6 @@ function ProductDropdown({
               }}
             />
           </div>
-          {/* List */}
           <div style={{ overflowY: 'auto', maxHeight: 260 }}>
             {filtered.length === 0 && (
               <div style={{ padding: 16, textAlign: 'center', fontSize: 12, color: C.gray }}>
@@ -247,7 +243,6 @@ function DealsManager() {
     try {
       const r = await apiService.get('/products/catalog');
       if (r.data?.success) {
-        // Filter out the experience card since it's not a sellable deal
         const catalog = (r.data.data || []).filter(
           (p: Product) => !p.name.toLowerCase().includes('experience club card')
         );
@@ -286,6 +281,7 @@ function DealsManager() {
   const handleProductSelect = (product: Product | null) => {
     if (!product) {
       set('product_id', null);
+      set('contract_address', '');
       return;
     }
     setEditing((prev: any) => ({
@@ -296,6 +292,7 @@ function DealsManager() {
       category: inferCategory(product.name),
       image_url: product.image || '',
       price_chf: product.price ? product.price.replace(/'/g, '') : prev.price_chf,
+      contract_address: product.contractAddress || '',
     }));
   };
 
@@ -306,7 +303,7 @@ function DealsManager() {
         <button style={BTN_PRIMARY} onClick={() => setEditing({
           title: '', description: '', category: 'accessories', price_chf: '',
           max_points_discount: 0, image_url: '', ends_at: '', spots_total: 0,
-          featured: false, product_id: null,
+          featured: false, product_id: null, contract_address: '',
         })}>+ New Deal</button>
       </div>
 
@@ -330,6 +327,7 @@ function DealsManager() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                 <span style={{ fontSize: 14, fontWeight: 600 }}>{d.title}</span>
                 {d.featured && <span style={{ fontSize: 8, fontWeight: 700, padding: '2px 6px', background: C.red, color: '#fff', borderRadius: 2, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Featured</span>}
+                {d.contract_address && <span style={{ fontSize: 8, fontWeight: 700, padding: '2px 6px', background: C.green, color: '#fff', borderRadius: 2, textTransform: 'uppercase', letterSpacing: '0.1em' }}>NFT</span>}
               </div>
               <div style={{ fontSize: 12, color: C.gray }}>
                 CHF {parseFloat(d.price_chf).toLocaleString('de-CH')} · {d.category}
@@ -373,7 +371,10 @@ function DealsManager() {
                 <div style={{ fontSize: 13, fontWeight: 500 }}>
                   {editing.title} — CHF {editing.price_chf}
                 </div>
-                <div style={{ fontSize: 11, color: C.gray }}>{editing.category}</div>
+                <div style={{ fontSize: 11, color: C.gray }}>
+                  {editing.category}
+                  {editing.contract_address && <span style={{ color: C.green }}> · NFT auto-mint enabled</span>}
+                </div>
               </div>
             </div>
           )}
@@ -674,7 +675,6 @@ export default function AdminStore() {
   return (
     <div style={{ padding: '48px 48px 0', fontFamily: C.font, color: C.black }}>
       <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-        {/* Header */}
         <div style={{ marginBottom: '2.5rem', paddingBottom: '2rem', borderBottom: BR }}>
           <div style={RED_LABEL}>admin</div>
           <h1 style={{ fontSize: 'clamp(28px, 3vw, 36px)', fontWeight: 300, lineHeight: 1.15, margin: '6px 0 6px' }}>
@@ -685,7 +685,6 @@ export default function AdminStore() {
           </p>
         </div>
 
-        {/* Tabs */}
         <div style={{ display: 'flex', gap: 0, borderBottom: BR, marginBottom: 28 }}>
           {([
             { key: 'deals', label: 'Deals' },
@@ -703,7 +702,6 @@ export default function AdminStore() {
           ))}
         </div>
 
-        {/* Tab Content */}
         {tab === 'deals' && <DealsManager />}
         {tab === 'collectibles' && <CollectiblesManager />}
         {tab === 'media' && <MediaManager />}

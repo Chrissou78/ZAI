@@ -248,17 +248,17 @@ async function handleDeals(req, res, segments, method, userId, decoded) {
   if (method === 'POST' && segments[0] === 'admin' && segments.length === 1) {
     await requireAdmin(decoded);
     const { title, description, category, price_chf, max_points_discount,
-            image_url, ends_at, spots_total, members_only, featured } = req.body;
+            image_url, ends_at, spots_total, members_only, featured, contract_address } = req.body;
     const id = randomUUID();
     const spotsVal = parseInt(spots_total) || 0;
     await getPool().query(
       `INSERT INTO deals (id, title, description, category, price_chf, max_points_discount,
-                          image_url, ends_at, spots_total, spots_left, members_only, featured)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
+                          image_url, ends_at, spots_total, spots_left, members_only, featured, contract_address)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
       [id, title, description || '', category || 'accessories',
        price_chf, max_points_discount || 0, image_url || '',
        ends_at || null, spotsVal, spotsVal,
-       members_only !== false, featured === true]
+       members_only !== false, featured === true, contract_address || '']
     );
     return res.json({ success: true, data: { id } });
   }
@@ -291,6 +291,7 @@ async function handleDeals(req, res, segments, method, userId, decoded) {
     set('members_only', b.members_only);
     set('featured', b.featured);
     set('active', b.active);
+    set('contract_address', b.contract_address);
 
     if (b.ends_at !== undefined) {
       fields.push(`ends_at = $${idx}`);
@@ -542,6 +543,7 @@ async function handleStripe(req, res, segments) {
 
       const pts = parseInt(pointsUsed) || 0;
 
+      // Deduct points used as discount
       if (pts > 0) {
         try {
           await spendPoints(userId, pts, 'deal_redeem', `Deal purchase: ${dealId}`, redemptionId);
@@ -550,25 +552,90 @@ async function handleStripe(req, res, segments) {
         }
       }
 
+      // Update redemption status
       await getPool().query(
         `UPDATE deal_redemptions SET status = 'paid', stripe_payment_intent = $2, updated_at = NOW()
-         WHERE id = $1`,
+        WHERE id = $1`,
         [redemptionId, pi.id]
       );
 
+      // Decrement spots
       await getPool().query(
         `UPDATE deals SET spots_left = GREATEST(0, spots_left - 1), updated_at = NOW()
-         WHERE id = $1 AND spots_total > 0`,
+        WHERE id = $1 AND spots_total > 0`,
         [dealId]
       );
 
+      // Award loyalty points (2.7× CHF amount)
       const amountCHF = (pi.amount || 0) / 100;
       const earnedPts = Math.round(amountCHF * 2.7);
       if (earnedPts > 0) {
-        await addPoints(userId, earnedPts, 'purchase', `Purchase: ${dealId}`, redemptionId);
+        await addPoints(userId, earnedPts, 'purchase', `Deal purchase: ${dealId}`, redemptionId);
       }
 
-      console.log(`[stripe] ✓ Redemption ${redemptionId} paid — ${pts}pts spent, ${earnedPts}pts earned`);
+      // ── Auto-mint NFT for the deal ──
+      try {
+        const dealRes = await getPool().query(
+          'SELECT title, contract_address FROM deals WHERE id = $1', [dealId]
+        );
+        const deal = dealRes.rows[0];
+
+        if (deal?.contract_address) {
+          // Get user wallet
+          const userRes = await getPool().query(
+            'SELECT wallet FROM user_profiles WHERE user_id = $1', [userId]
+          );
+          const wallet = userRes.rows[0]?.wallet;
+
+          if (wallet) {
+            // Mint via your RWA API (same approach as product claim validation)
+            const RWA_BASE = 'https://rwa.onchainlabs.ch/v1/api';
+            const apiKey = process.env.WALLETTWO_API_KEY;
+
+            // Find the RWA ID by contract address
+            const rwaListRes = await fetch(`${RWA_BASE}/rwa?limit=200`, {
+              headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey },
+            });
+            const rwaList = await rwaListRes.json();
+            const rwas = Array.isArray(rwaList) ? rwaList : (rwaList.rwas || rwaList.data || rwaList.result || []);
+            const rwa = rwas.find(r =>
+              (r.smartContractAddress || '').toLowerCase() === deal.contract_address.toLowerCase()
+            );
+
+            if (rwa) {
+              const mintRes = await fetch(`${RWA_BASE}/rwa/${rwa.id}/mint`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey },
+                body: JSON.stringify({ wallet, address: wallet }),
+              });
+              const mintData = await mintRes.json();
+
+              if (mintRes.ok && mintData?.success !== false) {
+                console.log(`[stripe] ✓ NFT minted for deal ${dealId} → ${wallet} (RWA: ${rwa.id})`);
+
+                // Record in product_claims for portfolio consistency
+                await getPool().query(
+                  `INSERT INTO product_claims (id, user_id, product_id, claimed_at)
+                  VALUES ($1, $2, $3, NOW())
+                  ON CONFLICT (user_id, product_id) DO NOTHING`,
+                  [randomUUID(), userId, rwa.id]
+                );
+              } else {
+                console.error('[stripe] NFT mint failed:', mintData?.message || mintData?.error || 'Unknown error');
+              }
+            } else {
+              console.error(`[stripe] No RWA found for contract ${deal.contract_address}`);
+            }
+          } else {
+            console.error(`[stripe] No wallet found for user ${userId}`);
+          }
+        }
+      } catch (mintErr) {
+        // Never fail the payment because of a mint error
+        console.error('[stripe] NFT mint error (non-fatal):', mintErr.message);
+      }
+
+      console.log(`[stripe] ✓ Redemption ${redemptionId} paid — ${pts}pts spent, ${earnedPts}pts earned, CHF ${amountCHF}`);
     }
 
     // ── Keep backward compat for any existing Checkout Sessions ──
