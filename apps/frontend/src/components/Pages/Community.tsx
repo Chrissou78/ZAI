@@ -210,27 +210,19 @@ const PhotoZoomContent: React.FC<{
   const isLandscape = imgSize ? imgSize.w >= imgSize.h : null;
   const useVerticalLayout = isSmallScreen || isLandscape;
 
-  // Calculate optimal popup width based on image aspect ratio
   const getPopupWidth = (): string => {
     if (!imgSize || isSmallScreen) return isSmallScreen ? '96vw' : 'min(92vw, 960px)';
-
     if (isLandscape) {
-      // Landscape: let the image define the width
-      // Calculate what width the image needs at the max allowed height
       const maxImgH = window.innerHeight * 0.5;
       const ratio = imgSize.w / imgSize.h;
       const naturalWidth = maxImgH * ratio;
-      // Clamp between 600px and 92vw
       const maxVw = window.innerWidth * 0.92;
       const clamped = Math.min(Math.max(naturalWidth, 600), maxVw, 960);
       return `${clamped}px`;
     }
-
-    // Portrait: use grid layout with side panel
     return 'min(92vw, 860px)';
   };
 
-  // Comments panel
   const commentsPanel = (
     <div style={{
       display: 'flex', flexDirection: 'column',
@@ -242,7 +234,6 @@ const PhotoZoomContent: React.FC<{
       maxHeight: useVerticalLayout ? '40vh' : 'none',
       overflow: 'hidden',
     }}>
-      {/* Author header */}
       <div style={{ padding: '14px 16px', borderBottom: bdr, flexShrink: 0 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -275,7 +266,6 @@ const PhotoZoomContent: React.FC<{
           <ReactionBar photo={selectedPhoto} />
         </div>
       </div>
-      {/* Comments list */}
       <div style={{
         flex: '1 1 auto', overflowY: 'auto', padding: '12px 16px', minHeight: 0,
       }}>
@@ -299,7 +289,6 @@ const PhotoZoomContent: React.FC<{
           ))
         )}
       </div>
-      {/* Comment input */}
       <div style={{ padding: '10px 16px', borderTop: bdr, display: 'flex', gap: '1px', flexShrink: 0 }}>
         <input type="text" placeholder="Add a comment..." value={newComment}
           onChange={e => setNewComment(e.target.value)}
@@ -332,19 +321,14 @@ const PhotoZoomContent: React.FC<{
         alignItems: imgSize === null ? 'center' : undefined,
         justifyContent: imgSize === null ? 'center' : undefined,
       }}>
-
-      {/* Loading placeholder */}
       {imgSize === null && (
         <div style={{ padding: 40, textAlign: 'center', color: C.gray, fontSize: 13 }}>
           Loading…
           <img src={selectedPhoto.url} alt="" onLoad={handleImageLoad} style={{ display: 'none' }} />
         </div>
       )}
-
-      {/* Layout once dimensions known */}
       {imgSize !== null && (
         <>
-          {/* Image — full bleed, no black bars */}
           <img
             src={selectedPhoto.url}
             alt={selectedPhoto.caption}
@@ -390,12 +374,13 @@ const Community: React.FC = () => {
 
   const [isLoading, setIsLoading] = useState(true);
 
-  // Photo pagination
   const [photoPage, setPhotoPage] = useState(1);
 
-  // Members directory state
   const [memberSearch, setMemberSearch] = useState('');
   const [memberPage, setMemberPage] = useState(1);
+
+  // Track detected image orientations: photoId → true if landscape
+  const [photoOrientations, setPhotoOrientations] = useState<Record<string, boolean>>({});
 
   useEffect(() => { ensureShimmer(); }, []);
 
@@ -451,11 +436,6 @@ const Community: React.FC = () => {
     [photos, photoPage],
   );
 
-  // Split paged photos into two columns for masonry
-  const leftCol = useMemo(() => pagedPhotos.filter((_, i) => i % 2 === 0), [pagedPhotos]);
-  const rightCol = useMemo(() => pagedPhotos.filter((_, i) => i % 2 !== 0), [pagedPhotos]);
-
-  // Scroll to top of feed when page changes
   useEffect(() => {
     if (photoPage > 1) {
       document.getElementById('zai-feed-top')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -483,7 +463,7 @@ const Community: React.FC = () => {
       const res = await apiService.post('/community/gallery', { image: uploadPreview, caption: uploadCaption });
       if (res.data?.success) {
         setPhotos(prev => [res.data.data, ...prev]);
-        setPhotoPage(1);   // go back to page 1 to see new post
+        setPhotoPage(1);
         setShowUpload(false); setUploadCaption(''); setUploadFile(null); setUploadPreview(null);
         fetchStats();
       }
@@ -580,6 +560,17 @@ const Community: React.FC = () => {
     setEmojiPickerPhotoId(photoId);
   };
 
+  // ─── Orientation detection callback ───
+
+  const handleCardImageLoad = useCallback((photoId: string, e: React.SyntheticEvent<HTMLImageElement>) => {
+    const img = e.currentTarget;
+    const landscape = img.naturalWidth >= img.naturalHeight;
+    setPhotoOrientations(prev => {
+      if (prev[photoId] === landscape) return prev; // no change
+      return { ...prev, [photoId]: landscape };
+    });
+  }, []);
+
   // ─── Members directory ───
 
   const filteredMembers = members.filter(m =>
@@ -626,72 +617,270 @@ const Community: React.FC = () => {
     );
   };
 
-  // ─── Photo Card ───
+  // ─── Photo Card (horizontal layout — text beside image) ───
 
   const PhotoCard = ({ photo }: { photo: Photo }) => {
     const reactionCount = (photo.reactions || []).length;
+    const isLandscape = photoOrientations[photo.id] === true;
+    const orientationKnown = photo.id in photoOrientations;
+
+    // Landscape images: full-width card with image on top (larger)
+    // Portrait images: side-by-side layout, image left, text right
+    // Before orientation is detected, render hidden img to measure, show placeholder
+
     return (
-      <div style={{ background: C.pureWhite, border: bdr, borderRadius: 6, overflow: 'hidden', breakInside: 'avoid', marginBottom: 20 }}>
-        <div onClick={() => openPhoto(photo.id)} style={{ cursor: 'pointer', position: 'relative', overflow: 'hidden' }}>
-          <img src={photo.url} alt={photo.caption} loading="lazy" decoding="async"
-            style={{ width: '100%', display: 'block', objectFit: 'cover' }} />
-        </div>
-        <div style={{ padding: '12px 14px 0', display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{
-            width: 32, height: 32, borderRadius: '50%', background: C.mid, flexShrink: 0,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: '12px', color: C.white, fontWeight: 500,
-          }}>
-            {(photo.authorName?.charAt(0) || 'M').toUpperCase()}
-          </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: '12px', fontWeight: 600, color: C.black }}>{photo.authorName}</div>
-          </div>
-          <span style={{ fontSize: '10px', color: C.muted, flexShrink: 0 }}>{fmtFullDate(photo.createdAt)}</span>
-          {isAdmin && (
-            <button onClick={() => deletePhoto(photo.id)} title="Delete (admin)"
-              style={{ background: 'none', border: 'none', fontSize: '13px', color: C.red, cursor: 'pointer', padding: '2px 4px', flexShrink: 0 }}>×</button>
-          )}
-        </div>
-        {photo.caption && (
-          <p style={{
-            fontSize: '12px', color: C.gray, margin: 0, padding: '10px 14px 0',
-            lineHeight: 1.6, fontWeight: 300, fontStyle: 'italic',
-          }}>
-            &ldquo;{photo.caption}&rdquo;
-          </p>
+      <div style={{
+        background: C.pureWhite,
+        border: bdr,
+        borderRadius: 6,
+        overflow: 'hidden',
+        marginBottom: 20,
+        // Landscape cards span full width — handled by parent grid
+      }}>
+        {/* Hidden loader if orientation not yet known */}
+        {!orientationKnown && (
+          <img
+            src={photo.url}
+            alt=""
+            onLoad={(e) => handleCardImageLoad(photo.id, e)}
+            style={{ display: 'none' }}
+          />
         )}
-        <div style={{
-          padding: '10px 14px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          borderTop: `1px solid ${C.surface2}`, marginTop: 10,
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <MapPinIcon size={11} color={C.muted} />
-            <span style={{ fontSize: '10px', color: C.muted, letterSpacing: '0.02em' }}>
-              {photo.location || ''}
-            </span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <button onClick={e => { e.stopPropagation(); openEmojiPicker(e, photo.id); }}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3, padding: 0 }}>
-              <HeartIcon size={13} color={C.muted} />
-              {reactionCount > 0 && <span style={{ fontSize: '10px', color: C.muted }}>{reactionCount}</span>}
-            </button>
-            <button onClick={() => openPhoto(photo.id)}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3, padding: 0 }}>
-              <CommentIcon size={13} color={C.muted} />
-              {photo.commentCount > 0 && <span style={{ fontSize: '10px', color: C.muted }}>{photo.commentCount}</span>}
-            </button>
-            <button style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 0 }}>
-              <ShareIcon size={13} color={C.muted} />
-            </button>
-            <div style={{ display: 'flex', gap: 3, marginLeft: 4 }}>
-              {MEMBER_DOT_COLORS.slice(0, Math.min(4, Math.max(1, reactionCount))).map((c, i) => (
-                <div key={i} style={{ width: 6, height: 6, borderRadius: '50%', background: c }} />
-              ))}
+
+        {/* ── LANDSCAPE: large image on top, text below ── */}
+        {orientationKnown && isLandscape && (
+          <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'stretch' }}>
+            {/* Image — larger for landscape */}
+            <div
+              onClick={() => openPhoto(photo.id)}
+              style={{
+                cursor: 'pointer',
+                overflow: 'hidden',
+                flexShrink: 0,
+                width: '55%',
+                minHeight: 200,
+                position: 'relative',
+              }}
+            >
+              <img
+                src={photo.url}
+                alt={photo.caption}
+                loading="lazy"
+                decoding="async"
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                  display: 'block',
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                }}
+              />
+            </div>
+
+            {/* Text panel beside the image */}
+            <div style={{
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+              padding: 0,
+              minWidth: 0,
+            }}>
+              {/* Author row */}
+              <div style={{ padding: '14px 14px 0', display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{
+                  width: 32, height: 32, borderRadius: '50%', background: C.mid, flexShrink: 0,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: '12px', color: C.white, fontWeight: 500,
+                }}>
+                  {(photo.authorName?.charAt(0) || 'M').toUpperCase()}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: '12px', fontWeight: 600, color: C.black }}>{photo.authorName}</div>
+                  <div style={{ fontSize: '10px', color: C.muted }}>{fmtFullDate(photo.createdAt)}</div>
+                </div>
+                {isAdmin && (
+                  <button onClick={() => deletePhoto(photo.id)} title="Delete (admin)"
+                    style={{ background: 'none', border: 'none', fontSize: '13px', color: C.red, cursor: 'pointer', padding: '2px 4px', flexShrink: 0 }}>×</button>
+                )}
+              </div>
+
+              {/* Caption */}
+              {photo.caption && (
+                <p style={{
+                  fontSize: '12px', color: C.gray, margin: 0, padding: '10px 14px 0',
+                  lineHeight: 1.6, fontWeight: 300, fontStyle: 'italic',
+                  overflow: 'hidden', display: '-webkit-box',
+                  WebkitLineClamp: 4, WebkitBoxOrient: 'vertical',
+                }}>
+                  &ldquo;{photo.caption}&rdquo;
+                </p>
+              )}
+
+              {/* Spacer to push footer down */}
+              <div style={{ flex: 1 }} />
+
+              {/* Footer: location + actions */}
+              <div style={{
+                padding: '10px 14px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                borderTop: `1px solid ${C.surface2}`, marginTop: 10,
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <MapPinIcon size={11} color={C.muted} />
+                  <span style={{ fontSize: '10px', color: C.muted, letterSpacing: '0.02em' }}>
+                    {photo.location || ''}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <button onClick={e => { e.stopPropagation(); openEmojiPicker(e, photo.id); }}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3, padding: 0 }}>
+                    <HeartIcon size={13} color={C.muted} />
+                    {reactionCount > 0 && <span style={{ fontSize: '10px', color: C.muted }}>{reactionCount}</span>}
+                  </button>
+                  <button onClick={() => openPhoto(photo.id)}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3, padding: 0 }}>
+                    <CommentIcon size={13} color={C.muted} />
+                    {photo.commentCount > 0 && <span style={{ fontSize: '10px', color: C.muted }}>{photo.commentCount}</span>}
+                  </button>
+                  <button style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 0 }}>
+                    <ShareIcon size={13} color={C.muted} />
+                  </button>
+                  <div style={{ display: 'flex', gap: 3, marginLeft: 4 }}>
+                    {MEMBER_DOT_COLORS.slice(0, Math.min(4, Math.max(1, reactionCount))).map((c, i) => (
+                      <div key={i} style={{ width: 6, height: 6, borderRadius: '50%', background: c }} />
+                    ))}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
+        )}
+
+        {/* ── PORTRAIT: image left, text right (side-by-side) ── */}
+        {orientationKnown && !isLandscape && (
+          <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'stretch' }}>
+            {/* Image — fixed width for portrait */}
+            <div
+              onClick={() => openPhoto(photo.id)}
+              style={{
+                cursor: 'pointer',
+                overflow: 'hidden',
+                flexShrink: 0,
+                width: '42%',
+                minHeight: 180,
+                position: 'relative',
+              }}
+            >
+              <img
+                src={photo.url}
+                alt={photo.caption}
+                loading="lazy"
+                decoding="async"
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                  display: 'block',
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                }}
+              />
+            </div>
+
+            {/* Text panel */}
+            <div style={{
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+              padding: 0,
+              minWidth: 0,
+            }}>
+              {/* Author row */}
+              <div style={{ padding: '14px 14px 0', display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{
+                  width: 32, height: 32, borderRadius: '50%', background: C.mid, flexShrink: 0,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: '12px', color: C.white, fontWeight: 500,
+                }}>
+                  {(photo.authorName?.charAt(0) || 'M').toUpperCase()}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: '12px', fontWeight: 600, color: C.black }}>{photo.authorName}</div>
+                  <div style={{ fontSize: '10px', color: C.muted }}>{fmtFullDate(photo.createdAt)}</div>
+                </div>
+                {isAdmin && (
+                  <button onClick={() => deletePhoto(photo.id)} title="Delete (admin)"
+                    style={{ background: 'none', border: 'none', fontSize: '13px', color: C.red, cursor: 'pointer', padding: '2px 4px', flexShrink: 0 }}>×</button>
+                )}
+              </div>
+
+              {/* Caption */}
+              {photo.caption && (
+                <p style={{
+                  fontSize: '12px', color: C.gray, margin: 0, padding: '10px 14px 0',
+                  lineHeight: 1.6, fontWeight: 300, fontStyle: 'italic',
+                  overflow: 'hidden', display: '-webkit-box',
+                  WebkitLineClamp: 3, WebkitBoxOrient: 'vertical',
+                }}>
+                  &ldquo;{photo.caption}&rdquo;
+                </p>
+              )}
+
+              {/* Spacer */}
+              <div style={{ flex: 1 }} />
+
+              {/* Footer */}
+              <div style={{
+                padding: '10px 14px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                borderTop: `1px solid ${C.surface2}`, marginTop: 10,
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <MapPinIcon size={11} color={C.muted} />
+                  <span style={{ fontSize: '10px', color: C.muted, letterSpacing: '0.02em' }}>
+                    {photo.location || ''}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <button onClick={e => { e.stopPropagation(); openEmojiPicker(e, photo.id); }}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3, padding: 0 }}>
+                    <HeartIcon size={13} color={C.muted} />
+                    {reactionCount > 0 && <span style={{ fontSize: '10px', color: C.muted }}>{reactionCount}</span>}
+                  </button>
+                  <button onClick={() => openPhoto(photo.id)}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3, padding: 0 }}>
+                    <CommentIcon size={13} color={C.muted} />
+                    {photo.commentCount > 0 && <span style={{ fontSize: '10px', color: C.muted }}>{photo.commentCount}</span>}
+                  </button>
+                  <button style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 0 }}>
+                    <ShareIcon size={13} color={C.muted} />
+                  </button>
+                  <div style={{ display: 'flex', gap: 3, marginLeft: 4 }}>
+                    {MEMBER_DOT_COLORS.slice(0, Math.min(4, Math.max(1, reactionCount))).map((c, i) => (
+                      <div key={i} style={{ width: 6, height: 6, borderRadius: '50%', background: c }} />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Placeholder while detecting orientation */}
+        {!orientationKnown && (
+          <div style={{ display: 'flex', alignItems: 'stretch', minHeight: 180 }}>
+            <div style={{ width: '45%', background: C.surface, ...shimmer }} />
+            <div style={{ flex: 1, padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <Sk w="60%" h="12px" />
+              <Sk w="40%" h="10px" />
+              <Sk w="90%" h="10px" />
+              <Sk w="70%" h="10px" />
+            </div>
+          </div>
+        )}
       </div>
     );
   };
@@ -707,7 +896,6 @@ const Community: React.FC = () => {
   }> = ({ current, total, onChange, itemCount, label = 'posts' }) => {
     if (total <= 1) return null;
 
-    // Show max 7 page buttons with ellipsis
     const pages: (number | '…')[] = [];
     if (total <= 7) {
       for (let i = 1; i <= total; i++) pages.push(i);
@@ -794,8 +982,17 @@ const Community: React.FC = () => {
         <Sk w="240px" h="38px" s={{ marginBottom: 8 }} />
         <Sk w="380px" h="13px" s={{ marginBottom: 36 }} />
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 32 }}>
-          <div style={{ columns: 2, columnGap: 20 }}>
-            {[0,1,2,3].map(i => <Sk key={i} w="100%" h={i % 2 === 0 ? '320px' : '260px'} s={{ marginBottom: 20, breakInside: 'avoid' }} />)}
+          <div>
+            {[0,1,2,3].map(i => (
+              <div key={i} style={{ display: 'flex', marginBottom: 20, borderRadius: 6, overflow: 'hidden', border: bdr }}>
+                <Sk w="45%" h={i % 2 === 0 ? '200px' : '180px'} />
+                <div style={{ flex: 1, padding: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <Sk w="60%" h="12px" />
+                  <Sk w="40%" h="10px" />
+                  <Sk w="90%" h="10px" />
+                </div>
+              </div>
+            ))}
           </div>
           <div>
             <Sk w="100%" h="180px" s={{ marginBottom: 16 }} />
@@ -850,7 +1047,7 @@ const Community: React.FC = () => {
       {/* ══════ MAIN GRID ══════ */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 32, alignItems: 'start' }}>
 
-        {/* ──── LEFT: Masonry photo grid (paginated) ──── */}
+        {/* ──── LEFT: Single-column photo feed (horizontal cards) ──── */}
         <div>
           {photos.length === 0 ? (
             <div style={{ padding: '60px 24px', textAlign: 'center', background: C.surface, border: bdr, borderRadius: 6 }}>
@@ -860,13 +1057,8 @@ const Community: React.FC = () => {
             </div>
           ) : (
             <>
-              <div style={{ display: 'flex', gap: 20 }}>
-                <div style={{ flex: 1 }}>
-                  {leftCol.map(photo => <PhotoCard key={photo.id} photo={photo} />)}
-                </div>
-                <div style={{ flex: 1 }}>
-                  {rightCol.map(photo => <PhotoCard key={photo.id} photo={photo} />)}
-                </div>
+              <div>
+                {pagedPhotos.map(photo => <PhotoCard key={photo.id} photo={photo} />)}
               </div>
 
               {/* Photo feed pagination */}
