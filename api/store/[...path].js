@@ -133,6 +133,123 @@ async function handleRewards(req, res, segments, method, userId) {
 }
 
 // ── DEALS ───────────────────────────────────────────────
+// ── Shared deal-redemption fulfillment ──────────────────
+// Called from two places: the Stripe webhook (payment_intent.succeeded /
+// checkout.session.completed) AND a client-triggered confirm endpoint below.
+// The client-triggered path exists because webhook delivery is not
+// guaranteed to reach every deployment (misconfigured/unregistered webhook,
+// signing-secret mismatch, network issues) — without it a customer can pay
+// successfully in the Stripe UI and never actually receive their points
+// deduction or their product, which is exactly the "paid but nothing
+// happened" bug this was written to close. Both callers are guarded by the
+// same idempotency check, so whichever one runs first "wins" and the other
+// becomes a no-op.
+async function fulfillDealRedemption({ redemptionId, dealId, userId, pointsUsed, amountCHF, stripePaymentIntentId }) {
+  const already = await getPool().query(
+    `SELECT status FROM deal_redemptions WHERE id = $1`, [redemptionId]
+  );
+  if (!already.rows.length) {
+    return { ok: false, reason: 'not_found' };
+  }
+  if (already.rows[0].status === 'paid') {
+    return { ok: true, alreadyProcessed: true };
+  }
+
+  const pts = parseInt(pointsUsed) || 0;
+
+  // Deduct points used as discount
+  if (pts > 0) {
+    try {
+      await spendPoints(userId, pts, 'deal_redeem', `Deal purchase: ${dealId}`, redemptionId);
+    } catch (e) {
+      console.error('[deal-fulfill] Points deduction failed:', e.message);
+    }
+  }
+
+  // Update redemption status
+  await getPool().query(
+    `UPDATE deal_redemptions SET status = 'paid', stripe_payment_intent = $2, updated_at = NOW()
+    WHERE id = $1`,
+    [redemptionId, stripePaymentIntentId || null]
+  );
+
+  // Decrement spots
+  await getPool().query(
+    `UPDATE deals SET spots_left = GREATEST(0, spots_left - 1), updated_at = NOW()
+    WHERE id = $1 AND spots_total > 0`,
+    [dealId]
+  );
+
+  // Award loyalty points (2.7× CHF amount actually paid)
+  const earnedPts = Math.round((amountCHF || 0) * 2.7);
+  if (earnedPts > 0) {
+    await addPoints(userId, earnedPts, 'purchase', `Deal purchase: ${dealId}`, redemptionId);
+  }
+
+  // ── Auto-mint NFT for the deal (non-fatal if it fails) ──
+  let minted = false;
+  try {
+    const dealRes = await getPool().query(
+      'SELECT title, contract_address FROM deals WHERE id = $1', [dealId]
+    );
+    const deal = dealRes.rows[0];
+
+    if (deal?.contract_address) {
+      const userRes = await getPool().query(
+        'SELECT wallet FROM user_profiles WHERE user_id = $1', [userId]
+      );
+      const wallet = userRes.rows[0]?.wallet;
+
+      if (wallet) {
+        const RWA_BASE = 'https://rwa.onchainlabs.ch/v1/api';
+        const apiKey = process.env.WALLETTWO_API_KEY;
+
+        const rwaListRes = await fetch(`${RWA_BASE}/rwa?limit=200`, {
+          headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey },
+        });
+        const rwaList = await rwaListRes.json();
+        const rwas = Array.isArray(rwaList) ? rwaList : (rwaList.rwas || rwaList.data || rwaList.result || []);
+        const rwa = rwas.find(r =>
+          (r.smartContractAddress || '').toLowerCase() === deal.contract_address.toLowerCase()
+        );
+
+        if (rwa) {
+          const mintRes = await fetch(`${RWA_BASE}/rwa/${rwa.id}/mint`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey },
+            body: JSON.stringify({ wallet, address: wallet }),
+          });
+          const mintData = await mintRes.json();
+
+          if (mintRes.ok && mintData?.success !== false) {
+            console.log(`[deal-fulfill] ✓ NFT minted for deal ${dealId} → ${wallet} (RWA: ${rwa.id})`);
+            minted = true;
+
+            await getPool().query(
+              `INSERT INTO product_claims (id, user_id, product_id, claimed_at)
+              VALUES ($1, $2, $3, NOW())
+              ON CONFLICT (user_id, product_id) DO NOTHING`,
+              [randomUUID(), userId, rwa.id]
+            );
+          } else {
+            console.error('[deal-fulfill] NFT mint failed:', mintData?.message || mintData?.error || 'Unknown error');
+          }
+        } else {
+          console.error(`[deal-fulfill] No RWA found for contract ${deal.contract_address}`);
+        }
+      } else {
+        console.error(`[deal-fulfill] No wallet found for user ${userId}`);
+      }
+    }
+  } catch (mintErr) {
+    console.error('[deal-fulfill] NFT mint error (non-fatal):', mintErr.message);
+  }
+
+  console.log(`[deal-fulfill] ✓ Redemption ${redemptionId} paid — ${pts}pts spent, ${earnedPts}pts earned, CHF ${amountCHF}`);
+
+  return { ok: true, alreadyProcessed: false, pointsDeducted: pts, pointsEarned: earnedPts, minted };
+}
+
 async function handleDeals(req, res, segments, method, userId, decoded) {
 
   // GET /api/store/deals
@@ -238,6 +355,71 @@ async function handleDeals(req, res, segments, method, userId, decoded) {
         clientSecret: paymentIntent.client_secret,
         redemptionId,
         amount: finalCHF,
+      },
+    });
+  }
+
+  // POST /api/store/deals/redemptions/:id/confirm
+  // Client-triggered fallback fulfillment. The Stripe Elements flow already
+  // confirms the payment succeeded client-side; this endpoint double-checks
+  // that with Stripe directly (using the secret key, so it can't be spoofed
+  // from the browser) and then runs the same points/mint fulfillment the
+  // webhook would run. This is what makes purchases work correctly even if
+  // the Stripe webhook isn't reachable/registered for this deployment.
+  if (method === 'POST' && segments[0] === 'redemptions' && segments.length === 3 && segments[2] === 'confirm') {
+    const redemptionId = segments[1];
+
+    const rr = await getPool().query(
+      'SELECT * FROM deal_redemptions WHERE id = $1', [redemptionId]
+    );
+    if (!rr.rows.length) return res.status(404).json({ error: 'Redemption not found' });
+    const redemption = rr.rows[0];
+
+    if (redemption.user_id !== userId) {
+      return res.status(403).json({ error: 'Not your redemption' });
+    }
+
+    if (redemption.status === 'paid') {
+      const balance = await getBalance(userId);
+      return res.json({ success: true, data: { alreadyProcessed: true, balance } });
+    }
+
+    const Stripe = (await import('stripe')).default;
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+
+    let pi;
+    try {
+      pi = await stripe.paymentIntents.retrieve(redemption.stripe_session_id);
+    } catch (e) {
+      return res.status(502).json({ error: 'Could not verify payment with Stripe' });
+    }
+
+    if (pi.status !== 'succeeded') {
+      return res.status(400).json({ error: `Payment not completed yet (status: ${pi.status})` });
+    }
+
+    const result = await fulfillDealRedemption({
+      redemptionId,
+      dealId: redemption.deal_id,
+      userId,
+      pointsUsed: redemption.points_used,
+      amountCHF: parseFloat(redemption.amount_chf) || (pi.amount || 0) / 100,
+      stripePaymentIntentId: pi.id,
+    });
+
+    if (!result.ok) {
+      return res.status(404).json({ error: 'Redemption not found' });
+    }
+
+    const balance = await getBalance(userId);
+    return res.json({
+      success: true,
+      data: {
+        alreadyProcessed: !!result.alreadyProcessed,
+        pointsDeducted: result.pointsDeducted || 0,
+        pointsEarned: result.pointsEarned || 0,
+        minted: !!result.minted,
+        balance,
       },
     });
   }
@@ -536,116 +718,24 @@ async function handleStripe(req, res, segments) {
     }
 
     // ── Handle PaymentIntent succeeded (embedded payment flow) ──
+    // Fulfillment logic lives in the shared fulfillDealRedemption() helper —
+    // the exact same function the client-triggered /redemptions/:id/confirm
+    // endpoint calls, so this webhook and that fallback path can never
+    // disagree or double-process (both are guarded by the same idempotency
+    // check inside the helper).
     if (event.type === 'payment_intent.succeeded') {
       const pi = event.data.object;
       const { redemptionId, dealId, userId, pointsUsed } = pi.metadata || {};
       if (!redemptionId) return res.json({ received: true });
 
-      // Idempotency guard: Stripe can redeliver the same event (retries,
-      // duplicate delivery). Without this check a redelivery would deduct
-      // points, award points, and decrement spots a second time.
-      const already = await getPool().query(
-        `SELECT status FROM deal_redemptions WHERE id = $1`, [redemptionId]
-      );
-      if (already.rows[0]?.status === 'paid') {
-        return res.json({ received: true, alreadyProcessed: true });
-      }
-
-      const pts = parseInt(pointsUsed) || 0;
-
-      // Deduct points used as discount
-      if (pts > 0) {
-        try {
-          await spendPoints(userId, pts, 'deal_redeem', `Deal purchase: ${dealId}`, redemptionId);
-        } catch (e) {
-          console.error('[stripe] Points deduction failed:', e.message);
-        }
-      }
-
-      // Update redemption status
-      await getPool().query(
-        `UPDATE deal_redemptions SET status = 'paid', stripe_payment_intent = $2, updated_at = NOW()
-        WHERE id = $1`,
-        [redemptionId, pi.id]
-      );
-
-      // Decrement spots
-      await getPool().query(
-        `UPDATE deals SET spots_left = GREATEST(0, spots_left - 1), updated_at = NOW()
-        WHERE id = $1 AND spots_total > 0`,
-        [dealId]
-      );
-
-      // Award loyalty points (2.7× CHF amount)
-      const amountCHF = (pi.amount || 0) / 100;
-      const earnedPts = Math.round(amountCHF * 2.7);
-      if (earnedPts > 0) {
-        await addPoints(userId, earnedPts, 'purchase', `Deal purchase: ${dealId}`, redemptionId);
-      }
-
-      // ── Auto-mint NFT for the deal ──
-      try {
-        const dealRes = await getPool().query(
-          'SELECT title, contract_address FROM deals WHERE id = $1', [dealId]
-        );
-        const deal = dealRes.rows[0];
-
-        if (deal?.contract_address) {
-          // Get user wallet
-          const userRes = await getPool().query(
-            'SELECT wallet FROM user_profiles WHERE user_id = $1', [userId]
-          );
-          const wallet = userRes.rows[0]?.wallet;
-
-          if (wallet) {
-            // Mint via your RWA API (same approach as product claim validation)
-            const RWA_BASE = 'https://rwa.onchainlabs.ch/v1/api';
-            const apiKey = process.env.WALLETTWO_API_KEY;
-
-            // Find the RWA ID by contract address
-            const rwaListRes = await fetch(`${RWA_BASE}/rwa?limit=200`, {
-              headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey },
-            });
-            const rwaList = await rwaListRes.json();
-            const rwas = Array.isArray(rwaList) ? rwaList : (rwaList.rwas || rwaList.data || rwaList.result || []);
-            const rwa = rwas.find(r =>
-              (r.smartContractAddress || '').toLowerCase() === deal.contract_address.toLowerCase()
-            );
-
-            if (rwa) {
-              const mintRes = await fetch(`${RWA_BASE}/rwa/${rwa.id}/mint`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey },
-                body: JSON.stringify({ wallet, address: wallet }),
-              });
-              const mintData = await mintRes.json();
-
-              if (mintRes.ok && mintData?.success !== false) {
-                console.log(`[stripe] ✓ NFT minted for deal ${dealId} → ${wallet} (RWA: ${rwa.id})`);
-
-                // Record in product_claims for portfolio consistency
-                await getPool().query(
-                  `INSERT INTO product_claims (id, user_id, product_id, claimed_at)
-                  VALUES ($1, $2, $3, NOW())
-                  ON CONFLICT (user_id, product_id) DO NOTHING`,
-                  [randomUUID(), userId, rwa.id]
-                );
-              } else {
-                console.error('[stripe] NFT mint failed:', mintData?.message || mintData?.error || 'Unknown error');
-              }
-            } else {
-              console.error(`[stripe] No RWA found for contract ${deal.contract_address}`);
-            }
-          } else {
-            console.error(`[stripe] No wallet found for user ${userId}`);
-          }
-        }
-      } catch (mintErr) {
-        // Never fail the payment because of a mint error
-        console.error('[stripe] NFT mint error (non-fatal):', mintErr.message);
-      }
-
-      console.log(`[stripe] ✓ Redemption ${redemptionId} paid — ${pts}pts spent, ${earnedPts}pts earned, CHF ${amountCHF}`);
+      await fulfillDealRedemption({
+        redemptionId,
+        dealId,
+        userId,
+        pointsUsed,
+        amountCHF: (pi.amount || 0) / 100,
+        stripePaymentIntentId: pi.id,
+      });
     }
 
     // ── Keep backward compat for any existing Checkout Sessions ──
@@ -654,43 +744,14 @@ async function handleStripe(req, res, segments) {
       const { redemptionId, dealId, userId, pointsUsed } = session.metadata || {};
       if (!redemptionId) return res.json({ received: true });
 
-      // Idempotency guard — see comment above in payment_intent.succeeded.
-      const already = await getPool().query(
-        `SELECT status FROM deal_redemptions WHERE id = $1`, [redemptionId]
-      );
-      if (already.rows[0]?.status === 'paid') {
-        return res.json({ received: true, alreadyProcessed: true });
-      }
-
-      const pts = parseInt(pointsUsed) || 0;
-
-      if (pts > 0) {
-        try {
-          await spendPoints(userId, pts, 'deal_redeem', `Deal purchase: ${dealId}`, redemptionId);
-        } catch (e) {
-          console.error('[stripe] Points deduction failed:', e.message);
-        }
-      }
-
-      await getPool().query(
-        `UPDATE deal_redemptions SET status = 'paid', stripe_payment_intent = $2, updated_at = NOW()
-         WHERE id = $1`,
-        [redemptionId, session.payment_intent || '']
-      );
-
-      await getPool().query(
-        `UPDATE deals SET spots_left = GREATEST(0, spots_left - 1), updated_at = NOW()
-         WHERE id = $1 AND spots_total > 0`,
-        [dealId]
-      );
-
-      const amountCHF = (session.amount_total || 0) / 100;
-      const earnedPts = Math.round(amountCHF * 2.7);
-      if (earnedPts > 0) {
-        await addPoints(userId, earnedPts, 'purchase', `Purchase: ${dealId}`, redemptionId);
-      }
-
-      console.log(`[stripe] ✓ (legacy) Redemption ${redemptionId} paid — ${pts}pts spent, ${earnedPts}pts earned`);
+      await fulfillDealRedemption({
+        redemptionId,
+        dealId,
+        userId,
+        pointsUsed,
+        amountCHF: (session.amount_total || 0) / 100,
+        stripePaymentIntentId: session.payment_intent || null,
+      });
     }
 
     return res.json({ received: true });

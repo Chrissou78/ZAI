@@ -19,16 +19,34 @@ const token = () => localStorage.getItem('zai_token') || '';
 const authHeaders = () => ({ Authorization: `Bearer ${token()}`, 'Content-Type': 'application/json' });
 
 // ─── Inline Payment Form ───
-function InlinePaymentForm({ onSuccess, onBack, amount }: {
+// Stripe confirming the payment client-side is NOT the same as your points
+// being deducted and your product being minted — that fulfillment used to
+// live only in the Stripe webhook, which isn't guaranteed to reach every
+// deployment. So after Stripe confirms, we call a server endpoint that
+// verifies the payment directly with Stripe (using the secret key) and only
+// THEN runs fulfillment. We don't tell the user "success" until that call
+// comes back — that's what makes "I paid but got nothing" impossible.
+function InlinePaymentForm({ onSuccess, onBack, amount, redemptionId }: {
   onSuccess: () => void;
   onBack: () => void;
   amount: number;
+  redemptionId: string;
 }) {
   const stripe = useStripe();
   const elements = useElements();
   const [loading, setLoading] = useState(false);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState('');
+
+  const confirmFulfillment = async () => {
+    const r = await fetch(`/api/store/deals/redemptions/${redemptionId}/confirm`, {
+      method: 'POST', headers: authHeaders(),
+    });
+    const json = await r.json();
+    if (!json.success) {
+      throw new Error(json.error || 'Payment succeeded but we could not finalize your order.');
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,7 +66,7 @@ function InlinePaymentForm({ onSuccess, onBack, amount }: {
       const { error: confirmError, paymentIntent } = await stripe.confirmPayment({
         elements,
         confirmParams: {
-          return_url: window.location.origin + '/updates?payment=success',
+          return_url: window.location.origin + '/updates?payment=success&redemptionId=' + redemptionId,
         },
         redirect: 'if_required',
       });
@@ -56,9 +74,24 @@ function InlinePaymentForm({ onSuccess, onBack, amount }: {
       if (confirmError) {
         setError(confirmError.message || 'Payment failed');
         setLoading(false);
-      } else if (paymentIntent?.status === 'succeeded') {
-        onSuccess();
+        return;
+      }
+
+      if (paymentIntent?.status === 'succeeded') {
+        // Card / wallet paid without a redirect — the common case. Finalize
+        // right now so the user never sees a false "success".
+        try {
+          await confirmFulfillment();
+          localStorage.removeItem('zai_pending_redemption');
+          onSuccess();
+        } catch (fulfillErr: any) {
+          setError(fulfillErr?.message || 'Payment succeeded but we could not finalize your order. Please refresh in a moment — it will resolve automatically.');
+          setLoading(false);
+        }
       } else {
+        // A redirect happened (3D Secure / some local payment methods) — the
+        // browser will navigate to return_url, and the redemptionId we
+        // stashed in localStorage lets Updates finish confirmation there.
         onSuccess();
       }
     } catch (err: any) {
@@ -130,7 +163,7 @@ function DealModal({ deal, onClose, onSuccess }: {
   const [points, setPoints] = useState(0);
   const [step, setStep] = useState<'points' | 'pay'>('points');
   const [loading, setLoading] = useState(false);
-  const [paymentData, setPaymentData] = useState<{ clientSecret: string; amount: number } | null>(null);
+  const [paymentData, setPaymentData] = useState<{ clientSecret: string; amount: number; redemptionId: string } | null>(null);
 
   useEffect(() => {
     fetch('/api/store/rewards/balance', { headers: authHeaders() })
@@ -150,7 +183,10 @@ function DealModal({ deal, onClose, onSuccess }: {
       });
       const json = await r.json();
       if (json.success && json.data.clientSecret) {
-        setPaymentData({ clientSecret: json.data.clientSecret, amount: json.data.amount });
+        setPaymentData({ clientSecret: json.data.clientSecret, amount: json.data.amount, redemptionId: json.data.redemptionId });
+        // Survives a 3D-Secure/local-payment-method redirect so Updates can
+        // finish confirmation on return, even though this component unmounts.
+        localStorage.setItem('zai_pending_redemption', json.data.redemptionId);
         setStep('pay');
       } else {
         alert(json.error || 'Failed to create payment');
@@ -267,6 +303,7 @@ function DealModal({ deal, onClose, onSuccess }: {
             <Elements stripe={stripePromise} options={elementsOptions}>
               <InlinePaymentForm
                 amount={paymentData.amount}
+                redemptionId={paymentData.redemptionId}
                 onSuccess={() => { onClose(); onSuccess(); }}
                 onBack={() => { setStep('points'); setPaymentData(null); }}
               />
@@ -380,19 +417,52 @@ export default function Updates() {
   const featuredDeal = deals.find(d => d.featured) || deals[0];
   const regularDeals = deals.filter(d => d !== featuredDeal);
 
+  const refreshDeals = () => {
+    const h = authHeaders();
+    fetch('/api/store/deals', { headers: h }).then(r => r.json()).then(d => {
+      if (d.success) setDeals(d.data);
+    });
+  };
+
+  // Handles the rare case where confirmPayment had to redirect (3D Secure /
+  // certain local payment methods) — the InlinePaymentForm instance that
+  // started the payment is gone after the redirect, so we finish
+  // confirmation here using the redemptionId stashed in localStorage before
+  // the redirect happened.
   useEffect(() => {
     const p = searchParams.get('payment');
-    if (p === 'success') alert('Payment successful! Points have been updated.');
-    if (p === 'cancelled') alert('Payment was cancelled.');
+    if (p === 'cancelled') {
+      alert('Payment was cancelled.');
+      localStorage.removeItem('zai_pending_redemption');
+      return;
+    }
+    if (p !== 'success') return;
+
+    const pendingId = searchParams.get('redemptionId') || localStorage.getItem('zai_pending_redemption');
+    if (!pendingId) return;
+
+    fetch(`/api/store/deals/redemptions/${pendingId}/confirm`, {
+      method: 'POST', headers: authHeaders(),
+    })
+      .then(r => r.json())
+      .then(json => {
+        localStorage.removeItem('zai_pending_redemption');
+        if (json.success) {
+          alert('Payment successful! Points have been updated.');
+          refreshDeals();
+        } else {
+          alert(json.error || 'We could not confirm your payment. Please contact support if points/product are missing.');
+        }
+      })
+      .catch(() => {
+        alert('We could not confirm your payment with the server. Please refresh — it should resolve automatically, or contact support.');
+      });
   }, [searchParams]);
 
   const handlePaymentSuccess = () => {
     setSelectedDeal(null);
     alert('Payment successful! Points have been updated.');
-    const h = authHeaders();
-    fetch('/api/store/deals', { headers: h }).then(r => r.json()).then(d => {
-      if (d.success) setDeals(d.data);
-    });
+    refreshDeals();
   };
 
   const handleClaimCollectible = async (cardId: string) => {
@@ -455,23 +525,42 @@ export default function Updates() {
               <div style={{
                 background: C.black, borderRadius: 10, padding: '40px 36px',
                 color: C.white, marginBottom: 40, position: 'relative', overflow: 'hidden',
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                gap: 32, flexWrap: 'wrap',
               }}>
                 <div style={{ position: 'absolute', bottom: 0, right: 0, width: '50%', height: '100%', opacity: 0.15, background: 'linear-gradient(135deg, transparent 40%, #7A222E 100%)' }} />
-                <div style={{ ...LABEL, color: '#888', marginBottom: 16 }}>— FEATURED DEAL</div>
-                <div style={{ position: 'absolute', top: 16, right: 16, fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', padding: '5px 12px', border: '1px solid rgba(255,255,255,0.3)', color: '#ccc' }}>NEW DEAL</div>
-                <h2 style={{ fontSize: 'clamp(20px, 2.5vw, 28px)', fontWeight: 400, margin: '0 0 12px' }}>{featuredDeal.title}</h2>
-                <div style={{ fontSize: 12, color: '#999', display: 'flex', gap: 20, marginBottom: 20 }}>
-                  {featuredDeal.ends_at && <span>⊙ Available {Math.ceil((new Date(featuredDeal.ends_at).getTime() - Date.now()) / 86400000)}h only</span>}
-                  <span>Exclusive Member Pricing</span>
-                  {featuredDeal.spots_left > 0 && <span>Limited availability</span>}
+                <div style={{ position: 'absolute', top: 16, right: 16, zIndex: 2, fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', padding: '5px 12px', border: '1px solid rgba(255,255,255,0.3)', color: '#ccc' }}>NEW DEAL</div>
+
+                <div style={{ position: 'relative', zIndex: 1, flex: '1 1 320px', minWidth: 0 }}>
+                  <div style={{ ...LABEL, color: '#888', marginBottom: 16 }}>— FEATURED DEAL</div>
+                  <h2 style={{ fontSize: 'clamp(20px, 2.5vw, 28px)', fontWeight: 400, margin: '0 0 12px' }}>{featuredDeal.title}</h2>
+                  <div style={{ fontSize: 12, color: '#999', display: 'flex', gap: 20, marginBottom: 20, flexWrap: 'wrap' }}>
+                    {featuredDeal.ends_at && <span>⊙ Available {Math.ceil((new Date(featuredDeal.ends_at).getTime() - Date.now()) / 86400000)}h only</span>}
+                    <span>Exclusive Member Pricing</span>
+                    {featuredDeal.spots_left > 0 && <span>Limited availability</span>}
+                  </div>
+                  <button onClick={() => setSelectedDeal(featuredDeal)} style={{
+                    padding: '14px 28px', background: C.red, color: '#fff', border: 'none',
+                    fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase',
+                    borderRadius: 4, cursor: 'pointer', fontFamily: C.font,
+                  }}>
+                    CLAIM OFFER, CHF {parseFloat(featuredDeal.price_chf).toLocaleString('de-CH')}
+                  </button>
                 </div>
-                <button onClick={() => setSelectedDeal(featuredDeal)} style={{
-                  padding: '14px 28px', background: C.red, color: '#fff', border: 'none',
-                  fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase',
-                  borderRadius: 4, cursor: 'pointer', fontFamily: C.font,
-                }}>
-                  CLAIM OFFER, CHF {parseFloat(featuredDeal.price_chf).toLocaleString('de-CH')}
-                </button>
+
+                {featuredDeal.image_url && (
+                  <div style={{
+                    position: 'relative', zIndex: 1, flexShrink: 0,
+                    width: 220, height: 220, borderRadius: 8, overflow: 'hidden',
+                    background: 'rgba(255,255,255,0.04)',
+                  }}>
+                    <img
+                      src={featuredDeal.image_url}
+                      alt={featuredDeal.title}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                  </div>
+                )}
               </div>
             )}
 
