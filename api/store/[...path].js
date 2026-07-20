@@ -541,6 +541,16 @@ async function handleStripe(req, res, segments) {
       const { redemptionId, dealId, userId, pointsUsed } = pi.metadata || {};
       if (!redemptionId) return res.json({ received: true });
 
+      // Idempotency guard: Stripe can redeliver the same event (retries,
+      // duplicate delivery). Without this check a redelivery would deduct
+      // points, award points, and decrement spots a second time.
+      const already = await getPool().query(
+        `SELECT status FROM deal_redemptions WHERE id = $1`, [redemptionId]
+      );
+      if (already.rows[0]?.status === 'paid') {
+        return res.json({ received: true, alreadyProcessed: true });
+      }
+
       const pts = parseInt(pointsUsed) || 0;
 
       // Deduct points used as discount
@@ -643,6 +653,14 @@ async function handleStripe(req, res, segments) {
       const session = event.data.object;
       const { redemptionId, dealId, userId, pointsUsed } = session.metadata || {};
       if (!redemptionId) return res.json({ received: true });
+
+      // Idempotency guard — see comment above in payment_intent.succeeded.
+      const already = await getPool().query(
+        `SELECT status FROM deal_redemptions WHERE id = $1`, [redemptionId]
+      );
+      if (already.rows[0]?.status === 'paid') {
+        return res.json({ received: true, alreadyProcessed: true });
+      }
 
       const pts = parseInt(pointsUsed) || 0;
 

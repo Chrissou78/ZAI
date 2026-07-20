@@ -360,10 +360,9 @@ function CollectibleCard({ card, onClaim }: { card: any; onClaim: (id: string) =
 // ─── Main Page ───
 export default function Updates() {
   const [searchParams] = useSearchParams();
-  const [tab, setTab] = useState<'deals' | 'media'>('deals');
+  const [tab, setTab] = useState<'deals' | 'collectibles'>('deals');
   const [deals, setDeals] = useState<any[]>([]);
   const [series, setSeries] = useState<any[]>([]);
-  const [stories, setStories] = useState<any[]>([]);
   const [selectedDeal, setSelectedDeal] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -372,18 +371,14 @@ export default function Updates() {
     Promise.all([
       fetch('/api/store/deals', { headers: h }).then(r => r.json()),
       fetch('/api/store/collectibles/series', { headers: h }).then(r => r.json()),
-      fetch('/api/store/media', { headers: h }).then(r => r.json()),
-    ]).then(([dRes, cRes, mRes]) => {
+    ]).then(([dRes, cRes]) => {
       if (dRes.success) setDeals(dRes.data);
       if (cRes.success) setSeries(cRes.data);
-      if (mRes.success) setStories(mRes.data);
     }).finally(() => setLoading(false));
   }, []);
 
   const featuredDeal = deals.find(d => d.featured) || deals[0];
   const regularDeals = deals.filter(d => d !== featuredDeal);
-  const featuredStory = stories.find(s => s.featured) || stories[0];
-  const regularStories = stories.filter(s => s !== featuredStory);
 
   useEffect(() => {
     const p = searchParams.get('payment');
@@ -435,25 +430,25 @@ export default function Updates() {
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 24, borderBottom: `1px solid ${C.border}`, paddingBottom: 20 }}>
           <h1 style={{ fontSize: 'clamp(28px, 3vw, 36px)', fontWeight: 300, margin: 0, lineHeight: 1.15 }}>
-            Updates & Deals
+            Deals & Collectibles
           </h1>
           <div style={{ fontSize: 12, color: C.green }}>Member access only ●</div>
         </div>
 
         {/* Tabs */}
         <div style={{ display: 'flex', gap: 0, borderBottom: `1px solid ${C.border}`, marginBottom: 32 }}>
-          {(['deals', 'media'] as const).map(t => (
+          {(['deals', 'collectibles'] as const).map(t => (
             <button key={t} onClick={() => setTab(t)} style={{
               padding: '12px 20px', background: 'none', border: 'none', borderBottom: tab === t ? `2px solid ${C.black}` : '2px solid transparent',
               fontSize: 12, fontWeight: tab === t ? 700 : 500, letterSpacing: '0.08em', textTransform: 'uppercase',
               cursor: 'pointer', fontFamily: C.font, color: tab === t ? C.black : C.gray,
             }}>
-              {t === 'deals' ? 'Deals & Drops' : 'Media & Stories'}
+              {t === 'deals' ? 'Deals' : 'Collectible Drops'}
             </button>
           ))}
         </div>
 
-        {/* ═══ DEALS & DROPS TAB ═══ */}
+        {/* ═══ DEALS TAB ═══ */}
         {tab === 'deals' && (
           <>
             {featuredDeal && (
@@ -536,6 +531,17 @@ export default function Updates() {
               </div>
             )}
 
+            {deals.length === 0 && (
+              <div style={{ textAlign: 'center', padding: 48, color: C.gray, fontSize: 14 }}>
+                No deals available yet. Check back soon.
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ═══ COLLECTIBLE DROPS TAB ═══ */}
+        {tab === 'collectibles' && (
+          <>
             {series.map(s => (
               <div key={s.id} style={{ marginBottom: 48 }}>
                 <div style={RED_LABEL}>COLLECTIBLE DROPS</div>
@@ -562,93 +568,11 @@ export default function Updates() {
               </div>
             ))}
 
-            {deals.length === 0 && series.length === 0 && (
+            {series.length === 0 && (
               <div style={{ textAlign: 'center', padding: 48, color: C.gray, fontSize: 14 }}>
-                No deals or drops available yet. Check back soon.
+                No collectible drops available yet. Check back soon.
               </div>
             )}
-          </>
-        )}
-
-        {/* ═══ MEDIA & STORIES TAB ═══ */}
-        {tab === 'media' && (
-          <>
-            {featuredStory && (
-              <>
-                <div style={RED_LABEL}>TOP STORY</div>
-                <div style={{
-                  background: C.black, borderRadius: 10, overflow: 'hidden',
-                  marginTop: 12, marginBottom: 32, position: 'relative', color: C.white,
-                }}>
-                  {featuredStory.thumbnail_url && (
-                    <img src={featuredStory.thumbnail_url} alt="" style={{ width: '100%', height: 280, objectFit: 'cover', opacity: 0.5 }} />
-                  )}
-                  {!featuredStory.thumbnail_url && <div style={{ height: 280, background: 'linear-gradient(135deg, #1a1a1a, #333)' }} />}
-                  <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '28px 32px' }}>
-                    {featuredStory.media_type === 'video' && (
-                      <div style={{ position: 'absolute', top: 16, left: 16, fontSize: 10, fontWeight: 600, background: C.red, padding: '4px 10px', borderRadius: 3 }}>
-                        ▶ VIDEO{featuredStory.duration ? ` · ${featuredStory.duration}` : ''}
-                      </div>
-                    )}
-                    {featuredStory.media_type === 'video' && (
-                      <div style={{ position: 'absolute', top: '40%', left: '50%', transform: 'translate(-50%,-50%)', width: 56, height: 56, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-                        <span style={{ fontSize: 20, marginLeft: 3 }}>▶</span>
-                      </div>
-                    )}
-                    <div style={{ fontSize: 10, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#999', marginBottom: 8 }}>
-                      {featuredStory.category} · EXCLUSIVE
-                    </div>
-                    <h2 style={{ fontSize: 'clamp(18px, 2.5vw, 26px)', fontWeight: 400, margin: '0 0 6px' }}>{featuredStory.title}</h2>
-                    <div style={{ fontSize: 13, color: '#aaa' }}>{featuredStory.description}</div>
-                  </div>
-                </div>
-              </>
-            )}
-
-            <div style={RED_LABEL}>ALL STORIES</div>
-            <div style={{ marginTop: 16 }}>
-              {regularStories.map(story => (
-                <div key={story.id} style={{
-                  display: 'flex', gap: 16, padding: '16px 0',
-                  borderBottom: `1px solid ${C.border}`, alignItems: 'center',
-                }}>
-                  <div style={{
-                    width: 72, height: 56, borderRadius: 6, overflow: 'hidden',
-                    background: C.surface, flexShrink: 0, position: 'relative',
-                  }}>
-                    {story.thumbnail_url
-                      ? <img src={story.thumbnail_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                      : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: C.gray, textTransform: 'uppercase' }}>{story.media_type}</div>
-                    }
-                    {story.media_type === 'video' && (
-                      <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <span style={{ background: 'rgba(0,0,0,0.6)', color: '#fff', fontSize: 10, padding: '2px 6px', borderRadius: 2 }}>▶</span>
-                      </div>
-                    )}
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.red, fontWeight: 500, marginBottom: 3 }}>
-                      {story.media_type === 'video' ? '▶ ' : ''}{story.media_type} · {story.category}
-                      {story.media_type === 'product_launch' && ' ●'}
-                    </div>
-                    <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 2 }}>{story.title}</div>
-                    <div style={{ fontSize: 12, color: C.gray, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{story.description}</div>
-                  </div>
-                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                    <div style={{ fontSize: 11, color: C.gray }}>{fmtDate(story.published_at)}</div>
-                    <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', marginTop: 4, cursor: 'pointer' }}>
-                      {story.media_type === 'video' ? 'WATCH →' : story.media_type === 'photo' ? 'VIEW →' : 'READ →'}
-                    </div>
-                  </div>
-                </div>
-              ))}
-
-              {stories.length === 0 && (
-                <div style={{ textAlign: 'center', padding: 48, color: C.gray, fontSize: 14 }}>
-                  No stories yet. Check back soon.
-                </div>
-              )}
-            </div>
           </>
         )}
       </div>

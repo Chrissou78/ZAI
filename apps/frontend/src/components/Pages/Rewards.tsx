@@ -43,8 +43,8 @@ export default function Rewards() {
     (async () => {
       try {
         const [balRes, histRes] = await Promise.all([
-          fetch('/api/rewards/balance', { headers: { Authorization: `Bearer ${localStorage.getItem('zai_token')}` } }),
-          fetch('/api/rewards/history?limit=10', { headers: { Authorization: `Bearer ${localStorage.getItem('zai_token')}` } }),
+          fetch('/api/store/rewards/balance', { headers: { Authorization: `Bearer ${localStorage.getItem('zai_token')}` } }),
+          fetch('/api/store/rewards/history?limit=10', { headers: { Authorization: `Bearer ${localStorage.getItem('zai_token')}` } }),
         ]);
         if (!cancelled) {
           const balJson = await balRes.json();
@@ -89,6 +89,9 @@ export default function Rewards() {
         background: C.black, color: C.white, padding: '48px 48px 40px',
       }}>
         <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+          <div style={{ fontSize: 10, letterSpacing: '0.3em', textTransform: 'uppercase', color: C.red, fontWeight: 500, marginBottom: 12 }}>
+            POINTS &amp; TIERS
+          </div>
           <div style={{ ...LABEL, color: '#999', marginBottom: 8 }}>YOUR CURRENT STANDING</div>
           <h1 style={{ fontSize: 'clamp(32px, 4vw, 48px)', fontWeight: 300, margin: 0, lineHeight: 1.15 }}>
             {currentTier.name} Tier

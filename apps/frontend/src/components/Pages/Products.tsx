@@ -556,53 +556,65 @@ const Products: React.FC = () => {
   }, [user?.id]);
 
   // ── Fetch user's pending claim requests ──
+  // Extracted to a stable callback (rather than declared inline inside the
+  // polling effect) so it can also be invoked immediately after a claim is
+  // submitted below — this is what makes the "claim pending review" banner
+  // appear right away instead of waiting for the next poll / a manual page
+  // refresh.
+  const fetchClaimRequests = useCallback(async () => {
+    if (!user?.id) return;
+    try {
+      const res = await apiService.get('/products/claim-requests?mine=true');
+      if (res.data?.success) {
+        const claims = (res.data.data || []) as any[];
+
+        setPendingClaimRequests(
+          claims
+            .filter((c: any) => c.status === 'pending' || c.status === 'minting')
+            .map((c: any) => ({
+              id: c.id,
+              status: c.status,
+              productName: c.productName || '',
+              createdAt: c.createdAt,
+            }))
+        );
+
+        setAllClaims(claims);
+
+        const newlyValidated = claims.some(
+          (c: any) => c.status === 'validated' && !handledValidatedRef.current.has(c.id)
+        );
+        if (newlyValidated) {
+          claims
+            .filter((c: any) => c.status === 'validated')
+            .forEach((c: any) => handledValidatedRef.current.add(c.id));
+          fetchUserProducts({ background: true });
+        }
+      }
+    } catch {
+      // silently fail
+    }
+  }, [user?.id, fetchUserProducts]);
+
   useEffect(() => {
     if (!user?.id) return;
 
-    let active = true;
-
-    const fetchClaimRequests = async () => {
-      try {
-        const res = await apiService.get('/products/claim-requests?mine=true');
-        if (res.data?.success && active) {
-          const claims = (res.data.data || []) as any[];
-
-          setPendingClaimRequests(
-            claims
-              .filter((c: any) => c.status === 'pending' || c.status === 'minting')
-              .map((c: any) => ({
-                id: c.id,
-                status: c.status,
-                productName: c.productName || '',
-                createdAt: c.createdAt,
-              }))
-          );
-
-          setAllClaims(claims);
-
-          const newlyValidated = claims.some(
-            (c: any) => c.status === 'validated' && !handledValidatedRef.current.has(c.id)
-          );
-          if (newlyValidated) {
-            claims
-              .filter((c: any) => c.status === 'validated')
-              .forEach((c: any) => handledValidatedRef.current.add(c.id));
-            fetchUserProducts({ background: true });
-          }
-        }
-      } catch {
-        // silently fail
-      }
-    };
-
     fetchClaimRequests();
-    const interval = setInterval(fetchClaimRequests, 600000);
+    // Poll frequently (15s) so status changes made elsewhere — an admin
+    // validating a claim, minting completing, etc. — surface within seconds.
+    const interval = setInterval(fetchClaimRequests, 15000);
+    // Also resync the moment the tab regains focus, in case updates happened
+    // while it was backgrounded.
+    const resync = () => fetchClaimRequests();
+    window.addEventListener('focus', resync);
+    document.addEventListener('visibilitychange', resync);
 
     return () => {
-      active = false;
       clearInterval(interval);
+      window.removeEventListener('focus', resync);
+      document.removeEventListener('visibilitychange', resync);
     };
-  }, [user?.id]);
+  }, [user?.id, fetchClaimRequests]);
 
   const handleUsePhone = async () => {
     try {
@@ -724,12 +736,21 @@ const Products: React.FC = () => {
       const payload = res.data as any;
       if (payload?.success) {
         setReceiptSuccess(true);
-        setPendingClaimRequests(prev => [{
-          id: payload.claimId || '',
+
+        // Optimistic update: show the "pending review" notification on My
+        // Collection instantly, without waiting for the next poll.
+        const optimisticClaim = {
+          id: payload.claimId || `optimistic-${Date.now()}`,
           status: 'pending',
           productName: receiptProductName,
           createdAt: new Date().toISOString(),
-        }, ...prev]);
+        };
+        setPendingClaimRequests(prev => [optimisticClaim, ...prev]);
+        setAllClaims(prev => [optimisticClaim, ...prev]);
+
+        // Reconcile with the server right away (real claim id, timestamps,
+        // any other claims) instead of waiting for the 15s poll.
+        fetchClaimRequests();
       } else {
         setReceiptError(payload?.error || 'Submission failed');
       }

@@ -390,6 +390,103 @@ const PhotoZoomContent: React.FC<{
 //  COMPONENT
 // ═══════════════════════════════════
 
+// ═══════════════════════════════════
+//  ZAI INSIGHTS — exclusive media & stories
+//  (moved here from the old "Media & Stories" tab on Deals & Collectibles)
+// ═══════════════════════════════════
+
+function ZaiInsights({ stories, fmtDate, C }: { stories: any[]; fmtDate: (d: string) => string; C: any }) {
+  const RED_LABEL: React.CSSProperties = {
+    fontSize: 11, letterSpacing: '0.3em', textTransform: 'uppercase', color: C.red, fontWeight: 500,
+  };
+
+  const featuredStory = stories.find(s => s.featured) || stories[0];
+  const regularStories = stories.filter(s => s !== featuredStory);
+
+  if (!stories.length) {
+    return (
+      <div style={{ textAlign: 'center', padding: 48, color: C.muted, fontSize: 14 }}>
+        No stories yet. Check back soon.
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      {featuredStory && (
+        <>
+          <div style={RED_LABEL}>TOP STORY</div>
+          <div style={{
+            background: C.black, borderRadius: 10, overflow: 'hidden',
+            marginTop: 12, marginBottom: 32, position: 'relative', color: C.white,
+          }}>
+            {featuredStory.thumbnail_url && (
+              <img src={featuredStory.thumbnail_url} alt="" style={{ width: '100%', height: 280, objectFit: 'cover', opacity: 0.5 }} />
+            )}
+            {!featuredStory.thumbnail_url && <div style={{ height: 280, background: 'linear-gradient(135deg, #1a1a1a, #333)' }} />}
+            <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '28px 32px' }}>
+              {featuredStory.media_type === 'video' && (
+                <div style={{ position: 'absolute', top: 16, left: 16, fontSize: 10, fontWeight: 600, background: C.red, padding: '4px 10px', borderRadius: 3 }}>
+                  ▶ VIDEO{featuredStory.duration ? ` · ${featuredStory.duration}` : ''}
+                </div>
+              )}
+              {featuredStory.media_type === 'video' && (
+                <div style={{ position: 'absolute', top: '40%', left: '50%', transform: 'translate(-50%,-50%)', width: 56, height: 56, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                  <span style={{ fontSize: 20, marginLeft: 3 }}>▶</span>
+                </div>
+              )}
+              <div style={{ fontSize: 10, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#999', marginBottom: 8 }}>
+                {featuredStory.category} · EXCLUSIVE
+              </div>
+              <h2 style={{ fontSize: 'clamp(18px, 2.5vw, 26px)', fontWeight: 400, margin: '0 0 6px' }}>{featuredStory.title}</h2>
+              <div style={{ fontSize: 13, color: '#aaa' }}>{featuredStory.description}</div>
+            </div>
+          </div>
+        </>
+      )}
+
+      <div style={RED_LABEL}>ALL STORIES</div>
+      <div style={{ marginTop: 16 }}>
+        {regularStories.map(story => (
+          <div key={story.id} style={{
+            display: 'flex', gap: 16, padding: '16px 0',
+            borderBottom: `1px solid ${C.border}`, alignItems: 'center',
+          }}>
+            <div style={{
+              width: 72, height: 56, borderRadius: 6, overflow: 'hidden',
+              background: C.surface, flexShrink: 0, position: 'relative',
+            }}>
+              {story.thumbnail_url
+                ? <img src={story.thumbnail_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: C.muted, textTransform: 'uppercase' }}>{story.media_type}</div>
+              }
+              {story.media_type === 'video' && (
+                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <span style={{ background: 'rgba(0,0,0,0.6)', color: '#fff', fontSize: 10, padding: '2px 6px', borderRadius: 2 }}>▶</span>
+                </div>
+              )}
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.red, fontWeight: 500, marginBottom: 3 }}>
+                {story.media_type === 'video' ? '▶ ' : ''}{story.media_type} · {story.category}
+                {story.media_type === 'product_launch' && ' ●'}
+              </div>
+              <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 2, color: C.black }}>{story.title}</div>
+              <div style={{ fontSize: 12, color: C.muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{story.description}</div>
+            </div>
+            <div style={{ textAlign: 'right', flexShrink: 0 }}>
+              <div style={{ fontSize: 11, color: C.muted }}>{fmtDate(story.published_at)}</div>
+              <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', marginTop: 4, cursor: 'pointer', color: C.black }}>
+                {story.media_type === 'video' ? 'WATCH →' : story.media_type === 'photo' ? 'VIEW →' : 'READ →'}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 const Community: React.FC = () => {
   const { user } = useAppContext();
   const [isAdmin, setIsAdmin] = useState(false);
@@ -418,6 +515,10 @@ const Community: React.FC = () => {
   // Members directory state
   const [memberSearch, setMemberSearch] = useState('');
   const [memberPage, setMemberPage] = useState(1);
+
+  // zai Insights (media & stories, moved here from the old Updates page)
+  const [mainTab, setMainTab] = useState<'feed' | 'insights'>('feed');
+  const [stories, setStories] = useState<any[]>([]);
 
   useEffect(() => { ensureShimmer(); }, []);
 
@@ -456,13 +557,20 @@ const Community: React.FC = () => {
     } catch (err) { console.error('Error fetching gallery:', err); }
   }, []);
 
+  const fetchStories = useCallback(async () => {
+    try {
+      const res = await apiService.get('/store/media');
+      if (res.data?.success) setStories(res.data.data || []);
+    } catch (err) { console.error('Error fetching zai insights:', err); }
+  }, []);
+
   useEffect(() => {
     (async () => {
       setIsLoading(true);
-      await Promise.all([fetchMembers(), fetchStats(), fetchPhotos()]);
+      await Promise.all([fetchMembers(), fetchStats(), fetchPhotos(), fetchStories()]);
       setIsLoading(false);
     })();
-  }, [fetchMembers, fetchStats, fetchPhotos]);
+  }, [fetchMembers, fetchStats, fetchPhotos, fetchStories]);
 
   // ─── Photo pagination ───
 
@@ -853,21 +961,36 @@ const Community: React.FC = () => {
         display: 'flex', alignItems: 'center', gap: 24, marginBottom: 28,
         borderBottom: bdr, paddingBottom: 0,
       }}>
-        <button style={{
-          background: 'none', border: 'none', borderBottom: `2px solid ${C.black}`,
+        <button onClick={() => setMainTab('feed')} style={{
+          background: 'none', border: 'none', borderBottom: mainTab === 'feed' ? `2px solid ${C.black}` : '2px solid transparent',
           padding: '10px 0', fontSize: '11px', letterSpacing: '0.2em', textTransform: 'uppercase',
-          fontWeight: 600, color: C.black, cursor: 'pointer', fontFamily: "'Inter',sans-serif",
+          fontWeight: mainTab === 'feed' ? 600 : 400, color: mainTab === 'feed' ? C.black : C.muted,
+          cursor: 'pointer', fontFamily: "'Inter',sans-serif",
         }}>
           ALL STORIES
         </button>
-        <span style={{
+        <button onClick={() => setMainTab('insights')} style={{
+          background: 'none', border: 'none', borderBottom: mainTab === 'insights' ? `2px solid ${C.black}` : '2px solid transparent',
           padding: '10px 0', fontSize: '11px', letterSpacing: '0.2em', textTransform: 'uppercase',
-          color: C.muted, fontWeight: 400, borderBottom: '2px solid transparent',
+          fontWeight: mainTab === 'insights' ? 600 : 400, color: mainTab === 'insights' ? C.black : C.muted,
+          cursor: 'pointer', fontFamily: "'Inter',sans-serif",
         }}>
-          {photos.length} POST{photos.length !== 1 ? 'S' : ''}
-        </span>
+          zai Insights
+        </button>
+        {mainTab === 'feed' && (
+          <span style={{
+            padding: '10px 0', fontSize: '11px', letterSpacing: '0.2em', textTransform: 'uppercase',
+            color: C.muted, fontWeight: 400, borderBottom: '2px solid transparent',
+          }}>
+            {photos.length} POST{photos.length !== 1 ? 'S' : ''}
+          </span>
+        )}
       </div>
 
+      {mainTab === 'insights' ? (
+        <ZaiInsights stories={stories} fmtDate={fmtFullDate} C={C} />
+      ) : (
+      <>
       {/* ══════ MAIN GRID ══════ */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 32, alignItems: 'start' }}>
 
@@ -1077,6 +1200,8 @@ const Community: React.FC = () => {
           </div>
         </div>
       </div>
+      </>
+      )}
 
       {/* ══════ UPLOAD MODAL ══════ */}
       {showUpload && (

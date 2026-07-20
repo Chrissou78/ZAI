@@ -138,8 +138,8 @@ const Sidebar: React.FC = () => {
         { path: '/products', label: 'My Collection', icon: <ProductsIcon /> },
         { path: '/events', label: 'Events', icon: <EventsIcon /> },
         { path: '/community', label: 'Community', icon: <CommunityIcon />, badge: communityNewCount },
-        { path: '/rewards', label: 'Rewards', icon: <RewardsIcon /> },
-        { path: '/updates', label: 'Updates & Deals', icon: <UpdatesIcon /> },
+        { path: '/rewards', label: 'Points & Tiers', icon: <RewardsIcon /> },
+        { path: '/updates', label: 'Deals & Collectibles', icon: <UpdatesIcon /> },
       ],
     }] : []),
     {

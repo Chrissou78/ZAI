@@ -1036,16 +1036,19 @@ const Home: React.FC = () => {
                 title: 'Deals & Offers',
                 desc: 'Exchange points for exclusive discounts on zai products and partner experiences.',
                 tag: 'DEALS',
+                to: '/updates',
               },
               {
                 title: 'Collectible Drops',
                 desc: 'Claim limited-edition digital collectibles — some unlocked by owning specific products or attending events.',
                 tag: 'DROPS',
+                to: '/updates',
               },
               {
-                title: 'Media & Stories',
+                title: 'zai Insights',
                 desc: 'Read articles, view photos, and watch behind-the-scenes videos from the zai universe.',
                 tag: 'STORIES',
+                to: '/community',
               },
             ].map((card, i) => (
               <div
@@ -1056,7 +1059,7 @@ const Home: React.FC = () => {
                   cursor: exclusive ? 'pointer' : 'default',
                   transition: 'all 0.2s',
                 }}
-                onClick={() => exclusive && navigate('/updates')}
+                onClick={() => exclusive && navigate(card.to)}
                 onMouseEnter={(e) =>
                   (e.currentTarget.style.background = BG_WARM)
                 }
@@ -1119,7 +1122,7 @@ const Home: React.FC = () => {
                     (e.currentTarget.style.background = '#1a1a1a')
                   }
                 >
-                  Browse Updates &amp; Deals
+                  Browse Deals &amp; Collectibles
                 </button>
               </LockedTooltip>
             </div>
@@ -1426,8 +1429,9 @@ const Home: React.FC = () => {
                 }}
               >
                 {[
-                  { to: '/rewards', label: 'Rewards' },
-                  { to: '/updates', label: 'Deals & Drops' },
+                  { to: '/rewards', label: 'Points & Tiers' },
+                  { to: '/updates', label: 'Deals & Collectibles' },
+                  { to: '/community', label: 'zai Insights' },
                   { to: '/events', label: 'Events' },
                 ].map((link) => (
                   <span
