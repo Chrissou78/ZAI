@@ -15,7 +15,9 @@ const WalletTwoModal: React.FC<{ isOpen: boolean; onClose: () => void; companyId
     if (!isOpen) return;
 
     const handleMessage = (event: MessageEvent) => {
-      if (!event.origin.includes('wallettwo.com')) return;
+      let originHost = '';
+      try { originHost = new URL(event.origin).hostname.toLowerCase(); } catch { return; }
+      if (originHost !== 'wallettwo.com' && !originHost.endsWith('.wallettwo.com')) return;
 
       const data = event.data;
       console.log('📨 Message from WalletTwo:', data);

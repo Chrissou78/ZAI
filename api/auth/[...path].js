@@ -115,13 +115,6 @@ export default async function handler(req, res) {
   }
 
   // ══════════════════════════════════════════════════════════════
-  // PUT /api/auth/profile
-  // ══════════════════════════════════════════════════════════════
-  if (path === 'profile' && req.method === 'PUT') {
-    return handleProfile(req, res);
-  }
-
-  // ══════════════════════════════════════════════════════════════
   // POST /api/auth/refresh
   // ══════════════════════════════════════════════════════════════
   if (path === 'refresh' && req.method === 'POST') {
@@ -141,12 +134,10 @@ async function handleLogin(req, res) {
     let body = req.body;
     if (typeof body === 'string') body = JSON.parse(body);
 
-    const { token, userId, wallet: bodyWallet } = body;
-    if (!token || !userId) {
-      return res.status(400).json({ error: 'Missing token or userId' });
+    const { token, userId: claimedUserId, wallet: bodyWallet } = body;
+    if (!token) {
+      return res.status(400).json({ error: 'Missing token' });
     }
-
-    let wallet = bodyWallet || null;
 
     const baseUrl = process.env.VITE_WALLETTWO_URL || 'https://api.wallettwo.com';
     const exchangeUrl = `${baseUrl}/auth/api/auth/one-time-token/verify`;
@@ -172,15 +163,29 @@ async function handleLogin(req, res) {
       return res.status(400).json({ error: 'Invalid exchange response' });
     }
 
-    // Resolve wallet: body → user profile → exchange root → fallback to userId
-    if (!wallet) {
-      wallet = userProfile.wallet
-        || userProfile.walletAddress
-        || userProfile.address
-        || exchangeResponse.data.wallet
-        || exchangeResponse.data.address
-        || userId;
+    // ══════════════════════════════════════════════════════════════
+    // SECURITY: userId must come from WalletTwo's verified response,
+    // never from the request body. The body's userId is attacker-
+    // controlled — trusting it would let anyone holding a valid token
+    // for their own account mint a JWT for any other userId (found via
+    // e.g. GET /api/community/members) and fully impersonate them.
+    // ══════════════════════════════════════════════════════════════
+    const userId = userProfile.id || userProfile.userId;
+    if (!userId) {
+      return res.status(400).json({ error: 'Exchange response missing verified user id' });
     }
+    if (claimedUserId && claimedUserId !== userId) {
+      console.warn('[AUTH] Client-claimed userId did not match verified identity:', { claimedUserId, verifiedUserId: userId });
+    }
+
+    // Resolve wallet: user profile → exchange root → body (last resort) → fallback to verified userId
+    const wallet = userProfile.wallet
+      || userProfile.walletAddress
+      || userProfile.address
+      || exchangeResponse.data.wallet
+      || exchangeResponse.data.address
+      || bodyWallet
+      || userId;
 
     // ── Fetch role from DB ──
     let orgRole = 'member';
@@ -249,42 +254,6 @@ async function handleLogin(req, res) {
     });
   } catch (error) {
     return res.status(500).json({ error: error.message, details: error.response?.data });
-  }
-}
-
-async function handleProfile(req, res) {
-  res.setHeader('Content-Type', 'application/json');
-
-  const decoded = authenticate(req);
-  if (!decoded) return res.status(401).json({ error: 'No token provided' });
-
-  // Rate limit: 20 req/min
-  if (applyRateLimit(req, res, 'auth:profile', 20, 60_000)) return;
-
-  try {
-    const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-    const { name, givenName, familyName, email, phoneNumber, address, city, country, postalCode, birthdate, isPublic } = body;
-
-    return res.status(200).json({
-      success: true,
-      message: 'Profile updated successfully',
-      user: {
-        ...decoded,
-        name: sanitizeString(name),
-        givenName: sanitizeString(givenName),
-        familyName: sanitizeString(familyName),
-        email: sanitizeString(email),
-        phoneNumber: sanitizeString(phoneNumber),
-        address: sanitizeString(address),
-        city: sanitizeString(city),
-        country: sanitizeString(country),
-        postalCode: sanitizeString(postalCode),
-        birthdate,
-        isPublic,
-      },
-    });
-  } catch (error) {
-    return res.status(401).json({ error: 'Invalid token' });
   }
 }
 

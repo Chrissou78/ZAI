@@ -1253,12 +1253,6 @@ const Products: React.FC = () => {
                     <div style={{ fontSize: 13 }}>{selectedProduct.materials}</div>
                   </div>
                 )}
-                {selectedProduct.serialNumber && (
-                  <div>
-                    <div style={lbl}>Serial</div>
-                    <div style={{ fontSize: 13, fontFamily: 'monospace' }}>{selectedProduct.serialNumber}</div>
-                  </div>
-                )}
                 {/* "Claimed" row removed — product is in the collection so it's self-evident */}
                 <div>
                   <div style={lbl}>Category</div>

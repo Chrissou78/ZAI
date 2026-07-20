@@ -13,7 +13,9 @@ export function WalletConnectButton() {
     if (!showModal) return;
 
     const handleMessage = async (event: MessageEvent) => {
-      if (!event.origin.includes('wallettwo.com')) return;
+      let originHost = '';
+      try { originHost = new URL(event.origin).hostname.toLowerCase(); } catch { return; }
+      if (originHost !== 'wallettwo.com' && !originHost.endsWith('.wallettwo.com')) return;
 
       const iframe = document.getElementById('wallettwo-auth-iframe') as HTMLIFrameElement;
       if (!iframe || event.source !== iframe.contentWindow) return;

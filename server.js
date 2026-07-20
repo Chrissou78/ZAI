@@ -8,7 +8,21 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// ── Body parsing ──
+// ── Stripe webhook needs the raw request body to verify its signature.
+// Must be registered before the global express.json() below, or the
+// bytes are already consumed/parsed by the time the handler sees them.
+app.post(
+  '/api/store/stripe/webhook',
+  express.raw({ type: '*/*', limit: '10mb' }),
+  function (req, res, next) {
+    const buf = Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0);
+    req[Symbol.asyncIterator] = async function* () { yield buf; };
+    next();
+  },
+  vercelToExpress(() => import('./api/store/[...path].js'))
+);
+
+// ── Body parsing (everything else) ──
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
@@ -46,18 +60,44 @@ function vercelToExpress(handlerModule) {
   };
 }
 
+// ── Allowlisted image hosts (prevents SSRF via the proxy routes below) ──
+var ALLOWED_IMAGE_HOSTS = [
+  'ipfs.io',
+  'pinata.cloud',
+  'onchainlabs.ch',
+];
+
+function isAllowedImageHost(hostname) {
+  hostname = (hostname || '').toLowerCase();
+  return ALLOWED_IMAGE_HOSTS.some(function (allowed) {
+    return hostname === allowed || hostname.endsWith('.' + allowed);
+  });
+}
+
+function parseImageUrl(raw) {
+  if (!raw || !(raw.startsWith('https://') || raw.startsWith('http://'))) return null;
+  var parsed;
+  try {
+    parsed = new URL(raw);
+  } catch (e) {
+    return null;
+  }
+  if (!isAllowedImageHost(parsed.hostname)) return null;
+  return parsed;
+}
+
 // ── Proxy & cache product images (public) ──
 app.get('/img/*', function (req, res) {
-  var imageUrl;
+  var raw;
   try {
-    imageUrl = decodeURIComponent(req.path.replace('/img/', ''));
+    raw = decodeURIComponent(req.path.replace('/img/', ''));
   } catch (e) {
     return res.status(400).end();
   }
 
-  if (!imageUrl || !(imageUrl.startsWith('https://') || imageUrl.startsWith('http://'))) {
-    return res.status(400).end();
-  }
+  var parsed = parseImageUrl(raw);
+  if (!parsed) return res.status(400).end();
+  var imageUrl = parsed.href;
 
   res.setHeader('Cache-Control', 'public, max-age=604800, immutable');
 
@@ -86,10 +126,11 @@ app.get('/img/*', function (req, res) {
 
 // ── Authenticated image proxy for admin ──
 app.get('/api/img-proxy', authenticate, function (req, res) {
-  var imageUrl = req.query.url;
-  if (!imageUrl || !(imageUrl.startsWith('https://') || imageUrl.startsWith('http://'))) {
+  var parsed = parseImageUrl(req.query.url);
+  if (!parsed) {
     return res.status(400).json({ error: 'Missing or invalid url param' });
   }
+  var imageUrl = parsed.href;
 
   res.setHeader('Cache-Control', 'private, max-age=86400');
 
@@ -123,6 +164,7 @@ app.all('/api/events/*', vercelToExpress(() => import('./api/events/[...path].js
 app.all('/api/events', vercelToExpress(() => import('./api/events/[...path].js')));
 app.all('/api/community/*', vercelToExpress(() => import('./api/community/[...path].js')));
 app.all('/api/users/*', vercelToExpress(() => import('./api/users/[...path].js')));
+app.all('/api/store/*', vercelToExpress(() => import('./api/store/[...path].js')));
 app.all('/api/wallettwo/*', vercelToExpress(() => import('./api/wallettwo/[...path].js')));
 
 // Health check

@@ -8,15 +8,34 @@ import { CameraIcon, UploadIcon, SmartphoneIcon } from '../Icons/ClaimIcons';
 interface DashboardStats {
   productsClaimed: number;
   eventsAttended: number;
+  eventsUpcoming: number;
   insuranceActive: number;
 }
 
 interface Activity {
   id: string;
-  type: 'product' | 'event' | 'membership';
+  type: 'product' | 'event' | 'membership' | 'referral' | 'purchase' | 'collectible';
   title: string;
   date: string;
   icon: string;
+  points?: number;
+}
+
+/* ── Tier meta (mirrors the backend's tier floors in api/store/[...path].js) ── */
+const TIERS = [
+  { name: 'Blue', floor: 0, ceiling: 14999 },
+  { name: 'Red', floor: 15000, ceiling: 29999 },
+  { name: 'Black', floor: 30000, ceiling: 49999 },
+  { name: 'Diamond', floor: 50000, ceiling: null as number | null },
+];
+
+function tierForBalance(balance: number) {
+  return TIERS.find(t => balance >= t.floor && (t.ceiling === null || balance <= t.ceiling)) || TIERS[0];
+}
+
+function nextTierFor(current: typeof TIERS[number]) {
+  const idx = TIERS.findIndex(t => t.name === current.name);
+  return idx < TIERS.length - 1 ? TIERS[idx + 1] : null;
 }
 
 /* ── Derive a clean display name from user fields ── */
@@ -231,11 +250,16 @@ const Dashboard: React.FC = () => {
   const [stats, setStats] = useState<DashboardStats>({
     productsClaimed: 0,
     eventsAttended: 0,
+    eventsUpcoming: 0,
     insuranceActive: 0,
   });
   const [activity, setActivity] = useState<Activity[]>([]);
   const [dashboardLoading, setDashboardLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // ── Rewards / tier state ──
+  const [pointsBalance, setPointsBalance] = useState(0);
+  const [pointsThisMonth, setPointsThisMonth] = useState(0);
 
   // ── Experience card & admin checks ──
   const [hasExperienceCard, setHasExperienceCard] = useState(false);
@@ -346,7 +370,13 @@ const Dashboard: React.FC = () => {
       setDashboardLoading(true);
       setError(null);
 
-      const productsResponse = await apiService.get(`/products/user/${user?.id}`);
+      const [productsResponse, eventsResponse, balanceResponse, historyResponse] = await Promise.all([
+        apiService.get(`/products/user/${user?.id}`),
+        apiService.get('/events'),
+        apiService.get('/store/rewards/balance').catch(() => null),
+        apiService.get('/store/rewards/history', { params: { limit: 50 } }).catch(() => null),
+      ]);
+
       const responseData = productsResponse.data as any;
       const products = responseData?.data || [];
 
@@ -363,50 +393,38 @@ const Dashboard: React.FC = () => {
       }
       window.dispatchEvent(new Event('zai:experience-card-updated'));
 
-      const eventsResponse = await apiService.get('/events', { params: { status: 'upcoming' } });
-      const upcomingEvents = (eventsResponse.data as any)?.data || [];
+      const allEvents = (eventsResponse.data as any)?.data || [];
+      const attendedEvents = allEvents.filter((e: any) => e.registered && e.status === 'past');
+      const upcomingRegisteredEvents = allEvents.filter((e: any) => e.registered && e.status === 'upcoming');
 
-      const recentActivity: Activity[] = [];
+      // ── Points balance + this-month total ──
+      const balanceData = (balanceResponse?.data as any)?.data;
+      setPointsBalance(balanceData?.balance || 0);
 
-      if (products.length > 0) {
-        const sortedProducts = [...products].sort((a: any, b: any) => {
-          const dateA = a.claimedAt ? new Date(a.claimedAt).getTime() : 0;
-          const dateB = b.claimedAt ? new Date(b.claimedAt).getTime() : 0;
-          return dateB - dateA;
-        });
+      const ledger = ((historyResponse?.data as any)?.data || []) as any[];
+      const now = new Date();
+      const monthTotal = ledger
+        .filter(h => {
+          const d = new Date(h.created_at);
+          return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+        })
+        .reduce((sum, h) => sum + (h.amount || 0), 0);
+      setPointsThisMonth(monthTotal);
 
-        sortedProducts.slice(0, 3).forEach((product: any) => {
-          recentActivity.push({
-            id: product.id,
-            type: 'product',
-            title: `Product claimed: ${product.name}`,
-            date: product.claimedAt || product.createdAt || '',
-            icon: 'product',
-          });
-        });
-      }
-
-      if (upcomingEvents.length > 0) {
-        upcomingEvents.slice(0, 2).forEach((event: any) => {
-          recentActivity.push({
-            id: event.id,
-            type: 'event',
-            title: `Event: ${event.title}`,
-            date: event.date,
-            icon: 'event',
-          });
-        });
-      }
-
-      recentActivity.sort((a, b) => {
-        const timeA = a.date ? new Date(a.date).getTime() : 0;
-        const timeB = b.date ? new Date(b.date).getTime() : 0;
-        return timeB - timeA;
-      });
+      // ── Recent activity: driven by the points ledger (always carries a point value) ──
+      const recentActivity: Activity[] = ledger.slice(0, 5).map((h: any) => ({
+        id: h.id,
+        type: (h.type === 'referral' ? 'referral' : h.type === 'collectible' ? 'collectible' : h.type === 'purchase' || h.type === 'deal_redeem' ? 'purchase' : 'product') as Activity['type'],
+        title: h.description || 'Points activity',
+        date: h.created_at,
+        icon: h.type,
+        points: h.amount,
+      }));
 
       setStats({
         productsClaimed: products.length,
-        eventsAttended: upcomingEvents.length,
+        eventsAttended: attendedEvents.length,
+        eventsUpcoming: upcomingRegisteredEvents.length,
         insuranceActive: products.filter((p: any) => p.insurance?.active).length,
       });
 
@@ -577,11 +595,19 @@ const Dashboard: React.FC = () => {
   const getActivityDotColor = (type: string) => {
     if (type === 'product') return '#7A222E';
     if (type === 'event') return '#2563eb';
+    if (type === 'referral') return '#4caf7d';
     return '#6a6a6a';
   };
 
   /* ── Should we show the EC card image on the right? ── */
   const showEcCardRight = exclusive;
+
+  // ── Tier progress (every member starts at Blue, independent of Experience Card status) ──
+  const currentTier = tierForBalance(pointsBalance);
+  const nextTier = nextTierFor(currentTier);
+  const tierProgress = nextTier
+    ? Math.min(100, Math.max(0, ((pointsBalance - currentTier.floor) / (nextTier.floor - currentTier.floor)) * 100))
+    : 100;
 
   return (
     <div style={{ maxWidth: 1100, margin: '0 auto', padding: '48px 48px 80px', fontFamily: "'Inter', sans-serif" }}>
@@ -677,8 +703,8 @@ const Dashboard: React.FC = () => {
             padding: '2rem',
             display: 'flex',
             flexDirection: 'column',
-            alignItems: 'center',
-            textAlign: 'center',
+            alignItems: 'flex-start',
+            textAlign: 'left',
           }}
         >
           <div
@@ -699,13 +725,44 @@ const Dashboard: React.FC = () => {
           >
             {userFirst?.[0]?.toUpperCase() || userDisplay?.[0]?.toUpperCase() || ''}
           </div>
-          <div style={{ fontSize: '17px', fontWeight: 300, marginBottom: '2px' }}>
+          <div style={{ fontSize: '22px', fontWeight: 400, marginBottom: '2px', color: '#1a1a1a' }}>
             {userFirst || userDisplay}
           </div>
           <div style={{ fontSize: '11px', color: '#6a6a6a', marginBottom: '1.25rem' }}>
             {user.city || 'Location not set'} · {user.country || 'Country not set'}
           </div>
-          {/* ── Tier badge ── */}
+
+          {/* ── Tier badge (every member starts at Blue) ── */}
+          <div
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '7px 14px',
+              border: '1px solid #7A222E',
+              background: 'rgba(122,34,46,0.06)',
+              borderRadius: 4,
+              marginBottom: '0.9rem',
+            }}
+          >
+            <div style={{ width: '4px', height: '4px', background: '#7A222E', borderRadius: '50%' }} />
+            <span style={{ fontSize: '10px', letterSpacing: '0.15em', textTransform: 'uppercase', fontWeight: 600, color: '#7A222E' }}>
+              {currentTier.name} Tier
+            </span>
+          </div>
+
+          {/* ── Tier progress bar ── */}
+          <div style={{ width: '100%', marginBottom: '1.25rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#6a6a6a', marginBottom: '6px' }}>
+              <span>{pointsBalance.toLocaleString('de-CH')} pts</span>
+              <span>{nextTier ? `${nextTier.floor.toLocaleString('de-CH')} for ${nextTier.name}` : 'Max tier'}</span>
+            </div>
+            <div style={{ height: '4px', background: '#e0ddd6', borderRadius: '2px', overflow: 'hidden' }}>
+              <div style={{ height: '100%', width: `${tierProgress}%`, background: '#7A222E', borderRadius: '2px', transition: 'width 0.6s ease' }} />
+            </div>
+          </div>
+
+          {/* ── Member / Admin since ── */}
           <div style={{ fontSize: '10px', display: 'flex', alignItems: 'center', gap: '5px' }}>
             <div style={{ width: '4px', height: '4px', background: '#7A222E', borderRadius: '50%' }} />
             <span style={{ color: exclusive ? '#7A222E' : '#6a6a6a', fontWeight: exclusive ? 600 : 400 }}>
@@ -797,40 +854,19 @@ const Dashboard: React.FC = () => {
             color: '#fff',
           }}
         >
-          {/* Left part: Greeting + stats */}
-          <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: '100%' }}>
-            <div>
-              <div style={{ fontSize: '10px', letterSpacing: '0.3em', textTransform: 'uppercase', color: '#555', marginBottom: '0.75rem' }}>
-                Good to see you
-              </div>
-              <div style={{ fontSize: '28px', fontWeight: 200, lineHeight: 1.2, marginBottom: '1rem' }}>
-                Welcome back,<br />
-                <span style={{ color: '#f5f4f0' }}>{userFirst || userDisplay}.</span>
-              </div>
-              <div style={{ fontSize: '12px', color: '#999', lineHeight: 1.8, maxWidth: '380px' }}>
-                {exclusive
-                  ? 'Explore exclusive events, manage your registered products, and access the full zai experience club.'
-                  : 'Claim your zai Experience Card to unlock your collection, exclusive events, and the full zai experience.'}
-              </div>
+          {/* Left part: Greeting */}
+          <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center', height: '100%' }}>
+            <div style={{ fontSize: '10px', letterSpacing: '0.3em', textTransform: 'uppercase', color: '#555', marginBottom: '0.75rem' }}>
+              Good to see you
             </div>
-            <div style={{ display: 'flex', gap: 0, border: '1px solid #2a2a2a', marginTop: '1.5rem', width: 'fit-content' }}>
-              <div style={{ padding: '1rem 1.5rem', borderRight: '1px solid #2a2a2a', textAlign: 'center' }}>
-                <div style={{ fontSize: '20px', fontWeight: 200, color: '#f5f4f0' }}>
-                  {stats.productsClaimed}
-                </div>
-                <div style={{ fontSize: '9px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#555', marginTop: '2px' }}>
-                  Products
-                </div>
-              </div>
-              {/* ── Events counter (always visible, shows 0 for standard users) ── */}
-                <div style={{ padding: '1rem 1.5rem', textAlign: 'center' }}>
-                  <div style={{ fontSize: '20px', fontWeight: 200, color: exclusive ? '#fff' : '#555' }}>
-                    {exclusive ? stats.eventsAttended : 0}
-                  </div>
-                  <div style={{ fontSize: '9px', letterSpacing: '0.2em', textTransform: 'uppercase', color: '#555', marginTop: '2px' }}>
-                    Events
-                  </div>
-                </div>
+            <div style={{ fontSize: 'clamp(28px, 3.2vw, 38px)', fontWeight: 200, lineHeight: 1.2, marginBottom: '1rem' }}>
+              Welcome back,<br />
+              <span style={{ color: '#f5f4f0' }}>{userFirst || userDisplay}.</span>
+            </div>
+            <div style={{ fontSize: '15px', color: '#999', lineHeight: 1.8, maxWidth: '420px' }}>
+              {exclusive
+                ? 'Explore exclusive events, manage your registered products, and access the full zai experience club.'
+                : 'Claim your zai Experience Card to unlock your collection, exclusive events, and the full zai experience.'}
             </div>
           </div>
 
@@ -871,7 +907,7 @@ const Dashboard: React.FC = () => {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(2, 1fr)',
+          gridTemplateColumns: 'repeat(3, 1fr)',
           gap: '1px',
           background: '#e0ddd6',
           border: '1px solid #e0ddd6',
@@ -879,6 +915,19 @@ const Dashboard: React.FC = () => {
           marginBottom: '1px',
         }}
       >
+        {/* Total Points */}
+        <div style={{ background: '#fff', padding: '1.5rem 1.25rem' }}>
+          <div style={{ fontSize: '32px', fontWeight: 200, lineHeight: 1, color: '#1a1a1a' }}>
+            {pointsBalance.toLocaleString('de-CH')}
+          </div>
+          <div style={{ fontSize: '11px', letterSpacing: '0.25em', textTransform: 'uppercase', color: '#6a6a6a', marginTop: '6px' }}>
+            Total points
+          </div>
+          <div style={{ fontSize: '11px', color: '#6a6a6a', marginTop: '2px' }}>
+            {pointsThisMonth !== 0 ? `${pointsThisMonth > 0 ? '+' : ''}${pointsThisMonth.toLocaleString('de-CH')} this month` : 'No activity this month'}
+          </div>
+        </div>
+
         {/* Products Claimed — always visible */}
         <div style={{ background: '#fff', padding: '1.5rem 1.25rem' }}>
           <div style={{ fontSize: '32px', fontWeight: 200, lineHeight: 1, color: '#1a1a1a' }}>
@@ -892,20 +941,18 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* ── Upcoming Events stat (always visible, shows 0 for standard users) ── */}
-          <div style={{ background: '#fff', padding: '1.5rem 1.25rem' }}>
-            <div style={{ fontSize: '32px', fontWeight: 200, lineHeight: 1, color: '#1a1a1a' }}>
-              {exclusive ? stats.eventsAttended : 0}
-            </div>
-            <div style={{ fontSize: '11px', letterSpacing: '0.25em', textTransform: 'uppercase', color: '#6a6a6a', marginTop: '6px' }}>
-              Upcoming events
-            </div>
-            <div style={{ fontSize: '11px', color: '#6a6a6a', marginTop: '2px' }}>
-              {exclusive
-                ? (stats.eventsAttended === 0 ? 'Check upcoming events' : 'Registrations active')
-                : '0 events'}
-            </div>
+        {/* Events Attended (always visible, shows 0 for standard users) */}
+        <div style={{ background: '#fff', padding: '1.5rem 1.25rem' }}>
+          <div style={{ fontSize: '32px', fontWeight: 200, lineHeight: 1, color: '#1a1a1a' }}>
+            {exclusive ? stats.eventsAttended : 0}
           </div>
+          <div style={{ fontSize: '11px', letterSpacing: '0.25em', textTransform: 'uppercase', color: '#6a6a6a', marginTop: '6px' }}>
+            Events attended
+          </div>
+          <div style={{ fontSize: '11px', color: '#6a6a6a', marginTop: '2px' }}>
+            {exclusive ? `${stats.eventsUpcoming} upcoming` : '0 upcoming'}
+          </div>
+        </div>
       </div>
 
       {/* Activity + Quick Actions */}
@@ -970,6 +1017,11 @@ const Dashboard: React.FC = () => {
                       {formatDate(item.date)}
                     </div>
                   </div>
+                  {typeof item.points === 'number' && item.points !== 0 && (
+                    <div style={{ fontSize: '12px', fontWeight: 600, color: item.points > 0 ? '#4caf7d' : '#7A222E', whiteSpace: 'nowrap' }}>
+                      {item.points > 0 ? '+' : ''}{item.points.toLocaleString('de-CH')} pts
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -1070,7 +1122,32 @@ const Dashboard: React.FC = () => {
                 </svg>
               ),
             },
-          ].map((action, i) => (
+            {
+              title: 'View your tier',
+              sub: nextTier
+                ? `${currentTier.name} · ${Math.max(0, nextTier.floor - pointsBalance).toLocaleString('de-CH')} pts to ${nextTier.name}`
+                : `${currentTier.name} · Max tier reached`,
+              page: '/rewards',
+              icon: (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a1a1a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                </svg>
+              ),
+            },
+            {
+              title: 'Share referral code',
+              sub: 'Earn 200 pts per friend',
+              page: '/profile',
+              icon: (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a1a1a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                  <circle cx="9" cy="7" r="4" />
+                  <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                </svg>
+              ),
+            },
+          ].map((action, i, arr) => (
             <div
               key={i}
               onClick={() => navigate(action.page)}
@@ -1079,7 +1156,7 @@ const Dashboard: React.FC = () => {
                 alignItems: 'center',
                 gap: '12px',
                 padding: '0.9rem 0',
-                borderBottom: i === 0 ? '1px solid #e0ddd6' : 'none',
+                borderBottom: i < arr.length - 1 ? '1px solid #e0ddd6' : 'none',
                 cursor: 'pointer',
                 transition: 'opacity 0.2s',
               }}

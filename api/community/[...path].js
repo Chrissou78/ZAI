@@ -600,7 +600,7 @@ export default async function handler(req, res) {
     try {
       const comment = await getPool().query('SELECT author_id FROM photo_comments WHERE id=$1 AND photo_id=$2', [commentDelMatch[2], commentDelMatch[1]]);
       if (!comment.rows[0]) return res.status(404).json({ success: false, error: 'Comment not found' });
-      if (comment.rows[0].author_id !== user.userId && !isAdmin(user)) {
+      if (comment.rows[0].author_id !== user.userId && !await isAdmin(user)) {
         return res.status(403).json({ success: false, error: 'Not authorized' });
       }
       await getPool().query('DELETE FROM photo_comments WHERE id=$1', [commentDelMatch[2]]);
