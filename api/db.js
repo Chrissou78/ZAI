@@ -217,6 +217,22 @@ export async function initDB() {
         created_at TIMESTAMPTZ DEFAULT NOW()
       );
 
+      CREATE TABLE IF NOT EXISTS mint_attempts (
+        id TEXT PRIMARY KEY,
+        source TEXT NOT NULL,
+        user_id TEXT,
+        rwa_id TEXT,
+        product_name TEXT DEFAULT '',
+        requested_wallet TEXT,
+        http_status INT,
+        ok BOOLEAN NOT NULL DEFAULT false,
+        error_detail TEXT,
+        nft_snapshot JSONB,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_mint_attempts_created ON mint_attempts(created_at DESC);
+
       CREATE TABLE IF NOT EXISTS product_claim_requests (
         id TEXT PRIMARY KEY,
         user_id TEXT NOT NULL,

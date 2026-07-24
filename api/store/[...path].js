@@ -220,17 +220,33 @@ async function fulfillDealRedemption({ redemptionId, dealId, userId, pointsUsed,
             body: JSON.stringify({ wallet, address: wallet }),
           });
           const mintData = await mintRes.json();
+          const mintOk = mintRes.ok && mintData?.success !== false;
 
-          if (mintRes.ok && mintData?.success !== false) {
-            console.log(`[deal-fulfill] ✓ NFT minted for deal ${dealId} → ${wallet} (RWA: ${rwa.id})`);
-            minted = true;
-
+          try {
             await getPool().query(
-              `INSERT INTO product_claims (id, user_id, product_id, claimed_at)
-              VALUES ($1, $2, $3, NOW())
-              ON CONFLICT (user_id, product_id) DO NOTHING`,
-              [randomUUID(), userId, rwa.id]
+              `INSERT INTO mint_attempts (id, source, user_id, rwa_id, product_name, requested_wallet, http_status, ok, error_detail, nft_snapshot, created_at)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())`,
+              [randomUUID(), 'deal-fulfill', userId, rwa.id, deal.title || '', wallet,
+               mintRes.status, mintOk, mintOk ? null : (mintData?.message || mintData?.error || 'Unknown error'),
+               mintData?.nft ? JSON.stringify(mintData.nft) : null]
             );
+          } catch (logErr) {
+            console.error('[MINT-DEBUG] Failed to log mint attempt:', logErr.message);
+          }
+
+          if (mintOk) {
+            try {
+              await getPool().query(
+                `INSERT INTO product_claims (id, user_id, product_id, claimed_at)
+                VALUES ($1, $2, $3, NOW())
+                ON CONFLICT (user_id, product_id) DO NOTHING`,
+                [randomUUID(), userId, rwa.id]
+              );
+              console.log(`[deal-fulfill] ✓ NFT minted for deal ${dealId} → ${wallet} (RWA: ${rwa.id})`);
+              minted = true; // only set once the claim record is actually persisted
+            } catch (claimWriteErr) {
+              console.error('[deal-fulfill] Mint succeeded but product_claims write failed:', claimWriteErr.message);
+            }
           } else {
             console.error('[deal-fulfill] NFT mint failed:', mintData?.message || mintData?.error || 'Unknown error');
           }

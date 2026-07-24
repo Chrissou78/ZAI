@@ -121,6 +121,19 @@ function genId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
 }
 
+async function logMintAttempt(pool, { source, userId, rwaId, productName, requestedWallet, httpStatus, ok, errorDetail, nftSnapshot }) {
+  try {
+    await pool.query(
+      `INSERT INTO mint_attempts (id, source, user_id, rwa_id, product_name, requested_wallet, http_status, ok, error_detail, nft_snapshot, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())`,
+      [genId(), source, userId || null, rwaId || null, productName || '', requestedWallet || null,
+       httpStatus || null, !!ok, errorDetail || null, nftSnapshot ? JSON.stringify(nftSnapshot) : null]
+    );
+  } catch (logErr) {
+    console.error('[MINT-DEBUG] Failed to log mint attempt:', logErr.message);
+  }
+}
+
 async function apiFetch(base, path, opts = {}) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 10000);
@@ -1089,6 +1102,41 @@ export default async function handler(req, res) {
   }
 
   // ══════════════════════════════════════════════════════════════
+  // GET /api/products/mint-debug/recent — recent mint/claim attempts, for the
+  // Ctrl+Shift+D debug popup. Requires being logged in, not admin-restricted.
+  // ══════════════════════════════════════════════════════════════
+  if (fullPath === 'mint-debug/recent' && req.method === 'GET') {
+    const decoded = authenticate(req);
+    if (!decoded) return res.status(401).json({ error: 'Unauthorized' });
+
+    if (applyRateLimit(req, res, 'products:r11', 30, 60000)) return;
+
+    try {
+      const db = await getDB();
+      if (!db) return res.json({ success: true, data: [] });
+      await db.initDB();
+      const pool = db.getPool();
+
+      const { searchParams } = new URL(req.url, `http://${req.headers.host}`);
+      const limit = Math.min(parseInt(searchParams.get('limit') || '20', 10) || 20, 100);
+
+      const result = await pool.query(
+        `SELECT id, source, user_id, rwa_id, product_name, requested_wallet,
+                http_status, ok, error_detail, nft_snapshot, created_at
+         FROM mint_attempts
+         ORDER BY created_at DESC
+         LIMIT $1`,
+        [limit]
+      );
+
+      return res.json({ success: true, data: result.rows });
+    } catch (err) {
+      console.error('[PRODUCTS] mint-debug/recent error:', err);
+      return res.status(500).json({ error: 'Failed to fetch mint attempts' });
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════
   // GET /api/products/claim-requests
   // ══════════════════════════════════════════════════════════════
   if (fullPath === 'claim-requests' && req.method === 'GET') {
@@ -1305,14 +1353,34 @@ export default async function handler(req, res) {
                 : (mintData?.message || mintData?.error || `Mint failed (HTTP ${mintStatus})`),
             };
 
+            await logMintAttempt(pool, {
+              source: 'claim-validate',
+              userId: claimReq.user_id,
+              rwaId: rwaIdToMint,
+              productName: claimReq.product_name,
+              requestedWallet: userWallet,
+              httpStatus: mintStatus,
+              ok: mintOk,
+              errorDetail: mintResult.error,
+              nftSnapshot: mintData?.nft || null,
+            });
+
             if (mintOk) {
-              minted = true;
-              await pool.query(
-                `INSERT INTO product_claims (id, user_id, product_id, claimed_at)
-                 VALUES ($1, $2, $3, NOW())
-                 ON CONFLICT (user_id, product_id) DO NOTHING`,
-                [genId(), claimReq.user_id, rwaIdToMint]
-              );
+              try {
+                await pool.query(
+                  `INSERT INTO product_claims (id, user_id, product_id, claimed_at)
+                   VALUES ($1, $2, $3, NOW())
+                   ON CONFLICT (user_id, product_id) DO NOTHING`,
+                  [genId(), claimReq.user_id, rwaIdToMint]
+                );
+                minted = true; // only set once the claim record is actually persisted
+              } catch (claimWriteErr) {
+                console.error('[PRODUCTS] Mint succeeded but product_claims write failed:', claimWriteErr.message);
+                mintResult = {
+                  success: false,
+                  error: `Mint succeeded but failed to record claim — do NOT blindly retry validation, it will call mint again: ${claimWriteErr.message}`,
+                };
+              }
             }
           } else {
             mintResult = { success: false, error: 'No wallet on file for this user' };

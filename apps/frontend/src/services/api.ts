@@ -10,7 +10,6 @@ const STALE_AGE = 30 * 60 * 1000;      // 30 minutes — serve stale + revalidat
 
 // Per-route cache durations (ms) — override the default for specific endpoints
 const CACHE_RULES: Record<string, { maxAge: number; staleAge: number }> = {
-  '/products/user/':      { maxAge: 2 * 60 * 1000,  staleAge: 10 * 60 * 1000 },
   '/events':              { maxAge: 5 * 60 * 1000,  staleAge: 30 * 60 * 1000 },
   '/products/experience': { maxAge: 10 * 60 * 1000, staleAge: 60 * 60 * 1000 },
   '/community':           { maxAge: 2 * 60 * 1000,  staleAge: 10 * 60 * 1000 },
@@ -23,6 +22,8 @@ const NO_CACHE_PATTERNS = [
   '/claim-upload/',
   '/claim-request',
   'mine=true',
+  '/mint-debug/',
+  '/products/user/', // must always reflect live on-chain mint/claim state, not a stale session snapshot
 ];
 
 interface CacheEntry {

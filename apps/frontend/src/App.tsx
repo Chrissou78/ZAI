@@ -2,6 +2,7 @@ import React from 'react';
 import { AppProvider } from './context/AppContext';
 import { WalletProvider } from './context/WalletContext';
 import Router from './Router';
+import { MintDebugPanel } from './components/MintDebugPanel';
 import './styles/globals.css';
 
 export function App() {
@@ -9,6 +10,7 @@ export function App() {
     <AppProvider>
       <WalletProvider>
         <Router />
+        <MintDebugPanel />
       </WalletProvider>
     </AppProvider>
   );
