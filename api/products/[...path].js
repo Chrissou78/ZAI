@@ -285,7 +285,7 @@ let _transporter = null;
 function getTransporter() {
   if (!_transporter) {
     _transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST || 'smtp-relay.gmail.com',
+      host: process.env.SMTP_HOST || 'smtp.gmail.com',
       port: Number(process.env.SMTP_PORT) || 587,
       secure: false,
       auth: {
@@ -355,15 +355,15 @@ async function sendEmail(to, subject, html) {
   }
 }
 
-function notifyAll(userEmail, subject, userHtml, adminHtml) {
+async function notifyAll(userEmail, subject, userHtml, adminHtml) {
   const sends = [sendEmail(ADMIN_INBOX, subject, adminHtml)];
   if (userEmail && userEmail !== ADMIN_INBOX) {
     sends.push(sendEmail(userEmail, subject, userHtml));
   }
-  Promise.all(sends).catch(() => {});
+  await Promise.all(sends).catch(() => {});
 }
 
-function notifyClaimReceived(userEmail, userName, productName) {
+async function notifyClaimReceived(userEmail, userName, productName) {
   const safeName = sanitizeString(userName);
   const safeProduct = sanitizeString(productName) || 'Not specified';
 
@@ -386,7 +386,7 @@ function notifyClaimReceived(userEmail, userName, productName) {
     ]) +
     emailBtn('Review Claims', `${FRONTEND()}/admin`);
 
-  notifyAll(
+  await notifyAll(
     userEmail,
     `New claim — ${safeProduct}`,
     emailWrap('Claim Received', userBody),
@@ -394,7 +394,7 @@ function notifyClaimReceived(userEmail, userName, productName) {
   );
 }
 
-function notifyClaimValidated(userEmail, userName, productName) {
+async function notifyClaimValidated(userEmail, userName, productName) {
   const safeName = sanitizeString(userName);
   const safeProduct = sanitizeString(productName);
   const isCard = isExperienceCardName(productName);
@@ -417,7 +417,7 @@ function notifyClaimValidated(userEmail, userName, productName) {
       ['Status', '<span style="color:#4caf7d;font-weight:600;">Validated ✓</span>'],
     ]);
 
-  notifyAll(
+  await notifyAll(
     userEmail,
     `Claim approved — ${safeProduct}`,
     emailWrap('Claim Approved!', userBody),
@@ -425,7 +425,7 @@ function notifyClaimValidated(userEmail, userName, productName) {
   );
 }
 
-function notifyClaimRejected(userEmail, userName, productName, adminNote) {
+async function notifyClaimRejected(userEmail, userName, productName, adminNote) {
   const safeName = sanitizeString(userName);
   const safeProduct = sanitizeString(productName) || 'Not specified';
   const safeNote = sanitizeString(adminNote);
@@ -454,7 +454,7 @@ function notifyClaimRejected(userEmail, userName, productName, adminNote) {
     emailP(`Claim for <strong>${safeProduct}</strong> by <strong>${safeName}</strong> has been rejected.`) +
     emailTable(adminRows);
 
-  notifyAll(
+  await notifyAll(
     userEmail,
     `Claim update — ${safeProduct}`,
     emailWrap('Claim Not Approved', userBody),
@@ -681,17 +681,46 @@ export default async function handler(req, res) {
 
       const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
 
-      const sasPayload = {
-        make: sanitizeString(body.make || ''),
-        model: sanitizeString(body.model || ''),
-        serialNumber: sanitizeString(body.serialNumber || ''),
-        purchaseDate: sanitizeString(body.purchaseDate || ''),
-        value: body.value,
-        currency: sanitizeString(body.currency || 'CHF'),
+      const partnerId = Number(process.env.SAS_PARTNER_ID);
+      const allowedProductIds = (process.env.SAS_PRODUCT_IDS || '')
+        .split(',').map(s => s.trim()).filter(Boolean).map(Number);
+
+      const partner = {
+        ID: partnerId,
+        reference: 'zai Experience Club',
+        storename: 'zai Experience Club',
+        storelocation: 'Online',
       };
 
+      const customer = {
+        salutation: Number(body.salutation) || 1,
+        firstname: sanitizeString(body.firstname || ''),
+        lastname: sanitizeString(body.lastname || ''),
+        address1: sanitizeString(body.address1 || ''),
+        zip: Number(body.zip) || 0,
+        city: sanitizeString(body.city || ''),
+        country: sanitizeString(body.country || 'CH'),
+        language: sanitizeString(body.language || 'en'),
+        email: sanitizeString(body.email || ''),
+        phone: sanitizeString(body.phone || ''),
+      };
+
+      const device = {
+        type: Number(body.deviceType) || 1,
+        make: body.makeId ? { ID: Number(body.makeId) } : { name: sanitizeString(body.makeName || '') },
+        model: sanitizeString(body.model || ''),
+        serial: sanitizeString(body.serial || ''),
+        price: Number(body.price) || 0,
+        purchasingdate: sanitizeString(body.purchasingdate || ''),
+      };
+      if (body.length) device.length = Number(body.length);
+
+      const products = allowedProductIds.map(id => ({ ID: id }));
+
+      const sasPayload = { partner, customer, device, products };
+
       const existing = await pool.query(
-        `SELECT id, status FROM insurance_registrations
+        `SELECT id, sas_status FROM insurance_registrations
          WHERE user_id = $1 AND product_id = $2
          ORDER BY created_at DESC LIMIT 1`,
         [decoded.userId, productId]
@@ -702,16 +731,16 @@ export default async function handler(req, res) {
         registrationId = existing.rows[0].id;
         await pool.query(
           `UPDATE insurance_registrations
-           SET status = 'pending', sas_payload = $1, updated_at = NOW()
-           WHERE id = $2`,
-          [JSON.stringify(sasPayload), registrationId]
+           SET sas_status = 'pending', customer_data = $1, device_data = $2, products_data = $3, error_detail = NULL, updated_at = NOW()
+           WHERE id = $4`,
+          [JSON.stringify(customer), JSON.stringify(device), JSON.stringify(products), registrationId]
         );
       } else {
         const insId = genId();
         await pool.query(
-          `INSERT INTO insurance_registrations (id, user_id, product_id, status, sas_payload, created_at)
-           VALUES ($1, $2, $3, 'pending', $4, NOW())`,
-          [insId, decoded.userId, productId, JSON.stringify(sasPayload)]
+          `INSERT INTO insurance_registrations (id, user_id, product_id, sas_status, customer_data, device_data, products_data, created_at)
+           VALUES ($1, $2, $3, 'pending', $4, $5, $6, NOW())`,
+          [insId, decoded.userId, productId, JSON.stringify(customer), JSON.stringify(device), JSON.stringify(products)]
         );
         registrationId = insId;
       }
@@ -719,14 +748,20 @@ export default async function handler(req, res) {
       try {
         const sasResult = await callSasApi(sasPayload);
         await pool.query(
-          `UPDATE insurance_registrations SET status = 'active', sas_response = $1, updated_at = NOW() WHERE id = $2`,
-          [JSON.stringify(sasResult), registrationId]
+          `UPDATE insurance_registrations SET sas_status = 'active', sas_transaction_id = $1, sas_certificate_id = $2, updated_at = NOW() WHERE id = $3`,
+          [sasResult.transactionid, sasResult.certificateid, registrationId]
         );
-        return res.json({ success: true, status: 'active', registrationId, sasResult });
+        return res.json({
+          success: true,
+          status: 'active',
+          registrationId,
+          transactionId: sasResult.transactionid,
+          certificateId: sasResult.certificateid,
+        });
       } catch (sasErr) {
         await pool.query(
-          `UPDATE insurance_registrations SET status = 'error', sas_response = $1, updated_at = NOW() WHERE id = $2`,
-          [JSON.stringify({ error: sasErr.message }), registrationId]
+          `UPDATE insurance_registrations SET sas_status = 'error', error_detail = $1, updated_at = NOW() WHERE id = $2`,
+          [sasErr.message, registrationId]
         );
         return res.status(502).json({ error: 'Insurance activation failed', detail: sasErr.message });
       }
@@ -753,7 +788,8 @@ export default async function handler(req, res) {
       const pool = db.getPool();
 
       const result = await pool.query(
-        `SELECT id, status, sas_payload, sas_response, created_at, updated_at
+        `SELECT id, sas_status AS status, sas_transaction_id AS "transactionId", sas_certificate_id AS "certificateId",
+                customer_data, device_data, products_data, error_detail, created_at, updated_at
          FROM insurance_registrations
          WHERE user_id = $1 AND product_id = $2
          ORDER BY created_at DESC LIMIT 1`,
@@ -1042,8 +1078,8 @@ export default async function handler(req, res) {
         ]
       );
 
-      // Notify user + info@zai.ch (non-blocking)
-      notifyClaimReceived(userEmail, userName, safeProductName);
+      // Notify user + info@zai.ch
+      await notifyClaimReceived(userEmail, userName, safeProductName);
 
       return res.json({ success: true, claimId, status: 'pending' });
     } catch (err) {
@@ -1343,7 +1379,7 @@ export default async function handler(req, res) {
         }
 
         // Notify user + info@zai.ch
-        notifyClaimValidated(claimReq.user_email, claimReq.user_name, claimReq.product_name);
+        await notifyClaimValidated(claimReq.user_email, claimReq.user_name, claimReq.product_name);
       } else {
         await pool.query(
           `UPDATE product_claim_requests
@@ -1411,7 +1447,7 @@ export default async function handler(req, res) {
 
       // Notify user + info@zai.ch
       const row = result.rows[0];
-      notifyClaimRejected(row.user_email, row.user_name, row.product_name, adminNote);
+      await notifyClaimRejected(row.user_email, row.user_name, row.product_name, adminNote);
 
       return res.json({ success: true, status: 'rejected' });
     } catch (err) {
