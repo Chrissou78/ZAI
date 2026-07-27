@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { apiService } from '../services/api';
+import { useAppContext } from '../context/AppContext';
 
 interface MintAttempt {
   id: string;
@@ -22,6 +23,10 @@ const C = {
 };
 
 export function MintDebugPanel() {
+  const { user } = useAppContext();
+  // These rows span every user, so the panel is for admins only. The server
+  // enforces this too — this just avoids offering a shortcut that would 403.
+  const isAdminUser = user?.role === 'admin' || user?.role === 'owner';
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -45,26 +50,24 @@ export function MintDebugPanel() {
   }, []);
 
   useEffect(() => {
+    if (!isAdminUser) return;
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.ctrlKey && e.shiftKey && (e.key === 'D' || e.key === 'd')) {
         e.preventDefault();
-        setOpen(prev => {
-          const next = !prev;
-          return next;
-        });
+        setOpen(prev => !prev);
       } else if (e.key === 'Escape') {
         setOpen(false);
       }
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, []);
+  }, [isAdminUser]);
 
   useEffect(() => {
     if (open) load();
   }, [open, load]);
 
-  if (!open) return null;
+  if (!isAdminUser || !open) return null;
 
   return (
     <div

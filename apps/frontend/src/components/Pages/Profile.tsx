@@ -616,9 +616,7 @@ const ReferralProgram: React.FC<{ userId: string }> = ({ userId }) => {
    PROFILE COMPONENT
    ═══════════════════════════════════════════════════════════ */
 const Profile: React.FC = () => {
-  const { user, setUser } = useAppContext();
-  const [isEditing, setIsEditing] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const { user } = useAppContext();
   const [stats, setStats] = useState<UserStats>({ productsClaimed: 0, eventsAttended: 0 });
   const [formData, setFormData] = useState(toFormData(user));
 
@@ -712,7 +710,9 @@ const Profile: React.FC = () => {
       try {
         const r = await apiService.get('/store/rewards/balance');
         if (!cancelled && r.data?.success) {
-          setPoints(r.data.data?.points || 0);
+          // The endpoint returns `balance`; reading `points` silently yielded 0
+          // and pinned the widget to the lowest tier.
+          setPoints(r.data.data?.balance ?? 0);
         }
       } catch {} finally { if (!cancelled) setLoadingPoints(false); }
     })();
@@ -775,78 +775,6 @@ const Profile: React.FC = () => {
     return () => { cancelled = true; };
   }, [user?.id]);
 
-  /* ── Handlers ── */
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value, type, checked } = e.target;
-    setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
-  };
-
-  const handleSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleSave = async () => {
-    if (!user?.id) return;
-    setIsLoading(true);
-    try {
-      const fullPhone = formData.phoneLocal
-        ? `${formData.phoneCode} ${formData.phoneLocal}`.trim()
-        : '';
-
-      const res = await apiService.put('/users/me', {
-        name: `${formData.givenName} ${formData.familyName}`.trim(),
-        givenName: formData.givenName,
-        familyName: formData.familyName,
-        email: formData.email,
-        phoneNumber: fullPhone,
-        address: formData.address,
-        city: formData.city,
-        country: formData.country,
-        postalCode: formData.postalCode,
-        birthdate: formData.birthdate || null,
-        isPublic: formData.isPublic,
-      });
-      const data = res.data as any;
-      if (data?.success) {
-        if (data.jwtToken) {
-          localStorage.setItem('token', data.jwtToken);
-          localStorage.setItem('zai_token', data.jwtToken);
-        }
-        const updatedUser: typeof user = {
-          ...user,
-          givenName: formData.givenName,
-          familyName: formData.familyName,
-          name: `${formData.givenName} ${formData.familyName}`.trim(),
-          email: formData.email,
-          phoneNumber: fullPhone,
-          address: formData.address,
-          city: formData.city,
-          country: formData.country,
-          postalCode: formData.postalCode,
-          birthdate: formData.birthdate,
-          isPublic: formData.isPublic,
-          ...(data.user || {}),
-        };
-        setUser(updatedUser);
-        localStorage.setItem('zai_user', JSON.stringify(updatedUser));
-        setIsEditing(false);
-      }
-    } catch (err) {
-      console.error('Failed to update profile:', err);
-      alert('Failed to update profile');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleCancel = () => {
-    if (user) {
-      setFormData(toFormData(user));
-    }
-    setIsEditing(false);
-  };
-
   /* ── Card number handlers ── */
   const saveCardNumber = async () => {
     setSavingCardNum(true);
@@ -891,13 +819,6 @@ const Profile: React.FC = () => {
   };
 
   /* ── Format helpers ── */
-  const formatBirthdate = (d: string) => {
-    if (!d) return '—';
-    const dt = new Date(d);
-    if (isNaN(dt.getTime())) return d;
-    return dt.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
-  };
-
   const memberSince = () => {
     if (!user?.createdAt) return '—';
     const dt = new Date(user.createdAt);
@@ -910,21 +831,6 @@ const Profile: React.FC = () => {
     if (formData.city) parts.push(formData.city);
     if (formData.country) parts.push(formData.country);
     return parts.join(', ') || null;
-  };
-
-  const homeAddress = () => {
-    const parts: string[] = [];
-    if (formData.address) parts.push(formData.address);
-    const cityZip = [formData.postalCode, formData.city].filter(Boolean).join(' ');
-    if (cityZip) parts.push(cityZip);
-    if (formData.country) parts.push(formData.country);
-    return parts.join(', ') || '—';
-  };
-
-  const displayPhone = () => {
-    if (!formData.phoneLocal && !formData.phoneCode) return '—';
-    if (!formData.phoneLocal) return '—';
-    return `${formData.phoneCode} ${formData.phoneLocal}`.trim();
   };
 
   if (!user) {
@@ -948,73 +854,34 @@ const Profile: React.FC = () => {
   else if ((user as any).nfcCardId) bulletItems.push(`NFC Card: ${(user as any).nfcCardId}`);
   bulletItems.push('CHF · Alpine region');
 
-  const selectStyle: React.CSSProperties = {
-    width: '100%',
-    background: '#fff',
-    border: 'none',
-    borderBottom: `1px solid ${C.border}`,
-    color: C.black,
-    fontFamily: C.font,
-    fontSize: '13px',
-    fontWeight: 400,
-    padding: '4px 0',
-    outline: 'none',
-    cursor: 'pointer',
-    boxSizing: 'border-box',
-    appearance: 'auto',
-  };
-
   return (
     <div style={{ maxWidth: 1100, margin: '0 auto', padding: '48px 48px 80px', fontFamily: C.font }}>
 
       {/* ═══ HEADER ═══ */}
       <div
         style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'flex-start',
           marginBottom: '2.5rem',
           paddingBottom: '2rem',
           borderBottom: `1px solid ${C.border}`,
         }}
       >
-        <div>
-          <div style={{ ...label, color: C.red, marginBottom: '0.4rem', fontSize: '11px' }}>
-            account
-          </div>
-          <h1
-            style={{
-              fontSize: 'clamp(32px, 4vw, 40px)',
-              fontWeight: 300,
-              lineHeight: 1.15,
-              margin: '0 0 0.3rem',
-              color: C.black,
-            }}
-          >
-            Profile
-          </h1>
-          <p style={{ color: C.gray, fontSize: '13px', maxWidth: '520px', margin: 0 }}>
-            Manage your personal details and account preferences.
-          </p>
+        <div style={{ ...label, color: C.red, marginBottom: '0.4rem', fontSize: '11px' }}>
+          account
         </div>
-
-        <button
-          onClick={() => {
-            if (isEditing) { handleSave(); } else { setIsEditing(true); }
-          }}
-          disabled={isLoading}
+        <h1
           style={{
-            background: C.black, color: '#fff', border: 'none',
-            padding: '14px 28px', fontSize: '10px', letterSpacing: '0.2em',
-            textTransform: 'uppercase', cursor: isLoading ? 'wait' : 'pointer',
-            fontFamily: C.font, fontWeight: 500, transition: 'background 0.2s',
-            whiteSpace: 'nowrap', marginTop: '0.5rem', opacity: isLoading ? 0.7 : 1,
+            fontSize: 'clamp(32px, 4vw, 40px)',
+            fontWeight: 300,
+            lineHeight: 1.15,
+            margin: '0 0 0.3rem',
+            color: C.black,
           }}
-          onMouseEnter={e => { if (!isLoading) e.currentTarget.style.background = '#1a1a1a'; }}
-          onMouseLeave={e => (e.currentTarget.style.background = C.black)}
         >
-          {isLoading ? 'Saving...' : isEditing ? 'Save Changes' : 'Edit'}
-        </button>
+          Profile
+        </h1>
+        <p style={{ color: C.gray, fontSize: '13px', maxWidth: '520px', margin: 0 }}>
+          Your membership status and rewards.
+        </p>
       </div>
 
       {/* ═══ MAIN CARD — 2 columns ═══ */}
@@ -1132,83 +999,10 @@ const Profile: React.FC = () => {
         {/* ── RIGHT — PERSONAL INFORMATION + SECTIONS ── */}
         <div style={{ background: '#fff', padding: '2.5rem 2rem' }}>
 
-          {/* ── Personal Information ── */}
-          <div style={{ ...label, color: C.black, fontSize: '11px', marginBottom: '1.5rem', paddingBottom: '0.75rem', borderBottom: `1px solid ${C.border}` }}>
-            Personal Information
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', background: C.border, border: `1px solid ${C.border}` }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1px', background: C.border }}>
-              <FieldCell label="First Name" name="givenName" value={formData.givenName} editing={isEditing} onChange={handleChange} />
-              <FieldCell label="Family Name" name="familyName" value={formData.familyName} editing={isEditing} onChange={handleChange} />
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1px', background: C.border }}>
-              <FieldCell
-                label="Date of Birth" name="birthdate"
-                value={isEditing ? formData.birthdate : formatBirthdate(formData.birthdate)}
-                editing={isEditing} type={isEditing ? 'date' : 'text'} onChange={handleChange}
-              />
-              {isEditing ? (
-                <div style={{ background: '#fff', padding: '1rem 1.25rem' }}>
-                  <div style={{ fontSize: '10px', letterSpacing: '0.25em', textTransform: 'uppercase', color: C.gray, marginBottom: '6px', fontFamily: C.font }}>
-                    Phone Number
-                  </div>
-                  <div style={{ display: 'flex', gap: '6px', alignItems: 'flex-end' }}>
-                    <select name="phoneCode" value={formData.phoneCode} onChange={handleSelectChange}
-                      style={{ ...selectStyle, width: '115px', flexShrink: 0 }}>
-                      {PHONE_CODES.map(pc => (<option key={pc.code} value={pc.code}>{pc.label}</option>))}
-                    </select>
-                    <input type="tel" name="phoneLocal" value={formData.phoneLocal} onChange={handleChange}
-                      placeholder="79 123 4567"
-                      style={{ flex: 1, background: 'transparent', border: 'none', borderBottom: `1px solid ${C.border}`, color: C.black, fontFamily: C.font, fontSize: '13px', fontWeight: 400, padding: '4px 0', outline: 'none', boxSizing: 'border-box' }}
-                    />
-                  </div>
-                </div>
-              ) : (
-                <FieldCell label="Phone Number" name="phoneNumber" value={displayPhone()} editing={false} onChange={() => {}} />
-              )}
-            </div>
-
-            <FieldCell label="Email Address" name="email" value={formData.email} editing={isEditing} type="email" onChange={handleChange} />
-
-            {isEditing ? (
-              <>
-                <FieldCell label="Street Address" name="address" value={formData.address} editing={true} onChange={handleChange} />
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1px', background: C.border }}>
-                  <FieldCell label="Postal Code" name="postalCode" value={formData.postalCode} editing={true} onChange={handleChange} />
-                  <FieldCell label="City" name="city" value={formData.city} editing={true} onChange={handleChange} />
-                  <div style={{ background: '#fff', padding: '1rem 1.25rem' }}>
-                    <div style={{ fontSize: '10px', letterSpacing: '0.25em', textTransform: 'uppercase', color: C.gray, marginBottom: '6px', fontFamily: C.font }}>Country</div>
-                    <select name="country" value={formData.country} onChange={handleSelectChange} style={selectStyle}>
-                      <option value="">Select country</option>
-                      {COUNTRIES.map(c => (<option key={c} value={c}>{c}</option>))}
-                    </select>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <FieldCell label="Home Address" name="address" value={homeAddress()} editing={false} onChange={() => {}} />
-            )}
-          </div>
-
-          {isEditing && (
-            <div style={{ marginTop: '1.5rem' }}>
-              <button onClick={handleCancel} style={{
-                background: 'transparent', border: `1px solid ${C.border}`, color: C.black,
-                padding: '12px 24px', fontSize: '10px', letterSpacing: '0.2em',
-                textTransform: 'uppercase', cursor: 'pointer', fontFamily: C.font, transition: 'border-color 0.2s',
-              }}
-                onMouseEnter={e => (e.currentTarget.style.borderColor = C.black)}
-                onMouseLeave={e => (e.currentTarget.style.borderColor = C.border)}
-              >Cancel</button>
-            </div>
-          )}
-
           {/* ═══ REWARDS & TIER SECTION ═══ */}
           {exclusive && (
             <>
-              <div style={{ ...label, color: C.black, fontSize: '11px', marginTop: '3rem', marginBottom: '1.5rem', paddingBottom: '0.75rem', borderBottom: `1px solid ${C.border}` }}>
+              <div style={{ ...label, color: C.black, fontSize: '11px', marginBottom: '1.5rem', paddingBottom: '0.75rem', borderBottom: `1px solid ${C.border}` }}>
                 Rewards & Tier
               </div>
               {loadingPoints ? (
@@ -1383,32 +1177,5 @@ const Profile: React.FC = () => {
     </div>
   );
 };
-
-/* ═══ Field Cell sub-component ═══ */
-interface FieldCellProps {
-  label: string;
-  name: string;
-  value: string;
-  editing: boolean;
-  type?: string;
-  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-}
-
-const FieldCell: React.FC<FieldCellProps> = ({ label: lbl, name, value, editing, type = 'text', onChange }) => (
-  <div style={{ background: '#fff', padding: '1rem 1.25rem' }}>
-    <div style={{ fontSize: '10px', letterSpacing: '0.25em', textTransform: 'uppercase', color: C.gray, marginBottom: '6px', fontFamily: C.font }}>
-      {lbl}
-    </div>
-    {editing ? (
-      <input type={type} name={name} value={value} onChange={onChange} placeholder="—"
-        style={{ width: '100%', background: 'transparent', border: 'none', borderBottom: `1px solid ${C.border}`, color: C.black, fontFamily: C.font, fontSize: '13px', fontWeight: 400, padding: '4px 0', outline: 'none', boxSizing: 'border-box' }}
-      />
-    ) : (
-      <div style={{ fontSize: '13px', fontWeight: 400, color: C.black, padding: '4px 0', minHeight: '20px' }}>
-        {value || '—'}
-      </div>
-    )}
-  </div>
-);
 
 export default Profile;

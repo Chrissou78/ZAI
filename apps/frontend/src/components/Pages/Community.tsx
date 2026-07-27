@@ -957,35 +957,59 @@ const Community: React.FC = () => {
       </div>
 
       {/* ══════ TABS ══════ */}
-      <div id="zai-feed-top" style={{
-        display: 'flex', alignItems: 'center', gap: 24, marginBottom: 28,
-        borderBottom: bdr, paddingBottom: 0,
-      }}>
-        <button onClick={() => setMainTab('feed')} style={{
-          background: 'none', border: 'none', borderBottom: mainTab === 'feed' ? `2px solid ${C.black}` : '2px solid transparent',
-          padding: '10px 0', fontSize: '11px', letterSpacing: '0.2em', textTransform: 'uppercase',
-          fontWeight: mainTab === 'feed' ? 600 : 400, color: mainTab === 'feed' ? C.black : C.muted,
-          cursor: 'pointer', fontFamily: "'Inter',sans-serif",
+      {/* Capsule selector: the active tab is a filled burgundy pill inside a
+          rounded outline, with unread Insights surfaced as a count badge. */}
+      <div id="zai-feed-top" style={{ marginBottom: 28 }}>
+        <div style={{
+          display: 'inline-flex', alignItems: 'center', gap: 4,
+          padding: 4, border: bdr, borderRadius: 999, background: C.pureWhite,
         }}>
-          ALL STORIES
-        </button>
-        <button onClick={() => setMainTab('insights')} style={{
-          background: 'none', border: 'none', borderBottom: mainTab === 'insights' ? `2px solid ${C.black}` : '2px solid transparent',
-          padding: '10px 0', fontSize: '11px', letterSpacing: '0.2em', textTransform: 'uppercase',
-          fontWeight: mainTab === 'insights' ? 600 : 400, color: mainTab === 'insights' ? C.black : C.muted,
-          cursor: 'pointer', fontFamily: "'Inter',sans-serif",
-        }}>
-          zai Insights
-        </button>
-        {mainTab === 'feed' && (
-          <span style={{
-            padding: '10px 0', fontSize: '11px', letterSpacing: '0.2em', textTransform: 'uppercase',
-            color: C.muted, fontWeight: 400, borderBottom: '2px solid transparent',
+          <button onClick={() => setMainTab('feed')} style={{
+            display: 'inline-flex', alignItems: 'center', gap: 8,
+            background: mainTab === 'feed' ? C.red : 'transparent',
+            color: mainTab === 'feed' ? '#fff' : C.muted,
+            border: 'none', borderRadius: 999, padding: '9px 20px',
+            fontSize: 11, letterSpacing: '0.18em', textTransform: 'uppercase',
+            fontWeight: 500, cursor: 'pointer', fontFamily: "'Inter',sans-serif",
+            transition: 'background 0.2s, color 0.2s',
           }}>
-            {photos.length} POST{photos.length !== 1 ? 'S' : ''}
-          </span>
-        )}
+            Community
+          </button>
+          <button onClick={() => setMainTab('insights')} style={{
+            display: 'inline-flex', alignItems: 'center', gap: 8,
+            background: mainTab === 'insights' ? C.red : 'transparent',
+            color: mainTab === 'insights' ? '#fff' : C.muted,
+            border: 'none', borderRadius: 999, padding: '9px 20px',
+            fontSize: 11, letterSpacing: '0.18em', textTransform: 'uppercase',
+            fontWeight: 500, cursor: 'pointer', fontFamily: "'Inter',sans-serif",
+            transition: 'background 0.2s, color 0.2s',
+          }}>
+            <span style={{
+              width: 5, height: 5, borderRadius: '50%', flexShrink: 0,
+              background: mainTab === 'insights' ? '#fff' : C.red,
+            }} />
+            zai Insights
+            {stories.length > 0 && (
+              <span style={{
+                background: mainTab === 'insights' ? 'rgba(255,255,255,0.2)' : C.red,
+                color: '#fff', borderRadius: 999, padding: '2px 7px',
+                fontSize: 8, letterSpacing: '0.1em', fontWeight: 700,
+              }}>{stories.length} NEW</span>
+            )}
+          </button>
+        </div>
       </div>
+
+      {/* Post count now reads as a section header for the feed below. */}
+      {mainTab === 'feed' && (
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          paddingBottom: 14, marginBottom: 24, borderBottom: bdr,
+          fontSize: 10, letterSpacing: '0.25em', textTransform: 'uppercase', color: C.black,
+        }}>
+          <span>All Stories · {photos.length} Post{photos.length !== 1 ? 's' : ''}</span>
+        </div>
+      )}
 
       {mainTab === 'insights' ? (
         <ZaiInsights stories={stories} fmtDate={fmtFullDate} C={C} />

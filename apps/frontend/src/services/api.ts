@@ -24,6 +24,9 @@ const NO_CACHE_PATTERNS = [
   'mine=true',
   '/mint-debug/',
   '/products/user/', // must always reflect live on-chain mint/claim state, not a stale session snapshot
+  '/store/rewards',  // balance and history change on every claim; the Points & Tiers
+                     // page reads these uncached, so caching here made the dashboard
+                     // visibly disagree with it
 ];
 
 interface CacheEntry {

@@ -1366,7 +1366,8 @@ export default async function handler(req, res) {
 
   // ══════════════════════════════════════════════════════════════
   // GET /api/products/mint-debug/recent — recent mint/claim attempts, for the
-  // Ctrl+Shift+D debug popup. Requires being logged in, not admin-restricted.
+  // Ctrl+Shift+D debug popup. Admin only: the rows cover every user and include
+  // wallet addresses and raw error text.
   // ══════════════════════════════════════════════════════════════
   if (fullPath === 'mint-debug/recent' && req.method === 'GET') {
     const decoded = authenticate(req);
@@ -1379,6 +1380,9 @@ export default async function handler(req, res) {
       if (!db) return res.json({ success: true, data: [] });
       await db.initDB();
       const pool = db.getPool();
+
+      const isAdminUser = await db.isAdmin(decoded);
+      if (!isAdminUser) return res.status(403).json({ error: 'Admin access required' });
 
       const { searchParams } = new URL(req.url, `http://${req.headers.host}`);
       const limit = Math.min(parseInt(searchParams.get('limit') || '20', 10) || 20, 100);
