@@ -97,6 +97,10 @@ const resolveImage = async (url: string): Promise<string> => {
   if (imgInflight.has(url)) return imgInflight.get(url)!;
 
   const work = (async () => {
+    // Without a deadline a stalled request leaves the component spinning
+    // forever, which reads as "the image is broken" with no way to recover.
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30000);
     try {
       let blob: Blob;
 
@@ -104,12 +108,13 @@ const resolveImage = async (url: string): Promise<string> => {
         // Auth-required API endpoint — fetch with bearer token
         const res = await fetch(url, {
           headers: { Authorization: `Bearer ${getAuthToken()}` },
+          signal: controller.signal,
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         blob = await res.blob();
       } else {
         // All external URLs (MinIO, IPFS, CDN, etc.) — fetch directly
-        const res = await fetch(url);
+        const res = await fetch(url, { signal: controller.signal });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         blob = await res.blob();
       }
@@ -127,6 +132,7 @@ const resolveImage = async (url: string): Promise<string> => {
       imgCache.set(url, '');
       return '';
     } finally {
+      clearTimeout(timeout);
       imgInflight.delete(url);
     }
   })();
@@ -135,8 +141,36 @@ const resolveImage = async (url: string): Promise<string> => {
   return work;
 };
 
+/**
+ * Warm the image cache a few requests at a time.
+ *
+ * Proof images are decrypted server-side from IPFS, so each one is a slow,
+ * multi-megabyte request. Firing a whole page of them at once starved the
+ * image the admin was actually looking at — it queued behind the prefetch and
+ * spun indefinitely. A small window keeps prefetching useful without
+ * monopolising the browser's connection pool.
+ */
+const PREFETCH_CONCURRENCY = 3;
+let prefetchQueue: string[] = [];
+let prefetchActive = 0;
+
+const pumpPrefetch = () => {
+  while (prefetchActive < PREFETCH_CONCURRENCY && prefetchQueue.length > 0) {
+    const url = prefetchQueue.shift()!;
+    if (!url || imgCache.has(url)) continue;
+    prefetchActive++;
+    resolveImage(url).finally(() => {
+      prefetchActive--;
+      pumpPrefetch();
+    });
+  }
+};
+
 const prefetchImages = (urls: string[]) => {
-  urls.forEach(u => { if (u && !imgCache.has(u)) resolveImage(u); });
+  for (const u of urls) {
+    if (u && !imgCache.has(u) && !prefetchQueue.includes(u)) prefetchQueue.push(u);
+  }
+  pumpPrefetch();
 };
 
 /* ═══════════════════════════════════════════

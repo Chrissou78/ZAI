@@ -201,6 +201,64 @@ async function finalizeValidatedClaim(pool, claimReq, rwaId, adminNote) {
   return true;
 }
 
+/**
+ * Catch up on mints whose completion event never arrived.
+ *
+ * The mint itself is asynchronous and the `rwaMinted` event is delivered by the
+ * organization's workflow — if no workflow is configured, or a delivery is
+ * dropped, the request would sit in 'minting' forever. Asking the RWA service
+ * directly makes this app self-sufficient rather than dependent on that event.
+ *
+ * Best-effort and idempotent; failures here must not break the calling request.
+ */
+async function reconcileStuckMinting(pool, { userId = null, staleSeconds = 20, limit = 5 } = {}) {
+  const results = [];
+  try {
+    const params = [staleSeconds, limit];
+    let userFilter = '';
+    if (userId) {
+      params.push(userId);
+      userFilter = ` AND user_id = $${params.length}`;
+    }
+
+    const stuck = await pool.query(
+      `SELECT * FROM product_claim_requests
+       WHERE status = 'minting' AND nft_id IS NOT NULL
+         AND updated_at < NOW() - ($1 || ' seconds')::interval${userFilter}
+       ORDER BY updated_at ASC LIMIT $2`,
+      params
+    );
+
+    for (const claimReq of stuck.rows) {
+      try {
+        const { status, data } = await apiFetch(RWA_BASE, `/nft/${claimReq.nft_id}`);
+        if (status < 200 || status >= 300 || !data) {
+          results.push({ id: claimReq.id, action: 'skipped', detail: `lookup failed (HTTP ${status})` });
+          continue;
+        }
+
+        if (data.isClaimed || data.mintedTx) {
+          await pool.query(
+            `UPDATE product_claim_requests SET mint_tx = $1, updated_at = NOW() WHERE id = $2`,
+            [data.mintedTx || null, claimReq.id]
+          );
+          const finalized = await finalizeValidatedClaim(pool, claimReq, claimReq.product_id, null);
+          console.log(`[RECONCILE] ${claimReq.id} (${claimReq.product_name}) -> validated`);
+          results.push({ id: claimReq.id, action: finalized ? 'finalized' : 'already-finalized' });
+        } else {
+          results.push({ id: claimReq.id, action: 'still-minting' });
+        }
+      } catch (rowErr) {
+        console.error(`[RECONCILE] ${claimReq.id} failed:`, rowErr.message);
+        results.push({ id: claimReq.id, action: 'error', detail: rowErr.message });
+      }
+    }
+  } catch (err) {
+    console.error('[RECONCILE] query failed:', err.message);
+  }
+  return results;
+}
+
 async function logMintAttempt(pool, { source, userId, rwaId, productName, requestedWallet, httpStatus, ok, errorDetail, nftSnapshot }) {
   try {
     await pool.query(
@@ -1298,37 +1356,8 @@ export default async function handler(req, res) {
     if (applyRateLimit(req, res, 'products:r12', 10, 60000)) return;
 
     try {
-      // Give the webhook a couple of minutes before second-guessing it.
-      const stuck = await pool.query(
-        `SELECT * FROM product_claim_requests
-         WHERE status = 'minting' AND nft_id IS NOT NULL
-           AND updated_at < NOW() - INTERVAL '2 minutes'
-         ORDER BY updated_at ASC LIMIT 25`
-      );
-
-      const results = [];
-      for (const claimReq of stuck.rows) {
-        const { status, data } = await apiFetch(RWA_BASE, `/nft/${claimReq.nft_id}`);
-        if (status < 200 || status >= 300 || !data) {
-          results.push({ id: claimReq.id, action: 'skipped', detail: `lookup failed (HTTP ${status})` });
-          continue;
-        }
-
-        if (data.isClaimed || data.mintedTx) {
-          await pool.query(
-            `UPDATE product_claim_requests SET mint_tx = $1, updated_at = NOW() WHERE id = $2`,
-            [data.mintedTx || null, claimReq.id]
-          );
-          const finalized = await finalizeValidatedClaim(
-            pool, claimReq, claimReq.product_id, null
-          );
-          results.push({ id: claimReq.id, action: finalized ? 'finalized' : 'already-finalized' });
-        } else {
-          results.push({ id: claimReq.id, action: 'still-minting' });
-        }
-      }
-
-      return res.json({ success: true, checked: stuck.rows.length, results });
+      const results = await reconcileStuckMinting(pool, { staleSeconds: 20, limit: 25 });
+      return res.json({ success: true, checked: results.length, results });
     } catch (err) {
       console.error('[PRODUCTS] reconcile-minting error:', err);
       return res.status(500).json({ error: 'Reconciliation failed', detail: err.message });
@@ -1393,6 +1422,13 @@ export default async function handler(req, res) {
       let params;
 
       const isAdminUser = await db.isAdmin(decoded);
+
+      // The clients poll this endpoint, which makes it the natural place to
+      // catch up any mint whose completion event never arrived. Scoped to the
+      // caller (admins see everything) and capped so it stays cheap.
+      await reconcileStuckMinting(pool, {
+        userId: isAdminUser && mine !== 'true' ? null : decoded.userId,
+      });
 
       if (mine === 'true' || !isAdminUser) {
         query = `SELECT * FROM product_claim_requests WHERE user_id = $1 ORDER BY created_at DESC`;
@@ -1489,7 +1525,21 @@ export default async function handler(req, res) {
         return res.status(404).json({ error: 'No proof image available' });
       }
 
-      const imgRes = await fetch(ipfsUrl);
+      // Bound the gateway fetch — without this a slow gateway holds the
+      // function open until the platform kills it, and the client spinner
+      // never resolves.
+      const ipfsController = new AbortController();
+      const ipfsTimeout = setTimeout(() => ipfsController.abort(), 15000);
+      let imgRes;
+      try {
+        imgRes = await fetch(ipfsUrl, { signal: ipfsController.signal });
+      } catch (fetchErr) {
+        clearTimeout(ipfsTimeout);
+        console.error('[PRODUCTS] proof image gateway fetch failed:', fetchErr.message);
+        return res.status(504).json({ error: 'Proof image gateway timed out' });
+      }
+      clearTimeout(ipfsTimeout);
+
       if (!imgRes.ok) {
         return res.status(502).json({ error: 'Failed to fetch proof image from IPFS' });
       }
