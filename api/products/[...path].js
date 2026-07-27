@@ -1201,9 +1201,26 @@ export default async function handler(req, res) {
     }
 
     try {
-      const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
-      const { event, nftId, rwaId, owner, txHash, error: mintError } = body;
-      console.log(`[MINT-WEBHOOK] ${event} nftId=${nftId} rwaId=${rwaId} tx=${txHash || '-'}`);
+      const raw = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
+      // Delivered by the wallet workflow system, which may forward the event
+      // payload directly or nest it — accept either, and tolerate the event name
+      // arriving as a body field or a header.
+      const body = raw.data || raw.payload || raw;
+      const event = raw.event || raw.eventName || body.event || body.eventName
+        || req.headers['x-event-name'] || null;
+
+      const nftId = body.nftId || body.nft?.id || null;
+      const rwaId = body.rwaId || body.rwa?.id || body.nft?.rwaId || null;
+      const owner = body.owner || null;
+      const txHash = body.txHash || body.nft?.mintedTx || null;
+      const mintError = body.error || null;
+
+      // Treat it as a success when the event says so, or when a tx hash proves it.
+      const succeeded = event
+        ? /rwaMinted|mint\.succeeded/i.test(event) && !/failed/i.test(event)
+        : !!txHash && !mintError;
+
+      console.log(`[MINT-WEBHOOK] event=${event || '(none)'} nftId=${nftId} rwaId=${rwaId} tx=${txHash || '-'} succeeded=${succeeded}`);
 
       if (!nftId) return res.status(400).json({ error: 'nftId is required' });
 
@@ -1231,12 +1248,12 @@ export default async function handler(req, res) {
         productName: claimReq.product_name,
         requestedWallet: owner,
         httpStatus: null,
-        ok: event === 'mint.succeeded',
+        ok: succeeded,
         errorDetail: mintError || null,
         nftSnapshot: body,
       });
 
-      if (event === 'mint.succeeded') {
+      if (succeeded) {
         await pool.query(
           `UPDATE product_claim_requests SET mint_tx = $1, updated_at = NOW() WHERE id = $2`,
           [txHash || null, claimReq.id]
