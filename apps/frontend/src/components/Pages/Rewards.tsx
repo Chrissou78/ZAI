@@ -83,27 +83,33 @@ export default function Rewards() {
   const balance = data?.balance || 0;
 
   return (
-    <div style={{ fontFamily: C.font, color: C.black, paddingBottom: 64 }}>
-      {/* ── TOP: Current Standing ── */}
-      <div style={{
-        background: C.black, color: C.white, padding: '48px 48px 40px',
-      }}>
-        <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-          <div style={{ fontSize: 10, letterSpacing: '0.3em', textTransform: 'uppercase', color: C.red, fontWeight: 500, marginBottom: 12 }}>
-            POINTS &amp; TIERS
-          </div>
-          <div style={{ ...LABEL, color: '#999', marginBottom: 8 }}>YOUR CURRENT STANDING</div>
-          <h1 style={{ fontSize: 'clamp(32px, 4vw, 48px)', fontWeight: 300, margin: 0, lineHeight: 1.15 }}>
-            {currentTier.name} Tier
-          </h1>
+    <div style={{ maxWidth: 1100, margin: '0 auto', padding: '48px 48px 80px', fontFamily: C.font, color: C.black }}>
+      {/* ══════ HEADER — matches Events/Products/Community ══════ */}
+      <div style={{ marginBottom: '2.5rem', paddingBottom: '2rem', borderBottom: `1px solid ${C.border}` }}>
+        <div style={{ fontSize: 10, letterSpacing: '0.3em', textTransform: 'uppercase', color: C.red, fontWeight: 600, marginBottom: 8 }}>
+          loyalty tiers
+        </div>
+        <h1 style={{ fontSize: 'clamp(32px, 4vw, 40px)', fontWeight: 300, lineHeight: 1.15, margin: '0 0 8px', color: C.black }}>
+          Points &amp; tiers
+        </h1>
+        <p style={{ color: C.gray, fontSize: 13, margin: 0, fontWeight: 300, maxWidth: 520 }}>
+          Progress through tiers by claiming products and accumulating experience points.
+        </p>
+      </div>
+
+      {/* ── Current standing banner ── */}
+      <div style={{ background: C.black, color: C.white, padding: '28px 28px 24px' }}>
+        <div style={{ ...LABEL, color: '#777', marginBottom: 8 }}>YOUR CURRENT STANDING</div>
+        <div style={{ fontSize: 'clamp(28px, 3vw, 36px)', fontWeight: 200, lineHeight: 1.15 }}>
+          {currentTier.name} Tier
         </div>
       </div>
 
       {/* ── MIDDLE: 4 Tier Cards ── */}
-      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 24px' }}>
+      <div>
         <div style={{
           display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-          gap: 0, marginTop: -1, border: `1px solid ${C.border}`,
+          gap: 0, border: `1px solid ${C.border}`, borderTop: 'none',
         }}>
           {TIERS.map((tier, i) => {
             const isCurrent = i === currentTierIdx;
@@ -158,8 +164,8 @@ export default function Rewards() {
         {/* ── BOTTOM: Progress Bar ── */}
         <div style={{
           display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end',
-          flexWrap: 'wrap', gap: 24, padding: '40px 0 32px',
-          borderBottom: `1px solid ${C.border}`,
+          flexWrap: 'wrap', gap: 24, padding: '32px 28px',
+          border: `1px solid ${C.border}`, borderTop: 'none', background: C.pureWhite,
         }}>
           <div style={{ flex: '1 1 400px' }}>
             <div style={{ ...LABEL, marginBottom: 10 }}>
@@ -200,8 +206,8 @@ export default function Rewards() {
 
         {/* ── Recent Points Activity ── */}
         {history.length > 0 && (
-          <div style={{ padding: '32px 0' }}>
-            <div style={{ ...LABEL, marginBottom: 16 }}>RECENT ACTIVITY</div>
+          <div style={{ padding: '40px 0 0' }}>
+            <div style={{ ...LABEL, marginBottom: 16, paddingBottom: 12, borderBottom: `1px solid ${C.border}` }}>RECENT ACTIVITY</div>
             {history.map((h: any) => (
               <div key={h.id} style={{
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',

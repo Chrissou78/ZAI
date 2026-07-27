@@ -721,6 +721,10 @@ const Products: React.FC = () => {
 
   const handleReceiptSubmit = async () => {
     if (!receiptImage && !receiptCid) return;
+    if (!receiptProductId.trim() && !receiptProductName.trim()) {
+      setReceiptError('Please choose your product');
+      return;
+    }
     setReceiptSubmitting(true);
     setReceiptError(null);
     try {
@@ -833,6 +837,7 @@ const Products: React.FC = () => {
 
   /* ── Helper: is proof ready to submit? ── */
   const hasProof = !!(receiptImage || receiptCid);
+  const hasProduct = !!(receiptProductId.trim() || receiptProductName.trim());
 
   /* ───── Render ───── */
 
@@ -1400,7 +1405,7 @@ const Products: React.FC = () => {
 
                 {/* Product name (optional) — pick from claimable products */}
                 <div>
-                  <label style={labelStyle}>Product Name (optional)</label>
+                  <label style={labelStyle}>Product Name</label>
                   {claimableLoading ? (
                     <div style={{ fontSize: 12, color: C.gray, padding: '10px 0' }}>Loading products&hellip;</div>
                   ) : claimableRwas.length > 0 ? (
@@ -1569,14 +1574,14 @@ const Products: React.FC = () => {
                   <Button onClick={() => setShowReceiptModal(false)}>Cancel</Button>
                   <button
                     onClick={handleReceiptSubmit}
-                    disabled={!hasProof || receiptSubmitting}
+                    disabled={!hasProof || !hasProduct || receiptSubmitting}
                     style={{
                       padding: '10px 24px', fontSize: 11, fontWeight: 600,
                       letterSpacing: '0.15em', textTransform: 'uppercase',
                       border: 'none', borderRadius: 4,
-                      background: (!hasProof || receiptSubmitting) ? C.border : C.red,
+                      background: (!hasProof || !hasProduct || receiptSubmitting) ? C.border : C.red,
                       color: '#fff', fontFamily: C.font,
-                      cursor: (!hasProof || receiptSubmitting) ? 'default' : 'pointer',
+                      cursor: (!hasProof || !hasProduct || receiptSubmitting) ? 'default' : 'pointer',
                       opacity: receiptSubmitting ? 0.6 : 1,
                     }}
                   >

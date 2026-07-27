@@ -380,11 +380,14 @@ const Admin: React.FC = () => {
         rwaId: selectedRwaId, adminNote,
       });
       if (res.data?.success) {
-        const mintResult = (res.data as any).mintResult;
-        if (mintResult && !mintResult.success) {
-          setActionError(`Validated but mint issue: ${mintResult.error || 'Unknown error'}`);
+        const payload = res.data as any;
+        if (!payload.queued) {
+          const mintResult = payload.mintResult;
+          setActionError(`Could not start minting: ${mintResult?.error || 'Unknown error'}`);
           fetchClaims();
         } else {
+          // Minting runs in the background; wt-rwa's webhook flips the claim to
+          // 'validated' when the transaction confirms.
           setSelectedClaim(null);
           fetchClaims();
         }

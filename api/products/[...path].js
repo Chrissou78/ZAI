@@ -121,6 +121,86 @@ function genId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
 }
 
+/**
+ * Everything that must happen once a mint is confirmed: record the claim, mark
+ * the request validated, award points, complete referrals, notify the user.
+ *
+ * Safe to call more than once for the same request — the claim insert is a
+ * no-op on conflict and the status update is guarded, so a duplicate webhook
+ * delivery or a retry cannot double-award points or re-send the email.
+ *
+ * Returns true when this call is the one that performed the transition.
+ */
+async function finalizeValidatedClaim(pool, claimReq, rwaId, adminNote) {
+  const claimed = await pool.query(
+    `INSERT INTO product_claims (id, user_id, product_id, claimed_at)
+     VALUES ($1, $2, $3, NOW())
+     ON CONFLICT (user_id, product_id) DO NOTHING`,
+    [genId(), claimReq.user_id, rwaId]
+  );
+
+  // Only transition out of a non-validated state; concurrent deliveries lose here.
+  const transitioned = await pool.query(
+    `UPDATE product_claim_requests
+     SET status = 'validated', admin_note = COALESCE($1, admin_note), updated_at = NOW()
+     WHERE id = $2 AND status <> 'validated'
+     RETURNING id`,
+    [adminNote ?? null, claimReq.id]
+  );
+
+  if (transitioned.rowCount === 0) {
+    console.log(`[PRODUCTS] claim ${claimReq.id} already validated — skipping side effects`);
+    return false;
+  }
+
+  // ── Award loyalty points: 2.7× CHF price ──
+  try {
+    const { addPoints, pointsFromCHF } = await import('../store/[...path].js');
+    let priceCHF = 0;
+    try {
+      const rwaMap = await getZaiRwaMap();
+      for (const [, rwa] of rwaMap) {
+        if (rwa.id === rwaId) {
+          priceCHF = parseFloat(rwa.data?.price?.value || 0);
+          break;
+        }
+      }
+    } catch {}
+    const pts = pointsFromCHF(priceCHF);
+    if (pts > 0) {
+      await addPoints(claimReq.user_id, pts, 'product_claim', `Claimed: ${claimReq.product_name}`, claimReq.id);
+      console.log(`[REWARDS] +${pts}pts → ${claimReq.user_id} for ${claimReq.product_name} (CHF ${priceCHF})`);
+    }
+  } catch (e) {
+    console.error('[REWARDS] Failed to award points:', e.message);
+  }
+
+  // ── Complete pending referral (first product claim triggers bonus) ──
+  try {
+    const { addPoints: addPts } = await import('../store/[...path].js');
+    const refRes = await pool.query(
+      `SELECT id, referrer_id, referrer_points, referred_points
+       FROM referrals WHERE referred_id = $1 AND status = 'pending' LIMIT 1`,
+      [claimReq.user_id]
+    );
+    if (refRes.rows.length) {
+      const ref = refRes.rows[0];
+      await addPts(ref.referrer_id, ref.referrer_points, 'referral', `Referral bonus: friend claimed a product`, ref.id);
+      await addPts(claimReq.user_id, ref.referred_points, 'referral', `Welcome bonus: referred by a friend`, ref.id);
+      await pool.query(
+        `UPDATE referrals SET status = 'completed', completed_at = NOW() WHERE id = $1`,
+        [ref.id]
+      );
+      console.log(`[REFERRAL] ✓ ${ref.referrer_id} +${ref.referrer_points}pts, ${claimReq.user_id} +${ref.referred_points}pts`);
+    }
+  } catch (e) {
+    console.error('[REFERRAL] Failed:', e.message);
+  }
+
+  await notifyClaimValidated(claimReq.user_email, claimReq.user_name, claimReq.product_name);
+  return true;
+}
+
 async function logMintAttempt(pool, { source, userId, rwaId, productName, requestedWallet, httpStatus, ok, errorDetail, nftSnapshot }) {
   try {
     await pool.query(
@@ -136,7 +216,10 @@ async function logMintAttempt(pool, { source, userId, rwaId, productName, reques
 
 async function apiFetch(base, path, opts = {}) {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 10000);
+  // Minting waits on a blockchain tx (the RWA service blocks up to 60s); aborting
+  // earlier reports a failure for a mint that is still in flight and usually succeeds.
+  const timeoutMs = opts.timeoutMs || 10000;
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const url = `${base}${path}`;
     const res = await fetch(url, {
@@ -1102,6 +1185,140 @@ export default async function handler(req, res) {
   }
 
   // ══════════════════════════════════════════════════════════════
+  // POST /api/products/mint-webhook — called by wt-rwa when a mint settles.
+  // Authenticated by a shared secret, not a user session.
+  // ══════════════════════════════════════════════════════════════
+  if (fullPath === 'mint-webhook' && req.method === 'POST') {
+    const expected = process.env.MINT_WEBHOOK_SECRET;
+    if (!expected) {
+      console.error('[MINT-WEBHOOK] MINT_WEBHOOK_SECRET not configured — rejecting');
+      return res.status(503).json({ error: 'Webhook not configured' });
+    }
+    const provided = req.headers['x-webhook-secret'];
+    if (provided !== expected) {
+      console.warn('[MINT-WEBHOOK] rejected: bad secret');
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    try {
+      const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
+      const { event, nftId, rwaId, owner, txHash, error: mintError } = body;
+      console.log(`[MINT-WEBHOOK] ${event} nftId=${nftId} rwaId=${rwaId} tx=${txHash || '-'}`);
+
+      if (!nftId) return res.status(400).json({ error: 'nftId is required' });
+
+      const db = await getDB();
+      if (!db) return res.status(503).json({ error: 'Database not available' });
+      await db.initDB();
+      const pool = db.getPool();
+
+      const reqRes = await pool.query(
+        `SELECT * FROM product_claim_requests WHERE nft_id = $1 ORDER BY created_at DESC LIMIT 1`,
+        [nftId]
+      );
+      if (reqRes.rows.length === 0) {
+        // Not a claim-driven mint (e.g. a store purchase) — acknowledge so the
+        // sender does not retry, but there is nothing to finalize.
+        console.log(`[MINT-WEBHOOK] no claim request for nftId=${nftId} — ignoring`);
+        return res.json({ success: true, matched: false });
+      }
+      const claimReq = reqRes.rows[0];
+
+      await logMintAttempt(pool, {
+        source: 'mint-webhook',
+        userId: claimReq.user_id,
+        rwaId: rwaId || claimReq.product_id,
+        productName: claimReq.product_name,
+        requestedWallet: owner,
+        httpStatus: null,
+        ok: event === 'mint.succeeded',
+        errorDetail: mintError || null,
+        nftSnapshot: body,
+      });
+
+      if (event === 'mint.succeeded') {
+        await pool.query(
+          `UPDATE product_claim_requests SET mint_tx = $1, updated_at = NOW() WHERE id = $2`,
+          [txHash || null, claimReq.id]
+        );
+        const finalized = await finalizeValidatedClaim(
+          pool, claimReq, rwaId || claimReq.product_id, null
+        );
+        return res.json({ success: true, matched: true, finalized });
+      }
+
+      // Mint failed — return the request to 'pending' so an admin can retry.
+      await pool.query(
+        `UPDATE product_claim_requests
+         SET status = 'pending', admin_note = $1, updated_at = NOW()
+         WHERE id = $2 AND status = 'minting'`,
+        [`Mint failed: ${mintError || 'unknown error'}`, claimReq.id]
+      );
+      return res.json({ success: true, matched: true, finalized: false });
+    } catch (err) {
+      console.error('[MINT-WEBHOOK] error:', err);
+      return res.status(500).json({ error: 'Webhook processing failed', detail: err.message });
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // POST /api/products/claim-requests/reconcile-minting — safety net for
+  // dropped webhooks. Re-checks every request stuck in 'minting' against the
+  // RWA service and finalizes or releases it. Idempotent; safe to run often.
+  // ══════════════════════════════════════════════════════════════
+  if (fullPath === 'claim-requests/reconcile-minting' && req.method === 'POST') {
+    const decoded = authenticate(req);
+    if (!decoded) return res.status(401).json({ error: 'Unauthorized' });
+
+    const db = await getDB();
+    if (!db) return res.status(503).json({ error: 'Database not available' });
+    await db.initDB();
+    const pool = db.getPool();
+
+    const isAdminUser = await db.isAdmin(decoded);
+    if (!isAdminUser) return res.status(403).json({ error: 'Admin access required' });
+
+    if (applyRateLimit(req, res, 'products:r12', 10, 60000)) return;
+
+    try {
+      // Give the webhook a couple of minutes before second-guessing it.
+      const stuck = await pool.query(
+        `SELECT * FROM product_claim_requests
+         WHERE status = 'minting' AND nft_id IS NOT NULL
+           AND updated_at < NOW() - INTERVAL '2 minutes'
+         ORDER BY updated_at ASC LIMIT 25`
+      );
+
+      const results = [];
+      for (const claimReq of stuck.rows) {
+        const { status, data } = await apiFetch(RWA_BASE, `/nft/${claimReq.nft_id}`);
+        if (status < 200 || status >= 300 || !data) {
+          results.push({ id: claimReq.id, action: 'skipped', detail: `lookup failed (HTTP ${status})` });
+          continue;
+        }
+
+        if (data.isClaimed || data.mintedTx) {
+          await pool.query(
+            `UPDATE product_claim_requests SET mint_tx = $1, updated_at = NOW() WHERE id = $2`,
+            [data.mintedTx || null, claimReq.id]
+          );
+          const finalized = await finalizeValidatedClaim(
+            pool, claimReq, claimReq.product_id, null
+          );
+          results.push({ id: claimReq.id, action: finalized ? 'finalized' : 'already-finalized' });
+        } else {
+          results.push({ id: claimReq.id, action: 'still-minting' });
+        }
+      }
+
+      return res.json({ success: true, checked: stuck.rows.length, results });
+    } catch (err) {
+      console.error('[PRODUCTS] reconcile-minting error:', err);
+      return res.status(500).json({ error: 'Reconciliation failed', detail: err.message });
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════
   // GET /api/products/mint-debug/recent — recent mint/claim attempts, for the
   // Ctrl+Shift+D debug popup. Requires being logged in, not admin-restricted.
   // ══════════════════════════════════════════════════════════════
@@ -1321,7 +1538,8 @@ export default async function handler(req, res) {
       }
 
       let mintResult = null;
-      let minted = false;
+      let queued = false;
+      let nftId = null;
       if (rwaIdToMint) {
         try {
           let userWallet = claimReq.wallet;
@@ -1334,23 +1552,28 @@ export default async function handler(req, res) {
           }
 
           if (userWallet) {
+            // Queue the mint and return immediately. The blockchain tx can take
+            // longer than this function is allowed to run, so waiting inline
+            // reports failures for mints that actually succeed. wt-rwa calls
+            // /mint-webhook when the job settles.
             const { status: mintStatus, data: mintData } = await apiFetch(
               RWA_BASE,
               `/rwa/${rwaIdToMint}/mint`,
               {
                 method: 'POST',
-                body: JSON.stringify({ wallet: userWallet, address: userWallet }),
+                body: JSON.stringify({ wallet: userWallet, address: userWallet, async: true }),
               }
             );
 
-            const mintOk = mintStatus >= 200 && mintStatus < 300 && mintData?.success !== false;
+            const queuedOk = mintStatus >= 200 && mintStatus < 300 && mintData?.success !== false;
+            nftId = mintData?.nft?.id || null;
             mintResult = {
-              success: mintOk,
+              success: queuedOk,
               status: mintStatus,
               data: mintData,
-              error: mintOk
+              error: queuedOk
                 ? undefined
-                : (mintData?.message || mintData?.error || `Mint failed (HTTP ${mintStatus})`),
+                : (mintData?.message || mintData?.error || `Mint request failed (HTTP ${mintStatus})`),
             };
 
             await logMintAttempt(pool, {
@@ -1360,28 +1583,12 @@ export default async function handler(req, res) {
               productName: claimReq.product_name,
               requestedWallet: userWallet,
               httpStatus: mintStatus,
-              ok: mintOk,
+              ok: queuedOk,
               errorDetail: mintResult.error,
               nftSnapshot: mintData?.nft || null,
             });
 
-            if (mintOk) {
-              try {
-                await pool.query(
-                  `INSERT INTO product_claims (id, user_id, product_id, claimed_at)
-                   VALUES ($1, $2, $3, NOW())
-                   ON CONFLICT (user_id, product_id) DO NOTHING`,
-                  [genId(), claimReq.user_id, rwaIdToMint]
-                );
-                minted = true; // only set once the claim record is actually persisted
-              } catch (claimWriteErr) {
-                console.error('[PRODUCTS] Mint succeeded but product_claims write failed:', claimWriteErr.message);
-                mintResult = {
-                  success: false,
-                  error: `Mint succeeded but failed to record claim — do NOT blindly retry validation, it will call mint again: ${claimWriteErr.message}`,
-                };
-              }
-            }
+            queued = queuedOk;
           } else {
             mintResult = { success: false, error: 'No wallet on file for this user' };
           }
@@ -1393,61 +1600,15 @@ export default async function handler(req, res) {
         mintResult = { success: false, error: 'No product selected to mint' };
       }
 
-      if (minted) {
+      if (queued) {
+        // Park the request in 'minting'. finalizeValidatedClaim() runs when the
+        // webhook confirms the mint — that is what awards points and emails.
         await pool.query(
           `UPDATE product_claim_requests
-           SET status = 'validated', admin_note = $1, updated_at = NOW()
-           WHERE id = $2`,
-          [adminNote, requestId]
+           SET status = 'minting', admin_note = $1, nft_id = $2, updated_at = NOW()
+           WHERE id = $3`,
+          [adminNote, nftId, requestId]
         );
-
-        // ── Award loyalty points: 2.7× CHF price ──
-        try {
-          const { addPoints, pointsFromCHF } = await import('../store/[...path].js');
-          // Try to get the product price from RWA data
-          let priceCHF = 0;
-          try {
-            const rwaMap = await getZaiRwaMap();
-            for (const [, rwa] of rwaMap) {
-              if (rwa.id === rwaIdToMint) {
-                priceCHF = parseFloat(rwa.data?.price?.value || 0);
-                break;
-              }
-            }
-          } catch {}
-          const pts = pointsFromCHF(priceCHF);
-          if (pts > 0) {
-            await addPoints(claimReq.user_id, pts, 'product_claim', `Claimed: ${claimReq.product_name}`, requestId);
-            console.log(`[REWARDS] +${pts}pts → ${claimReq.user_id} for ${claimReq.product_name} (CHF ${priceCHF})`);
-          }
-        } catch (e) {
-          console.error('[REWARDS] Failed to award points:', e.message);
-        }
-
-        // ── Complete pending referral (first product claim triggers bonus) ──
-        try {
-          const { addPoints: addPts } = await import('../store/[...path].js');
-          const refRes = await pool.query(
-            `SELECT id, referrer_id, referrer_points, referred_points
-             FROM referrals WHERE referred_id = $1 AND status = 'pending' LIMIT 1`,
-            [claimReq.user_id]
-          );
-          if (refRes.rows.length) {
-            const ref = refRes.rows[0];
-            await addPts(ref.referrer_id, ref.referrer_points, 'referral', `Referral bonus: friend claimed a product`, ref.id);
-            await addPts(claimReq.user_id, ref.referred_points, 'referral', `Welcome bonus: referred by a friend`, ref.id);
-            await pool.query(
-              `UPDATE referrals SET status = 'completed', completed_at = NOW() WHERE id = $1`,
-              [ref.id]
-            );
-            console.log(`[REFERRAL] ✓ ${ref.referrer_id} +${ref.referrer_points}pts, ${claimReq.user_id} +${ref.referred_points}pts`);
-          }
-        } catch (e) {
-          console.error('[REFERRAL] Failed:', e.message);
-        }
-
-        // Notify user + info@zai.ch
-        await notifyClaimValidated(claimReq.user_email, claimReq.user_name, claimReq.product_name);
       } else {
         await pool.query(
           `UPDATE product_claim_requests
@@ -1459,8 +1620,9 @@ export default async function handler(req, res) {
 
       return res.json({
         success: true,
-        status: minted ? 'validated' : 'pending',
-        minted,
+        status: queued ? 'minting' : 'pending',
+        queued,
+        nftId,
         mintResult,
       });
     } catch (err) {
