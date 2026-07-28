@@ -127,10 +127,21 @@ function getMemberDotColor(index: number) {
   return MEMBER_DOT_COLORS[index % MEMBER_DOT_COLORS.length];
 }
 
+// Some WalletTwo/Engage fields echo back the literal string "true"/"false"
+// instead of real data — render those as absent rather than the literal word.
+function clean(val: any): string {
+  if (val === true || val === 'true') return '';
+  if (val === false || val === 'false') return '';
+  if (val === null || val === undefined) return '';
+  return String(val);
+}
+
 function getMemberLocation(m: Member) {
-  if (m.city && m.country) return `${m.city}, ${m.country}`;
-  if (m.city) return m.city;
-  if (m.country) return m.country;
+  const city = clean(m.city);
+  const country = clean(m.country);
+  if (city && country) return `${city}, ${country}`;
+  if (city) return city;
+  if (country) return country;
   return '—';
 }
 

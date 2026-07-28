@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useAppContext } from '../../context/AppContext';
 import { apiService } from '../../services/api';
 
@@ -221,81 +220,184 @@ const toFormData = (src: any) => {
 };
 
 /* ═══════════════════════════════════════════════════════════
-   MEMBERSHIP STATUS BAND — compact tier + points widget, matches
-   the shared design system's .tier-status-band (dark card, tier
-   pill on the left, progress + "View points & tiers" on the right)
+   TIER DISPLAY — white progress card, matches the design reference
    ═══════════════════════════════════════════════════════════ */
-const MembershipStatusBand: React.FC<{ points: number; memberSince: string }> = ({ points, memberSince }) => {
+const TierDisplay: React.FC<{ points: number }> = ({ points }) => {
   const tier = getTier(points);
   const next = getNextTier(points);
   const progress = next
-    ? Math.min(100, Math.max(0, ((points - tier.min) / (next.min - tier.min)) * 100))
+    ? ((points - tier.min) / (next.min - tier.min)) * 100
     : 100;
-  const navigate = useNavigate();
-  // Badge uses the current tier's own color (blue for Blue, burgundy for Red, etc.)
-  // rather than a fixed accent — the tier name and its color must always match.
-  // Black's tier color (#1a1a1a) is near-invisible against this band's own
-  // near-black background, so it gets a light neutral instead.
-  const accent = tier.name === 'Black' ? '#e8e8e8' : tier.color;
 
   return (
-    <div style={{
-      display: 'grid',
-      gridTemplateColumns: next ? '1fr 300px' : '1fr',
-      gap: '2.5rem',
-      alignItems: 'center',
-      background: C.black,
-      border: `1px solid ${C.borderDark}`,
-      padding: '1.5rem 1.75rem',
-    }}>
-      <div>
-        <div style={{
-          display: 'inline-flex', alignItems: 'center', gap: 6,
-          padding: '5px 10px', marginBottom: '0.6rem',
-          background: `${accent}14`, border: `1px solid ${accent}59`,
-        }}>
-          <div style={{ width: 5, height: 5, borderRadius: '50%', background: accent }} />
-          <div style={{ fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', color: accent }}>
-            {tier.name} Tier
-          </div>
-        </div>
-        <div style={{ fontSize: 11, color: '#999' }}>
-          {memberSince !== '—' ? `Member since ${memberSince}` : ''}
-        </div>
-      </div>
+    <div>
+      <div
+        style={{
+          border: `1px solid ${C.border}`,
+          padding: '28px',
+          borderRadius: 4,
+          background: '#fff',
+        }}
+      >
+        {next ? (
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: 32,
+              alignItems: 'flex-end',
+            }}
+          >
+            <div>
+              <div
+                style={{
+                  fontSize: 10,
+                  letterSpacing: '0.3em',
+                  textTransform: 'uppercase',
+                  color: C.gray,
+                  marginBottom: 10,
+                  fontFamily: C.font,
+                }}
+              >
+                Progress to {next.name}
+              </div>
+              <div style={{ marginBottom: 8 }}>
+                <span
+                  style={{
+                    fontSize: 'clamp(24px, 2.5vw, 32px)',
+                    fontWeight: 300,
+                    color: C.black,
+                  }}
+                >
+                  {points.toLocaleString()}
+                </span>
+                <span
+                  style={{
+                    fontSize: 'clamp(24px, 2.5vw, 32px)',
+                    fontWeight: 300,
+                    color: C.gray,
+                  }}
+                >
+                  {' '}/ {next.min.toLocaleString()} points
+                </span>
+              </div>
+              <div style={{ fontSize: 12, color: C.mid, lineHeight: 1.6 }}>
+                Claim a new ski (+500 pts) or attend an event (+150 pts) to
+                accelerate your progress.
+              </div>
+            </div>
 
-      {next && (
-        <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#888', marginBottom: 5 }}>
-            <span>{points.toLocaleString()} pts</span>
-            <span>{next.min.toLocaleString()} for {next.name}</span>
+            <div>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  fontSize: 10,
+                  color: C.gray,
+                  marginBottom: 6,
+                  fontFamily: C.font,
+                }}
+              >
+                <span>Current</span>
+                <span>{next.name}</span>
+              </div>
+
+              <div
+                style={{
+                  height: 6,
+                  background: C.border,
+                  overflow: 'hidden',
+                  marginBottom: 4,
+                  position: 'relative',
+                }}
+              >
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    height: '100%',
+                    width: `${Math.min(progress, 100)}%`,
+                    background:
+                      tier.color === '#1a1a1a' ? C.red : tier.color,
+                    transition: 'width 0.6s ease',
+                  }}
+                />
+              </div>
+
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  fontSize: 10,
+                  color: C.mid,
+                  marginBottom: 20,
+                }}
+              >
+                <span>{points.toLocaleString()} pts</span>
+                <span>{next.min.toLocaleString()} pts</span>
+              </div>
+
+              <button
+                onClick={() => {
+                  window.location.href = '/products';
+                }}
+                style={{
+                  width: '100%',
+                  padding: '14px 24px',
+                  fontSize: 10,
+                  fontWeight: 700,
+                  letterSpacing: '0.15em',
+                  textTransform: 'uppercase',
+                  border: 'none',
+                  background: C.red,
+                  color: '#fff',
+                  cursor: 'pointer',
+                  fontFamily: C.font,
+                  transition: 'background 0.2s',
+                }}
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.background = '#9a2535')
+                }
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.background = C.red)
+                }
+              >
+                Claim Product · +500 pts
+              </button>
+            </div>
           </div>
-          <div style={{ height: 2, background: '#2a2a2a', overflow: 'hidden' }}>
-            <div style={{
-              height: '100%', width: `${progress}%`,
-              background: 'linear-gradient(90deg,#7A222E,#b84055)',
-              transition: 'width 1s ease',
-            }} />
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
-            <div style={{ fontSize: 10, color: accent }}>
-              {(next.min - points).toLocaleString()} pts to {next.name}
+        ) : (
+          <div style={{ textAlign: 'center', padding: '12px 0' }}>
+            <div
+              style={{
+                fontSize: 10,
+                letterSpacing: '0.3em',
+                textTransform: 'uppercase',
+                color: C.gray,
+                marginBottom: 10,
+                fontFamily: C.font,
+              }}
+            >
+              Maximum Tier Reached
             </div>
             <div
-              onClick={() => navigate('/rewards')}
               style={{
-                fontSize: 10, letterSpacing: '0.15em', textTransform: 'uppercase',
-                color: '#999', cursor: 'pointer', borderBottom: '1px solid #444',
-                paddingBottom: 2, transition: 'color 0.2s',
+                fontSize: 'clamp(24px, 2.5vw, 32px)',
+                fontWeight: 300,
+                color: C.black,
+                marginBottom: 8,
               }}
-              onMouseEnter={e => (e.currentTarget.style.color = '#fff')}
-              onMouseLeave={e => (e.currentTarget.style.color = '#999')}
             >
-              View points &amp; tiers →
+              {points.toLocaleString()} points
+            </div>
+            <div style={{ fontSize: 12, color: C.mid }}>
+              Welcome to Diamond. You have access to all zai benefits and
+              experiences.
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };
@@ -1105,16 +1207,16 @@ const Profile: React.FC = () => {
             </div>
           )}
 
-          {/* ═══ MEMBERSHIP STATUS SECTION ═══ */}
+          {/* ═══ REWARDS & TIER SECTION ═══ */}
           {exclusive && (
             <>
               <div style={{ ...label, color: C.black, fontSize: '11px', marginTop: '3rem', marginBottom: '1.5rem', paddingBottom: '0.75rem', borderBottom: `1px solid ${C.border}` }}>
-                Membership Status
+                Rewards & Tier
               </div>
               {loadingPoints ? (
                 <div style={{ padding: '20px 0', fontSize: 13, color: C.gray }}>Loading…</div>
               ) : (
-                <MembershipStatusBand points={points} memberSince={ms} />
+                <TierDisplay points={points} />
               )}
             </>
           )}

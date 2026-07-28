@@ -38,6 +38,16 @@ function nextTierFor(current: typeof TIERS[number]) {
   return idx < TIERS.length - 1 ? TIERS[idx + 1] : null;
 }
 
+/* ── Sanitize WalletTwo/Engage values — some fields echo back the literal
+   string "true"/"false" instead of real data (or absent data as a boolean);
+   render those as blank rather than the literal word. ── */
+function clean(val: any): string {
+  if (val === true || val === 'true') return '';
+  if (val === false || val === 'false') return '';
+  if (val === null || val === undefined) return '';
+  return String(val);
+}
+
 /* ── Derive a clean display name from user fields ── */
 function getDisplayName(user: any): { first: string; last: string; display: string } {
   const first = (user?.givenName || user?.firstName || '').trim();
@@ -729,7 +739,7 @@ const Dashboard: React.FC = () => {
             {userFirst || userDisplay}
           </div>
           <div style={{ fontSize: '11px', color: '#6a6a6a', marginBottom: '1.25rem' }}>
-            {user.city || 'Location not set'} · {user.country || 'Country not set'}
+            {clean(user.city) || 'Location not set'} · {clean(user.country) || 'Country not set'}
           </div>
 
           {/* ── Tier badge (every member starts at Blue) ── */}
