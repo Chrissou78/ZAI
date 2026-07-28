@@ -188,10 +188,12 @@ export default function Rewards() {
         })}
       </div>
 
-      {/* ── Progress section ── */}
+      {/* ── Progress section — bar and CTA stay visible at max tier (100%
+          filled) rather than disappearing, so the layout doesn't collapse
+          and members can still claim products for points. ── */}
       <div style={{
         background: C.surface, border: `1px solid ${C.border}`, borderTop: 0, padding: '2rem',
-        display: 'grid', gridTemplateColumns: nextTier ? '1fr 280px' : '1fr', gap: '3rem', alignItems: 'center',
+        display: 'grid', gridTemplateColumns: '1fr 280px', gap: '3rem', alignItems: 'center',
         marginBottom: '2.5rem',
       }}>
         <div>
@@ -205,37 +207,37 @@ export default function Rewards() {
             )}
           </div>
           <div style={{ fontSize: 11, color: C.gray, marginTop: 4 }}>
-            Claim a new ski (+500 pts) or attend an event (+150 pts) to accelerate your progress.
+            {nextTier
+              ? 'Claim a new ski (+500 pts) or attend an event (+150 pts) to accelerate your progress.'
+              : "You've unlocked every tier. Keep claiming products and attending events to earn more points."}
           </div>
         </div>
 
-        {nextTier && (
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: C.gray, marginBottom: 6 }}>
-              <span>Current</span><span>{nextTier.name}</span>
-            </div>
-            <div style={{ height: 4, background: C.border, borderRadius: 2, overflow: 'hidden' }}>
-              <div style={{ height: '100%', width: `${progress}%`, background: C.red, borderRadius: 2, transition: 'width 0.6s ease' }} />
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, marginTop: 6 }}>
-              <span style={{ color: C.red }}>{balance.toLocaleString('de-CH')} pts</span>
-              <span style={{ color: C.gray }}>{nextTier.floor.toLocaleString('de-CH')} pts</span>
-            </div>
-            <button
-              onClick={() => navigate('/products')}
-              style={{
-                marginTop: '1rem', width: '100%', padding: '14px 28px',
-                background: C.red, color: '#fff', border: 'none',
-                fontSize: 11, fontWeight: 600, letterSpacing: '0.15em', textTransform: 'uppercase',
-                cursor: 'pointer', fontFamily: C.font, transition: 'background 0.2s',
-              }}
-              onMouseEnter={e => (e.currentTarget.style.background = '#9a2535')}
-              onMouseLeave={e => (e.currentTarget.style.background = C.red)}
-            >
-              Claim product · +500 pts
-            </button>
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: C.gray, marginBottom: 6 }}>
+            <span>Current</span><span>{nextTier ? nextTier.name : 'Max'}</span>
           </div>
-        )}
+          <div style={{ height: 4, background: C.border, borderRadius: 2, overflow: 'hidden' }}>
+            <div style={{ height: '100%', width: `${progress}%`, background: C.red, borderRadius: 2, transition: 'width 0.6s ease' }} />
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, marginTop: 6 }}>
+            <span style={{ color: C.red }}>{balance.toLocaleString('de-CH')} pts</span>
+            {nextTier && <span style={{ color: C.gray }}>{nextTier.floor.toLocaleString('de-CH')} pts</span>}
+          </div>
+          <button
+            onClick={() => navigate('/products')}
+            style={{
+              marginTop: '1rem', width: '100%', padding: '14px 28px',
+              background: C.red, color: '#fff', border: 'none',
+              fontSize: 11, fontWeight: 600, letterSpacing: '0.15em', textTransform: 'uppercase',
+              cursor: 'pointer', fontFamily: C.font, transition: 'background 0.2s',
+            }}
+            onMouseEnter={e => (e.currentTarget.style.background = '#9a2535')}
+            onMouseLeave={e => (e.currentTarget.style.background = C.red)}
+          >
+            Claim product · +500 pts
+          </button>
+        </div>
       </div>
 
       {/* ── Your {tier} benefits ── */}

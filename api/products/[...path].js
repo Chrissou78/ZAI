@@ -116,6 +116,12 @@ const API_KEY = () => process.env.WALLETTWO_API_KEY;
 const BLOCKCHAIN_BASE = 'https://api.wallettwo.com/blockchain/v1/api';
 const RWA_BASE = 'https://rwa.onchainlabs.ch/v1/api';
 const CHAIN_ID = () => process.env.CHAIN_ID || '137';
+// Proof-of-purchase images are pinned to our own Pinata account, so read them
+// back from our dedicated gateway rather than the public ipfs.io one — that
+// public gateway measured anywhere from ~200ms to a full timeout (20s+, no
+// response) for the exact same file, which is what "still loading" traced to.
+const PINATA_GATEWAY = () => process.env.PINATA_GATEWAY || 'gateway.pinata.cloud';
+const ipfsUrlFor = (cid) => `https://${PINATA_GATEWAY()}/ipfs/${cid}`;
 
 function genId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
@@ -625,7 +631,7 @@ function resolveProofImageUrl(claimRow) {
     return KNOWN_PROOF_IMAGES[claimRow.id];
   }
   if (claimRow.proof_image_cid) {
-    return `https://ipfs.io/ipfs/${claimRow.proof_image_cid}`;
+    return ipfsUrlFor(claimRow.proof_image_cid);
   }
   return '';
 }
@@ -1204,13 +1210,13 @@ export default async function handler(req, res) {
           if (pinRes.ok) {
             const pinData = await pinRes.json();
             imageCid = pinData.IpfsHash;
-            imageUrl = `https://ipfs.io/ipfs/${imageCid}`;
+            imageUrl = ipfsUrlFor(imageCid);
           } else {
             console.error('[PRODUCTS] Pinata upload failed:', await pinRes.text());
           }
         }
       } else if (imageCid) {
-        imageUrl = `https://ipfs.io/ipfs/${imageCid}`;
+        imageUrl = ipfsUrlFor(imageCid);
       }
 
       await pool.query(
@@ -1522,7 +1528,7 @@ export default async function handler(req, res) {
       }
 
       const ipfsUrl = claim.proof_image_cid
-        ? `https://ipfs.io/ipfs/${claim.proof_image_cid}`
+        ? ipfsUrlFor(claim.proof_image_cid)
         : claim.proof_image_url;
 
       if (!ipfsUrl) {

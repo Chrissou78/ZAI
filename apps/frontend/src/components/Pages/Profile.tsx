@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAppContext } from '../../context/AppContext';
 import { apiService } from '../../services/api';
 
@@ -220,185 +221,78 @@ const toFormData = (src: any) => {
 };
 
 /* ═══════════════════════════════════════════════════════════
-   TIER DISPLAY — matches the provided screenshot design
+   MEMBERSHIP STATUS BAND — compact tier + points widget, matches
+   the shared design system's .tier-status-band (dark card, tier
+   pill on the left, progress + "View points & tiers" on the right)
    ═══════════════════════════════════════════════════════════ */
-const TierDisplay: React.FC<{ points: number }> = ({ points }) => {
+const MembershipStatusBand: React.FC<{ points: number; memberSince: string }> = ({ points, memberSince }) => {
   const tier = getTier(points);
   const next = getNextTier(points);
   const progress = next
-    ? ((points - tier.min) / (next.min - tier.min)) * 100
+    ? Math.min(100, Math.max(0, ((points - tier.min) / (next.min - tier.min)) * 100))
     : 100;
+  const navigate = useNavigate();
+  // Lighter pink-red — the plain burgundy reads too dark against the black band.
+  const accent = '#c9556b';
 
   return (
-    <div>
-      {/* Progress section */}
-      <div
-        style={{
-          border: `1px solid ${C.border}`,
-          padding: '28px',
-          borderRadius: 4,
-          background: '#fff',
-        }}
-      >
-        {next ? (
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr 1fr',
-              gap: 32,
-              alignItems: 'flex-end',
-            }}
-          >
-            <div>
-              <div
-                style={{
-                  fontSize: 10,
-                  letterSpacing: '0.3em',
-                  textTransform: 'uppercase',
-                  color: C.gray,
-                  marginBottom: 10,
-                  fontFamily: C.font,
-                }}
-              >
-                Progress to {next.name}
-              </div>
-              <div style={{ marginBottom: 8 }}>
-                <span
-                  style={{
-                    fontSize: 'clamp(24px, 2.5vw, 32px)',
-                    fontWeight: 300,
-                    color: C.black,
-                  }}
-                >
-                  {points.toLocaleString()}
-                </span>
-                <span
-                  style={{
-                    fontSize: 'clamp(24px, 2.5vw, 32px)',
-                    fontWeight: 300,
-                    color: C.gray,
-                  }}
-                >
-                  {' '}/ {next.min.toLocaleString()} points
-                </span>
-              </div>
-              <div style={{ fontSize: 12, color: C.mid, lineHeight: 1.6 }}>
-                Claim a new ski (+500 pts) or attend an event (+150 pts) to
-                accelerate your progress.
-              </div>
-            </div>
-
-            <div>
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  fontSize: 10,
-                  color: C.gray,
-                  marginBottom: 6,
-                  fontFamily: C.font,
-                }}
-              >
-                <span>Current</span>
-                <span>{next.name}</span>
-              </div>
-
-              <div
-                style={{
-                  height: 6,
-                  background: C.border,
-                  overflow: 'hidden',
-                  marginBottom: 4,
-                  position: 'relative',
-                }}
-              >
-                <div
-                  style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    height: '100%',
-                    width: `${Math.min(progress, 100)}%`,
-                    background:
-                      tier.color === '#1a1a1a' ? C.red : tier.color,
-                    transition: 'width 0.6s ease',
-                  }}
-                />
-              </div>
-
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  fontSize: 10,
-                  color: C.mid,
-                  marginBottom: 20,
-                }}
-              >
-                <span>{points.toLocaleString()} pts</span>
-                <span>{next.min.toLocaleString()} pts</span>
-              </div>
-
-              <button
-                onClick={() => {
-                  window.location.href = '/products';
-                }}
-                style={{
-                  width: '100%',
-                  padding: '14px 24px',
-                  fontSize: 10,
-                  fontWeight: 700,
-                  letterSpacing: '0.15em',
-                  textTransform: 'uppercase',
-                  border: 'none',
-                  background: C.red,
-                  color: '#fff',
-                  cursor: 'pointer',
-                  fontFamily: C.font,
-                  transition: 'background 0.2s',
-                }}
-                onMouseEnter={(e) =>
-                  (e.currentTarget.style.background = '#9a2535')
-                }
-                onMouseLeave={(e) =>
-                  (e.currentTarget.style.background = C.red)
-                }
-              >
-                Claim Product · +500 pts
-              </button>
-            </div>
+    <div style={{
+      display: 'grid',
+      gridTemplateColumns: next ? '1fr 300px' : '1fr',
+      gap: '2.5rem',
+      alignItems: 'center',
+      background: C.black,
+      border: `1px solid ${C.borderDark}`,
+      padding: '1.5rem 1.75rem',
+    }}>
+      <div>
+        <div style={{
+          display: 'inline-flex', alignItems: 'center', gap: 6,
+          padding: '5px 10px', marginBottom: '0.6rem',
+          background: 'rgba(201,85,107,0.08)', border: `1px solid rgba(201,85,107,0.35)`,
+        }}>
+          <div style={{ width: 5, height: 5, borderRadius: '50%', background: accent }} />
+          <div style={{ fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', color: accent }}>
+            {tier.name} Tier
           </div>
-        ) : (
-          <div style={{ textAlign: 'center', padding: '12px 0' }}>
-            <div
-              style={{
-                fontSize: 10,
-                letterSpacing: '0.3em',
-                textTransform: 'uppercase',
-                color: C.gray,
-                marginBottom: 10,
-                fontFamily: C.font,
-              }}
-            >
-              Maximum Tier Reached
-            </div>
-            <div
-              style={{
-                fontSize: 'clamp(24px, 2.5vw, 32px)',
-                fontWeight: 300,
-                color: C.black,
-                marginBottom: 8,
-              }}
-            >
-              {points.toLocaleString()} points
-            </div>
-            <div style={{ fontSize: 12, color: C.mid }}>
-              Welcome to Diamond. You have access to all zai benefits and
-              experiences.
-            </div>
-          </div>
-        )}
+        </div>
+        <div style={{ fontSize: 11, color: '#999' }}>
+          {memberSince !== '—' ? `Member since ${memberSince}` : ''}
+        </div>
       </div>
+
+      {next && (
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#888', marginBottom: 5 }}>
+            <span>{points.toLocaleString()} pts</span>
+            <span>{next.min.toLocaleString()} for {next.name}</span>
+          </div>
+          <div style={{ height: 2, background: '#2a2a2a', overflow: 'hidden' }}>
+            <div style={{
+              height: '100%', width: `${progress}%`,
+              background: 'linear-gradient(90deg,#7A222E,#b84055)',
+              transition: 'width 1s ease',
+            }} />
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 }}>
+            <div style={{ fontSize: 10, color: accent }}>
+              {(next.min - points).toLocaleString()} pts to {next.name}
+            </div>
+            <div
+              onClick={() => navigate('/rewards')}
+              style={{
+                fontSize: 10, letterSpacing: '0.15em', textTransform: 'uppercase',
+                color: '#999', cursor: 'pointer', borderBottom: '1px solid #444',
+                paddingBottom: 2, transition: 'color 0.2s',
+              }}
+              onMouseEnter={e => (e.currentTarget.style.color = '#fff')}
+              onMouseLeave={e => (e.currentTarget.style.color = '#999')}
+            >
+              View points &amp; tiers →
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -616,7 +510,9 @@ const ReferralProgram: React.FC<{ userId: string }> = ({ userId }) => {
    PROFILE COMPONENT
    ═══════════════════════════════════════════════════════════ */
 const Profile: React.FC = () => {
-  const { user } = useAppContext();
+  const { user, setUser } = useAppContext();
+  const [isEditing, setIsEditing] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [stats, setStats] = useState<UserStats>({ productsClaimed: 0, eventsAttended: 0 });
   const [formData, setFormData] = useState(toFormData(user));
 
@@ -775,6 +671,78 @@ const Profile: React.FC = () => {
     return () => { cancelled = true; };
   }, [user?.id]);
 
+  /* ── Handlers ── */
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value, type, checked } = e.target;
+    setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
+  };
+
+  const handleSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSave = async () => {
+    if (!user?.id) return;
+    setIsLoading(true);
+    try {
+      const fullPhone = formData.phoneLocal
+        ? `${formData.phoneCode} ${formData.phoneLocal}`.trim()
+        : '';
+
+      const res = await apiService.put('/users/me', {
+        name: `${formData.givenName} ${formData.familyName}`.trim(),
+        givenName: formData.givenName,
+        familyName: formData.familyName,
+        email: formData.email,
+        phoneNumber: fullPhone,
+        address: formData.address,
+        city: formData.city,
+        country: formData.country,
+        postalCode: formData.postalCode,
+        birthdate: formData.birthdate || null,
+        isPublic: formData.isPublic,
+      });
+      const data = res.data as any;
+      if (data?.success) {
+        if (data.jwtToken) {
+          localStorage.setItem('token', data.jwtToken);
+          localStorage.setItem('zai_token', data.jwtToken);
+        }
+        const updatedUser: typeof user = {
+          ...user,
+          givenName: formData.givenName,
+          familyName: formData.familyName,
+          name: `${formData.givenName} ${formData.familyName}`.trim(),
+          email: formData.email,
+          phoneNumber: fullPhone,
+          address: formData.address,
+          city: formData.city,
+          country: formData.country,
+          postalCode: formData.postalCode,
+          birthdate: formData.birthdate,
+          isPublic: formData.isPublic,
+          ...(data.user || {}),
+        };
+        setUser(updatedUser);
+        localStorage.setItem('zai_user', JSON.stringify(updatedUser));
+        setIsEditing(false);
+      }
+    } catch (err) {
+      console.error('Failed to update profile:', err);
+      alert('Failed to update profile');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCancel = () => {
+    if (user) {
+      setFormData(toFormData(user));
+    }
+    setIsEditing(false);
+  };
+
   /* ── Card number handlers ── */
   const saveCardNumber = async () => {
     setSavingCardNum(true);
@@ -819,6 +787,13 @@ const Profile: React.FC = () => {
   };
 
   /* ── Format helpers ── */
+  const formatBirthdate = (d: string) => {
+    if (!d) return '—';
+    const dt = new Date(d);
+    if (isNaN(dt.getTime())) return d;
+    return dt.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+  };
+
   const memberSince = () => {
     if (!user?.createdAt) return '—';
     const dt = new Date(user.createdAt);
@@ -831,6 +806,21 @@ const Profile: React.FC = () => {
     if (formData.city) parts.push(formData.city);
     if (formData.country) parts.push(formData.country);
     return parts.join(', ') || null;
+  };
+
+  const homeAddress = () => {
+    const parts: string[] = [];
+    if (formData.address) parts.push(formData.address);
+    const cityZip = [formData.postalCode, formData.city].filter(Boolean).join(' ');
+    if (cityZip) parts.push(cityZip);
+    if (formData.country) parts.push(formData.country);
+    return parts.join(', ') || '—';
+  };
+
+  const displayPhone = () => {
+    if (!formData.phoneLocal && !formData.phoneCode) return '—';
+    if (!formData.phoneLocal) return '—';
+    return `${formData.phoneCode} ${formData.phoneLocal}`.trim();
   };
 
   if (!user) {
@@ -855,34 +845,73 @@ const Profile: React.FC = () => {
   else if (nfcCardId) bulletItems.push(`NFC Card: ${nfcCardId}`);
   bulletItems.push('CHF · Alpine region');
 
+  const selectStyle: React.CSSProperties = {
+    width: '100%',
+    background: '#fff',
+    border: 'none',
+    borderBottom: `1px solid ${C.border}`,
+    color: C.black,
+    fontFamily: C.font,
+    fontSize: '13px',
+    fontWeight: 400,
+    padding: '4px 0',
+    outline: 'none',
+    cursor: 'pointer',
+    boxSizing: 'border-box',
+    appearance: 'auto',
+  };
+
   return (
     <div style={{ maxWidth: 1100, margin: '0 auto', padding: '48px 48px 80px', fontFamily: C.font }}>
 
       {/* ═══ HEADER ═══ */}
       <div
         style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
           marginBottom: '2.5rem',
           paddingBottom: '2rem',
           borderBottom: `1px solid ${C.border}`,
         }}
       >
-        <div style={{ ...label, color: C.red, marginBottom: '0.4rem', fontSize: '11px' }}>
-          account
+        <div>
+          <div style={{ ...label, color: C.red, marginBottom: '0.4rem', fontSize: '11px' }}>
+            account
+          </div>
+          <h1
+            style={{
+              fontSize: 'clamp(32px, 4vw, 40px)',
+              fontWeight: 300,
+              lineHeight: 1.15,
+              margin: '0 0 0.3rem',
+              color: C.black,
+            }}
+          >
+            Profile
+          </h1>
+          <p style={{ color: C.gray, fontSize: '13px', maxWidth: '520px', margin: 0 }}>
+            Manage your personal details and account preferences.
+          </p>
         </div>
-        <h1
-          style={{
-            fontSize: 'clamp(32px, 4vw, 40px)',
-            fontWeight: 300,
-            lineHeight: 1.15,
-            margin: '0 0 0.3rem',
-            color: C.black,
+
+        <button
+          onClick={() => {
+            if (isEditing) { handleSave(); } else { setIsEditing(true); }
           }}
+          disabled={isLoading}
+          style={{
+            background: C.black, color: '#fff', border: 'none',
+            padding: '14px 28px', fontSize: '10px', letterSpacing: '0.2em',
+            textTransform: 'uppercase', cursor: isLoading ? 'wait' : 'pointer',
+            fontFamily: C.font, fontWeight: 500, transition: 'background 0.2s',
+            whiteSpace: 'nowrap', marginTop: '0.5rem', opacity: isLoading ? 0.7 : 1,
+          }}
+          onMouseEnter={e => { if (!isLoading) e.currentTarget.style.background = '#1a1a1a'; }}
+          onMouseLeave={e => (e.currentTarget.style.background = C.black)}
         >
-          Profile
-        </h1>
-        <p style={{ color: C.gray, fontSize: '13px', maxWidth: '520px', margin: 0 }}>
-          Your membership status and rewards.
-        </p>
+          {isLoading ? 'Saving...' : isEditing ? 'Save Changes' : 'Edit'}
+        </button>
       </div>
 
       {/* ═══ MAIN CARD — 2 columns ═══ */}
@@ -1000,16 +1029,89 @@ const Profile: React.FC = () => {
         {/* ── RIGHT — PERSONAL INFORMATION + SECTIONS ── */}
         <div style={{ background: '#fff', padding: '2.5rem 2rem' }}>
 
-          {/* ═══ REWARDS & TIER SECTION ═══ */}
+          {/* ── Personal Information ── */}
+          <div style={{ ...label, color: C.black, fontSize: '11px', marginBottom: '1.5rem', paddingBottom: '0.75rem', borderBottom: `1px solid ${C.border}` }}>
+            Personal Information
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', background: C.border, border: `1px solid ${C.border}` }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1px', background: C.border }}>
+              <FieldCell label="First Name" name="givenName" value={formData.givenName} editing={isEditing} onChange={handleChange} />
+              <FieldCell label="Family Name" name="familyName" value={formData.familyName} editing={isEditing} onChange={handleChange} />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1px', background: C.border }}>
+              <FieldCell
+                label="Date of Birth" name="birthdate"
+                value={isEditing ? formData.birthdate : formatBirthdate(formData.birthdate)}
+                editing={isEditing} type={isEditing ? 'date' : 'text'} onChange={handleChange}
+              />
+              {isEditing ? (
+                <div style={{ background: '#fff', padding: '1rem 1.25rem' }}>
+                  <div style={{ fontSize: '10px', letterSpacing: '0.25em', textTransform: 'uppercase', color: C.gray, marginBottom: '6px', fontFamily: C.font }}>
+                    Phone Number
+                  </div>
+                  <div style={{ display: 'flex', gap: '6px', alignItems: 'flex-end' }}>
+                    <select name="phoneCode" value={formData.phoneCode} onChange={handleSelectChange}
+                      style={{ ...selectStyle, width: '115px', flexShrink: 0 }}>
+                      {PHONE_CODES.map(pc => (<option key={pc.code} value={pc.code}>{pc.label}</option>))}
+                    </select>
+                    <input type="tel" name="phoneLocal" value={formData.phoneLocal} onChange={handleChange}
+                      placeholder="79 123 4567"
+                      style={{ flex: 1, background: 'transparent', border: 'none', borderBottom: `1px solid ${C.border}`, color: C.black, fontFamily: C.font, fontSize: '13px', fontWeight: 400, padding: '4px 0', outline: 'none', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <FieldCell label="Phone Number" name="phoneNumber" value={displayPhone()} editing={false} onChange={() => {}} />
+              )}
+            </div>
+
+            <FieldCell label="Email Address" name="email" value={formData.email} editing={isEditing} type="email" onChange={handleChange} />
+
+            {isEditing ? (
+              <>
+                <FieldCell label="Street Address" name="address" value={formData.address} editing={true} onChange={handleChange} />
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1px', background: C.border }}>
+                  <FieldCell label="Postal Code" name="postalCode" value={formData.postalCode} editing={true} onChange={handleChange} />
+                  <FieldCell label="City" name="city" value={formData.city} editing={true} onChange={handleChange} />
+                  <div style={{ background: '#fff', padding: '1rem 1.25rem' }}>
+                    <div style={{ fontSize: '10px', letterSpacing: '0.25em', textTransform: 'uppercase', color: C.gray, marginBottom: '6px', fontFamily: C.font }}>Country</div>
+                    <select name="country" value={formData.country} onChange={handleSelectChange} style={selectStyle}>
+                      <option value="">Select country</option>
+                      {COUNTRIES.map(c => (<option key={c} value={c}>{c}</option>))}
+                    </select>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <FieldCell label="Home Address" name="address" value={homeAddress()} editing={false} onChange={() => {}} />
+            )}
+          </div>
+
+          {isEditing && (
+            <div style={{ marginTop: '1.5rem' }}>
+              <button onClick={handleCancel} style={{
+                background: 'transparent', border: `1px solid ${C.border}`, color: C.black,
+                padding: '12px 24px', fontSize: '10px', letterSpacing: '0.2em',
+                textTransform: 'uppercase', cursor: 'pointer', fontFamily: C.font, transition: 'border-color 0.2s',
+              }}
+                onMouseEnter={e => (e.currentTarget.style.borderColor = C.black)}
+                onMouseLeave={e => (e.currentTarget.style.borderColor = C.border)}
+              >Cancel</button>
+            </div>
+          )}
+
+          {/* ═══ MEMBERSHIP STATUS SECTION ═══ */}
           {exclusive && (
             <>
-              <div style={{ ...label, color: C.black, fontSize: '11px', marginBottom: '1.5rem', paddingBottom: '0.75rem', borderBottom: `1px solid ${C.border}` }}>
-                Rewards & Tier
+              <div style={{ ...label, color: C.black, fontSize: '11px', marginTop: '3rem', marginBottom: '1.5rem', paddingBottom: '0.75rem', borderBottom: `1px solid ${C.border}` }}>
+                Membership Status
               </div>
               {loadingPoints ? (
                 <div style={{ padding: '20px 0', fontSize: 13, color: C.gray }}>Loading…</div>
               ) : (
-                <TierDisplay points={points} />
+                <MembershipStatusBand points={points} memberSince={ms} />
               )}
             </>
           )}
@@ -1178,5 +1280,32 @@ const Profile: React.FC = () => {
     </div>
   );
 };
+
+/* ═══ Field Cell sub-component ═══ */
+interface FieldCellProps {
+  label: string;
+  name: string;
+  value: string;
+  editing: boolean;
+  type?: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+}
+
+const FieldCell: React.FC<FieldCellProps> = ({ label: lbl, name, value, editing, type = 'text', onChange }) => (
+  <div style={{ background: '#fff', padding: '1rem 1.25rem' }}>
+    <div style={{ fontSize: '10px', letterSpacing: '0.25em', textTransform: 'uppercase', color: C.gray, marginBottom: '6px', fontFamily: C.font }}>
+      {lbl}
+    </div>
+    {editing ? (
+      <input type={type} name={name} value={value} onChange={onChange} placeholder="—"
+        style={{ width: '100%', background: 'transparent', border: 'none', borderBottom: `1px solid ${C.border}`, color: C.black, fontFamily: C.font, fontSize: '13px', fontWeight: 400, padding: '4px 0', outline: 'none', boxSizing: 'border-box' }}
+      />
+    ) : (
+      <div style={{ fontSize: '13px', fontWeight: 400, color: C.black, padding: '4px 0', minHeight: '20px' }}>
+        {value || '—'}
+      </div>
+    )}
+  </div>
+);
 
 export default Profile;

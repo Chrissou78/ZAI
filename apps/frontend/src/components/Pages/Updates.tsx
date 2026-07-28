@@ -529,7 +529,6 @@ export default function Updates() {
                 gap: 32, flexWrap: 'wrap',
               }}>
                 <div style={{ position: 'absolute', bottom: 0, right: 0, width: '50%', height: '100%', opacity: 0.15, background: 'linear-gradient(135deg, transparent 40%, #7A222E 100%)' }} />
-                <div style={{ position: 'absolute', top: 16, right: 16, zIndex: 2, fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', padding: '5px 12px', border: '1px solid rgba(255,255,255,0.3)', color: '#ccc' }}>NEW DEAL</div>
 
                 <div style={{ position: 'relative', zIndex: 1, flex: '1 1 320px', minWidth: 0 }}>
                   <div style={{ ...LABEL, color: '#888', marginBottom: 16 }}>— FEATURED DEAL</div>
@@ -548,7 +547,7 @@ export default function Updates() {
                   </button>
                 </div>
 
-                {featuredDeal.image_url && (
+                {featuredDeal.image_url ? (
                   <div style={{
                     position: 'relative', zIndex: 1, flexShrink: 0,
                     width: 220, height: 220, borderRadius: 8, overflow: 'hidden',
@@ -559,7 +558,25 @@ export default function Updates() {
                       alt={featuredDeal.title}
                       style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                     />
+                    {/* Scoped to the photo itself so it can't stray onto the
+                        text column — the old card-corner position overlapped
+                        this box since both used similar top/right offsets. */}
+                    <div style={{
+                      position: 'absolute', top: 10, right: 10, zIndex: 2,
+                      fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase',
+                      padding: '5px 12px', borderRadius: 4, color: '#fff',
+                      background: 'rgba(122,34,46,0.9)', border: '1px solid rgba(122,34,46,0.5)',
+                      backdropFilter: 'blur(8px)',
+                    }}>New Deal</div>
                   </div>
+                ) : (
+                  <div style={{
+                    position: 'absolute', top: 20, right: 32, zIndex: 2,
+                    fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase',
+                    padding: '6px 14px', borderRadius: 4, color: '#fff',
+                    background: 'rgba(122,34,46,0.9)', border: '1px solid rgba(122,34,46,0.5)',
+                    backdropFilter: 'blur(8px)',
+                  }}>New Deal</div>
                 )}
               </div>
             )}
