@@ -116,12 +116,33 @@ const API_KEY = () => process.env.WALLETTWO_API_KEY;
 const BLOCKCHAIN_BASE = 'https://api.wallettwo.com/blockchain/v1/api';
 const RWA_BASE = 'https://rwa.onchainlabs.ch/v1/api';
 const CHAIN_ID = () => process.env.CHAIN_ID || '137';
-// Proof-of-purchase images are pinned to our own Pinata account, so read them
-// back from our dedicated gateway rather than the public ipfs.io one — that
-// public gateway measured anywhere from ~200ms to a full timeout (20s+, no
-// response) for the exact same file, which is what "still loading" traced to.
+// Proof-of-purchase images are pinned to our own Pinata account. The dedicated
+// gateway is much faster when it works (~2-4s vs ipfs.io's ~0.2-8s, and it
+// avoids ipfs.io's occasional full timeout) — but a full sweep of every claim
+// found the dedicated gateway returns 403 for ~15% of existing CIDs (likely a
+// Pinata gateway-restriction setting unrelated to this app), while ipfs.io
+// served all but one. Neither is reliable alone, so fetch tries the fast one
+// first and falls back to the broadly-reliable one on any failure.
 const PINATA_GATEWAY = () => process.env.PINATA_GATEWAY || 'gateway.pinata.cloud';
 const ipfsUrlFor = (cid) => `https://${PINATA_GATEWAY()}/ipfs/${cid}`;
+const publicIpfsUrlFor = (cid) => `https://ipfs.io/ipfs/${cid}`;
+
+async function fetchProofImage(cid, timeoutMs = 15000) {
+  for (const url of [ipfsUrlFor(cid), publicIpfsUrlFor(cid)]) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const res = await fetch(url, { signal: controller.signal });
+      clearTimeout(timeout);
+      if (res.ok) return res;
+      console.error(`[PRODUCTS] proof image gateway returned ${res.status} for ${url}`);
+    } catch (err) {
+      clearTimeout(timeout);
+      console.error(`[PRODUCTS] proof image gateway failed for ${url}:`, err.message);
+    }
+  }
+  return null;
+}
 
 function genId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
@@ -631,7 +652,10 @@ function resolveProofImageUrl(claimRow) {
     return KNOWN_PROOF_IMAGES[claimRow.id];
   }
   if (claimRow.proof_image_cid) {
-    return ipfsUrlFor(claimRow.proof_image_cid);
+    // This is a browser redirect, not a server-side fetch — there is no
+    // retry-with-fallback available here, so use the gateway that tested
+    // reliable across nearly every existing CID (see fetchProofImage above).
+    return publicIpfsUrlFor(claimRow.proof_image_cid);
   }
   return '';
 }
@@ -1210,13 +1234,13 @@ export default async function handler(req, res) {
           if (pinRes.ok) {
             const pinData = await pinRes.json();
             imageCid = pinData.IpfsHash;
-            imageUrl = ipfsUrlFor(imageCid);
+            imageUrl = publicIpfsUrlFor(imageCid);
           } else {
             console.error('[PRODUCTS] Pinata upload failed:', await pinRes.text());
           }
         }
       } else if (imageCid) {
-        imageUrl = ipfsUrlFor(imageCid);
+        imageUrl = publicIpfsUrlFor(imageCid);
       }
 
       await pool.query(
@@ -1527,31 +1551,33 @@ export default async function handler(req, res) {
         return res.status(404).json({ error: 'No proof image available' });
       }
 
-      const ipfsUrl = claim.proof_image_cid
-        ? ipfsUrlFor(claim.proof_image_cid)
-        : claim.proof_image_url;
-
-      if (!ipfsUrl) {
+      if (!claim.proof_image_cid && !claim.proof_image_url) {
         return res.status(404).json({ error: 'No proof image available' });
       }
 
       // Bound the gateway fetch — without this a slow gateway holds the
       // function open until the platform kills it, and the client spinner
-      // never resolves.
-      const ipfsController = new AbortController();
-      const ipfsTimeout = setTimeout(() => ipfsController.abort(), 15000);
+      // never resolves. When a cid is available, try the fast dedicated
+      // gateway first and fall back to the broadly-reliable public one.
       let imgRes;
-      try {
-        imgRes = await fetch(ipfsUrl, { signal: ipfsController.signal });
-      } catch (fetchErr) {
-        clearTimeout(ipfsTimeout);
-        console.error('[PRODUCTS] proof image gateway fetch failed:', fetchErr.message);
-        return res.status(504).json({ error: 'Proof image gateway timed out' });
+      if (claim.proof_image_cid) {
+        imgRes = await fetchProofImage(claim.proof_image_cid);
+      } else {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 15000);
+        try {
+          imgRes = await fetch(claim.proof_image_url, { signal: controller.signal });
+          if (!imgRes.ok) imgRes = null;
+        } catch (fetchErr) {
+          console.error('[PRODUCTS] proof image fetch failed:', fetchErr.message);
+          imgRes = null;
+        } finally {
+          clearTimeout(timeout);
+        }
       }
-      clearTimeout(ipfsTimeout);
 
-      if (!imgRes.ok) {
-        return res.status(502).json({ error: 'Failed to fetch proof image from IPFS' });
+      if (!imgRes) {
+        return res.status(502).json({ error: 'Failed to fetch proof image from any gateway' });
       }
 
       const encryptedBuffer = Buffer.from(await imgRes.arrayBuffer());
