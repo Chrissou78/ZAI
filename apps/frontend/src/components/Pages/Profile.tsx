@@ -232,8 +232,11 @@ const MembershipStatusBand: React.FC<{ points: number; memberSince: string }> = 
     ? Math.min(100, Math.max(0, ((points - tier.min) / (next.min - tier.min)) * 100))
     : 100;
   const navigate = useNavigate();
-  // Lighter pink-red — the plain burgundy reads too dark against the black band.
-  const accent = '#c9556b';
+  // Badge uses the current tier's own color (blue for Blue, burgundy for Red, etc.)
+  // rather than a fixed accent — the tier name and its color must always match.
+  // Black's tier color (#1a1a1a) is near-invisible against this band's own
+  // near-black background, so it gets a light neutral instead.
+  const accent = tier.name === 'Black' ? '#e8e8e8' : tier.color;
 
   return (
     <div style={{
@@ -249,7 +252,7 @@ const MembershipStatusBand: React.FC<{ points: number; memberSince: string }> = 
         <div style={{
           display: 'inline-flex', alignItems: 'center', gap: 6,
           padding: '5px 10px', marginBottom: '0.6rem',
-          background: 'rgba(201,85,107,0.08)', border: `1px solid rgba(201,85,107,0.35)`,
+          background: `${accent}14`, border: `1px solid ${accent}59`,
         }}>
           <div style={{ width: 5, height: 5, borderRadius: '50%', background: accent }} />
           <div style={{ fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', color: accent }}>
