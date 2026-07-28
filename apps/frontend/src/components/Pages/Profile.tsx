@@ -850,8 +850,9 @@ const Profile: React.FC = () => {
   if (ms !== '—') bulletItems.push(`Member since ${ms}`);
   const loc = locationStr();
   if (loc) bulletItems.push(loc);
+  const nfcCardId = clean((user as any).nfcCardId);
   if (cardNumberStored) bulletItems.push(`Card: ${cardNumberStored}`);
-  else if ((user as any).nfcCardId) bulletItems.push(`NFC Card: ${(user as any).nfcCardId}`);
+  else if (nfcCardId) bulletItems.push(`NFC Card: ${nfcCardId}`);
   bulletItems.push('CHF · Alpine region');
 
   return (
