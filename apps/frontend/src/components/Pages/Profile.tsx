@@ -226,8 +226,9 @@ const TierDisplay: React.FC<{ points: number }> = ({ points }) => {
   const tier = getTier(points);
   const next = getNextTier(points);
   const progress = next
-    ? ((points - tier.min) / (next.min - tier.min)) * 100
+    ? Math.min(100, Math.max(0, ((points - tier.min) / (next.min - tier.min)) * 100))
     : 100;
+  const barColor = tier.color === '#1a1a1a' ? C.red : tier.color;
 
   return (
     <div>
@@ -239,139 +240,19 @@ const TierDisplay: React.FC<{ points: number }> = ({ points }) => {
           background: '#fff',
         }}
       >
-        {next ? (
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr 1fr',
-              gap: 32,
-              alignItems: 'flex-end',
-            }}
-          >
-            <div>
-              <div
-                style={{
-                  fontSize: 10,
-                  letterSpacing: '0.3em',
-                  textTransform: 'uppercase',
-                  color: C.gray,
-                  marginBottom: 10,
-                  fontFamily: C.font,
-                }}
-              >
-                Progress to {next.name}
-              </div>
-              {/* Fixed 22px, not a responsive clamp up to 32px — the larger
-                  size wrapped "35,500 / 50,000 points" onto a second line
-                  well before the column ran out of room. */}
-              <div style={{ marginBottom: 8, whiteSpace: 'nowrap' }}>
-                <span
-                  style={{
-                    fontSize: 22,
-                    fontWeight: 300,
-                    color: C.black,
-                  }}
-                >
-                  {points.toLocaleString()}
-                </span>
-                <span
-                  style={{
-                    fontSize: 22,
-                    fontWeight: 300,
-                    color: C.gray,
-                  }}
-                >
-                  {' '}/ {next.min.toLocaleString()} points
-                </span>
-              </div>
-              <div style={{ fontSize: 12, color: C.mid, lineHeight: 1.6 }}>
-                Claim a new ski (+500 pts) or attend an event (+150 pts) to
-                accelerate your progress.
-              </div>
-            </div>
-
-            <div>
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  fontSize: 10,
-                  color: C.gray,
-                  marginBottom: 6,
-                  fontFamily: C.font,
-                }}
-              >
-                <span>Current</span>
-                <span>{next.name}</span>
-              </div>
-
-              <div
-                style={{
-                  height: 6,
-                  background: C.border,
-                  overflow: 'hidden',
-                  marginBottom: 4,
-                  position: 'relative',
-                }}
-              >
-                <div
-                  style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    height: '100%',
-                    width: `${Math.min(progress, 100)}%`,
-                    background:
-                      tier.color === '#1a1a1a' ? C.red : tier.color,
-                    transition: 'width 0.6s ease',
-                  }}
-                />
-              </div>
-
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  fontSize: 10,
-                  color: C.mid,
-                  marginBottom: 20,
-                }}
-              >
-                <span>{points.toLocaleString()} pts</span>
-                <span>{next.min.toLocaleString()} pts</span>
-              </div>
-
-              <button
-                onClick={() => {
-                  window.location.href = '/products';
-                }}
-                style={{
-                  width: '100%',
-                  padding: '14px 24px',
-                  fontSize: 10,
-                  fontWeight: 700,
-                  letterSpacing: '0.15em',
-                  textTransform: 'uppercase',
-                  border: 'none',
-                  background: C.red,
-                  color: '#fff',
-                  cursor: 'pointer',
-                  fontFamily: C.font,
-                  transition: 'background 0.2s',
-                }}
-                onMouseEnter={(e) =>
-                  (e.currentTarget.style.background = '#9a2535')
-                }
-                onMouseLeave={(e) =>
-                  (e.currentTarget.style.background = C.red)
-                }
-              >
-                Claim Product · +500 pts
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div style={{ textAlign: 'center', padding: '12px 0' }}>
+        {/* Bar and button stay visible at max tier (100% filled) rather than
+            being replaced by a plain "Maximum Tier Reached" message — the
+            layout shouldn't collapse and members can still claim products
+            for points even after unlocking every tier. */}
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: 32,
+            alignItems: 'flex-end',
+          }}
+        >
+          <div>
             <div
               style={{
                 fontSize: 10,
@@ -382,24 +263,119 @@ const TierDisplay: React.FC<{ points: number }> = ({ points }) => {
                 fontFamily: C.font,
               }}
             >
-              Maximum Tier Reached
+              {next ? `Progress to ${next.name}` : 'Maximum Tier Reached'}
             </div>
-            <div
-              style={{
-                fontSize: 22,
-                fontWeight: 300,
-                color: C.black,
-                marginBottom: 8,
-              }}
-            >
-              {points.toLocaleString()} points
+            {/* Fixed 22px, not a responsive clamp up to 32px — the larger
+                size wrapped "35,500 / 50,000 points" onto a second line
+                well before the column ran out of room. */}
+            <div style={{ marginBottom: 8, whiteSpace: 'nowrap' }}>
+              <span
+                style={{
+                  fontSize: 22,
+                  fontWeight: 300,
+                  color: C.black,
+                }}
+              >
+                {points.toLocaleString()}
+              </span>
+              {next && (
+                <span
+                  style={{
+                    fontSize: 22,
+                    fontWeight: 300,
+                    color: C.gray,
+                  }}
+                >
+                  {' '}/ {next.min.toLocaleString()} points
+                </span>
+              )}
             </div>
-            <div style={{ fontSize: 12, color: C.mid }}>
-              Welcome to Diamond. You have access to all zai benefits and
-              experiences.
+            <div style={{ fontSize: 12, color: C.mid, lineHeight: 1.6 }}>
+              {next
+                ? 'Claim a new ski (+500 pts) or attend an event (+150 pts) to accelerate your progress.'
+                : "You've unlocked every tier. Keep claiming products and attending events to earn more points."}
             </div>
           </div>
-        )}
+
+          <div>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                fontSize: 10,
+                color: C.gray,
+                marginBottom: 6,
+                fontFamily: C.font,
+              }}
+            >
+              <span>Current</span>
+              <span>{next ? next.name : 'Max'}</span>
+            </div>
+
+            <div
+              style={{
+                height: 6,
+                background: C.border,
+                overflow: 'hidden',
+                marginBottom: 4,
+                position: 'relative',
+              }}
+            >
+              <div
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  height: '100%',
+                  width: `${progress}%`,
+                  background: barColor,
+                  transition: 'width 0.6s ease',
+                }}
+              />
+            </div>
+
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                fontSize: 10,
+                color: C.mid,
+                marginBottom: 20,
+              }}
+            >
+              <span>{points.toLocaleString()} pts</span>
+              {next && <span>{next.min.toLocaleString()} pts</span>}
+            </div>
+
+            <button
+              onClick={() => {
+                window.location.href = '/products';
+              }}
+              style={{
+                width: '100%',
+                padding: '14px 24px',
+                fontSize: 10,
+                fontWeight: 700,
+                letterSpacing: '0.15em',
+                textTransform: 'uppercase',
+                border: 'none',
+                background: C.red,
+                color: '#fff',
+                cursor: 'pointer',
+                fontFamily: C.font,
+                transition: 'background 0.2s',
+              }}
+              onMouseEnter={(e) =>
+                (e.currentTarget.style.background = '#9a2535')
+              }
+              onMouseLeave={(e) =>
+                (e.currentTarget.style.background = C.red)
+              }
+            >
+              Claim Product · +500 pts
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

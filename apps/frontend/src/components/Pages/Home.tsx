@@ -39,7 +39,14 @@ const BTN_BASE: React.CSSProperties = {
   border: 'none',
 };
 
-/* ── tier data ── */
+/* ── tier data ──
+   Red uses WINE (the app's one burgundy) rather than a separate near-match
+   red. Diamond uses a neutral blue-gray rather than a gold/tan tone — no
+   gold anywhere in this palette. Black uses a light neutral rather than
+   #1a1a1a, which is the exact same value as BG_CARD below and was
+   invisible — the accent bar, badge, and bullet dots all render in
+   tier.color directly, so an identical-to-background color renders
+   nothing at all. */
 const TIERS = [
   {
     name: 'Blue',
@@ -49,19 +56,19 @@ const TIERS = [
   },
   {
     name: 'Red',
-    color: '#7D1E2C',
+    color: WINE,
     minPoints: 15000,
     perks: ['Priority event access', 'Maintenance discount', 'Partner benefits', 'Dedicated support'],
   },
   {
     name: 'Black',
-    color: '#1a1a1a',
+    color: '#f5f4f0',
     minPoints: 30000,
     perks: ['VIP event invitations', 'Early product launches', 'Custom fitting service', 'Referral bonuses'],
   },
   {
     name: 'Diamond',
-    color: '#8B7D6B',
+    color: '#7fa9c4',
     minPoints: 50000,
     perks: ['Factory visits, Pontresina', 'Bespoke commission', 'Personal zai ambassador', 'Annual zai retreat'],
   },
