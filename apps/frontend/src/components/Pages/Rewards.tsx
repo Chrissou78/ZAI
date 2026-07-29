@@ -1,29 +1,28 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppContext  } from '../../context/AppContext';
 
-// ── Design tokens — dark theme, matching the shared loyalty-program design ──
+// ── Design tokens — one consistent burgundy, no separate "tier red" or gold accent ──
 const C = {
-  black: '#0a0a0a', card: '#141414', white: '#f5f4f0', red: '#7A222E',
-  gray: '#6a6a6a', lightGray: '#999', border: '#e0ddd6', borderDark: '#2a2a2a',
-  surface: '#f0ede6', surface2: '#e8e5de', green: '#4caf7d', pureWhite: '#ffffff',
-  font: "'Inter', sans-serif",
+  black: '#0a0a0a', white: '#f5f4f0', burgundy: '#7A222E',
+  gray: '#6a6a6a', border: '#e0ddd6', borderDark: '#2a2a2a', surface: '#f0ede6',
+  green: '#4caf7d', pureWhite: '#ffffff', font: "'Inter', sans-serif",
 };
 const LABEL: React.CSSProperties = {
   fontSize: 10, letterSpacing: '0.2em', textTransform: 'uppercase',
   color: C.gray, fontWeight: 500,
 };
 
-// ── Tier meta — each tier's own accent color drives its badge, top border,
-// and bullet dots throughout the page. ──
+// ── Tier meta — icon colors match the mockup's .tier-icon.{blue,red,black,diamond},
+// except Red uses the app's one burgundy rather than the mockup's separate accent red. ──
 const TIERS = [
-  { name: 'Blue',    floor: 0,     ceiling: 14999,  color: '#4a7fb5',
+  { name: 'Blue',    num: '01', floor: 0,     ceiling: 14999,  icon: '#4a7fb5',
     benefits: ['Product registration', 'Event newsletter', 'Digital warranty'] },
-  { name: 'Red',     floor: 15000, ceiling: 29999,  color: C.red,
+  { name: 'Red',     num: '02', floor: 15000, ceiling: 29999,  icon: C.burgundy,
     benefits: ['Priority event access', 'Maintenance discount', 'Partner benefits', 'Dedicated support'] },
-  { name: 'Black',   floor: 30000, ceiling: 49999,  color: '#9a9a9a',
+  { name: 'Black',   num: '03', floor: 30000, ceiling: 49999,  icon: '#f5f4f0',
     benefits: ['VIP event invitations', 'Early product launches', 'Custom fitting service', 'Partner elite access', 'Referral bonuses'] },
-  { name: 'Diamond', floor: 50000, ceiling: null,   color: '#b8a888',
+  { name: 'Diamond', num: '04', floor: 50000, ceiling: null,   icon: '#7fa9c4',
     benefits: ['Factory visits, Pontresina', 'Bespoke commission', 'Personal zai ambassador', 'All partner elite benefits', 'Annual zai retreat'] },
 ];
 
@@ -57,7 +56,6 @@ export default function Rewards() {
   const [history, setHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const standingRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -94,8 +92,8 @@ export default function Rewards() {
 
   if (loading) {
     return (
-      <div style={{ padding: 48, fontFamily: C.font, textAlign: 'center', background: C.black, minHeight: '100vh' }}>
-        <div style={{ width: 32, height: 32, border: `3px solid ${C.borderDark}`, borderTopColor: C.red, borderRadius: '50%', animation: 'zai-spin 0.8s linear infinite', margin: '0 auto 16px' }} />
+      <div style={{ padding: 48, fontFamily: C.font, textAlign: 'center' }}>
+        <div style={{ width: 32, height: 32, border: `3px solid ${C.border}`, borderTopColor: C.burgundy, borderRadius: '50%', animation: 'zai-spin 0.8s linear infinite', margin: '0 auto 16px' }} />
         <span style={{ fontSize: 13, color: C.gray }}>Loading rewards…</span>
       </div>
     );
@@ -104,209 +102,196 @@ export default function Rewards() {
   const balance = data?.balance || 0;
 
   return (
-    <div style={{ background: C.black, minHeight: '100vh' }}>
-      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '48px 40px 80px', fontFamily: C.font, color: C.gray }}>
+    <div style={{ maxWidth: 1100, margin: '0 auto', padding: '48px 40px 80px', fontFamily: C.font, color: C.gray }}>
 
-        {/* ══════ PAGE HEADER ══════ */}
-        <div style={{ marginBottom: 40 }}>
-          <div style={{ ...LABEL, color: C.red, letterSpacing: '0.3em', marginBottom: 10, fontSize: 10 }}>
-            LOYALTY PROGRAM
-          </div>
-          <h1 style={{ fontSize: 'clamp(32px, 4vw, 44px)', fontWeight: 300, lineHeight: 1.15, margin: '0 0 12px', color: C.pureWhite }}>
-            Rewards &amp; Tiers
-          </h1>
-          <p style={{ color: C.lightGray, fontSize: 14, margin: 0, fontWeight: 300, maxWidth: 640, lineHeight: 1.6 }}>
-            Earn 2.7 points for every CHF spent on zai products. Climb through four exclusive
-            tiers to unlock increasingly premium rewards, deals, and experiences.
-          </p>
+      {/* ══════ PAGE HEADER — matches every other page's header treatment ══════ */}
+      <div style={{ marginBottom: 32 }}>
+        <div style={{ ...LABEL, color: C.burgundy, letterSpacing: '0.3em', marginBottom: 8, fontSize: 10 }}>
+          LOYALTY TIERS
         </div>
+        <h1 style={{ fontSize: 'clamp(24px, 3.5vw, 40px)', fontWeight: 300, lineHeight: 1.15, margin: '0 0 8px', color: C.black }}>
+          Points &amp; tiers
+        </h1>
+        <p style={{ color: C.gray, fontSize: 14, margin: 0, fontWeight: 300 }}>
+          Progress through tiers by claiming products and accumulating experience points.
+        </p>
+      </div>
 
-        {/* ── Tier showcase — the four tiers on their own terms, not scoped
-            to "your" progress. Current tier gets a small marker rather than
-            a full highlight, since the section below is where personal
-            standing is the focus. ── */}
-        <div style={{
-          display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-          gap: 1, background: C.borderDark, marginBottom: 32,
-        }}>
-          {TIERS.map((tier, i) => {
-            const isCurrent = i === currentTierIdx;
-            return (
-              <div key={tier.name} style={{
-                padding: '2rem 1.5rem', position: 'relative',
-                background: C.card, borderTop: `2px solid ${tier.color}`,
-              }}>
-                {isCurrent && (
-                  <div style={{
-                    position: 'absolute', top: '1rem', right: '1rem', fontSize: 8,
-                    letterSpacing: '0.15em', textTransform: 'uppercase', padding: '3px 7px',
-                    background: `${tier.color}22`, border: `1px solid ${tier.color}`, color: tier.color,
-                  }}>Your tier</div>
-                )}
+      {/* ── Current tier banner ── */}
+      <div style={{
+        background: C.black, border: `1px solid ${C.borderDark}`, color: C.pureWhite, padding: '2rem',
+        marginBottom: 1,
+      }}>
+        <div style={{ ...LABEL, color: '#666', marginBottom: 8 }}>YOUR CURRENT STANDING</div>
+        <div style={{ fontSize: 36, fontWeight: 200 }}>
+          {currentTier.name} <em style={{ fontStyle: 'normal', color: C.white }}>Tier</em>
+        </div>
+      </div>
+
+      {/* ── Tier cards ── */}
+      <div style={{
+        display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+        gap: 1, background: '#ddd', border: '1px solid #ddd', marginBottom: 1,
+      }}>
+        {TIERS.map((tier, i) => {
+          const isCurrent = i === currentTierIdx;
+          // The Black tier's icon color (near-white) is designed for its own
+          // dark "current" card; on a plain white card it would be invisible.
+          const iconColor = tier.name === 'Black' && !isCurrent ? C.black : tier.icon;
+          return (
+            <div key={tier.name} style={{
+              padding: '2rem 1.5rem', position: 'relative',
+              background: isCurrent ? C.black : C.white,
+              color: isCurrent ? C.pureWhite : C.black,
+            }}>
+              {isCurrent && (
                 <div style={{
-                  width: 40, height: 40, borderRadius: '50%',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 15, fontWeight: 600, marginBottom: 20,
-                  background: tier.color, color: '#fff',
-                }}>
-                  {tier.name[0]}
-                </div>
-                <div style={{ fontSize: 17, fontWeight: 600, color: C.pureWhite, marginBottom: 3 }}>
-                  {tier.name}
-                </div>
-                <div style={{ fontSize: 12, color: C.gray, marginBottom: '1.5rem' }}>
-                  {tier.floor === 0 ? 'Starting tier' : `${tier.floor.toLocaleString('de-CH')}+ pts`}
-                </div>
-                <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 9 }}>
-                  {tier.benefits.map(b => (
-                    <li key={b} style={{
-                      fontSize: 12, lineHeight: 1.4, color: '#b8b8b8',
-                      display: 'flex', alignItems: 'flex-start', gap: 8,
-                    }}>
-                      <span style={{
-                        width: 4, height: 4, marginTop: 5, borderRadius: '50%',
-                        background: tier.color, flexShrink: 0,
-                      }} />
-                      {b}
-                    </li>
-                  ))}
-                </ul>
+                  position: 'absolute', top: '1rem', right: '1rem', fontSize: 10,
+                  letterSpacing: '0.2em', textTransform: 'uppercase', padding: '3px 8px',
+                  background: C.burgundy, color: '#fff',
+                }}>Your tier</div>
+              )}
+              <div style={{
+                width: 44, height: 44, borderRadius: '50%',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 11, fontWeight: 500, marginBottom: 20,
+                background: `${iconColor}1a`, border: `1px solid ${iconColor}`,
+                color: iconColor,
+              }}>
+                {tier.num}
               </div>
-            );
-          })}
+              <div style={{
+                fontSize: 14, fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 3,
+              }}>
+                {tier.name}
+              </div>
+              <div style={{ fontSize: 11, color: isCurrent ? '#999' : C.gray, marginBottom: '1.5rem' }}>
+                {tier.ceiling ? `${tier.floor.toLocaleString('de-CH')} – ${tier.ceiling.toLocaleString('de-CH')} points` : `${tier.floor.toLocaleString('de-CH')}+ points`}
+              </div>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {tier.benefits.map(b => (
+                  <li key={b} style={{
+                    fontSize: 11, lineHeight: 1.4,
+                    color: isCurrent ? '#aaa' : '#555',
+                    display: 'flex', alignItems: 'flex-start', gap: 7,
+                  }}>
+                    <span style={{
+                      width: 4, height: 4, marginTop: 5, borderRadius: '50%',
+                      background: iconColor, flexShrink: 0,
+                    }} />
+                    {b}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* ── Progress section — bar and CTA stay visible at max tier (100%
+          filled) rather than disappearing, so the layout doesn't collapse
+          and members can still claim products for points. ── */}
+      <div style={{
+        background: C.surface, border: `1px solid ${C.border}`, borderTop: 0, padding: '2rem',
+        display: 'grid', gridTemplateColumns: '1fr 280px', gap: '3rem', alignItems: 'center',
+        marginBottom: '2.5rem',
+      }}>
+        <div>
+          <div style={{ ...LABEL, marginBottom: 6 }}>
+            {nextTier ? `PROGRESS TO ${nextTier.name.toUpperCase()}` : 'MAXIMUM TIER REACHED'}
+          </div>
+          <div style={{ fontSize: 22, fontWeight: 200, color: C.black, lineHeight: 1.2 }}>
+            {balance.toLocaleString('de-CH')}
+            {nextTier && (
+              <span style={{ color: C.gray, fontWeight: 300 }}> / <em style={{ fontStyle: 'normal', color: C.burgundy }}>{nextTier.floor.toLocaleString('de-CH')} points</em></span>
+            )}
+          </div>
+          <div style={{ fontSize: 11, color: C.gray, marginTop: 4 }}>
+            {nextTier
+              ? 'Claim a new ski (+500 pts) or attend an event (+150 pts) to accelerate your progress.'
+              : "You've unlocked every tier. Keep claiming products and attending events to earn more points."}
+          </div>
         </div>
 
-        <div style={{ textAlign: 'center', marginBottom: 56 }}>
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: C.gray, marginBottom: 6 }}>
+            <span>Current</span><span>{nextTier ? nextTier.name : 'Max'}</span>
+          </div>
+          <div style={{ height: 4, background: C.border, borderRadius: 2, overflow: 'hidden' }}>
+            <div style={{ height: '100%', width: `${progress}%`, background: `linear-gradient(90deg,${C.burgundy},#b84055)`, borderRadius: 2, transition: 'width 0.6s ease' }} />
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, marginTop: 6 }}>
+            <span style={{ color: C.burgundy }}>{balance.toLocaleString('de-CH')} pts</span>
+            {nextTier && <span style={{ color: C.gray }}>{nextTier.floor.toLocaleString('de-CH')} pts</span>}
+          </div>
           <button
-            onClick={() => standingRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+            onClick={() => navigate('/products')}
             style={{
-              padding: '14px 32px', background: C.red, color: '#fff', border: 'none',
+              marginTop: '1rem', width: '100%', padding: '14px 28px',
+              background: C.burgundy, color: '#fff', border: 'none',
               fontSize: 11, fontWeight: 600, letterSpacing: '0.15em', textTransform: 'uppercase',
-              borderRadius: 3, cursor: 'pointer', fontFamily: C.font, transition: 'background 0.2s',
+              cursor: 'pointer', fontFamily: C.font, transition: 'background 0.2s',
             }}
             onMouseEnter={e => (e.currentTarget.style.background = '#9a2535')}
-            onMouseLeave={e => (e.currentTarget.style.background = C.red)}
+            onMouseLeave={e => (e.currentTarget.style.background = C.burgundy)}
           >
-            View My Rewards
+            Claim product · +500 pts
           </button>
         </div>
-
-        {/* ── Your current standing ── */}
-        <div ref={standingRef} style={{
-          background: C.card, border: `1px solid ${C.borderDark}`, padding: '2rem',
-          marginBottom: 1,
-        }}>
-          <div style={{ ...LABEL, color: C.lightGray, marginBottom: 8 }}>YOUR CURRENT STANDING</div>
-          <div style={{ fontSize: 36, fontWeight: 200, color: C.pureWhite }}>
-            {currentTier.name} <em style={{ fontStyle: 'normal', color: currentTier.color }}>Tier</em>
-          </div>
-        </div>
-
-        {/* ── Progress section — bar and CTA stay visible at max tier (100%
-            filled) rather than disappearing, so the layout doesn't collapse
-            and members can still claim products for points. ── */}
-        <div style={{
-          background: C.card, border: `1px solid ${C.borderDark}`, borderTop: 0, padding: '2rem',
-          display: 'grid', gridTemplateColumns: '1fr 280px', gap: '3rem', alignItems: 'center',
-          marginBottom: '2.5rem',
-        }}>
-          <div>
-            <div style={{ ...LABEL, marginBottom: 6 }}>
-              {nextTier ? `PROGRESS TO ${nextTier.name.toUpperCase()}` : 'MAXIMUM TIER REACHED'}
-            </div>
-            <div style={{ fontSize: 22, fontWeight: 200, color: C.pureWhite, lineHeight: 1.2 }}>
-              {balance.toLocaleString('de-CH')}
-              {nextTier && (
-                <span style={{ color: C.gray, fontWeight: 300 }}> / <em style={{ fontStyle: 'normal' }}>{nextTier.floor.toLocaleString('de-CH')} points</em></span>
-              )}
-            </div>
-            <div style={{ fontSize: 11, color: C.gray, marginTop: 4 }}>
-              {nextTier
-                ? 'Claim a new ski (+500 pts) or attend an event (+150 pts) to accelerate your progress.'
-                : "You've unlocked every tier. Keep claiming products and attending events to earn more points."}
-            </div>
-          </div>
-
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: C.gray, marginBottom: 6 }}>
-              <span>Current</span><span>{nextTier ? nextTier.name : 'Max'}</span>
-            </div>
-            <div style={{ height: 4, background: C.borderDark, borderRadius: 2, overflow: 'hidden' }}>
-              <div style={{ height: '100%', width: `${progress}%`, background: C.red, borderRadius: 2, transition: 'width 0.6s ease' }} />
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, marginTop: 6 }}>
-              <span style={{ color: C.red }}>{balance.toLocaleString('de-CH')} pts</span>
-              {nextTier && <span style={{ color: C.gray }}>{nextTier.floor.toLocaleString('de-CH')} pts</span>}
-            </div>
-            <button
-              onClick={() => navigate('/products')}
-              style={{
-                marginTop: '1rem', width: '100%', padding: '14px 28px',
-                background: C.red, color: '#fff', border: 'none',
-                fontSize: 11, fontWeight: 600, letterSpacing: '0.15em', textTransform: 'uppercase',
-                cursor: 'pointer', fontFamily: C.font, transition: 'background 0.2s',
-              }}
-              onMouseEnter={e => (e.currentTarget.style.background = '#9a2535')}
-              onMouseLeave={e => (e.currentTarget.style.background = C.red)}
-            >
-              Claim product · +500 pts
-            </button>
-          </div>
-        </div>
-
-        {/* ── Your {tier} benefits ── */}
-        <div style={{ marginBottom: '2.5rem' }}>
-          <div style={{
-            ...LABEL, marginBottom: '1rem', paddingBottom: '0.75rem',
-            borderBottom: `1px solid ${C.borderDark}`,
-          }}>Your {currentTier.name} benefits</div>
-          <div style={{
-            display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-            gap: 1, background: C.borderDark,
-          }}>
-            {TIER_HIGHLIGHTS.map(h => (
-              <div key={h.title} style={{ background: C.card, padding: '1.5rem' }}>
-                <div style={{
-                  width: 32, height: 32, border: `1px solid ${C.borderDark}`,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '0.75rem',
-                }}>
-                  <svg width="14" height="14" viewBox="0 0 16 16" fill={C.red}>{h.icon}</svg>
-                </div>
-                <div style={{ fontSize: 12, fontWeight: 500, color: C.pureWhite, marginBottom: 4 }}>{h.title}</div>
-                <div style={{ fontSize: 11, color: C.gray, lineHeight: 1.6 }}>{h.description}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* ── Recent Points Activity ── */}
-        {history.length > 0 && (
-          <div>
-            <div style={{ ...LABEL, marginBottom: 16 }}>RECENT ACTIVITY</div>
-            {history.map((h: any) => (
-              <div key={h.id} style={{
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                padding: '12px 0', borderBottom: `1px solid ${C.borderDark}`,
-              }}>
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 500, color: C.pureWhite }}>{h.description || h.type}</div>
-                  <div style={{ fontSize: 11, color: C.gray }}>
-                    {new Date(h.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-                  </div>
-                </div>
-                <div style={{
-                  fontSize: 14, fontWeight: 600,
-                  color: h.amount > 0 ? C.green : C.red,
-                }}>
-                  {h.amount > 0 ? '+' : ''}{h.amount.toLocaleString('de-CH')} pts
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        <style>{`@keyframes zai-spin { 100% { transform: rotate(360deg); } }`}</style>
       </div>
+
+      {/* ── Your {tier} benefits ── */}
+      <div style={{ marginBottom: '2.5rem' }}>
+        <div style={{
+          ...LABEL, marginBottom: '1rem', paddingBottom: '0.75rem',
+          borderBottom: `1px solid ${C.border}`,
+        }}>Your {currentTier.name} benefits</div>
+        <div style={{
+          display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
+          gap: 1, background: C.border, border: `1px solid ${C.border}`,
+        }}>
+          {TIER_HIGHLIGHTS.map(h => (
+            <div key={h.title} style={{ background: C.white, padding: '1.5rem' }}>
+              <div style={{
+                width: 32, height: 32, border: `1px solid ${C.border}`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '0.75rem',
+              }}>
+                <svg width="14" height="14" viewBox="0 0 16 16" fill={C.burgundy}>{h.icon}</svg>
+              </div>
+              <div style={{ fontSize: 12, fontWeight: 500, color: C.black, marginBottom: 4 }}>{h.title}</div>
+              <div style={{ fontSize: 11, color: C.gray, lineHeight: 1.6 }}>{h.description}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Recent Points Activity ── */}
+      {history.length > 0 && (
+        <div>
+          <div style={{ ...LABEL, marginBottom: 16 }}>RECENT ACTIVITY</div>
+          {history.map((h: any) => (
+            <div key={h.id} style={{
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              padding: '12px 0', borderBottom: `1px solid ${C.border}`,
+            }}>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 500 }}>{h.description || h.type}</div>
+                <div style={{ fontSize: 11, color: C.gray }}>
+                  {new Date(h.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                </div>
+              </div>
+              <div style={{
+                fontSize: 14, fontWeight: 600,
+                color: h.amount > 0 ? C.green : C.burgundy,
+              }}>
+                {h.amount > 0 ? '+' : ''}{h.amount.toLocaleString('de-CH')} pts
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <style>{`@keyframes zai-spin { 100% { transform: rotate(360deg); } }`}</style>
     </div>
   );
 }

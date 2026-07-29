@@ -261,10 +261,13 @@ const TierDisplay: React.FC<{ points: number }> = ({ points }) => {
               >
                 Progress to {next.name}
               </div>
-              <div style={{ marginBottom: 8 }}>
+              {/* Fixed 22px, not a responsive clamp up to 32px — the larger
+                  size wrapped "35,500 / 50,000 points" onto a second line
+                  well before the column ran out of room. */}
+              <div style={{ marginBottom: 8, whiteSpace: 'nowrap' }}>
                 <span
                   style={{
-                    fontSize: 'clamp(24px, 2.5vw, 32px)',
+                    fontSize: 22,
                     fontWeight: 300,
                     color: C.black,
                   }}
@@ -273,7 +276,7 @@ const TierDisplay: React.FC<{ points: number }> = ({ points }) => {
                 </span>
                 <span
                   style={{
-                    fontSize: 'clamp(24px, 2.5vw, 32px)',
+                    fontSize: 22,
                     fontWeight: 300,
                     color: C.gray,
                   }}
@@ -383,7 +386,7 @@ const TierDisplay: React.FC<{ points: number }> = ({ points }) => {
             </div>
             <div
               style={{
-                fontSize: 'clamp(24px, 2.5vw, 32px)',
+                fontSize: 22,
                 fontWeight: 300,
                 color: C.black,
                 marginBottom: 8,
