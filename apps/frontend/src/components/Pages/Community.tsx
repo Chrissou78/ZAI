@@ -406,17 +406,39 @@ const PhotoZoomContent: React.FC<{
 //  (moved here from the old "Media & Stories" tab on Deals & Collectibles)
 // ═══════════════════════════════════
 
+// Converts a YouTube/Vimeo watch link into its embeddable iframe form.
+// Returns null for links that don't match a known embeddable host.
+function getEmbedUrl(url: string): string | null {
+  if (!url) return null;
+  try {
+    const u = new URL(url);
+    if (u.hostname.includes('youtube.com')) {
+      const id = u.searchParams.get('v');
+      return id ? `https://www.youtube.com/embed/${id}` : null;
+    }
+    if (u.hostname === 'youtu.be') {
+      const id = u.pathname.slice(1);
+      return id ? `https://www.youtube.com/embed/${id}` : null;
+    }
+    if (u.hostname.includes('vimeo.com')) {
+      const id = u.pathname.split('/').filter(Boolean).pop();
+      return id ? `https://player.vimeo.com/video/${id}` : null;
+    }
+  } catch { /* not a valid URL */ }
+  return null;
+}
+
 function ZaiInsights({ stories, fmtDate, C }: { stories: any[]; fmtDate: (d: string) => string; C: any }) {
   const RED_LABEL: React.CSSProperties = {
     fontSize: 11, letterSpacing: '0.3em', textTransform: 'uppercase', color: C.red, fontWeight: 500,
   };
 
   // "Read"/"Watch"/the play button, and clicking a story at all, did nothing —
-  // none of them had a click handler. media_url (an external video/article
-  // link, per the admin form that creates these) was fetched but never used.
-  const openStory = (story: any) => {
-    if (story.media_url) window.open(story.media_url, '_blank', 'noopener,noreferrer');
-  };
+  // none of them had a click handler. Stories now open in an in-page viewer:
+  // videos embed inline (when the link is from a recognized host), articles
+  // render their full stored description — no dependency on media_url at all.
+  const [viewer, setViewer] = useState<any>(null);
+  const openStory = (story: any) => setViewer(story);
 
   const featuredStory = stories.find(s => s.featured) || stories[0];
   const regularStories = stories.filter(s => s !== featuredStory);
@@ -439,7 +461,7 @@ function ZaiInsights({ stories, fmtDate, C }: { stories: any[]; fmtDate: (d: str
             style={{
               background: C.black, borderRadius: 10, overflow: 'hidden',
               marginTop: 12, marginBottom: 32, position: 'relative', color: C.white,
-              cursor: featuredStory.media_url ? 'pointer' : 'default',
+              cursor: 'pointer',
             }}
           >
             {featuredStory.thumbnail_url && (
@@ -476,7 +498,7 @@ function ZaiInsights({ stories, fmtDate, C }: { stories: any[]; fmtDate: (d: str
             style={{
               display: 'flex', gap: 16, padding: '16px 0',
               borderBottom: `1px solid ${C.border}`, alignItems: 'center',
-              cursor: story.media_url ? 'pointer' : 'default',
+              cursor: 'pointer',
             }}
           >
             <div style={{
@@ -510,6 +532,68 @@ function ZaiInsights({ stories, fmtDate, C }: { stories: any[]; fmtDate: (d: str
           </div>
         ))}
       </div>
+
+      {viewer && (
+        <div
+          onClick={() => setViewer(null)}
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 1000,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: C.black, color: C.white, borderRadius: 10, overflow: 'hidden',
+              width: '100%', maxWidth: 720, maxHeight: '86vh', overflowY: 'auto', position: 'relative',
+            }}
+          >
+            <button
+              onClick={() => setViewer(null)}
+              style={{
+                position: 'absolute', top: 12, right: 12, zIndex: 1,
+                width: 32, height: 32, borderRadius: '50%', border: 'none',
+                background: 'rgba(0,0,0,0.6)', color: '#fff', fontSize: 16, cursor: 'pointer',
+              }}
+            >✕</button>
+
+            {viewer.media_type === 'video' && getEmbedUrl(viewer.media_url) ? (
+              <div style={{ position: 'relative', paddingTop: '56.25%', background: '#000' }}>
+                <iframe
+                  src={getEmbedUrl(viewer.media_url)!}
+                  title={viewer.title}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                  style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 'none' }}
+                />
+              </div>
+            ) : viewer.thumbnail_url ? (
+              <img src={viewer.thumbnail_url} alt="" style={{ width: '100%', maxHeight: 320, objectFit: 'cover' }} />
+            ) : null}
+
+            <div style={{ padding: '24px 28px 32px' }}>
+              <div style={{ fontSize: 10, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#999', marginBottom: 8 }}>
+                {viewer.category} {viewer.exclusive && '· EXCLUSIVE'}
+              </div>
+              <h2 style={{ fontSize: 'clamp(20px, 2.8vw, 28px)', fontWeight: 400, margin: '0 0 8px' }}>{viewer.title}</h2>
+              <div style={{ fontSize: 12, color: '#888', marginBottom: 20 }}>{fmtDate(viewer.published_at)}</div>
+              <div style={{ fontSize: 14, lineHeight: 1.7, color: '#ddd', whiteSpace: 'pre-line' }}>
+                {viewer.description}
+              </div>
+              {viewer.media_url && !getEmbedUrl(viewer.media_url) && (
+                <a
+                  href={viewer.media_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ display: 'inline-block', marginTop: 24, fontSize: 12, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.red, textDecoration: 'none' }}
+                >
+                  View Original ↗
+                </a>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
