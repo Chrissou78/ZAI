@@ -411,6 +411,13 @@ function ZaiInsights({ stories, fmtDate, C }: { stories: any[]; fmtDate: (d: str
     fontSize: 11, letterSpacing: '0.3em', textTransform: 'uppercase', color: C.red, fontWeight: 500,
   };
 
+  // "Read"/"Watch"/the play button, and clicking a story at all, did nothing —
+  // none of them had a click handler. media_url (an external video/article
+  // link, per the admin form that creates these) was fetched but never used.
+  const openStory = (story: any) => {
+    if (story.media_url) window.open(story.media_url, '_blank', 'noopener,noreferrer');
+  };
+
   const featuredStory = stories.find(s => s.featured) || stories[0];
   const regularStories = stories.filter(s => s !== featuredStory);
 
@@ -427,10 +434,14 @@ function ZaiInsights({ stories, fmtDate, C }: { stories: any[]; fmtDate: (d: str
       {featuredStory && (
         <>
           <div style={RED_LABEL}>TOP STORY</div>
-          <div style={{
-            background: C.black, borderRadius: 10, overflow: 'hidden',
-            marginTop: 12, marginBottom: 32, position: 'relative', color: C.white,
-          }}>
+          <div
+            onClick={() => openStory(featuredStory)}
+            style={{
+              background: C.black, borderRadius: 10, overflow: 'hidden',
+              marginTop: 12, marginBottom: 32, position: 'relative', color: C.white,
+              cursor: featuredStory.media_url ? 'pointer' : 'default',
+            }}
+          >
             {featuredStory.thumbnail_url && (
               <img src={featuredStory.thumbnail_url} alt="" style={{ width: '100%', height: 280, objectFit: 'cover', opacity: 0.5 }} />
             )}
@@ -459,10 +470,15 @@ function ZaiInsights({ stories, fmtDate, C }: { stories: any[]; fmtDate: (d: str
       <div style={RED_LABEL}>ALL STORIES</div>
       <div style={{ marginTop: 16 }}>
         {regularStories.map(story => (
-          <div key={story.id} style={{
-            display: 'flex', gap: 16, padding: '16px 0',
-            borderBottom: `1px solid ${C.border}`, alignItems: 'center',
-          }}>
+          <div
+            key={story.id}
+            onClick={() => openStory(story)}
+            style={{
+              display: 'flex', gap: 16, padding: '16px 0',
+              borderBottom: `1px solid ${C.border}`, alignItems: 'center',
+              cursor: story.media_url ? 'pointer' : 'default',
+            }}
+          >
             <div style={{
               width: 72, height: 56, borderRadius: 6, overflow: 'hidden',
               background: C.surface, flexShrink: 0, position: 'relative',

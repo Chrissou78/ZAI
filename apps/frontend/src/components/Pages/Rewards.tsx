@@ -2,9 +2,11 @@ import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppContext  } from '../../context/AppContext';
 
-// ── Design tokens — one consistent burgundy, no separate "tier red" or gold accent ──
+// ── Design tokens — restricted to the brand's actual color scheme: Ochsen Blut
+// burgundy (RGB 122/34/46), white, black, 40% grey, 70% grey. No blue, no gold. ──
 const C = {
   black: '#0a0a0a', white: '#f5f4f0', burgundy: '#7A222E',
+  grey40: '#B2B2B2', grey70: '#706F6F',
   gray: '#6a6a6a', border: '#e0ddd6', borderDark: '#2a2a2a', surface: '#f0ede6',
   green: '#4caf7d', pureWhite: '#ffffff', font: "'Inter', sans-serif",
 };
@@ -13,16 +15,16 @@ const LABEL: React.CSSProperties = {
   color: C.gray, fontWeight: 500,
 };
 
-// ── Tier meta — icon colors match the mockup's .tier-icon.{blue,red,black,diamond},
-// except Red uses the app's one burgundy rather than the mockup's separate accent red. ──
+// ── Tier meta — icon colors follow the allowed palette: Red is the app's one
+// burgundy, Blue and Diamond use the two greys (no blue or gold is permitted). ──
 const TIERS = [
-  { name: 'Blue',    num: '01', floor: 0,     ceiling: 14999,  icon: '#4a7fb5',
+  { name: 'Blue',    num: '01', floor: 0,     ceiling: 14999,  icon: C.grey40,
     benefits: ['Product registration', 'Event newsletter', 'Digital warranty'] },
   { name: 'Red',     num: '02', floor: 15000, ceiling: 29999,  icon: C.burgundy,
     benefits: ['Priority event access', 'Maintenance discount', 'Partner benefits', 'Dedicated support'] },
   { name: 'Black',   num: '03', floor: 30000, ceiling: 49999,  icon: '#f5f4f0',
     benefits: ['VIP event invitations', 'Early product launches', 'Custom fitting service', 'Partner elite access', 'Referral bonuses'] },
-  { name: 'Diamond', num: '04', floor: 50000, ceiling: null,   icon: '#7fa9c4',
+  { name: 'Diamond', num: '04', floor: 50000, ceiling: null,   icon: C.grey70,
     benefits: ['Factory visits, Pontresina', 'Bespoke commission', 'Personal zai ambassador', 'All partner elite benefits', 'Annual zai retreat'] },
 ];
 

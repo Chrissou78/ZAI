@@ -39,18 +39,20 @@ const BTN_BASE: React.CSSProperties = {
   border: 'none',
 };
 
-/* ── tier data ──
-   Red uses WINE (the app's one burgundy) rather than a separate near-match
-   red. Diamond uses a neutral blue-gray rather than a gold/tan tone — no
-   gold anywhere in this palette. Black uses a light neutral rather than
-   #1a1a1a, which is the exact same value as BG_CARD below and was
-   invisible — the accent bar, badge, and bullet dots all render in
-   tier.color directly, so an identical-to-background color renders
-   nothing at all. */
+/* ── tier data — restricted to the brand's actual color scheme: Ochsen Blut
+   burgundy (RGB 122/34/46), white, black, 40% grey (RGB 178/178/178), and
+   70% grey (RGB 112/111/111). No blue, no gold — those were never part of
+   the allowed palette, so Blue and Diamond use the two greys instead. Black
+   uses a light neutral rather than #1a1a1a, which is the exact same value
+   as BG_CARD below and was invisible — the accent bar, badge, and bullet
+   dots all render in tier.color directly, so an identical-to-background
+   color renders nothing at all. */
+const GREY_40 = '#B2B2B2';
+const GREY_70 = '#706F6F';
 const TIERS = [
   {
     name: 'Blue',
-    color: '#3B6B9E',
+    color: GREY_40,
     minPoints: 0,
     perks: ['Product registration', 'Event newsletter', 'Digital warranty'],
   },
@@ -68,7 +70,7 @@ const TIERS = [
   },
   {
     name: 'Diamond',
-    color: '#7fa9c4',
+    color: GREY_70,
     minPoints: 50000,
     perks: ['Factory visits, Pontresina', 'Bespoke commission', 'Personal zai ambassador', 'Annual zai retreat'],
   },
