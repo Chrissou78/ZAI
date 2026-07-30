@@ -589,17 +589,17 @@ export default function Updates() {
                   <span style={{ fontSize: 12, color: C.gray, cursor: 'pointer' }}>View all deals →</span>
                 </div>
                 <div style={{
-                  display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))',
-                  gap: 20,
+                  display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
+                  gap: 24,
                 }}>
                   {regularDeals.map(deal => (
                     <div
                       key={deal.id}
                       onClick={() => setSelectedDeal(deal)}
                       style={{
-                        border: `1px solid ${C.border}`, padding: '24px',
+                        border: `1px solid ${C.border}`,
                         background: C.pureWhite, position: 'relative',
-                        display: 'flex', flexDirection: 'column', cursor: 'pointer',
+                        display: 'flex', flexDirection: 'row', cursor: 'pointer',
                         transition: 'background 0.2s',
                       }}
                       onMouseEnter={e => (e.currentTarget.style.background = C.surface)}
@@ -609,65 +609,87 @@ export default function Updates() {
                         <div style={{
                           position: 'absolute', top: 12, right: 12, fontSize: 7,
                           letterSpacing: '0.2em', textTransform: 'uppercase', padding: '3px 7px',
-                          background: C.black, color: C.white,
+                          background: C.black, color: C.white, zIndex: 1,
                         }}>Members only</div>
                       )}
+
+                      {/* Image — left side */}
                       <div style={{
-                        fontSize: 9, letterSpacing: '0.3em', textTransform: 'uppercase',
-                        color: C.red, marginBottom: 10,
-                      }}>{deal.category}</div>
-                      <div style={{
-                        fontSize: 14, fontWeight: 500, color: C.black, marginBottom: 6, lineHeight: 1.3,
-                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-                      }}>{deal.title}</div>
-                      <div style={{
-                        fontSize: 11, color: C.gray, lineHeight: 1.6, marginBottom: 16, flex: 1,
-                      }}>{deal.description}</div>
-                      <div style={{
-                        fontSize: 20, fontWeight: 200, letterSpacing: '-0.02em', marginBottom: 10,
+                        width: 140, flexShrink: 0, alignSelf: 'stretch',
+                        background: C.black, overflow: 'hidden',
                       }}>
-                        CHF {parseFloat(deal.price_chf).toLocaleString('de-CH')}
+                        {deal.image_url ? (
+                          <img src={deal.image_url} alt={deal.title} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                        ) : (
+                          <div style={{
+                            width: '100%', height: '100%', minHeight: 180,
+                            background: 'linear-gradient(135deg, #1a1a1a 0%, #2e2e2e 100%)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          }}>
+                            <span style={{ color: '#555', fontSize: 32 }}>⬡</span>
+                          </div>
+                        )}
                       </div>
 
-                      {deal.max_points_discount > 0 && (
+                      {/* Content — right side */}
+                      <div style={{ flex: 1, minWidth: 0, padding: '24px', display: 'flex', flexDirection: 'column' }}>
                         <div style={{
-                          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6,
-                          padding: '6px 8px', marginBottom: 14, overflow: 'hidden',
-                          background: 'rgba(122,34,46,0.05)', border: '1px solid rgba(122,34,46,0.12)',
+                          fontSize: 9, letterSpacing: '0.3em', textTransform: 'uppercase',
+                          color: C.red, marginBottom: 10,
+                        }}>{deal.category}</div>
+                        <div style={{
+                          fontSize: 14, fontWeight: 500, color: C.black, marginBottom: 6, lineHeight: 1.3,
+                          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                        }}>{deal.title}</div>
+                        <div style={{
+                          fontSize: 11, color: C.gray, lineHeight: 1.6, marginBottom: 16, flex: 1,
+                        }}>{deal.description}</div>
+                        <div style={{
+                          fontSize: 20, fontWeight: 200, letterSpacing: '-0.02em', marginBottom: 10,
                         }}>
-                          <span style={{
-                            fontSize: 9.5, color: C.gray, whiteSpace: 'nowrap',
-                            overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0,
-                          }}>Up to {deal.max_points_discount.toLocaleString('de-CH')} pts max</span>
-                          <span style={{ fontSize: 9.5, color: C.red, fontWeight: 500, whiteSpace: 'nowrap', flexShrink: 0 }}>
-                            save CHF {(deal.max_points_discount / 100).toLocaleString('de-CH', { minimumFractionDigits: 2 })}
-                          </span>
+                          CHF {parseFloat(deal.price_chf).toLocaleString('de-CH')}
                         </div>
-                      )}
 
-                      <div style={{
-                        display: 'flex', alignItems: 'center', gap: 12,
-                        paddingTop: 16, borderTop: `1px solid ${C.border}`,
-                      }}>
-                        {deal.ends_at && (
-                          <span style={{ fontSize: 10, color: C.gray, letterSpacing: '0.05em' }}>
-                            Ends <strong>{fmtDate(deal.ends_at)}</strong>
-                          </span>
+                        {deal.max_points_discount > 0 && (
+                          <div style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6,
+                            padding: '6px 8px', marginBottom: 14, overflow: 'hidden',
+                            background: 'rgba(122,34,46,0.05)', border: '1px solid rgba(122,34,46,0.12)',
+                          }}>
+                            <span style={{
+                              fontSize: 9.5, color: C.gray, whiteSpace: 'nowrap',
+                              overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0,
+                            }}>Up to {deal.max_points_discount.toLocaleString('de-CH')} pts max</span>
+                            <span style={{ fontSize: 9.5, color: C.red, fontWeight: 500, whiteSpace: 'nowrap', flexShrink: 0 }}>
+                              save CHF {(deal.max_points_discount / 100).toLocaleString('de-CH', { minimumFractionDigits: 2 })}
+                            </span>
+                          </div>
                         )}
-                        {/* marginLeft:auto keeps the CTA right-aligned even when
-                            there is no end date to sit opposite it. */}
-                        <button
-                          onClick={e => { e.stopPropagation(); setSelectedDeal(deal); }}
-                          style={{
-                            marginLeft: 'auto', flexShrink: 0,
-                            background: C.red, color: '#fff', border: 'none',
-                            padding: '9px 16px', fontSize: 10, letterSpacing: '0.15em',
-                            textTransform: 'uppercase', cursor: 'pointer', fontFamily: C.font,
-                            transition: 'background 0.2s',
-                          }}
-                          onMouseEnter={e => (e.currentTarget.style.background = '#9a2535')}
-                          onMouseLeave={e => (e.currentTarget.style.background = C.red)}
-                        >Apply Points →</button>
+
+                        <div style={{
+                          display: 'flex', alignItems: 'center', gap: 12,
+                          paddingTop: 16, borderTop: `1px solid ${C.border}`,
+                        }}>
+                          {deal.ends_at && (
+                            <span style={{ fontSize: 10, color: C.gray, letterSpacing: '0.05em' }}>
+                              Ends <strong>{fmtDate(deal.ends_at)}</strong>
+                            </span>
+                          )}
+                          {/* marginLeft:auto keeps the CTA right-aligned even when
+                              there is no end date to sit opposite it. */}
+                          <button
+                            onClick={e => { e.stopPropagation(); setSelectedDeal(deal); }}
+                            style={{
+                              marginLeft: 'auto', flexShrink: 0,
+                              background: C.red, color: '#fff', border: 'none',
+                              padding: '9px 16px', fontSize: 10, letterSpacing: '0.15em',
+                              textTransform: 'uppercase', cursor: 'pointer', fontFamily: C.font,
+                              transition: 'background 0.2s',
+                            }}
+                            onMouseEnter={e => (e.currentTarget.style.background = '#9a2535')}
+                            onMouseLeave={e => (e.currentTarget.style.background = C.red)}
+                          >Apply Points →</button>
+                        </div>
                       </div>
                     </div>
                   ))}

@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import { stripePromise } from '../../lib/stripe';
 import { useAppContext } from '../../context/AppContext';
 import { apiService } from '../../services/api';
 
@@ -297,18 +299,139 @@ const parseProgramLines = (program: any): string[] => {
   return [];
 };
 
+// ─── Inline event payment form ───
+// Mirrors the Deals redemption flow (Updates.tsx): Stripe confirming payment
+// client-side isn't the same as the registration actually going through with
+// WalletTwo, so after Stripe confirms we call a server endpoint that
+// verifies the payment with Stripe directly and only then registers the
+// attendee. We don't show "registered" until that call comes back.
+function EventPaymentForm({ amount, currency, paymentId, onSuccess, onBack }: {
+  amount: number;
+  currency: string;
+  paymentId: string;
+  onSuccess: () => void;
+  onBack: () => void;
+}) {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [loading, setLoading] = useState(false);
+  const [ready, setReady] = useState(false);
+  const [error, setError] = useState('');
+
+  const confirmRegistration = async () => {
+    const res = await apiService.post(`/events/payments/${paymentId}/confirm`);
+    if (!res.data?.success) {
+      throw new Error(res.data?.error || 'Payment succeeded but we could not finalize your registration.');
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!stripe || !elements || loading) return;
+
+    setLoading(true);
+    setError('');
+
+    try {
+      const { error: submitError } = await elements.submit();
+      if (submitError) {
+        setError(submitError.message || 'Please check your payment details');
+        setLoading(false);
+        return;
+      }
+
+      const { error: confirmError, paymentIntent } = await stripe.confirmPayment({
+        elements,
+        confirmParams: {
+          return_url: window.location.origin + '/events?payment=success&paymentId=' + paymentId,
+        },
+        redirect: 'if_required',
+      });
+
+      if (confirmError) {
+        setError(confirmError.message || 'Payment failed');
+        setLoading(false);
+        return;
+      }
+
+      if (paymentIntent?.status === 'succeeded') {
+        try {
+          await confirmRegistration();
+          localStorage.removeItem('zai_pending_event_payment');
+          onSuccess();
+        } catch (fulfillErr: any) {
+          setError(fulfillErr?.message || 'Payment succeeded but we could not finalize your registration. Please refresh in a moment — it will resolve automatically.');
+          setLoading(false);
+        }
+      } else {
+        // 3D Secure / redirect payment methods — browser will navigate to
+        // return_url; Events finishes confirmation there using the stashed id.
+        onSuccess();
+      }
+    } catch (err: any) {
+      setError(err?.message || 'An unexpected error occurred');
+      setLoading(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <PaymentElement onReady={() => setReady(true)} options={{ layout: 'tabs' }} />
+
+      {!ready && (
+        <div style={{ textAlign: 'center', padding: '20px 0', color: C.muted, fontSize: 13 }}>
+          Loading…
+        </div>
+      )}
+
+      {error && (
+        <div style={{
+          color: '#e53935', marginTop: 14, fontSize: 13, padding: '10px 14px',
+          background: 'rgba(229,57,53,0.08)', borderRadius: 6,
+        }}>
+          {error}
+        </div>
+      )}
+
+      <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
+        <button type="button" onClick={onBack} disabled={loading} style={{
+          flex: 1, padding: '14px', border: bdr, background: C.pureWhite,
+          color: C.black, cursor: 'pointer', fontSize: 12, fontWeight: 600,
+          letterSpacing: '0.08em', textTransform: 'uppercase', borderRadius: 4,
+          fontFamily: "'Inter',sans-serif", opacity: loading ? 0.5 : 1,
+        }}>Back</button>
+        <button type="submit" disabled={!stripe || !ready || loading} style={{
+          flex: 1, padding: '14px', border: 'none',
+          background: (!stripe || !ready || loading) ? '#999' : C.red,
+          color: '#fff', cursor: (!stripe || !ready || loading) ? 'default' : 'pointer',
+          fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase',
+          borderRadius: 4, fontFamily: "'Inter',sans-serif",
+        }}>
+          {loading ? 'Processing…' : `Pay ${currency.toUpperCase()} ${amount.toFixed(2)}`}
+        </button>
+      </div>
+
+      <div style={{ textAlign: 'center', fontSize: 11, color: C.muted, marginTop: 12 }}>
+        Secured by Stripe · Registration is confirmed once payment succeeds
+      </div>
+    </form>
+  );
+}
+
 // ═══════════════════════════════
 //  COMPONENT
 // ═══════════════════════════════
 
 const Events: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user } = useAppContext();
   const [events, setEvents] = useState<Event[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [registering, setRegistering] = useState(false);
+  const [paymentData, setPaymentData] = useState<{ clientSecret: string; amount: number; currency: string; paymentId: string } | null>(null);
 
   // Carousel state
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -322,6 +445,36 @@ const Events: React.FC = () => {
 
   useEffect(() => { ensureShimmer(); ensureDescStyles(); }, []);
   useEffect(() => { fetchEvents(); }, []);
+
+  // Finish confirmation after a 3D-Secure/redirect payment method — the
+  // EventPaymentForm instance that started the payment is gone after the
+  // redirect, so we complete it here using the paymentId stashed pre-redirect.
+  useEffect(() => {
+    const p = searchParams.get('payment');
+    if (p === 'cancelled') {
+      localStorage.removeItem('zai_pending_event_payment');
+      return;
+    }
+    if (p !== 'success') return;
+
+    const pendingId = searchParams.get('paymentId') || localStorage.getItem('zai_pending_event_payment');
+    if (!pendingId) return;
+
+    apiService.post(`/events/payments/${pendingId}/confirm`)
+      .then(res => {
+        localStorage.removeItem('zai_pending_event_payment');
+        if (res.data?.success) {
+          alert('Payment successful! Your registration is confirmed.');
+          fetchEvents();
+        } else {
+          alert(res.data?.error || 'We could not confirm your payment. Please contact support if your registration is missing.');
+        }
+      })
+      .catch(() => {
+        alert('We could not confirm your payment with the server. Please refresh — it should resolve automatically, or contact support.');
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   // Scroll tracking
   const updateScrollButtons = useCallback(() => {
@@ -368,23 +521,63 @@ const Events: React.FC = () => {
     } finally { setIsLoading(false); }
   };
 
+  const elementsOptions = useMemo(() => paymentData ? {
+    clientSecret: paymentData.clientSecret,
+    appearance: {
+      theme: 'stripe' as const,
+      variables: { colorPrimary: C.red, colorText: C.black, fontFamily: "'Inter',sans-serif", borderRadius: '6px' },
+      rules: {
+        '.Input': { border: `1px solid ${C.border}`, boxShadow: 'none' },
+        '.Input:focus': { border: `1px solid ${C.red}`, boxShadow: `0 0 0 1px ${C.red}` },
+      },
+    },
+  } : null, [paymentData]);
+
   const upcomingEvents = useMemo(() => events.filter(e => e.status === 'upcoming'), [events]);
   const pastEvents = useMemo(() => events.filter(e => e.status === 'past'), [events]);
 
   const needsCarousel = upcomingEvents.length > 3;
 
+  const markRegistered = (eventId: string) => {
+    setEvents(prev => prev.map(e => e.id === eventId ? { ...e, registered: true, totalAttendees: (e.totalAttendees || 0) + 1 } : e));
+    setSelectedEvent(prev => prev && prev.id === eventId ? { ...prev, registered: true, totalAttendees: (prev.totalAttendees || 0) + 1 } : prev);
+  };
+
   const handleRegister = async () => {
-    if (selectedEvent && user?.id) {
+    if (!selectedEvent || !user?.id) return;
+
+    const amount = selectedEvent.discountPrice ?? selectedEvent.price ?? 0;
+    if (amount > 0) {
+      // Payable event — start Stripe checkout instead of registering directly.
       setRegistering(true);
       try {
-        const response = await apiService.post(`/events/${selectedEvent.id}/register`);
+        const response = await apiService.post(`/events/${selectedEvent.id}/payment-intent`);
         if (response.data?.success) {
-          setEvents(events.map(e => e.id === selectedEvent.id ? { ...e, registered: true, totalAttendees: (e.totalAttendees || 0) + 1 } : e));
-          setSelectedEvent(prev => prev ? { ...prev, registered: true, totalAttendees: (prev.totalAttendees || 0) + 1 } : null);
+          const { clientSecret, amount: amt, currency, paymentId } = response.data.data;
+          setPaymentData({ clientSecret, amount: amt, currency, paymentId });
+          localStorage.setItem('zai_pending_event_payment', paymentId);
+        } else {
+          alert(response.data?.error || 'Failed to start checkout');
         }
-      } catch (err: any) { alert(err.response?.data?.error || 'Failed to register'); }
+      } catch (err: any) { alert(err.response?.data?.error || 'Failed to start checkout'); }
       finally { setRegistering(false); }
+      return;
     }
+
+    setRegistering(true);
+    try {
+      const response = await apiService.post(`/events/${selectedEvent.id}/register`);
+      if (response.data?.success) {
+        markRegistered(selectedEvent.id);
+      }
+    } catch (err: any) { alert(err.response?.data?.error || 'Failed to register'); }
+    finally { setRegistering(false); }
+  };
+
+  const handlePaymentSuccess = () => {
+    if (selectedEvent) markRegistered(selectedEvent.id);
+    setPaymentData(null);
+    alert('Payment successful! Your registration is confirmed.');
   };
 
   const handleUnregister = async () => {
@@ -710,7 +903,7 @@ const Events: React.FC = () => {
           position: 'fixed', inset: 0, background: 'rgba(10,10,10,0.8)', backdropFilter: 'blur(6px)',
           display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '2rem',
         }}
-          onClick={() => setSelectedEvent(null)}>
+          onClick={() => { setSelectedEvent(null); setPaymentData(null); }}>
           <div onClick={e => e.stopPropagation()}
             style={{
               background: C.white, maxWidth: 640, width: '100%', maxHeight: '90vh', overflowY: 'auto',
@@ -817,38 +1010,59 @@ const Events: React.FC = () => {
                 </div>
               )}
 
-              {/* Register / Unregister */}
-              <div style={{ display: 'flex', gap: 12 }}>
-                {selectedEvent.registered ? (
-                  <button
-                    onClick={handleUnregister}
-                    disabled={registering}
-                    style={{
-                      flex: 1, padding: '14px 24px', background: C.surface, border: bdr,
-                      fontSize: 12, fontWeight: 600, cursor: registering ? 'wait' : 'pointer',
-                      fontFamily: "'Inter',sans-serif", letterSpacing: '0.1em', textTransform: 'uppercase',
-                      transition: 'all .15s',
-                    }}
-                  >
-                    {registering ? 'Processing…' : 'Cancel Registration'}
-                  </button>
-                ) : (
-                  <button
-                    onClick={handleRegister}
-                    disabled={registering}
-                    style={{
-                      flex: 1, padding: '14px 24px', background: C.red, color: '#fff', border: 'none',
-                      fontSize: 12, fontWeight: 600, cursor: registering ? 'wait' : 'pointer',
-                      fontFamily: "'Inter',sans-serif", letterSpacing: '0.1em', textTransform: 'uppercase',
-                      borderRadius: 4, transition: 'background .15s',
-                    }}
-                    onMouseEnter={e => (e.currentTarget.style.background = C.burgundy)}
-                    onMouseLeave={e => (e.currentTarget.style.background = C.red)}
-                  >
-                    {registering ? 'Processing…' : 'Register'}
-                  </button>
-                )}
-              </div>
+              {/* Register / Unregister / Payment */}
+              {paymentData && elementsOptions ? (
+                <div style={{ borderTop: bdr, paddingTop: 20 }}>
+                  <div style={{
+                    border: bdr, borderRadius: 6, padding: '12px 16px', marginBottom: 16,
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  }}>
+                    <span style={{ fontSize: 13, color: C.muted }}>Total to pay</span>
+                    <span style={{ fontSize: 18, fontWeight: 600 }}>{paymentData.currency.toUpperCase()} {paymentData.amount.toFixed(2)}</span>
+                  </div>
+                  <Elements stripe={stripePromise} options={elementsOptions}>
+                    <EventPaymentForm
+                      amount={paymentData.amount}
+                      currency={paymentData.currency}
+                      paymentId={paymentData.paymentId}
+                      onSuccess={handlePaymentSuccess}
+                      onBack={() => { setPaymentData(null); localStorage.removeItem('zai_pending_event_payment'); }}
+                    />
+                  </Elements>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', gap: 12 }}>
+                  {selectedEvent.registered ? (
+                    <button
+                      onClick={handleUnregister}
+                      disabled={registering}
+                      style={{
+                        flex: 1, padding: '14px 24px', background: C.surface, border: bdr,
+                        fontSize: 12, fontWeight: 600, cursor: registering ? 'wait' : 'pointer',
+                        fontFamily: "'Inter',sans-serif", letterSpacing: '0.1em', textTransform: 'uppercase',
+                        transition: 'all .15s',
+                      }}
+                    >
+                      {registering ? 'Processing…' : 'Cancel Registration'}
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleRegister}
+                      disabled={registering}
+                      style={{
+                        flex: 1, padding: '14px 24px', background: C.red, color: '#fff', border: 'none',
+                        fontSize: 12, fontWeight: 600, cursor: registering ? 'wait' : 'pointer',
+                        fontFamily: "'Inter',sans-serif", letterSpacing: '0.1em', textTransform: 'uppercase',
+                        borderRadius: 4, transition: 'background .15s',
+                      }}
+                      onMouseEnter={e => (e.currentTarget.style.background = C.burgundy)}
+                      onMouseLeave={e => (e.currentTarget.style.background = C.red)}
+                    >
+                      {registering ? 'Processing…' : ((selectedEvent.discountPrice ?? selectedEvent.price ?? 0) > 0 ? 'Register & Pay' : 'Register')}
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>

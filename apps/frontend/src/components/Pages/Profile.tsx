@@ -597,6 +597,7 @@ const Profile: React.FC = () => {
   const { user, setUser } = useAppContext();
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<'overview' | 'purchases'>('overview');
   const [stats, setStats] = useState<UserStats>({ productsClaimed: 0, eventsAttended: 0 });
   const [formData, setFormData] = useState(toFormData(user));
 
@@ -998,6 +999,24 @@ const Profile: React.FC = () => {
         </button>
       </div>
 
+      {/* ═══ TABS ═══ */}
+      <div style={{ display: 'flex', gap: 0, borderBottom: `1px solid ${C.border}`, marginBottom: '2rem' }}>
+        {(['overview', 'purchases'] as const).map(t => (
+          <button key={t} onClick={() => setActiveTab(t)} style={{
+            padding: '12px 20px', background: 'none', border: 'none',
+            borderBottom: activeTab === t ? `2px solid ${C.black}` : '2px solid transparent',
+            fontSize: 12, fontWeight: activeTab === t ? 700 : 500, letterSpacing: '0.08em', textTransform: 'uppercase',
+            cursor: 'pointer', fontFamily: C.font, color: activeTab === t ? C.black : C.gray,
+          }}>
+            {t === 'overview' ? 'Overview' : 'Purchase History'}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === 'purchases' && <PurchaseHistorySection />}
+
+      {activeTab === 'overview' && (
+      <>
       {/* ═══ MAIN CARD — 2 columns ═══ */}
       <div
         style={{
@@ -1353,6 +1372,8 @@ const Profile: React.FC = () => {
 
         </div>
       </div>
+      </>
+      )}
 
       {/* NFC pulse animation */}
       <style>{`
@@ -1361,6 +1382,102 @@ const Profile: React.FC = () => {
           50% { opacity: 0.3; }
         }
       `}</style>
+    </div>
+  );
+};
+
+/* ═══ Purchase History sub-component ═══ */
+interface PurchaseRow {
+  id: string;
+  source: 'deal' | 'collectible';
+  item_id: string;
+  item_title: string;
+  item_image: string;
+  category: string;
+  amount_chf: string | number;
+  points_used: number;
+  points_earned: number;
+  created_at: string;
+}
+
+const PurchaseHistorySection: React.FC = () => {
+  const [purchases, setPurchases] = useState<PurchaseRow[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    apiService.get('/store/purchases')
+      .then(res => { if (res.data?.success) setPurchases(res.data.data || []); })
+      .finally(() => setLoading(false));
+  }, []);
+
+  const fmtDate = (d: string) => new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+
+  if (loading) {
+    return (
+      <div style={{ padding: '48px 0', textAlign: 'center', color: C.gray, fontSize: 13, fontFamily: C.font }}>
+        Loading…
+      </div>
+    );
+  }
+
+  if (purchases.length === 0) {
+    return (
+      <div style={{ padding: '48px 24px', textAlign: 'center', background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, fontFamily: C.font }}>
+        <div style={{ fontSize: '15px', fontWeight: 300, color: C.black, marginBottom: 4 }}>No purchases yet</div>
+        <p style={{ color: C.gray, fontSize: '12px', margin: 0 }}>Deals and collectibles you claim will appear here.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ border: `1px solid ${C.border}`, borderRadius: 6, overflow: 'hidden', marginBottom: '2rem' }}>
+      {purchases.map((p, idx) => (
+        <div key={p.id} style={{
+          display: 'flex', alignItems: 'center', gap: 16, padding: '14px 20px',
+          borderBottom: idx < purchases.length - 1 ? `1px solid ${C.border}` : 'none',
+          background: '#fff', fontFamily: C.font,
+        }}>
+          <div style={{
+            width: 52, height: 52, borderRadius: 6, flexShrink: 0, overflow: 'hidden',
+            background: C.black, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            {p.item_image
+              ? <img src={p.item_image} alt={p.item_title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              : <span style={{ color: '#555', fontSize: 20 }}>⬡</span>}
+          </div>
+
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{
+              fontSize: 9, letterSpacing: '0.2em', textTransform: 'uppercase',
+              color: C.red, marginBottom: 3, fontWeight: 600,
+            }}>
+              {p.source === 'deal' ? 'Deal' : 'Collectible'}
+            </div>
+            <div style={{ fontSize: 13, fontWeight: 500, color: C.black, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {p.item_title || 'Item'}
+            </div>
+            <div style={{ fontSize: 10, color: C.gray, marginTop: 2 }}>{fmtDate(p.created_at)}</div>
+          </div>
+
+          <div style={{ textAlign: 'right', flexShrink: 0 }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: C.black }}>
+              {parseFloat(p.amount_chf as any) > 0 ? `CHF ${parseFloat(p.amount_chf as any).toFixed(2)}` : 'Free'}
+            </div>
+            <div style={{ display: 'flex', gap: 6, marginTop: 4, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+              {p.points_used > 0 && (
+                <span style={{ fontSize: 9, color: C.red, background: 'rgba(122,34,46,0.08)', padding: '2px 6px', borderRadius: 3 }}>
+                  -{p.points_used} pts used
+                </span>
+              )}
+              {p.points_earned > 0 && (
+                <span style={{ fontSize: 9, color: C.green, background: 'rgba(42,157,78,0.08)', padding: '2px 6px', borderRadius: 3 }}>
+                  +{p.points_earned} pts earned
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      ))}
     </div>
   );
 };

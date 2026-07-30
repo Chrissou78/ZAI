@@ -412,6 +412,39 @@ export async function initDB() {
         UNIQUE(referred_id)
       );
       CREATE INDEX IF NOT EXISTS idx_referrals_referrer ON referrals(referrer_id);
+
+      -- ── Purchase history (deals + collectibles) ──
+      CREATE TABLE IF NOT EXISTS purchase_history (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        source TEXT NOT NULL,
+        item_id TEXT NOT NULL,
+        item_title TEXT DEFAULT '',
+        item_image TEXT DEFAULT '',
+        category TEXT DEFAULT '',
+        amount_chf NUMERIC(10,2) DEFAULT 0,
+        points_used INT DEFAULT 0,
+        points_earned INT DEFAULT 0,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_purchase_history_user ON purchase_history(user_id, created_at DESC);
+
+      -- ── Event payments (paid event registrations) ──
+      CREATE TABLE IF NOT EXISTS event_payments (
+        id TEXT PRIMARY KEY,
+        event_id TEXT NOT NULL,
+        user_id TEXT NOT NULL,
+        event_title TEXT DEFAULT '',
+        amount_chf NUMERIC(10,2) NOT NULL,
+        currency TEXT DEFAULT 'chf',
+        stripe_payment_intent TEXT DEFAULT '',
+        status TEXT NOT NULL DEFAULT 'pending',
+        refund_amount_chf NUMERIC(10,2),
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_event_payments_user ON event_payments(user_id);
+      CREATE INDEX IF NOT EXISTS idx_event_payments_event ON event_payments(event_id);
     `);
 
     await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_product_claims_user_product ON product_claims(user_id, product_id)`);

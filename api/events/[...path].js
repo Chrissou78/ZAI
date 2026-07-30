@@ -1,8 +1,11 @@
 import jwt from 'jsonwebtoken';
+import { randomUUID } from 'crypto';
+import { getPool, initDB } from '../db.js';
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const API_KEY = process.env.WALLETTWO_API_KEY;
 const EVENTS_BASE = 'https://api.wallettwo.com/event/v1/api';
+const EVENT_CANCELLATION_FEE_PERCENT = parseFloat(process.env.EVENT_CANCELLATION_FEE_PERCENT || '20');
 
 /* ── helpers ─────────────────────────────────────────────── */
 
@@ -177,6 +180,22 @@ function mapEvent(evt, userId, attendees) {
   };
 }
 
+/* ── register/unregister an attendee with WalletTwo ─────── */
+
+async function registerAttendee(eventId, userId) {
+  return w2Fetch(`/event/${eventId}/attendees`, {
+    method: 'POST',
+    body: JSON.stringify({ attendeeId: userId }),
+  });
+}
+
+async function unregisterAttendee(eventId, userId) {
+  return w2Fetch(`/event/${eventId}/attendees`, {
+    method: 'DELETE',
+    body: JSON.stringify({ attendeeId: userId }),
+  });
+}
+
 /* ── main handler ────────────────────────────────────────── */
 
 export default async function handler(req, res) {
@@ -185,6 +204,11 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
   res.setHeader('Cache-Control', 'no-store, max-age=0');
   if (req.method === 'OPTIONS') return res.status(204).end();
+
+  try { await initDB(); } catch (e) {
+    console.error('[events] DB init failed:', e.message);
+    return res.status(500).json({ success: false, error: 'DB init failed' });
+  }
 
   const segments = parsePath(req.url);
   const query = parseQuery(req.url);
@@ -277,7 +301,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ success: true, data: event });
     }
 
-    /* ─── POST /api/events/:eventId/register ─── */
+    /* ─── POST /api/events/:eventId/register ─── (free events only) */
     if (req.method === 'POST' && segments.length === 2 && segments[1] === 'register') {
       const decoded = authenticate(req);
       if (!decoded) return res.status(401).json({ success: false, error: 'Authentication required' });
@@ -285,10 +309,17 @@ export default async function handler(req, res) {
       const eventId = segments[0];
       const userId = decoded.userId || decoded.id;
 
-      const { status, data } = await w2Fetch(`/event/${eventId}/attendees`, {
-        method: 'POST',
-        body: JSON.stringify({ attendeeId: userId }),
-      });
+      // Payable events must go through /payment-intent + /payments/:id/confirm —
+      // re-check price server-side so a paid event can't be registered for free
+      // by calling this endpoint directly.
+      const { data: evtData } = await w2Fetch(`/event/${eventId}`);
+      const evtRaw = evtData?.event || evtData;
+      const amount = parseFloat(evtRaw?.discountPrice ?? evtRaw?.price ?? 0) || 0;
+      if (amount > 0) {
+        return res.status(400).json({ success: false, error: 'This event requires payment. Use the checkout flow.' });
+      }
+
+      const { status, data } = await registerAttendee(eventId, userId);
 
       if (status >= 400) {
         const msg = data?.message || data?.error || 'Registration failed';
@@ -296,6 +327,110 @@ export default async function handler(req, res) {
       }
 
       return res.status(200).json({ success: true, message: 'Registered successfully', data });
+    }
+
+    /* ─── POST /api/events/:eventId/payment-intent ─── (payable events) */
+    if (req.method === 'POST' && segments.length === 2 && segments[1] === 'payment-intent') {
+      const decoded = authenticate(req);
+      if (!decoded) return res.status(401).json({ success: false, error: 'Authentication required' });
+
+      const eventId = segments[0];
+      const userId = decoded.userId || decoded.id;
+
+      const { status: evtStatus, data: evtData } = await w2Fetch(`/event/${eventId}`);
+      if (evtStatus === 404 || !evtData) {
+        return res.status(404).json({ success: false, error: 'Event not found' });
+      }
+      const evtRaw = evtData.event || evtData;
+
+      const amount = parseFloat(evtRaw.discountPrice ?? evtRaw.price ?? 0) || 0;
+      if (amount <= 0) {
+        return res.status(400).json({ success: false, error: 'This event is free — register directly.' });
+      }
+      const currency = (evtRaw.currency || 'CHF').toLowerCase();
+
+      const Stripe = (await import('stripe')).default;
+      const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+      const PLATFORM_FEE_PERCENT = parseFloat(process.env.PLATFORM_FEE_PERCENT || '5');
+
+      const paymentId = randomUUID();
+
+      const piConfig = {
+        amount: Math.round(amount * 100),
+        currency,
+        automatic_payment_methods: { enabled: true },
+        metadata: { paymentId, eventId, userId },
+      };
+
+      if (process.env.STRIPE_CONNECTED_ACCOUNT_ID) {
+        piConfig.application_fee_amount = Math.round(amount * 100 * PLATFORM_FEE_PERCENT / 100);
+        piConfig.transfer_data = { destination: process.env.STRIPE_CONNECTED_ACCOUNT_ID };
+      }
+
+      const paymentIntent = await stripe.paymentIntents.create(piConfig);
+
+      await getPool().query(
+        `INSERT INTO event_payments (id, event_id, user_id, event_title, amount_chf, currency, stripe_payment_intent, status)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending')`,
+        [paymentId, eventId, userId, evtRaw.name || '', amount, currency, paymentIntent.id]
+      );
+
+      return res.status(200).json({
+        success: true,
+        data: { clientSecret: paymentIntent.client_secret, paymentId, amount, currency },
+      });
+    }
+
+    /* ─── POST /api/events/payments/:paymentId/confirm ─── */
+    if (req.method === 'POST' && segments.length === 3 && segments[0] === 'payments' && segments[2] === 'confirm') {
+      const decoded = authenticate(req);
+      if (!decoded) return res.status(401).json({ success: false, error: 'Authentication required' });
+
+      const paymentId = segments[1];
+      const userId = decoded.userId || decoded.id;
+
+      const pr = await getPool().query('SELECT * FROM event_payments WHERE id = $1', [paymentId]);
+      if (!pr.rows.length) return res.status(404).json({ success: false, error: 'Payment not found' });
+      const payment = pr.rows[0];
+
+      if (payment.user_id !== userId) {
+        return res.status(403).json({ success: false, error: 'Not your payment' });
+      }
+
+      if (payment.status === 'paid') {
+        return res.status(200).json({ success: true, data: { alreadyProcessed: true } });
+      }
+
+      const Stripe = (await import('stripe')).default;
+      const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+
+      let pi;
+      try {
+        pi = await stripe.paymentIntents.retrieve(payment.stripe_payment_intent);
+      } catch (e) {
+        return res.status(502).json({ success: false, error: 'Could not verify payment with Stripe' });
+      }
+
+      if (pi.status !== 'succeeded') {
+        return res.status(400).json({ success: false, error: `Payment not completed yet (status: ${pi.status})` });
+      }
+
+      const { status: regStatus, data: regData } = await registerAttendee(payment.event_id, userId);
+
+      await getPool().query(
+        `UPDATE event_payments SET status = 'paid', updated_at = NOW() WHERE id = $1`,
+        [paymentId]
+      );
+
+      if (regStatus >= 400) {
+        console.error(`[events] Payment ${paymentId} succeeded but WalletTwo registration failed:`, regData);
+        return res.status(502).json({
+          success: false,
+          error: 'Payment succeeded but we could not finalize your registration. Please contact support — your payment is safe.',
+        });
+      }
+
+      return res.status(200).json({ success: true, message: 'Registered successfully', data: regData });
     }
 
     /* ─── DELETE /api/events/:eventId/register ─── */
@@ -306,10 +441,36 @@ export default async function handler(req, res) {
       const eventId = segments[0];
       const userId = decoded.userId || decoded.id;
 
-      const { status, data } = await w2Fetch(`/event/${eventId}/attendees`, {
-        method: 'DELETE',
-        body: JSON.stringify({ attendeeId: userId }),
-      });
+      // If this registration was paid, refund (minus a cancellation fee) before unregistering.
+      const pr = await getPool().query(
+        `SELECT * FROM event_payments WHERE event_id = $1 AND user_id = $2 AND status = 'paid'
+         ORDER BY created_at DESC LIMIT 1`,
+        [eventId, userId]
+      );
+      if (pr.rows.length) {
+        const payment = pr.rows[0];
+        const refundAmount = Math.round(parseFloat(payment.amount_chf) * (1 - EVENT_CANCELLATION_FEE_PERCENT / 100) * 100) / 100;
+        try {
+          const Stripe = (await import('stripe')).default;
+          const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+          await stripe.refunds.create({
+            payment_intent: payment.stripe_payment_intent,
+            amount: Math.round(refundAmount * 100),
+          });
+          await getPool().query(
+            `UPDATE event_payments SET status = 'refunded', refund_amount_chf = $2, updated_at = NOW() WHERE id = $1`,
+            [payment.id, refundAmount]
+          );
+        } catch (e) {
+          console.error(`[events] Refund failed for payment ${payment.id}:`, e.message);
+          await getPool().query(
+            `UPDATE event_payments SET status = 'refund_failed', updated_at = NOW() WHERE id = $1`,
+            [payment.id]
+          );
+        }
+      }
+
+      const { status, data } = await unregisterAttendee(eventId, userId);
 
       if (status >= 400) {
         const msg = data?.message || data?.error || 'Unregistration failed';

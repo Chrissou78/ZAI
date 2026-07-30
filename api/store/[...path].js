@@ -52,6 +52,17 @@ export function pointsFromCHF(priceCHF) {
   return Math.round(parseFloat(priceCHF || 0) * 2.7);
 }
 
+export async function logPurchase(userId, { source, itemId, itemTitle, itemImage, category, amountCHF, pointsUsed, pointsEarned }) {
+  const id = randomUUID();
+  await getPool().query(
+    `INSERT INTO purchase_history (id, user_id, source, item_id, item_title, item_image, category, amount_chf, points_used, points_earned)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+    [id, userId, source, itemId, itemTitle || '', itemImage || '', category || '',
+     amountCHF || 0, pointsUsed || 0, pointsEarned || 0]
+  );
+  return id;
+}
+
 // ══════════════════════════════════════════════════════════
 // RAW BODY HELPER (for Stripe webhook)
 // ══════════════════════════════════════════════════════════
@@ -186,14 +197,23 @@ async function fulfillDealRedemption({ redemptionId, dealId, userId, pointsUsed,
     await addPoints(userId, earnedPts, 'purchase', `Deal purchase: ${dealId}`, redemptionId);
   }
 
+  const dealRes = await getPool().query(
+    'SELECT title, contract_address, image_url, category FROM deals WHERE id = $1', [dealId]
+  );
+  const deal = dealRes.rows[0];
+
+  try {
+    await logPurchase(userId, {
+      source: 'deal', itemId: dealId, itemTitle: deal?.title, itemImage: deal?.image_url,
+      category: deal?.category, amountCHF: amountCHF, pointsUsed: pts, pointsEarned: earnedPts,
+    });
+  } catch (logErr) {
+    console.error('[deal-fulfill] Failed to log purchase history (non-fatal):', logErr.message);
+  }
+
   // ── Auto-mint NFT for the deal (non-fatal if it fails) ──
   let minted = false;
   try {
-    const dealRes = await getPool().query(
-      'SELECT title, contract_address FROM deals WHERE id = $1', [dealId]
-    );
-    const deal = dealRes.rows[0];
-
     if (deal?.contract_address) {
       const userRes = await getPool().query(
         'SELECT wallet FROM user_profiles WHERE user_id = $1', [userId]
@@ -519,6 +539,41 @@ async function handleDeals(req, res, segments, method, userId, decoded) {
   return res.status(404).json({ error: 'Not found' });
 }
 
+// ── PURCHASE HISTORY ────────────────────────────────────
+async function handlePurchases(req, res, segments, method, userId) {
+
+  // GET /api/store/purchases?page=1&limit=20
+  if (method === 'GET' && segments.length === 0) {
+    const page = Math.max(1, parseInt(req.query.page) || 1);
+    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit) || 20));
+    const offset = (page - 1) * limit;
+
+    const [rows, countRes] = await Promise.all([
+      getPool().query(
+        `SELECT id, source, item_id, item_title, item_image, category,
+                amount_chf, points_used, points_earned, created_at
+         FROM purchase_history WHERE user_id = $1
+         ORDER BY created_at DESC LIMIT $2 OFFSET $3`,
+        [userId, limit, offset]
+      ),
+      getPool().query(
+        'SELECT COUNT(*)::int AS total FROM purchase_history WHERE user_id = $1',
+        [userId]
+      ),
+    ]);
+
+    return res.json({
+      success: true,
+      data: rows.rows,
+      total: countRes.rows[0].total,
+      page,
+      limit,
+    });
+  }
+
+  return res.status(404).json({ error: 'Not found' });
+}
+
 // ── COLLECTIBLES ────────────────────────────────────────
 async function handleCollectibles(req, res, segments, method, userId) {
 
@@ -632,6 +687,15 @@ async function handleCollectibles(req, res, segments, method, userId) {
 
     if (card.points_reward > 0) {
       await addPoints(userId, card.points_reward, 'collectible', `Claimed: ${card.name}`, cardId);
+    }
+
+    try {
+      await logPurchase(userId, {
+        source: 'collectible', itemId: cardId, itemTitle: card.name, itemImage: card.image_url,
+        category: card.rarity, amountCHF: 0, pointsUsed: 0, pointsEarned: card.points_reward,
+      });
+    } catch (logErr) {
+      console.error('[collectible-claim] Failed to log purchase history (non-fatal):', logErr.message);
     }
 
     return res.json({
@@ -838,6 +902,7 @@ export default async function handler(req, res) {
       case 'rewards':      return await handleRewards(req, res, segments, method, userId);
       case 'deals':        return await handleDeals(req, res, segments, method, userId, decoded);
       case 'collectibles': return await handleCollectibles(req, res, segments, method, userId);
+      case 'purchases':    return await handlePurchases(req, res, segments, method, userId);
       case 'media':        return await handleMedia(req, res, segments, method, decoded);
       case 'referrals':    return await handleReferrals(req, res, segments, method, userId, decoded);
       default:             return res.status(404).json({ error: 'Not found', path: fullPath });
