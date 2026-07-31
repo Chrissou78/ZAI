@@ -589,7 +589,7 @@ export default function Updates() {
                   <span style={{ fontSize: 12, color: C.gray, cursor: 'pointer' }}>View all deals →</span>
                 </div>
                 <div style={{
-                  display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
+                  display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
                   gap: 24,
                 }}>
                   {regularDeals.map(deal => (
