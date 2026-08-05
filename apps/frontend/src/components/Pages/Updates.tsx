@@ -605,24 +605,27 @@ export default function Updates() {
                       onMouseEnter={e => (e.currentTarget.style.background = C.surface)}
                       onMouseLeave={e => (e.currentTarget.style.background = C.pureWhite)}
                     >
-                      {deal.members_only && (
-                        <div style={{
-                          position: 'absolute', top: 12, right: 12, fontSize: 7,
-                          letterSpacing: '0.2em', textTransform: 'uppercase', padding: '3px 7px',
-                          background: C.black, color: C.white, zIndex: 1,
-                        }}>Members only</div>
-                      )}
-
-                      {/* Image — left side */}
+                      {/* Image — left side, square and self-sized so it
+                          doesn't stretch into a tall sliver when the content
+                          column is long; badge sits on the image itself
+                          instead of floating over the text column, where it
+                          used to collide with the category tag. */}
                       <div style={{
-                        width: 140, flexShrink: 0, alignSelf: 'stretch',
-                        background: C.black, overflow: 'hidden',
+                        width: 140, height: 140, flexShrink: 0, alignSelf: 'flex-start',
+                        position: 'relative', background: C.black, overflow: 'hidden',
                       }}>
+                        {deal.members_only && (
+                          <div style={{
+                            position: 'absolute', top: 8, left: 8, fontSize: 7,
+                            letterSpacing: '0.2em', textTransform: 'uppercase', padding: '3px 7px',
+                            background: C.black, color: C.white, zIndex: 1,
+                          }}>Members only</div>
+                        )}
                         {deal.image_url ? (
                           <img src={deal.image_url} alt={deal.title} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                         ) : (
                           <div style={{
-                            width: '100%', height: '100%', minHeight: 180,
+                            width: '100%', height: '100%',
                             background: 'linear-gradient(135deg, #1a1a1a 0%, #2e2e2e 100%)',
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                           }}>
