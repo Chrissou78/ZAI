@@ -605,13 +605,13 @@ export default function Updates() {
                       onMouseEnter={e => (e.currentTarget.style.background = C.surface)}
                       onMouseLeave={e => (e.currentTarget.style.background = C.pureWhite)}
                     >
-                      {/* Image — left side, square and self-sized so it
-                          doesn't stretch into a tall sliver when the content
-                          column is long; badge sits on the image itself
-                          instead of floating over the text column, where it
-                          used to collide with the category tag. */}
+                      {/* Image — left side, fills the card's full height and
+                          crops on the sides (object-fit: cover); badge sits
+                          on the image itself instead of floating over the
+                          text column, where it used to collide with the
+                          category tag. */}
                       <div style={{
-                        width: 140, height: 140, flexShrink: 0, alignSelf: 'flex-start',
+                        width: 140, flexShrink: 0, alignSelf: 'stretch',
                         position: 'relative', background: C.black, overflow: 'hidden',
                       }}>
                         {deal.members_only && (
@@ -625,7 +625,7 @@ export default function Updates() {
                           <img src={deal.image_url} alt={deal.title} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                         ) : (
                           <div style={{
-                            width: '100%', height: '100%',
+                            width: '100%', height: '100%', minHeight: 180,
                             background: 'linear-gradient(135deg, #1a1a1a 0%, #2e2e2e 100%)',
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                           }}>
