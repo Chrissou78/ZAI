@@ -187,8 +187,14 @@ async function handleLogin(req, res) {
       || bodyWallet
       || userId;
 
-    // ── Fetch role from DB ──
+    // ── Fetch role + saved zai profile from DB ──
+    // WalletTwo only knows identity/wallet info — it has no idea about
+    // city/country/address etc. that the user entered on our own Profile
+    // page. Without this merge, every fresh login overwrote the frontend's
+    // user object (and localStorage) with a blank profile, making saved
+    // fields look "reset" even though they were never lost in the DB.
     let orgRole = 'member';
+    let savedProfile = {};
     try {
       const db = await getDB();
       if (db) {
@@ -199,6 +205,23 @@ async function handleLogin(req, res) {
           const granted = await db.ensureAdminFromEmail(userId, userProfile.email);
           if (granted) orgRole = 'admin';
         }
+
+        try {
+          const profileResult = await db.getPool().query(
+            `SELECT * FROM user_profiles WHERE user_id = $1`, [userId]
+          );
+          if (profileResult.rows.length > 0) {
+            const row = profileResult.rows[0];
+            savedProfile = {
+              name: row.name || '', givenName: row.given_name || '', familyName: row.family_name || '',
+              email: row.email || '', phoneNumber: row.phone_number || '', address: row.address || '',
+              city: row.city || '', country: row.country || '', postalCode: row.postal_code || '',
+              birthdate: row.birthdate || null, isPublic: row.is_public || false,
+            };
+          }
+        } catch (profileErr) {
+          console.error('[AUTH] Saved profile lookup failed (non-fatal):', profileErr.message);
+        }
       }
     } catch (dbErr) {
       console.error('[AUTH] DB role lookup failed (non-fatal):', dbErr.message);
@@ -206,24 +229,24 @@ async function handleLogin(req, res) {
 
     const mappedUser = {
       id: userId,
-      name: sanitizeString(userProfile.name || ''),
-      givenName: sanitizeString(userProfile.givenName || ''),
-      familyName: sanitizeString(userProfile.familyName || ''),
-      email: sanitizeString(userProfile.email || ''),
+      name: sanitizeString(savedProfile.name || userProfile.name || ''),
+      givenName: sanitizeString(savedProfile.givenName || userProfile.givenName || ''),
+      familyName: sanitizeString(savedProfile.familyName || userProfile.familyName || ''),
+      email: sanitizeString(savedProfile.email || userProfile.email || ''),
       emailVerified: userProfile.emailVerified || false,
-      phoneNumber: sanitizeString(userProfile.phoneNumber || ''),
-      address: sanitizeString(userProfile.address || ''),
-      city: sanitizeString(userProfile.city || ''),
-      country: sanitizeString(userProfile.country || ''),
-      postalCode: sanitizeString(userProfile.postalCode || ''),
+      phoneNumber: sanitizeString(savedProfile.phoneNumber || userProfile.phoneNumber || ''),
+      address: sanitizeString(savedProfile.address || userProfile.address || ''),
+      city: sanitizeString(savedProfile.city || userProfile.city || ''),
+      country: sanitizeString(savedProfile.country || userProfile.country || ''),
+      postalCode: sanitizeString(savedProfile.postalCode || userProfile.postalCode || ''),
       image: userProfile.image || null,
-      birthdate: userProfile.birthdate || null,
+      birthdate: savedProfile.birthdate || userProfile.birthdate || null,
       wallet: userProfile.wallet || wallet,
       walletAddress: wallet,
       walletSecured: userProfile.walletSecured || false,
       role: orgRole,
       banned: userProfile.banned || false,
-      isPublic: userProfile.isPublic || false,
+      isPublic: savedProfile.isPublic || userProfile.isPublic || false,
       organizations: userProfile.organizations || exchangeResponse.data.organizations || [],
     };
 
