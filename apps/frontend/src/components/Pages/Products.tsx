@@ -370,6 +370,15 @@ const Products: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Width-tracking for layout branches that CSS alone can't express
+  // (carousel arrow offsets, footer step grid stacking on phone widths).
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768);
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [activeCategory, setActiveCategory] = useState<'all' | Category>('all');
 
@@ -806,10 +815,10 @@ const Products: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div style={{ padding: '48px 48px 80px', fontFamily: C.font }}>
+      <div style={{ padding: 'clamp(20px, 5vw, 48px) clamp(16px, 5vw, 48px) 80px', fontFamily: C.font, boxSizing: 'border-box' }}>
         <div style={{ maxWidth: 1100, margin: '0 auto' }}>
           <div style={{ height: 28, width: 200, background: C.surface, borderRadius: 4, marginBottom: 32, animation: 'zai-pulse 1.5s ease-in-out infinite' }} />
-          <div style={{ display: 'flex', gap: 16, overflow: 'hidden' }}>
+          <div style={{ display: 'flex', gap: 16, overflow: 'hidden', flexWrap: 'wrap' }}>
             {[1, 2, 3].map(i => (
               <div key={i} style={{
                 flex: '1 1 0%', height: 300, borderRadius: 8, background: C.surface,
@@ -825,7 +834,7 @@ const Products: React.FC = () => {
 
   if (error) {
     return (
-      <div style={{ padding: '48px 48px 80px', fontFamily: C.font }}>
+      <div style={{ padding: 'clamp(20px, 5vw, 48px) clamp(16px, 5vw, 48px) 80px', fontFamily: C.font, boxSizing: 'border-box' }}>
         <div style={{ maxWidth: 1100, margin: '0 auto', textAlign: 'center', paddingTop: 80 }}>
           <div style={{ fontSize: 48, marginBottom: 16 }}>!</div>
           <p style={{ fontSize: 15, color: C.gray, marginBottom: 24 }}>{error}</p>
@@ -842,12 +851,13 @@ const Products: React.FC = () => {
   /* ───── Render ───── */
 
   return (
-    <div style={{ padding: '48px 48px 0', fontFamily: C.font, color: C.black }}>
+    <div style={{ padding: 'clamp(20px, 5vw, 48px) clamp(16px, 5vw, 48px) 0', fontFamily: C.font, color: C.black, boxSizing: 'border-box', overflowX: 'hidden' }}>
       <div style={{ maxWidth: 1100, margin: '0 auto' }}>
 
         {/* ══════ HEADER ══════ */}
         <div style={{
-          display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
+          display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'flex-start',
+          gap: 16,
           marginBottom: '2.5rem', paddingBottom: '2rem', borderBottom: bdr,
         }}>
           <div>
@@ -1063,7 +1073,7 @@ const Products: React.FC = () => {
         {!needsCarousel ? (
           <div style={{
             display: 'grid',
-            gridTemplateColumns: `repeat(${visibleProducts.length + 1}, 1fr)`,
+            gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
             gap: 16,
           }}>
             <ClaimCard onClaim={openReceiptModal} />
@@ -1084,7 +1094,7 @@ const Products: React.FC = () => {
             {canScrollLeft && (
               <button
                 onClick={() => scrollByCards(-1)}
-                style={{ ...sideArrowBase, left: -18 }}
+                style={{ ...sideArrowBase, left: isMobile ? 0 : -18 }}
                 onMouseEnter={e => { e.currentTarget.style.background = C.pureWhite; e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.22)'; }}
                 onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.92)'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)'; }}
                 aria-label="Scroll left"
@@ -1097,7 +1107,7 @@ const Products: React.FC = () => {
             {canScrollRight && (
               <button
                 onClick={() => scrollByCards(1)}
-                style={{ ...sideArrowBase, right: -18 }}
+                style={{ ...sideArrowBase, right: isMobile ? 0 : -18 }}
                 onMouseEnter={e => { e.currentTarget.style.background = C.pureWhite; e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.22)'; }}
                 onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.92)'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)'; }}
                 aria-label="Scroll right"
@@ -1151,8 +1161,9 @@ const Products: React.FC = () => {
           marginTop: 48,
           background: C.black,
           color: '#fff',
-          padding: '48px 40px 56px',
+          padding: 'clamp(28px, 6vw, 48px) clamp(20px, 5vw, 40px) clamp(32px, 6vw, 56px)',
           borderRadius: 8,
+          boxSizing: 'border-box',
         }}>
           <div style={{
             fontSize: '10px', letterSpacing: '0.3em', textTransform: 'uppercase',
@@ -1160,12 +1171,12 @@ const Products: React.FC = () => {
           }}>
             how to claim
           </div>
-          <h2 style={{ fontSize: 26, fontWeight: 300, margin: '0 0 40px', color: '#fff' }}>
+          <h2 style={{ fontSize: 'clamp(22px, 4vw, 26px)', fontWeight: 300, margin: '0 0 40px', color: '#fff' }}>
             Register your zai product
           </h2>
 
           <div style={{
-            display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
+            display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
             gap: '1px', background: '#2a2a2a',
           }}>
             {[

@@ -468,7 +468,7 @@ function ZaiInsights({ stories, fmtDate, C }: { stories: any[]; fmtDate: (d: str
               <img src={featuredStory.thumbnail_url} alt="" style={{ width: '100%', height: 280, objectFit: 'cover', opacity: 0.5 }} />
             )}
             {!featuredStory.thumbnail_url && <div style={{ height: 280, background: 'linear-gradient(135deg, #1a1a1a, #333)' }} />}
-            <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: '28px 32px' }}>
+            <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: 'clamp(16px, 5vw, 28px) clamp(16px, 6vw, 32px)' }}>
               {featuredStory.media_type === 'video' && (
                 <div style={{ position: 'absolute', top: 16, left: 16, fontSize: 10, fontWeight: 600, background: C.red, padding: '4px 10px', borderRadius: 3 }}>
                   ▶ VIDEO{featuredStory.duration ? ` · ${featuredStory.duration}` : ''}
@@ -571,7 +571,7 @@ function ZaiInsights({ stories, fmtDate, C }: { stories: any[]; fmtDate: (d: str
               <img src={viewer.thumbnail_url} alt="" style={{ width: '100%', maxHeight: 320, objectFit: 'cover' }} />
             ) : null}
 
-            <div style={{ padding: '24px 28px 32px' }}>
+            <div style={{ padding: 'clamp(16px, 5vw, 24px) clamp(16px, 6vw, 28px) clamp(20px, 6vw, 32px)' }}>
               <div style={{ fontSize: 10, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#999', marginBottom: 8 }}>
                 {viewer.category} {viewer.exclusive && '· EXCLUSIVE'}
               </div>
@@ -601,6 +601,15 @@ function ZaiInsights({ stories, fmtDate, C }: { stories: any[]; fmtDate: (d: str
 const Community: React.FC = () => {
   const { user } = useAppContext();
   const [isAdmin, setIsAdmin] = useState(false);
+
+  // Mobile layout: below 768px the two-column feed/sidebar grid and the
+  // two-column masonry photo layout collapse to a single stacked column.
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
 
   const [members, setMembers] = useState<Member[]>([]);
   const [stats, setStats] = useState<CommunityStats>({ totalMembers: 0, totalPhotos: 0 });
@@ -1029,12 +1038,12 @@ const Community: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '48px 40px 80px', fontFamily: "'Inter',sans-serif" }}>
+      <div style={{ maxWidth: 1100, margin: '0 auto', padding: isMobile ? '32px 16px 60px' : '48px 40px 80px', fontFamily: "'Inter',sans-serif" }}>
         <Sk w="90px" h="10px" s={{ marginBottom: 10 }} />
         <Sk w="240px" h="38px" s={{ marginBottom: 8 }} />
         <Sk w="380px" h="13px" s={{ marginBottom: 36 }} />
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 32 }}>
-          <div style={{ columns: 2, columnGap: 20 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 300px', gap: 32 }}>
+          <div style={{ columns: isMobile ? 1 : 2, columnGap: 20 }}>
             {[0,1,2,3].map(i => <Sk key={i} w="100%" h={i % 2 === 0 ? '320px' : '260px'} s={{ marginBottom: 20, breakInside: 'avoid' }} />)}
           </div>
           <div>
@@ -1054,7 +1063,7 @@ const Community: React.FC = () => {
   // ═══════════════════════════════
 
   return (
-    <div style={{ maxWidth: 1100, margin: '0 auto', padding: '48px 40px 80px', fontFamily: "'Inter',sans-serif", color: C.gray }}>
+    <div style={{ maxWidth: 1100, margin: '0 auto', padding: isMobile ? '32px 16px 60px' : '48px 40px 80px', fontFamily: "'Inter',sans-serif", color: C.gray }}>
 
       {/* ══════ PAGE HEADER ══════ */}
       <div style={{ marginBottom: 32 }}>
@@ -1072,7 +1081,7 @@ const Community: React.FC = () => {
           rounded outline, with unread Insights surfaced as a count badge. */}
       <div id="zai-feed-top" style={{ marginBottom: 28 }}>
         <div style={{
-          display: 'inline-flex', alignItems: 'center', gap: 4,
+          display: 'inline-flex', alignItems: 'center', gap: 4, flexWrap: 'wrap', maxWidth: '100%',
           padding: 4, border: bdr, borderRadius: 999, background: C.pureWhite,
         }}>
           <button onClick={() => setMainTab('feed')} style={{
@@ -1127,7 +1136,7 @@ const Community: React.FC = () => {
       ) : (
       <>
       {/* ══════ MAIN GRID ══════ */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 32, alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 300px', gap: isMobile ? 24 : 32, alignItems: 'start' }}>
 
         {/* ──── LEFT: Masonry photo grid (paginated) — UNCHANGED ──── */}
         <div>
@@ -1139,14 +1148,20 @@ const Community: React.FC = () => {
             </div>
           ) : (
             <>
-              <div style={{ display: 'flex', gap: 20 }}>
-                <div style={{ flex: 1 }}>
-                  {leftCol.map(photo => <PhotoCard key={photo.id} photo={photo} />)}
+              {isMobile ? (
+                <div>
+                  {pagedPhotos.map(photo => <PhotoCard key={photo.id} photo={photo} />)}
                 </div>
-                <div style={{ flex: 1 }}>
-                  {rightCol.map(photo => <PhotoCard key={photo.id} photo={photo} />)}
+              ) : (
+                <div style={{ display: 'flex', gap: 20 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    {leftCol.map(photo => <PhotoCard key={photo.id} photo={photo} />)}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    {rightCol.map(photo => <PhotoCard key={photo.id} photo={photo} />)}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Photo feed pagination */}
               <PaginationBar
@@ -1161,7 +1176,7 @@ const Community: React.FC = () => {
         </div>
 
         {/* ──── RIGHT: Sidebar widgets ──── */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 20, position: 'sticky', top: 24 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20, position: isMobile ? 'static' : 'sticky', top: isMobile ? undefined : 24, minWidth: 0 }}>
 
           {/* SHARE YOUR JOURNEY */}
           <div style={{ border: bdr, background: C.pureWhite, padding: '20px', borderRadius: 6 }}>
@@ -1230,7 +1245,7 @@ const Community: React.FC = () => {
                         <div style={{ fontSize: '12px', fontWeight: 500, color: C.black, display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
                           <span style={{
                             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                            maxWidth: 140, display: 'inline-block', flexShrink: 1,
+                            maxWidth: '100%', display: 'inline-block', flexShrink: 1, minWidth: 0,
                           }}>{m.name}</span>
                           {m.isBlocked && (
                             <span style={{

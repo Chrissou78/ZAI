@@ -58,6 +58,15 @@ export default function Rewards() {
   const [history, setHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  // Progress section switches from a 2-column (content + progress bar)
+  // layout to a stacked one below 768px — not achievable with CSS alone
+  // since the two columns have very different content types/widths.
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  useEffect(() => {
+    const h = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', h);
+    return () => window.removeEventListener('resize', h);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -104,7 +113,7 @@ export default function Rewards() {
   const balance = data?.balance || 0;
 
   return (
-    <div style={{ maxWidth: 1100, margin: '0 auto', padding: '48px 40px 80px', fontFamily: C.font, color: C.gray }}>
+    <div style={{ maxWidth: 1100, margin: '0 auto', padding: isMobile ? '32px 16px 56px' : '48px 40px 80px', fontFamily: C.font, color: C.gray, width: '100%', boxSizing: 'border-box' }}>
 
       {/* ══════ PAGE HEADER — matches every other page's header treatment ══════ */}
       <div style={{ marginBottom: 32 }}>
@@ -121,11 +130,12 @@ export default function Rewards() {
 
       {/* ── Current tier banner ── */}
       <div style={{
-        background: C.black, border: `1px solid ${C.borderDark}`, color: C.pureWhite, padding: '2rem',
+        background: C.black, border: `1px solid ${C.borderDark}`, color: C.pureWhite,
+        padding: isMobile ? '1.5rem' : '2rem',
         marginBottom: 1,
       }}>
         <div style={{ ...LABEL, color: '#666', marginBottom: 8 }}>YOUR CURRENT STANDING</div>
-        <div style={{ fontSize: 36, fontWeight: 200 }}>
+        <div style={{ fontSize: 'clamp(24px, 8vw, 36px)', fontWeight: 200 }}>
           {currentTier.name} <em style={{ fontStyle: 'normal', color: C.white }}>Tier</em>
         </div>
       </div>
@@ -142,7 +152,7 @@ export default function Rewards() {
           const iconColor = tier.name === 'Black' && !isCurrent ? C.black : tier.icon;
           return (
             <div key={tier.name} style={{
-              padding: '2rem 1.5rem', position: 'relative',
+              padding: isMobile ? '1.5rem 1.25rem' : '2rem 1.5rem', position: 'relative',
               background: isCurrent ? C.black : C.white,
               color: isCurrent ? C.pureWhite : C.black,
             }}>
@@ -194,8 +204,10 @@ export default function Rewards() {
           filled) rather than disappearing, so the layout doesn't collapse
           and members can still claim products for points. ── */}
       <div style={{
-        background: C.surface, border: `1px solid ${C.border}`, borderTop: 0, padding: '2rem',
-        display: 'grid', gridTemplateColumns: '1fr 280px', gap: '3rem', alignItems: 'center',
+        background: C.surface, border: `1px solid ${C.border}`, borderTop: 0,
+        padding: isMobile ? '1.5rem' : '2rem',
+        display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 280px',
+        gap: isMobile ? '1.5rem' : '3rem', alignItems: 'center',
         marginBottom: '2.5rem',
       }}>
         <div>
@@ -249,7 +261,7 @@ export default function Rewards() {
           borderBottom: `1px solid ${C.border}`,
         }}>Your {currentTier.name} benefits</div>
         <div style={{
-          display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
+          display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
           gap: 1, background: C.border, border: `1px solid ${C.border}`,
         }}>
           {TIER_HIGHLIGHTS.map(h => (
@@ -274,16 +286,17 @@ export default function Rewards() {
           {history.map((h: any) => (
             <div key={h.id} style={{
               display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              flexWrap: 'wrap', gap: 8,
               padding: '12px 0', borderBottom: `1px solid ${C.border}`,
             }}>
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 500 }}>{h.description || h.type}</div>
+              <div style={{ minWidth: 0, flex: '1 1 200px' }}>
+                <div style={{ fontSize: 13, fontWeight: 500, wordBreak: 'break-word' }}>{h.description || h.type}</div>
                 <div style={{ fontSize: 11, color: C.gray }}>
                   {new Date(h.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                 </div>
               </div>
               <div style={{
-                fontSize: 14, fontWeight: 600,
+                fontSize: 14, fontWeight: 600, flexShrink: 0,
                 color: h.amount > 0 ? C.green : C.burgundy,
               }}>
                 {h.amount > 0 ? '+' : ''}{h.amount.toLocaleString('de-CH')} pts

@@ -249,12 +249,13 @@ const Home: React.FC = () => {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'flex-start',
-          paddingLeft: '4rem',
-          paddingRight: '2rem',
+          paddingLeft: 'clamp(1.5rem, 6vw, 4rem)',
+          paddingRight: 'clamp(1.25rem, 4vw, 2rem)',
           paddingTop: '150px',
           paddingBottom: '140px',
           boxSizing: 'border-box' as const,
           position: 'relative' as const,
+          overflowX: 'hidden' as const,
         }}
       >
         {/* Top Bar */}
@@ -264,16 +265,19 @@ const Home: React.FC = () => {
             top: 0,
             left: 0,
             right: 0,
-            display: 'grid',
-            gridTemplateColumns: '1fr auto 1fr',
-            alignItems: 'start',
-            padding: '2rem 3rem',
+            display: 'flex',
+            justifyContent: 'flex-end',
+            alignItems: 'flex-start',
+            padding: 'clamp(1rem, 4vw, 2rem) clamp(1rem, 4vw, 3rem)',
             zIndex: 3,
           }}
         >
-          <div />
           <div
             style={{
+              position: 'absolute',
+              top: 'clamp(1rem, 4vw, 2rem)',
+              left: '50%',
+              transform: 'translateX(-50%)',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
@@ -320,10 +324,10 @@ const Home: React.FC = () => {
         />
 
         {/* Hero Content */}
-        <div style={{ position: 'relative', zIndex: 2, maxWidth: '700px' }}>
+        <div style={{ position: 'relative', zIndex: 2, maxWidth: '700px', width: '100%' }}>
           <div
             style={{
-              fontSize: '22px',
+              fontSize: 'clamp(14px, 3vw, 22px)',
               letterSpacing: '0.3em',
               color: '#fdfdfd',
               marginBottom: '1.5rem',
@@ -333,7 +337,7 @@ const Home: React.FC = () => {
           </div>
           <h1
             style={{
-              fontSize: 'clamp(60px, 6.5vw, 96px)',
+              fontSize: 'clamp(36px, 10vw, 96px)',
               fontWeight: 300,
               lineHeight: 1.05,
               letterSpacing: '-0.02em',
@@ -350,19 +354,16 @@ const Home: React.FC = () => {
           <p
             style={{
               color: '#999',
-              fontSize: '18px',
+              fontSize: 'clamp(14px, 2.2vw, 18px)',
               maxWidth: '900px',
               lineHeight: 1.8,
               marginBottom: '2rem',
             }}
           >
             Welcome to zai Experience Club. Claim your products, sign up for zai
-            events, and
-            <br />
-            manage your personal zai ski collection all in one place. The zai
-            Experience Club
-            <br />
-            makes zai more personal, more interactive, and closer than ever before!
+            events, and manage your personal zai ski collection all in one
+            place. The zai Experience Club makes zai more personal, more
+            interactive, and closer than ever before!
           </p>
           {user && (
             <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
@@ -446,9 +447,10 @@ const Home: React.FC = () => {
           <div
             style={{
               flex: 1,
-              padding: '1.25rem',
+              padding: 'clamp(0.6rem, 2vw, 1.25rem) clamp(0.4rem, 2vw, 1.25rem)',
               borderRight: '1px solid #1e1e1e',
               textAlign: 'center',
+              minWidth: 0,
             }}
           >
             <div
@@ -466,8 +468,8 @@ const Home: React.FC = () => {
             </div>
             <div
               style={{
-                fontSize: '12px',
-                letterSpacing: '0.2em',
+                fontSize: 'clamp(9px, 2vw, 12px)',
+                letterSpacing: '0.1em',
                 textTransform: 'uppercase',
                 color: TEXT_DIM,
                 marginTop: '3px',
@@ -479,9 +481,10 @@ const Home: React.FC = () => {
           <div
             style={{
               flex: 1,
-              padding: '1.25rem',
+              padding: 'clamp(0.6rem, 2vw, 1.25rem) clamp(0.4rem, 2vw, 1.25rem)',
               borderRight: '1px solid #1e1e1e',
               textAlign: 'center',
+              minWidth: 0,
             }}
           >
             <div
@@ -499,8 +502,8 @@ const Home: React.FC = () => {
             </div>
             <div
               style={{
-                fontSize: '12px',
-                letterSpacing: '0.2em',
+                fontSize: 'clamp(9px, 2vw, 12px)',
+                letterSpacing: '0.1em',
                 textTransform: 'uppercase',
                 color: TEXT_DIM,
                 marginTop: '3px',
@@ -509,7 +512,7 @@ const Home: React.FC = () => {
               Alpine Design
             </div>
           </div>
-          <div style={{ flex: 1, padding: '1.25rem', textAlign: 'center' }}>
+          <div style={{ flex: 1, padding: 'clamp(0.6rem, 2vw, 1.25rem) clamp(0.4rem, 2vw, 1.25rem)', textAlign: 'center', minWidth: 0 }}>
             <div
               style={{
                 fontSize: '28px',
@@ -525,8 +528,8 @@ const Home: React.FC = () => {
             </div>
             <div
               style={{
-                fontSize: '12px',
-                letterSpacing: '0.2em',
+                fontSize: 'clamp(9px, 2vw, 12px)',
+                letterSpacing: '0.1em',
                 textTransform: 'uppercase',
                 color: TEXT_DIM,
                 marginTop: '3px',
@@ -542,7 +545,7 @@ const Home: React.FC = () => {
       <section
         style={{
           background: BG_WARM,
-          padding: '5rem 4rem',
+          padding: 'clamp(2.5rem, 7vw, 5rem) clamp(1.25rem, 5vw, 4rem)',
           borderTop: '1px solid #e0ddd6',
         }}
       >
@@ -551,8 +554,8 @@ const Home: React.FC = () => {
             maxWidth: '900px',
             margin: '0 auto',
             display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: '5rem',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+            gap: 'clamp(2rem, 6vw, 5rem)',
             alignItems: 'center',
           }}
         >
@@ -653,7 +656,7 @@ const Home: React.FC = () => {
       </section>
 
       {/* ════════════  HOW IT WORKS  ════════════ */}
-      <section style={{ background: BG_DARK, padding: '5rem 4rem' }}>
+      <section style={{ background: BG_DARK, padding: 'clamp(2.5rem, 7vw, 5rem) clamp(1.25rem, 5vw, 4rem)' }}>
         <div style={{ maxWidth: '900px', margin: '0 auto' }}>
           <div style={LABEL}>how it works</div>
           <h2 style={{ ...HEADING, color: '#fff', marginBottom: '3rem' }}>
@@ -664,7 +667,7 @@ const Home: React.FC = () => {
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(4, 1fr)',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
               gap: '1px',
               background: '#2a2a2a',
               border: '1px solid #2a2a2a',
@@ -733,7 +736,7 @@ const Home: React.FC = () => {
       <section
         style={{
           background: BG_WARM,
-          padding: '5rem 4rem',
+          padding: 'clamp(2.5rem, 7vw, 5rem) clamp(1.25rem, 5vw, 4rem)',
           borderTop: '1px solid #e0ddd6',
         }}
       >
@@ -743,7 +746,7 @@ const Home: React.FC = () => {
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(3, 1fr)',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
               gap: '1px',
               background: '#e0ddd6',
               border: '1px solid #e0ddd6',
@@ -839,7 +842,7 @@ const Home: React.FC = () => {
       </section>
 
       {/* ════════════  REWARDS & TIERS  ════════════ */}
-      <section style={{ background: BG_DARK, padding: '5rem 4rem' }}>
+      <section style={{ background: BG_DARK, padding: 'clamp(2.5rem, 7vw, 5rem) clamp(1.25rem, 5vw, 4rem)' }}>
         <div style={{ maxWidth: '900px', margin: '0 auto' }}>
           <div style={LABEL}>loyalty program</div>
           <h2 style={{ ...HEADING, color: '#fff', marginBottom: '0.5rem' }}>
@@ -862,7 +865,7 @@ const Home: React.FC = () => {
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(4, 1fr)',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
               gap: '1px',
               background: '#2a2a2a',
               border: '1px solid #2a2a2a',
@@ -1008,7 +1011,7 @@ const Home: React.FC = () => {
       <section
         style={{
           background: BG_WARM,
-          padding: '5rem 4rem',
+          padding: 'clamp(2.5rem, 7vw, 5rem) clamp(1.25rem, 5vw, 4rem)',
           borderTop: '1px solid #e0ddd6',
         }}
       >
@@ -1034,7 +1037,7 @@ const Home: React.FC = () => {
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(3, 1fr)',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
               gap: '1px',
               background: '#e0ddd6',
               border: '1px solid #e0ddd6',
@@ -1143,7 +1146,7 @@ const Home: React.FC = () => {
       <section
         style={{
           background: BG_DARK,
-          padding: '5rem 4rem',
+          padding: 'clamp(2.5rem, 7vw, 5rem) clamp(1.25rem, 5vw, 4rem)',
           borderTop: `1px solid ${BORDER_DARK}`,
         }}
       >
@@ -1168,7 +1171,8 @@ const Home: React.FC = () => {
           </p>
           <div
             style={{
-              display: 'flex',
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
               gap: '1px',
               background: '#1e1e1e',
               border: '1px solid #1e1e1e',
@@ -1185,7 +1189,6 @@ const Home: React.FC = () => {
               <div
                 key={i}
                 style={{
-                  flex: 1,
                   background: BG_CARD,
                   padding: '2rem 1.5rem',
                   display: 'flex',
@@ -1283,7 +1286,7 @@ const Home: React.FC = () => {
         <section
           style={{
             background: BG_WARM,
-            padding: '4rem',
+            padding: 'clamp(2rem, 6vw, 4rem)',
             borderTop: '1px solid #e0ddd6',
           }}
         >
@@ -1341,7 +1344,7 @@ const Home: React.FC = () => {
           background: BG_DARK,
           color: '#fff',
           borderTop: '1px solid #2e2e2e',
-          padding: '2.5rem 4rem 1.5rem',
+          padding: 'clamp(1.75rem, 6vw, 2.5rem) clamp(1.25rem, 5vw, 4rem) 1.5rem',
         }}
       >
         <div

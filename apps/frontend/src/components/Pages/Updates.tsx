@@ -216,12 +216,12 @@ function DealModal({ deal, onClose, onSuccess }: {
   } : null, [paymentData]);
 
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+    <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, boxSizing: 'border-box' }}
          onClick={onClose}>
       <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)' }} />
       <div style={{
-        position: 'relative', background: C.pureWhite, borderRadius: 12, padding: '32px 28px',
-        width: '100%', maxWidth: 440, maxHeight: '90vh', overflow: 'auto',
+        position: 'relative', background: C.pureWhite, borderRadius: 12, padding: 'clamp(20px, 5vw, 32px) clamp(18px, 4vw, 28px)',
+        width: '100%', maxWidth: 440, maxHeight: '90vh', overflowY: 'auto', boxSizing: 'border-box',
       }} onClick={e => e.stopPropagation()}>
         <button onClick={onClose} style={{
           position: 'absolute', top: 16, right: 16, background: 'none', border: 'none',
@@ -495,23 +495,23 @@ export default function Updates() {
   }
 
   return (
-    <div style={{ fontFamily: C.font, color: C.black, padding: '48px 48px 64px' }}>
+    <div style={{ fontFamily: C.font, color: C.black, paddingTop: 'clamp(24px, 5vw, 48px)', paddingBottom: 'clamp(32px, 6vw, 64px)', paddingLeft: 'clamp(16px, 4vw, 48px)', paddingRight: 'clamp(16px, 4vw, 48px)', boxSizing: 'border-box' }}>
       <div style={{ maxWidth: 1100, margin: '0 auto' }}>
         {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 24, borderBottom: `1px solid ${C.border}`, paddingBottom: 20 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 8, marginBottom: 24, borderBottom: `1px solid ${C.border}`, paddingBottom: 20 }}>
           <h1 style={{ fontSize: 'clamp(28px, 3vw, 36px)', fontWeight: 300, margin: 0, lineHeight: 1.15 }}>
             Deals & Collectibles
           </h1>
-          <div style={{ fontSize: 12, color: C.green }}>Member access only ●</div>
+          <div style={{ fontSize: 12, color: C.green, whiteSpace: 'nowrap' }}>Member access only ●</div>
         </div>
 
         {/* Tabs */}
-        <div style={{ display: 'flex', gap: 0, borderBottom: `1px solid ${C.border}`, marginBottom: 32 }}>
+        <div style={{ display: 'flex', gap: 0, borderBottom: `1px solid ${C.border}`, marginBottom: 32, overflowX: 'auto' }}>
           {(['deals', 'collectibles'] as const).map(t => (
             <button key={t} onClick={() => setTab(t)} style={{
               padding: '12px 20px', background: 'none', border: 'none', borderBottom: tab === t ? `2px solid ${C.black}` : '2px solid transparent',
               fontSize: 12, fontWeight: tab === t ? 700 : 500, letterSpacing: '0.08em', textTransform: 'uppercase',
-              cursor: 'pointer', fontFamily: C.font, color: tab === t ? C.black : C.gray,
+              cursor: 'pointer', fontFamily: C.font, color: tab === t ? C.black : C.gray, whiteSpace: 'nowrap',
             }}>
               {t === 'deals' ? 'Deals' : 'Collectible Drops'}
             </button>
@@ -523,10 +523,10 @@ export default function Updates() {
           <>
             {featuredDeal && (
               <div style={{
-                background: C.black, borderRadius: 10, padding: '40px 36px',
+                background: C.black, borderRadius: 10, padding: 'clamp(24px, 5vw, 40px) clamp(20px, 5vw, 36px)',
                 color: C.white, marginBottom: 40, position: 'relative', overflow: 'hidden',
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                gap: 32, flexWrap: 'wrap',
+                gap: 32, flexWrap: 'wrap', boxSizing: 'border-box',
               }}>
                 <div style={{ position: 'absolute', bottom: 0, right: 0, width: '50%', height: '100%', opacity: 0.15, background: 'linear-gradient(135deg, transparent 40%, #7A222E 100%)' }} />
 
@@ -550,7 +550,8 @@ export default function Updates() {
                 {featuredDeal.image_url ? (
                   <div style={{
                     position: 'relative', zIndex: 1, flexShrink: 0,
-                    width: 220, height: 220, borderRadius: 8, overflow: 'hidden',
+                    width: 220, maxWidth: '100%', height: 'auto', aspectRatio: '1 / 1',
+                    borderRadius: 8, overflow: 'hidden',
                     background: 'rgba(255,255,255,0.04)',
                   }}>
                     <img
@@ -584,9 +585,9 @@ export default function Updates() {
             {regularDeals.length > 0 && (
               <div style={{ marginBottom: 48 }}>
                 <div style={RED_LABEL}>MEMBER DEALS</div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 20 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 8, marginBottom: 20 }}>
                   <h2 style={{ fontSize: 'clamp(22px, 2.5vw, 30px)', fontWeight: 300, margin: '6px 0 0' }}>Exclusive Offers</h2>
-                  <span style={{ fontSize: 12, color: C.gray, cursor: 'pointer' }}>View all deals →</span>
+                  <span style={{ fontSize: 12, color: C.gray, cursor: 'pointer', whiteSpace: 'nowrap' }}>View all deals →</span>
                 </div>
                 <div style={{
                   display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
@@ -714,9 +715,9 @@ export default function Updates() {
             {series.map(s => (
               <div key={s.id} style={{ marginBottom: 48 }}>
                 <div style={RED_LABEL}>COLLECTIBLE DROPS</div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 8, marginBottom: 6 }}>
                   <h2 style={{ fontSize: 'clamp(22px, 2.5vw, 30px)', fontWeight: 300, margin: '6px 0 0' }}>{s.name}</h2>
-                  <span style={{ fontSize: 12, color: C.gray }}>{s.totalCards}-piece set · Season {s.season}</span>
+                  <span style={{ fontSize: 12, color: C.gray, whiteSpace: 'nowrap' }}>{s.totalCards}-piece set · Season {s.season}</span>
                 </div>
                 <div style={{ fontSize: 10, letterSpacing: '0.15em', textTransform: 'uppercase', color: C.gray, marginBottom: 8 }}>
                   COLLECT EXCLUSIVE COLLECTIBLE DROPS TO EARN POINTS AND UNLOCK EXCLUSIVE MEMBER REWARDS

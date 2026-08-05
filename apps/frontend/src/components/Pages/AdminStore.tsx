@@ -45,11 +45,12 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={onClose}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, boxSizing: 'border-box' as const }} onClick={onClose}>
       <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)' }} />
       <div style={{
-        position: 'relative', background: C.pureWhite, borderRadius: 12, padding: '28px',
-        width: '100%', maxWidth: 540, maxHeight: '90vh', overflow: 'auto',
+        position: 'relative', background: C.pureWhite, borderRadius: 12, padding: 'clamp(16px, 4vw, 28px)',
+        width: '100%', maxWidth: 540, boxSizing: 'border-box' as const,
+        maxHeight: '90vh', overflow: 'auto', WebkitOverflowScrolling: 'touch',
       }} onClick={e => e.stopPropagation()}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
           <h2 style={{ fontSize: 18, fontWeight: 400, margin: 0 }}>{title}</h2>
@@ -298,7 +299,7 @@ function DealsManager() {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 20 }}>
         <div style={{ fontSize: 13, color: C.gray }}>{deals.length} deal{deals.length !== 1 ? 's' : ''}</div>
         <button style={BTN_PRIMARY} onClick={() => setEditing({
           title: '', description: '', category: 'accessories', price_chf: '',
@@ -315,17 +316,17 @@ function DealsManager() {
 
       {!loading && deals.map(d => (
         <div key={d.id} style={{
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 10,
           padding: '14px 16px', border: BR, borderRadius: 8, marginBottom: 8,
           background: C.pureWhite,
         }}>
-          <div style={{ display: 'flex', gap: 12, alignItems: 'center', flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center', flex: '1 1 220px', minWidth: 0 }}>
             {d.image_url && (
               <img src={d.image_url} alt="" style={{ width: 40, height: 40, borderRadius: 4, objectFit: 'cover', flexShrink: 0 }} />
             )}
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                <span style={{ fontSize: 14, fontWeight: 600 }}>{d.title}</span>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                <span style={{ fontSize: 14, fontWeight: 600, wordBreak: 'break-word' }}>{d.title}</span>
                 {d.featured && <span style={{ fontSize: 8, fontWeight: 700, padding: '2px 6px', background: C.red, color: '#fff', borderRadius: 2, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Featured</span>}
                 {d.contract_address && <span style={{ fontSize: 8, fontWeight: 700, padding: '2px 6px', background: C.green, color: '#fff', borderRadius: 2, textTransform: 'uppercase', letterSpacing: '0.1em' }}>NFT</span>}
               </div>
@@ -385,7 +386,7 @@ function DealsManager() {
           <Field label="Description">
             <textarea style={{ ...INPUT, minHeight: 60, resize: 'vertical' }} value={editing.description || ''} onChange={e => set('description', e.target.value)} />
           </Field>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
             <Field label="Category">
               <select style={INPUT} value={editing.category || 'accessories'} onChange={e => set('category', e.target.value)}>
                 <option value="accessories">Accessories</option>
@@ -399,7 +400,7 @@ function DealsManager() {
               <input style={INPUT} type="number" step="0.01" value={editing.price_chf || ''} onChange={e => set('price_chf', e.target.value)} />
             </Field>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
             <Field label="Max Points Discount">
               <input style={INPUT} type="number" value={editing.max_points_discount || 0} onChange={e => set('max_points_discount', parseInt(e.target.value) || 0)} />
             </Field>
@@ -551,7 +552,7 @@ function MediaManager() {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 20 }}>
         <div style={{ fontSize: 13, color: C.gray }}>{stories.length} stor{stories.length !== 1 ? 'ies' : 'y'}</div>
         <button style={BTN_PRIMARY} onClick={() => setEditing({
           title: '', media_type: 'article', category: 'editorial', description: '',
@@ -568,17 +569,17 @@ function MediaManager() {
 
       {!loading && stories.map(s => (
         <div key={s.id} style={{
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 10,
           padding: '14px 16px', border: BR, borderRadius: 8, marginBottom: 8,
           background: C.pureWhite,
         }}>
-          <div style={{ display: 'flex', gap: 12, alignItems: 'center', flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center', flex: '1 1 220px', minWidth: 0 }}>
             {s.thumbnail_url && (
               <img src={s.thumbnail_url} alt="" style={{ width: 48, height: 36, borderRadius: 4, objectFit: 'cover', flexShrink: 0 }} />
             )}
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
-                <span style={{ fontSize: 14, fontWeight: 600 }}>{s.title}</span>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginBottom: 3 }}>
+                <span style={{ fontSize: 14, fontWeight: 600, wordBreak: 'break-word' }}>{s.title}</span>
                 {s.featured && <span style={{ fontSize: 8, fontWeight: 700, padding: '2px 6px', background: C.red, color: '#fff', borderRadius: 2, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Featured</span>}
               </div>
               <div style={{ fontSize: 12, color: C.gray }}>
@@ -598,7 +599,7 @@ function MediaManager() {
           <Field label="Title">
             <input style={INPUT} value={editing.title || ''} onChange={e => set('title', e.target.value)} placeholder="Workshop: Ski Tuning Masterclass" />
           </Field>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
             <Field label="Type">
               <select style={INPUT} value={editing.media_type || 'article'} onChange={e => set('media_type', e.target.value)}>
                 <option value="article">Article</option>
@@ -626,7 +627,7 @@ function MediaManager() {
           <Field label="Thumbnail URL">
             <input style={INPUT} value={editing.thumbnail_url || ''} onChange={e => set('thumbnail_url', e.target.value)} placeholder="https://..." />
           </Field>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
             <Field label="Duration (for video)">
               <input style={INPUT} value={editing.duration || ''} onChange={e => set('duration', e.target.value)} placeholder="4:32" />
             </Field>
@@ -634,7 +635,7 @@ function MediaManager() {
               <input style={INPUT} type="datetime-local" value={editing.published_at ? editing.published_at.slice(0, 16) : ''} onChange={e => set('published_at', e.target.value ? new Date(e.target.value).toISOString() : null)} />
             </Field>
           </div>
-          <div style={{ display: 'flex', gap: 16, marginBottom: 20 }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, marginBottom: 20 }}>
             <label style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
               <input type="checkbox" checked={editing.exclusive !== false} onChange={e => set('exclusive', e.target.checked)} />
               Exclusive
@@ -673,7 +674,7 @@ export default function AdminStore() {
   }
 
   return (
-    <div style={{ padding: '48px 48px 0', fontFamily: C.font, color: C.black }}>
+    <div style={{ padding: 'clamp(20px, 5vw, 48px) clamp(16px, 5vw, 48px) 0', fontFamily: C.font, color: C.black, boxSizing: 'border-box' as const }}>
       <div style={{ maxWidth: 1100, margin: '0 auto' }}>
         <div style={{ marginBottom: '2.5rem', paddingBottom: '2rem', borderBottom: BR }}>
           <div style={RED_LABEL}>admin</div>
@@ -685,7 +686,7 @@ export default function AdminStore() {
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: 0, borderBottom: BR, marginBottom: 28 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 0, borderBottom: BR, marginBottom: 28 }}>
           {([
             { key: 'deals', label: 'Deals' },
             { key: 'collectibles', label: 'Collectibles' },

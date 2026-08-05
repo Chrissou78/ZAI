@@ -416,6 +416,7 @@ const OnboardingWidget: React.FC = () => {
                 bottom: 'calc(100% + 12px)',
                 right: 0,
                 width: '300px',
+                maxWidth: 'calc(100vw - 56px)',
                 background: '#ffffff',
                 border: '1px solid #e8e8e8',
                 boxShadow: '0 16px 48px rgba(0,0,0,0.15)',

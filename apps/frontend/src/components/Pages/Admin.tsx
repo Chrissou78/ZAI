@@ -469,7 +469,7 @@ const Admin: React.FC = () => {
   /* ═════════════ RENDER ═════════════ */
 
   return (
-    <div style={{ padding: '48px 48px 0', fontFamily: C.font, color: C.black }}>
+    <div style={{ padding: 'clamp(20px, 5vw, 48px) clamp(16px, 5vw, 48px) 0', fontFamily: C.font, color: C.black, boxSizing: 'border-box' }}>
       <div style={{ maxWidth: 1100, margin: '0 auto' }}>
 
         {/* Header */}
@@ -713,7 +713,7 @@ const Admin: React.FC = () => {
                   {selectedClaim.productName || 'Unnamed product'}
                 </div>
                 <div style={{ fontSize: 12, color: C.gray, marginBottom: 2 }}>
-                  Claim ID: <span style={{ fontFamily: 'monospace', fontSize: 11 }}>{selectedClaim.id}</span>
+                  Claim ID: <span style={{ fontFamily: 'monospace', fontSize: 11, wordBreak: 'break-all' }}>{selectedClaim.id}</span>
                 </div>
                 <div style={{ fontSize: 12, color: C.gray }}>
                   Submitted {formatDate(selectedClaim.createdAt)}
@@ -734,7 +734,7 @@ const Admin: React.FC = () => {
                 {selectedClaim.userEmail && (
                   <div style={{ fontSize: 12, color: C.gray }}>{selectedClaim.userEmail}</div>
                 )}
-                <div style={{ fontSize: 11, color: C.gray, marginTop: 2, fontFamily: 'monospace' }}>
+                <div style={{ fontSize: 11, color: C.gray, marginTop: 2, fontFamily: 'monospace', wordBreak: 'break-all' }}>
                   {selectedClaim.userId}
                 </div>
               </div>
@@ -777,7 +777,7 @@ const Admin: React.FC = () => {
                   </div>
                 )}
                 {selectedClaim.mintTx && (
-                  <div style={{ fontWeight: 400, marginTop: 4, fontSize: 11, fontFamily: 'monospace' }}>
+                  <div style={{ fontWeight: 400, marginTop: 4, fontSize: 11, fontFamily: 'monospace', wordBreak: 'break-all' }}>
                     Mint TX: {selectedClaim.mintTx}
                   </div>
                 )}
@@ -849,7 +849,7 @@ const Admin: React.FC = () => {
                   </div>
                 )}
 
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, flexWrap: 'wrap' }}>
                   <button
                     onClick={handleReject}
                     disabled={actionLoading}

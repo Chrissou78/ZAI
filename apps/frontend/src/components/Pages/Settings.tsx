@@ -74,6 +74,14 @@ const Settings: React.FC = () => {
   const { user } = useAppContext();
   const { logout } = useWalletAuth();
 
+  /* ── Mobile width tracking (nav needs a genuine layout switch) ── */
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  useEffect(() => {
+    const h = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', h);
+    return () => window.removeEventListener('resize', h);
+  }, []);
+
   const [activePanel, setActivePanel] = useState<Panel>('notifications');
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -313,11 +321,12 @@ const Settings: React.FC = () => {
     <div
       style={{
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        flexWrap: 'wrap', rowGap: '0.6rem',
         padding: '1.25rem 0',
         borderBottom: noBorder ? 'none' : `1px solid ${C.border}`,
       }}
     >
-      <div style={{ flex: 1, minWidth: 0 }}>
+      <div style={{ flex: '1 1 200px', minWidth: 0 }}>
         <div style={{ fontSize: '13px', color: C.black, fontWeight: 400 }}>{title}</div>
         {desc && <div style={{ fontSize: '11px', color: C.gray, marginTop: '3px' }}>{desc}</div>}
       </div>
@@ -359,10 +368,12 @@ const Settings: React.FC = () => {
     position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
     background: 'rgba(10,10,10,0.6)', zIndex: 1000,
     display: 'flex', alignItems: 'center', justifyContent: 'center',
+    padding: '1rem', boxSizing: 'border-box',
     backdropFilter: 'blur(4px)',
   };
   const mBox: React.CSSProperties = {
-    background: '#fff', padding: '2.5rem', maxWidth: 480, width: '90%',
+    background: '#fff', padding: 'clamp(1.25rem, 6vw, 2.5rem)', maxWidth: 480, width: '90%',
+    maxHeight: '85vh', overflowY: 'auto', boxSizing: 'border-box',
     border: `1px solid ${C.border}`,
   };
   const mTitle: React.CSSProperties = {
@@ -402,7 +413,11 @@ const Settings: React.FC = () => {
 
   if (loading) {
     return (
-      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '48px 48px 80px', textAlign: 'center', fontFamily: C.font }}>
+      <div style={{
+        maxWidth: 1100, margin: '0 auto',
+        padding: 'clamp(24px, 6vw, 48px) clamp(16px, 5vw, 48px) 80px',
+        boxSizing: 'border-box', textAlign: 'center', fontFamily: C.font,
+      }}>
         <div style={{ fontSize: '14px', color: C.gray }}>Loading settings...</div>
       </div>
     );
@@ -412,7 +427,11 @@ const Settings: React.FC = () => {
      RENDER
   ══════════════════════════════════════════════════════════ */
   return (
-    <div style={{ maxWidth: 1100, margin: '0 auto', padding: '48px 48px 80px', fontFamily: C.font }}>
+    <div style={{
+      maxWidth: 1100, margin: '0 auto',
+      padding: 'clamp(24px, 6vw, 48px) clamp(16px, 5vw, 48px) 80px',
+      boxSizing: 'border-box', fontFamily: C.font,
+    }}>
 
       {/* ═══ PAGE HEADER ═══ */}
       <div
@@ -463,27 +482,40 @@ const Settings: React.FC = () => {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: '220px 1fr',
+          gridTemplateColumns: isMobile ? '1fr' : '220px 1fr',
           gap: '1px',
           background: C.border,
           border: `1px solid ${C.border}`,
         }}
       >
-        {/* ── LEFT NAV ── */}
-        <div style={{ background: C.surface, padding: '1.5rem 0' }}>
+        {/* ── LEFT NAV (horizontally scrollable tab bar on mobile) ── */}
+        <div
+          style={{
+            background: C.surface,
+            padding: isMobile ? '0' : '1.5rem 0',
+            display: isMobile ? 'flex' : 'block',
+            overflowX: isMobile ? 'auto' : 'visible',
+            whiteSpace: isMobile ? 'nowrap' : 'normal',
+            WebkitOverflowScrolling: 'touch',
+          }}
+        >
           {panels.map(p => (
             <div
               key={p.key}
               onClick={() => setActivePanel(p.key)}
               style={{
-                padding: '12px 1.5rem',
+                padding: isMobile ? '14px 1.1rem' : '12px 1.5rem',
                 cursor: 'pointer',
                 fontSize: '13px',
+                flexShrink: isMobile ? 0 : undefined,
                 color: activePanel === p.key ? C.red : C.black,
                 fontWeight: activePanel === p.key ? 500 : 400,
-                borderLeft: activePanel === p.key
-                  ? `3px solid ${C.red}`
-                  : '3px solid transparent',
+                borderLeft: !isMobile
+                  ? (activePanel === p.key ? `3px solid ${C.red}` : '3px solid transparent')
+                  : 'none',
+                borderBottom: isMobile
+                  ? (activePanel === p.key ? `3px solid ${C.red}` : '3px solid transparent')
+                  : 'none',
                 background: activePanel === p.key
                   ? 'rgba(200,16,46,0.04)'
                   : 'transparent',
@@ -503,7 +535,11 @@ const Settings: React.FC = () => {
         </div>
 
         {/* ── RIGHT CONTENT ── */}
-        <div style={{ background: '#fff', padding: '2rem 2.5rem' }}>
+        <div style={{
+          background: '#fff',
+          padding: 'clamp(1.25rem, 4vw, 2rem) clamp(1rem, 5vw, 2.5rem)',
+          boxSizing: 'border-box', minWidth: 0, overflowX: 'hidden',
+        }}>
 
           {/* ══════ NOTIFICATIONS ══════ */}
           {activePanel === 'notifications' && (
@@ -708,7 +744,7 @@ const Settings: React.FC = () => {
               value={passwordForm.confirm}
               onChange={e => setPasswordForm(p => ({ ...p, confirm: e.target.value }))}
             />
-            <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
+            <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
               <button onClick={handlePasswordChange} disabled={passwordSaving} style={btnP}
                 onMouseEnter={e => (e.currentTarget.style.background = '#9a2535')}
                 onMouseLeave={e => (e.currentTarget.style.background = C.burgundy)}>
@@ -765,7 +801,7 @@ const Settings: React.FC = () => {
                     </div>
                   </div>
                 ))}
-                <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.75rem' }}>
+                <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.75rem', flexWrap: 'wrap' }}>
                   <button onClick={handleSetup2FA} disabled={tfaLoading} style={btnP}
                     onMouseEnter={e => (e.currentTarget.style.background = '#9a2535')}
                     onMouseLeave={e => (e.currentTarget.style.background = C.burgundy)}>
@@ -814,7 +850,7 @@ const Settings: React.FC = () => {
                     }}>{tfaSecret}</div>
                   </div>
                 )}
-                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
                   <button onClick={() => setTfaStep('verify')} style={btnP}
                     onMouseEnter={e => (e.currentTarget.style.background = '#9a2535')}
                     onMouseLeave={e => (e.currentTarget.style.background = C.burgundy)}>
@@ -842,7 +878,7 @@ const Settings: React.FC = () => {
                     fontFamily: 'monospace', letterSpacing: '0.5em', fontWeight: 600,
                   }}
                 />
-                <div style={{ display: 'flex', gap: '0.75rem' }}>
+                <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
                   <button onClick={handleVerify2FA} disabled={tfaLoading} style={btnP}
                     onMouseEnter={e => (e.currentTarget.style.background = '#9a2535')}
                     onMouseLeave={e => (e.currentTarget.style.background = C.burgundy)}>
@@ -905,7 +941,7 @@ const Settings: React.FC = () => {
                 fontFamily: 'monospace', letterSpacing: '0.5em', fontWeight: 600,
               }}
             />
-            <div style={{ display: 'flex', gap: '0.75rem' }}>
+            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
               <button onClick={handleDisable2FA} disabled={disableLoading} style={btnD}>
                 {disableLoading ? 'Disabling...' : 'Disable 2FA'}
               </button>
@@ -946,26 +982,28 @@ const Settings: React.FC = () => {
                 {sessionsList.map(s => (
                   <div key={s.id} style={{
                     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    flexWrap: 'wrap', rowGap: '0.6rem',
                     padding: '1rem 0', borderBottom: `1px solid ${C.border}`,
                   }}>
-                    <div>
-                      <div style={{ fontSize: '13px', fontWeight: s.isCurrent ? 500 : 400, color: C.black }}>
+                    <div style={{ minWidth: 0, flex: '1 1 200px' }}>
+                      <div style={{ fontSize: '13px', fontWeight: s.isCurrent ? 500 : 400, color: C.black, wordBreak: 'break-word' }}>
                         {s.device} — {s.browser}
                         {s.isCurrent && (
                           <span style={{
+                            display: 'inline-block',
                             background: 'rgba(42,157,78,0.06)', color: '#2a9d4e', fontSize: '9px',
                             padding: '2px 8px', marginLeft: '8px', textTransform: 'uppercase',
                             letterSpacing: '0.15em', border: '1px solid rgba(42,157,78,0.2)',
                           }}>Current</span>
                         )}
                       </div>
-                      <div style={{ fontSize: '11px', color: C.gray, marginTop: '4px' }}>
+                      <div style={{ fontSize: '11px', color: C.gray, marginTop: '4px', wordBreak: 'break-word' }}>
                         {s.ipAddress} · Last active {new Date(s.lastActive).toLocaleString()}
                       </div>
                     </div>
                     {!s.isCurrent && (
                       <button onClick={() => revokeSession(s.id)} style={{
-                        ...btnO, padding: '6px 14px', fontSize: '10px',
+                        ...btnO, padding: '6px 14px', fontSize: '10px', flexShrink: 0,
                       }}
                         onMouseEnter={e => { e.currentTarget.style.borderColor = C.red; e.currentTarget.style.color = C.red; }}
                         onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.color = C.black; }}>
@@ -995,7 +1033,7 @@ const Settings: React.FC = () => {
             <div style={{ fontSize: '13px', color: C.gray, marginBottom: '1.5rem' }}>
               Are you sure you want to log out of your account?
             </div>
-            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', flexWrap: 'wrap' }}>
               <button onClick={handleLogout} style={btnD}>Logout</button>
               <button onClick={() => setShowLogoutModal(false)} style={btnO}
                 onMouseEnter={e => (e.currentTarget.style.borderColor = C.black)}

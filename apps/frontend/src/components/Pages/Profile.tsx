@@ -235,7 +235,7 @@ const TierDisplay: React.FC<{ points: number }> = ({ points }) => {
       <div
         style={{
           border: `1px solid ${C.border}`,
-          padding: '28px',
+          padding: 'clamp(16px, 4vw, 28px)',
           borderRadius: 4,
           background: '#fff',
         }}
@@ -247,7 +247,7 @@ const TierDisplay: React.FC<{ points: number }> = ({ points }) => {
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
             gap: 32,
             alignItems: 'flex-end',
           }}
@@ -462,7 +462,8 @@ const ReferralProgram: React.FC<{ userId: string }> = ({ userId }) => {
       </p>
 
       <div style={{
-        background: C.black, borderRadius: 10, padding: '32px 28px', color: C.white,
+        background: C.black, borderRadius: 10,
+        padding: 'clamp(18px, 5vw, 32px) clamp(16px, 5vw, 28px)', color: C.white,
       }}>
         <div style={{
           fontSize: 10, letterSpacing: '0.25em', textTransform: 'uppercase',
@@ -480,7 +481,7 @@ const ReferralProgram: React.FC<{ userId: string }> = ({ userId }) => {
         </div>
 
         <div style={{
-          display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 0,
+          display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(90px, 1fr))', gap: 0,
           border: '1px solid #333', borderRadius: 6, marginBottom: 20,
         }}>
           {[
@@ -505,7 +506,7 @@ const ReferralProgram: React.FC<{ userId: string }> = ({ userId }) => {
           ))}
         </div>
 
-        <div style={{ display: 'flex', gap: 10 }}>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
           <button onClick={copyCode} style={{
             padding: '10px 20px', fontSize: 10, fontWeight: 700,
             letterSpacing: '0.12em', textTransform: 'uppercase',
@@ -535,14 +536,14 @@ const ReferralProgram: React.FC<{ userId: string }> = ({ userId }) => {
           }}>
             HAVE A REFERRAL CODE?
           </div>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             <input
               value={referralInput}
               onChange={e => setReferralInput(e.target.value.toUpperCase())}
               placeholder="Enter code (e.g. ZAI-XXXX)"
               maxLength={20}
               style={{
-                flex: 1, padding: '10px 12px', border: `1px solid ${C.border}`,
+                flex: '1 1 180px', minWidth: 0, padding: '10px 12px', border: `1px solid ${C.border}`,
                 fontSize: 13, fontFamily: C.font, borderRadius: 4,
                 boxSizing: 'border-box' as const, background: '#fff',
               }}
@@ -595,6 +596,15 @@ const ReferralProgram: React.FC<{ userId: string }> = ({ userId }) => {
    ═══════════════════════════════════════════════════════════ */
 const Profile: React.FC = () => {
   const { user, setUser } = useAppContext();
+
+  /* ── Mobile width tracking (mirrors MainLayout's own breakpoint hook) ── */
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  useEffect(() => {
+    const h = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', h);
+    return () => window.removeEventListener('resize', h);
+  }, []);
+
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'purchases'>('overview');
@@ -910,7 +920,7 @@ const Profile: React.FC = () => {
 
   if (!user) {
     return (
-      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '48px 48px 80px', color: C.gray, fontSize: '14px', fontFamily: C.font }}>
+      <div style={{ maxWidth: 1100, margin: '0 auto', padding: 'clamp(24px, 6vw, 48px) clamp(16px, 6vw, 48px) clamp(40px, 8vw, 80px)', color: C.gray, fontSize: '14px', fontFamily: C.font }}>
         Loading profile...
       </div>
     );
@@ -947,12 +957,14 @@ const Profile: React.FC = () => {
   };
 
   return (
-    <div style={{ maxWidth: 1100, margin: '0 auto', padding: '48px 48px 80px', fontFamily: C.font }}>
+    <div style={{ maxWidth: 1100, margin: '0 auto', padding: 'clamp(24px, 6vw, 48px) clamp(16px, 6vw, 48px) clamp(40px, 8vw, 80px)', fontFamily: C.font }}>
 
       {/* ═══ HEADER ═══ */}
       <div
         style={{
           display: 'flex',
+          flexWrap: 'wrap',
+          gap: '16px',
           justifyContent: 'space-between',
           alignItems: 'flex-start',
           marginBottom: '2.5rem',
@@ -1021,7 +1033,7 @@ const Profile: React.FC = () => {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: '280px 1fr',
+          gridTemplateColumns: isMobile ? '1fr' : '280px 1fr',
           gap: '0px',
           background: C.border,
           border: `1px solid ${C.border}`,
@@ -1031,7 +1043,7 @@ const Profile: React.FC = () => {
         <div
           style={{
             background: C.surface,
-            padding: '2.5rem 2rem',
+            padding: 'clamp(1.5rem, 5vw, 2.5rem) clamp(1rem, 5vw, 2rem)',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
@@ -1130,7 +1142,7 @@ const Profile: React.FC = () => {
         </div>
 
         {/* ── RIGHT — PERSONAL INFORMATION + SECTIONS ── */}
-        <div style={{ background: '#fff', padding: '2.5rem 2rem' }}>
+        <div style={{ background: '#fff', padding: 'clamp(1.5rem, 5vw, 2.5rem) clamp(1rem, 5vw, 2rem)' }}>
 
           {/* ── Personal Information ── */}
           <div style={{ ...label, color: C.black, fontSize: '11px', marginBottom: '1.5rem', paddingBottom: '0.75rem', borderBottom: `1px solid ${C.border}` }}>
@@ -1138,30 +1150,30 @@ const Profile: React.FC = () => {
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', background: C.border, border: `1px solid ${C.border}` }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1px', background: C.border }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1px', background: C.border }}>
               <FieldCell label="First Name" name="givenName" value={formData.givenName} editing={isEditing} onChange={handleChange} />
               <FieldCell label="Family Name" name="familyName" value={formData.familyName} editing={isEditing} onChange={handleChange} />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1px', background: C.border }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1px', background: C.border }}>
               <FieldCell
                 label="Date of Birth" name="birthdate"
                 value={isEditing ? formData.birthdate : formatBirthdate(formData.birthdate)}
                 editing={isEditing} type={isEditing ? 'date' : 'text'} onChange={handleChange}
               />
               {isEditing ? (
-                <div style={{ background: '#fff', padding: '1rem 1.25rem' }}>
+                <div style={{ background: '#fff', padding: '1rem 1.25rem', minWidth: 0 }}>
                   <div style={{ fontSize: '10px', letterSpacing: '0.25em', textTransform: 'uppercase', color: C.gray, marginBottom: '6px', fontFamily: C.font }}>
                     Phone Number
                   </div>
-                  <div style={{ display: 'flex', gap: '6px', alignItems: 'flex-end' }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'flex-end' }}>
                     <select name="phoneCode" value={formData.phoneCode} onChange={handleSelectChange}
-                      style={{ ...selectStyle, width: '115px', flexShrink: 0 }}>
+                      style={{ ...selectStyle, width: 'auto', minWidth: '90px', maxWidth: '100%', flex: '1 1 100px' }}>
                       {PHONE_CODES.map(pc => (<option key={pc.code} value={pc.code}>{pc.label}</option>))}
                     </select>
                     <input type="tel" name="phoneLocal" value={formData.phoneLocal} onChange={handleChange}
                       placeholder="79 123 4567"
-                      style={{ flex: 1, background: 'transparent', border: 'none', borderBottom: `1px solid ${C.border}`, color: C.black, fontFamily: C.font, fontSize: '13px', fontWeight: 400, padding: '4px 0', outline: 'none', boxSizing: 'border-box' }}
+                      style={{ flex: '2 1 140px', minWidth: 0, background: 'transparent', border: 'none', borderBottom: `1px solid ${C.border}`, color: C.black, fontFamily: C.font, fontSize: '13px', fontWeight: 400, padding: '4px 0', outline: 'none', boxSizing: 'border-box' }}
                     />
                   </div>
                 </div>
@@ -1175,10 +1187,10 @@ const Profile: React.FC = () => {
             {isEditing ? (
               <>
                 <FieldCell label="Street Address" name="address" value={formData.address} editing={true} onChange={handleChange} />
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1px', background: C.border }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '1px', background: C.border }}>
                   <FieldCell label="Postal Code" name="postalCode" value={formData.postalCode} editing={true} onChange={handleChange} />
                   <FieldCell label="City" name="city" value={formData.city} editing={true} onChange={handleChange} />
-                  <div style={{ background: '#fff', padding: '1rem 1.25rem' }}>
+                  <div style={{ background: '#fff', padding: '1rem 1.25rem', minWidth: 0 }}>
                     <div style={{ fontSize: '10px', letterSpacing: '0.25em', textTransform: 'uppercase', color: C.gray, marginBottom: '6px', fontFamily: C.font }}>Country</div>
                     <select name="country" value={formData.country} onChange={handleSelectChange} style={selectStyle}>
                       <option value="">Select country</option>
@@ -1225,7 +1237,7 @@ const Profile: React.FC = () => {
               <div style={{
                 ...label, color: C.black, fontSize: '11px', marginTop: '3rem', marginBottom: '1.5rem',
                 paddingBottom: '0.75rem', borderBottom: `1px solid ${C.border}`,
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                display: 'flex', flexWrap: 'wrap', gap: '10px', justifyContent: 'space-between', alignItems: 'center',
               }}>
                 <span>Experience Card</span>
                 {!editingCardNum && (
@@ -1262,14 +1274,14 @@ const Profile: React.FC = () => {
                   <div style={{ fontSize: 10, letterSpacing: '0.25em', textTransform: 'uppercase', color: C.gray, marginBottom: 8, fontFamily: C.font }}>
                     CARD NUMBER
                   </div>
-                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10 }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', marginBottom: 10 }}>
                     <input
                       value={cardNumInput}
                       onChange={e => setCardNumInput(e.target.value.toUpperCase())}
                       placeholder="Enter card number or scan via NFC"
                       maxLength={32}
                       style={{
-                        flex: 1, padding: '10px 12px', border: `1px solid ${C.border}`,
+                        flex: '1 1 180px', minWidth: 0, padding: '10px 12px', border: `1px solid ${C.border}`,
                         fontSize: 13, fontFamily: C.font, borderRadius: 4,
                         boxSizing: 'border-box' as const, background: '#fff',
                       }}
@@ -1433,7 +1445,7 @@ const PurchaseHistorySection: React.FC = () => {
     <div style={{ border: `1px solid ${C.border}`, borderRadius: 6, overflow: 'hidden', marginBottom: '2rem' }}>
       {purchases.map((p, idx) => (
         <div key={p.id} style={{
-          display: 'flex', alignItems: 'center', gap: 16, padding: '14px 20px',
+          display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 16, padding: '14px 20px',
           borderBottom: idx < purchases.length - 1 ? `1px solid ${C.border}` : 'none',
           background: '#fff', fontFamily: C.font,
         }}>
@@ -1493,16 +1505,16 @@ interface FieldCellProps {
 }
 
 const FieldCell: React.FC<FieldCellProps> = ({ label: lbl, name, value, editing, type = 'text', onChange }) => (
-  <div style={{ background: '#fff', padding: '1rem 1.25rem' }}>
+  <div style={{ background: '#fff', padding: '1rem 1.25rem', minWidth: 0, boxSizing: 'border-box' }}>
     <div style={{ fontSize: '10px', letterSpacing: '0.25em', textTransform: 'uppercase', color: C.gray, marginBottom: '6px', fontFamily: C.font }}>
       {lbl}
     </div>
     {editing ? (
       <input type={type} name={name} value={value} onChange={onChange} placeholder="—"
-        style={{ width: '100%', background: 'transparent', border: 'none', borderBottom: `1px solid ${C.border}`, color: C.black, fontFamily: C.font, fontSize: '13px', fontWeight: 400, padding: '4px 0', outline: 'none', boxSizing: 'border-box' }}
+        style={{ width: '100%', maxWidth: '100%', background: 'transparent', border: 'none', borderBottom: `1px solid ${C.border}`, color: C.black, fontFamily: C.font, fontSize: '13px', fontWeight: 400, padding: '4px 0', outline: 'none', boxSizing: 'border-box' }}
       />
     ) : (
-      <div style={{ fontSize: '13px', fontWeight: 400, color: C.black, padding: '4px 0', minHeight: '20px' }}>
+      <div style={{ fontSize: '13px', fontWeight: 400, color: C.black, padding: '4px 0', minHeight: '20px', wordBreak: 'break-word' }}>
         {value || '—'}
       </div>
     )}

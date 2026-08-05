@@ -433,6 +433,15 @@ const Events: React.FC = () => {
   const [registering, setRegistering] = useState(false);
   const [paymentData, setPaymentData] = useState<{ clientSecret: string; amount: number; currency: string; paymentId: string } | null>(null);
 
+  // Mobile width tracking — content-area layout branches on this below
+  // (sidebar/hamburger switch itself is handled by MainLayout, not here).
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  useEffect(() => {
+    const h = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', h);
+    return () => window.removeEventListener('resize', h);
+  }, []);
+
   // Carousel state
   const scrollRef = useRef<HTMLDivElement>(null);
   const [scrollPage, setScrollPage] = useState(0);
@@ -601,11 +610,13 @@ const Events: React.FC = () => {
       <div
         onClick={() => setSelectedEvent(event)}
         style={{
-          flex: stretch ? '1 1 0%' : '0 0 calc(100% / 3)',
+          flex: isMobile ? '1 1 100%' : (stretch ? '1 1 0%' : '0 0 calc(100% / 3)'),
+          width: isMobile ? '100%' : undefined,
           minWidth: 0,
           background: C.pureWhite, cursor: 'pointer', overflow: 'hidden',
           display: 'flex', flexDirection: 'column',
-          borderRight: isLast ? 'none' : bdr,
+          borderRight: isMobile ? 'none' : (isLast ? 'none' : bdr),
+          borderBottom: isMobile ? (isLast ? 'none' : bdr) : 'none',
           transition: 'background .15s',
           boxSizing: 'border-box',
         }}
@@ -649,7 +660,7 @@ const Events: React.FC = () => {
         </div>
 
         {/* Card body */}
-        <div style={{ padding: '18px 20px', flex: 1, display: 'flex', flexDirection: 'column', background: C.cardBody }}>
+        <div style={{ padding: isMobile ? '16px 16px' : '18px 20px', flex: 1, display: 'flex', flexDirection: 'column', background: C.cardBody }}>
           <div style={{
             fontSize: '9px', letterSpacing: '0.25em', textTransform: 'uppercase',
             color: getTagColor(event.tag), marginBottom: 8, fontWeight: 600,
@@ -683,13 +694,17 @@ const Events: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '48px 48px 80px', fontFamily: "'Inter',sans-serif" }}>
+      <div style={{ maxWidth: 1100, margin: '0 auto', padding: isMobile ? '28px 16px 48px' : '48px 48px 80px', fontFamily: "'Inter',sans-serif" }}>
         <Sk w="120px" h="10px" s={{ marginBottom: 10 }} />
-        <Sk w="320px" h="38px" s={{ marginBottom: 8 }} />
-        <Sk w="400px" h="13px" s={{ marginBottom: 36 }} />
-        <div style={{ display: 'flex', border: bdr, borderRadius: 8, overflow: 'hidden' }}>
+        <Sk w="min(320px, 80%)" h="38px" s={{ marginBottom: 8 }} />
+        <Sk w="min(400px, 90%)" h="13px" s={{ marginBottom: 36 }} />
+        <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', border: bdr, borderRadius: 8, overflow: 'hidden' }}>
           {[0,1,2].map(i => (
-            <div key={i} style={{ flex: '1 1 0%', borderRight: i < 2 ? bdr : 'none' }}>
+            <div key={i} style={{
+              flex: '1 1 0%',
+              borderRight: !isMobile && i < 2 ? bdr : 'none',
+              borderBottom: isMobile && i < 2 ? bdr : 'none',
+            }}>
               <div style={{ ...shimmer, width: '100%', height: 160 }} />
               <div style={{ padding: 20 }}>
                 <Sk w="60%" h="10px" s={{ marginBottom: 8 }} />
@@ -703,10 +718,13 @@ const Events: React.FC = () => {
     );
   }
 
-  // ─── Group upcoming into pages of 3 (only used for carousel mode) ───
+  // ─── Group upcoming into pages (3 per page on desktop, 1 per page on
+  // phone widths so a single card fills the viewport instead of 3 squeezed
+  // side by side — only used for carousel mode) ───
+  const cardsPerPage = isMobile ? 1 : 3;
   const upcomingPages: Event[][] = [];
-  for (let i = 0; i < upcomingEvents.length; i += 3) {
-    upcomingPages.push(upcomingEvents.slice(i, i + 3));
+  for (let i = 0; i < upcomingEvents.length; i += cardsPerPage) {
+    upcomingPages.push(upcomingEvents.slice(i, i + cardsPerPage));
   }
 
   // ═══════════════════════════════
@@ -714,7 +732,7 @@ const Events: React.FC = () => {
   // ═══════════════════════════════
 
   return (
-    <div style={{ maxWidth: 1100, margin: '0 auto', padding: '48px 48px 80px', fontFamily: "'Inter',sans-serif", color: C.gray }}>
+    <div style={{ maxWidth: 1100, margin: '0 auto', padding: isMobile ? '28px 16px 48px' : '48px 48px 80px', fontFamily: "'Inter',sans-serif", color: C.gray }}>
 
       {/* ══════ HEADER ══════ */}
       <div style={{
@@ -750,7 +768,7 @@ const Events: React.FC = () => {
       ) : !needsCarousel ? (
         <div style={{ marginBottom: 48 }}>
           <div style={{
-            display: 'flex', border: bdr, borderRadius: 8, overflow: 'hidden',
+            display: 'flex', flexDirection: isMobile ? 'column' : 'row', border: bdr, borderRadius: 8, overflow: 'hidden',
           }}>
             {upcomingEvents.map((event, idx) => (
               <EventCard
@@ -813,8 +831,8 @@ const Events: React.FC = () => {
                     <EventCard key={event.id} event={event} isLast={isLastInPage} />
                   );
                 })}
-                {page.length < 3 && Array.from({ length: 3 - page.length }).map((_, i) => (
-                  <div key={`empty-${i}`} style={{ flex: '0 0 calc(100% / 3)', background: C.cardBody }} />
+                {page.length < cardsPerPage && Array.from({ length: cardsPerPage - page.length }).map((_, i) => (
+                  <div key={`empty-${i}`} style={{ flex: isMobile ? '0 0 100%' : '0 0 calc(100% / 3)', background: C.cardBody }} />
                 ))}
               </div>
             ))}
@@ -901,7 +919,7 @@ const Events: React.FC = () => {
       {selectedEvent && (
         <div style={{
           position: 'fixed', inset: 0, background: 'rgba(10,10,10,0.8)', backdropFilter: 'blur(6px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '2rem',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: isMobile ? '0.75rem' : '2rem',
         }}
           onClick={() => { setSelectedEvent(null); setPaymentData(null); }}>
           <div onClick={e => e.stopPropagation()}
@@ -919,7 +937,7 @@ const Events: React.FC = () => {
             )}
 
             {/* Content */}
-            <div style={{ padding: '28px 32px 32px' }}>
+            <div style={{ padding: isMobile ? '22px 18px 24px' : '28px 32px 32px' }}>
               <div style={{
                 fontSize: '9px', letterSpacing: '0.25em', textTransform: 'uppercase',
                 color: getTagColor(selectedEvent.tag), marginBottom: 6, fontWeight: 600,
@@ -972,6 +990,7 @@ const Events: React.FC = () => {
                 <div style={{
                   padding: '16px 20px', background: C.surface, borderRadius: 6, marginBottom: 20,
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  flexWrap: 'wrap', gap: 10,
                 }}>
                   <div>
                     <div style={lbl}>Price</div>
@@ -1016,6 +1035,7 @@ const Events: React.FC = () => {
                   <div style={{
                     border: bdr, borderRadius: 6, padding: '12px 16px', marginBottom: 16,
                     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    flexWrap: 'wrap', gap: 8,
                   }}>
                     <span style={{ fontSize: 13, color: C.muted }}>Total to pay</span>
                     <span style={{ fontSize: 18, fontWeight: 600 }}>{paymentData.currency.toUpperCase()} {paymentData.amount.toFixed(2)}</span>

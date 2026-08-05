@@ -97,42 +97,50 @@ const SkeletonBlock: React.FC<{ width?: string; height?: string; style?: React.C
   style,
 }) => <div style={{ ...shimmerStyle, width, height, ...style }} />;
 
-const DashboardSkeleton: React.FC = () => (
-  <div style={{ maxWidth: 1100, margin: '0 auto', padding: '48px 48px 80px', fontFamily: "'Inter', sans-serif" }}>
+const DashboardSkeleton: React.FC = () => {
+  const [isMobile, setIsMobile] = useState(() => (typeof window !== 'undefined' ? window.innerWidth < 768 : false));
+  useEffect(() => {
+    const h = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', h);
+    return () => window.removeEventListener('resize', h);
+  }, []);
+
+  return (
+  <div style={{ maxWidth: 1100, margin: '0 auto', padding: isMobile ? '24px 16px 48px' : '48px 48px 80px', fontFamily: "'Inter', sans-serif", boxSizing: 'border-box' }}>
     <div style={{ marginBottom: '2.5rem', paddingBottom: '2rem', borderBottom: '1px solid #e0ddd6' }}>
       <SkeletonBlock width="60px" height="11px" style={{ marginBottom: '0.6rem' }} />
       <SkeletonBlock width="220px" height="36px" style={{ marginBottom: '0.5rem' }} />
-      <SkeletonBlock width="360px" height="13px" />
+      <SkeletonBlock width="360px" height="13px" style={{ maxWidth: '100%' }} />
     </div>
-    <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: '1px', background: '#e0ddd6', border: '1px solid #e0ddd6', marginBottom: '1px' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '300px 1fr', gap: '1px', background: '#e0ddd6', border: '1px solid #e0ddd6', marginBottom: '1px' }}>
       <div style={{ background: '#f0ede6', padding: '2rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         <SkeletonBlock width="56px" height="56px" style={{ borderRadius: '50%', marginBottom: '1rem' }} />
         <SkeletonBlock width="140px" height="16px" style={{ marginBottom: '6px' }} />
-        <SkeletonBlock width="200px" height="11px" style={{ marginBottom: '1.25rem' }} />
+        <SkeletonBlock width="200px" height="11px" style={{ marginBottom: '1.25rem', maxWidth: '100%' }} />
         <SkeletonBlock width="100px" height="10px" />
       </div>
       <div style={{ background: '#1a1a1a', padding: '2rem' }}>
         <SkeletonBlock width="100px" height="10px" style={{ marginBottom: '0.75rem', background: 'linear-gradient(90deg, #2a2a2a 25%, #333 50%, #2a2a2a 75%)', backgroundSize: '800px 100%', animation: 'zaiShimmer 1.6s infinite ease-in-out' }} />
         <SkeletonBlock width="240px" height="28px" style={{ marginBottom: '1rem', background: 'linear-gradient(90deg, #2a2a2a 25%, #333 50%, #2a2a2a 75%)', backgroundSize: '800px 100%', animation: 'zaiShimmer 1.6s infinite ease-in-out' }} />
-        <SkeletonBlock width="300px" height="12px" style={{ background: 'linear-gradient(90deg, #2a2a2a 25%, #333 50%, #2a2a2a 75%)', backgroundSize: '800px 100%', animation: 'zaiShimmer 1.6s infinite ease-in-out' }} />
+        <SkeletonBlock width="300px" height="12px" style={{ maxWidth: '100%', background: 'linear-gradient(90deg, #2a2a2a 25%, #333 50%, #2a2a2a 75%)', backgroundSize: '800px 100%', animation: 'zaiShimmer 1.6s infinite ease-in-out' }} />
       </div>
     </div>
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1px', background: '#e0ddd6', border: '1px solid #e0ddd6', borderTop: 0, marginBottom: '1px' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '1px', background: '#e0ddd6', border: '1px solid #e0ddd6', borderTop: 0, marginBottom: '1px' }}>
       {[0, 1].map((i) => (
         <div key={i} style={{ background: '#fff', padding: '1.5rem 1.25rem' }}>
           <SkeletonBlock width="50px" height="32px" style={{ marginBottom: '8px' }} />
           <SkeletonBlock width="120px" height="11px" style={{ marginBottom: '4px' }} />
-          <SkeletonBlock width="180px" height="11px" />
+          <SkeletonBlock width="180px" height="11px" style={{ maxWidth: '100%' }} />
         </div>
       ))}
     </div>
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1px', background: '#e0ddd6', border: '1px solid #e0ddd6', borderTop: 0 }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1px', background: '#e0ddd6', border: '1px solid #e0ddd6', borderTop: 0 }}>
       <div style={{ background: '#fff', padding: '1.75rem' }}>
         <SkeletonBlock width="130px" height="11px" style={{ marginBottom: '1.25rem' }} />
         {[0, 1, 2].map((i) => (
           <div key={i} style={{ display: 'flex', gap: '10px', marginBottom: '0.75rem' }}>
             <SkeletonBlock width="20px" height="20px" style={{ flexShrink: 0, borderRadius: '50%' }} />
-            <div style={{ flex: 1 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
               <SkeletonBlock width="80%" height="12px" style={{ marginBottom: '4px' }} />
               <SkeletonBlock width="60px" height="10px" />
             </div>
@@ -144,7 +152,7 @@ const DashboardSkeleton: React.FC = () => (
         {[0, 1].map((i) => (
           <div key={i} style={{ display: 'flex', gap: '12px', alignItems: 'center', marginBottom: '0.9rem' }}>
             <SkeletonBlock width="32px" height="32px" style={{ flexShrink: 0 }} />
-            <div style={{ flex: 1 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
               <SkeletonBlock width="70%" height="12px" style={{ marginBottom: '4px' }} />
               <SkeletonBlock width="50%" height="11px" />
             </div>
@@ -153,7 +161,8 @@ const DashboardSkeleton: React.FC = () => (
       </div>
     </div>
   </div>
-);
+  );
+};
 
 /* ── Locked overlay for gated sections (light theme) ── */
 const LockedOverlay: React.FC<{
@@ -257,6 +266,12 @@ const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const { user, isLoading } = useAppContext();
   const [copiedWallet, setCopiedWallet] = useState(false);
+  const [isMobile, setIsMobile] = useState(() => (typeof window !== 'undefined' ? window.innerWidth < 768 : false));
+  useEffect(() => {
+    const h = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', h);
+    return () => window.removeEventListener('resize', h);
+  }, []);
   const [stats, setStats] = useState<DashboardStats>({
     productsClaimed: 0,
     eventsAttended: 0,
@@ -620,7 +635,7 @@ const Dashboard: React.FC = () => {
     : 100;
 
   return (
-    <div style={{ maxWidth: 1100, margin: '0 auto', padding: '48px 48px 80px', fontFamily: "'Inter', sans-serif" }}>
+    <div style={{ maxWidth: 1100, margin: '0 auto', padding: isMobile ? '24px 16px 48px' : '48px 48px 80px', fontFamily: "'Inter', sans-serif", boxSizing: 'border-box' }}>
       {/* Page Header */}
       <div
         style={{
@@ -629,10 +644,12 @@ const Dashboard: React.FC = () => {
           borderBottom: '1px solid #e0ddd6',
           display: 'flex',
           justifyContent: 'space-between',
-          alignItems: 'flex-end',
+          alignItems: isMobile ? 'flex-start' : 'flex-end',
+          flexWrap: 'wrap',
+          gap: '1rem',
         }}
       >
-        <div>
+        <div style={{ minWidth: 0 }}>
           <div style={{ fontSize: '11px', letterSpacing: '0.3em', textTransform: 'uppercase', color: '#7A222E', marginBottom: '0.4rem' }}>
             overview
           </div>
@@ -699,7 +716,7 @@ const Dashboard: React.FC = () => {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: '300px 1fr',
+          gridTemplateColumns: isMobile ? '1fr' : '300px 1fr',
           gap: '1px',
           background: '#e0ddd6',
           border: '1px solid #e0ddd6',
@@ -856,9 +873,9 @@ const Dashboard: React.FC = () => {
         <div
           style={{
             background: '#1a1a1a',
-            padding: '2rem',
+            padding: isMobile ? '1.5rem' : '2rem',
             display: 'grid',
-            gridTemplateColumns: showEcCardRight ? '1fr 1fr' : '1fr',
+            gridTemplateColumns: showEcCardRight ? 'repeat(auto-fit, minmax(220px, 1fr))' : '1fr',
             gap: showEcCardRight ? '2rem' : 0,
             alignItems: 'center',
             color: '#fff',
@@ -917,7 +934,7 @@ const Dashboard: React.FC = () => {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(3, 1fr)',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
           gap: '1px',
           background: '#e0ddd6',
           border: '1px solid #e0ddd6',
@@ -969,7 +986,7 @@ const Dashboard: React.FC = () => {
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
           gap: '1px',
           background: '#e0ddd6',
           border: '1px solid #e0ddd6',
@@ -977,7 +994,7 @@ const Dashboard: React.FC = () => {
         }}
       >
         {/* Recent Activity */}
-        <div style={{ background: '#fff', padding: '1.75rem' }}>
+        <div style={{ background: '#fff', padding: isMobile ? '1.25rem' : '1.75rem' }}>
           <div
             style={{
               fontSize: '11px',
@@ -1019,7 +1036,7 @@ const Dashboard: React.FC = () => {
                       marginTop: '5px',
                     }}
                   />
-                  <div style={{ flex: 1 }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: '12px', color: '#1a1a1a', fontWeight: 500 }}>
                       {item.title}
                     </div>
@@ -1043,7 +1060,7 @@ const Dashboard: React.FC = () => {
               <strong style={{ color: '#1a1a1a' }}>Wallet Address:</strong>
             </div>
             {user.walletAddress ? (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                 <span
                   style={{
                     fontFamily: 'monospace',
@@ -1052,6 +1069,7 @@ const Dashboard: React.FC = () => {
                     padding: '0.5rem',
                     borderRadius: '4px',
                     flex: 1,
+                    minWidth: 0,
                     wordBreak: 'break-all',
                   }}
                 >
@@ -1092,7 +1110,7 @@ const Dashboard: React.FC = () => {
         </div>
 
         {/* ── Quick Actions (always accessible) ── */}
-        <div style={{ background: '#f0ede6', padding: '1.75rem' }}>
+        <div style={{ background: '#f0ede6', padding: isMobile ? '1.25rem' : '1.75rem' }}>
           <div
             style={{
               fontSize: '11px',
@@ -1187,7 +1205,7 @@ const Dashboard: React.FC = () => {
               >
                 {action.icon}
               </div>
-              <div style={{ flex: 1 }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: '12px', fontWeight: 500 }}>{action.title}</div>
                 <div style={{ fontSize: '11px', color: '#6a6a6a', marginTop: '1px' }}>{action.sub}</div>
               </div>
@@ -1345,12 +1363,12 @@ const Dashboard: React.FC = () => {
                   <label style={ecLabelStyle}>Proof of Ownership</label>
 
                   {!ecImage ? (
-                    <div style={{ display: 'flex', gap: 12 }}>
+                    <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
                       {/* OPTION 1: Camera (mobile) or QR handoff (desktop) */}
                       {isMobileDevice ? (
                         <label
                           style={{
-                            flex: 1, padding: '20px 16px', border: `2px dashed ${EC_BORDER}`, borderRadius: 8,
+                            flex: '1 1 140px', padding: '20px 16px', border: `2px dashed ${EC_BORDER}`, borderRadius: 8,
                             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
                             cursor: 'pointer', transition: 'border-color 0.2s', textAlign: 'center',
                           }}
@@ -1372,7 +1390,7 @@ const Dashboard: React.FC = () => {
                         <div
                           onClick={handleEcUsePhone}
                           style={{
-                            flex: 1, padding: '20px 16px', border: `2px dashed ${EC_BORDER}`, borderRadius: 8,
+                            flex: '1 1 140px', padding: '20px 16px', border: `2px dashed ${EC_BORDER}`, borderRadius: 8,
                             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
                             cursor: 'pointer', transition: 'border-color 0.2s', textAlign: 'center',
                           }}
@@ -1388,7 +1406,7 @@ const Dashboard: React.FC = () => {
                       {/* OPTION 2: File upload */}
                       <label
                         style={{
-                          flex: 1, padding: '20px 16px', border: `2px dashed ${EC_BORDER}`, borderRadius: 8,
+                          flex: '1 1 140px', padding: '20px 16px', border: `2px dashed ${EC_BORDER}`, borderRadius: 8,
                           display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
                           cursor: 'pointer', transition: 'border-color 0.2s', textAlign: 'center',
                         }}
