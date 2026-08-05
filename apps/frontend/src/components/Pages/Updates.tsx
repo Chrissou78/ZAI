@@ -671,11 +671,11 @@ export default function Updates() {
                         )}
 
                         <div style={{
-                          display: 'flex', alignItems: 'center', gap: 12,
+                          display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 12,
                           paddingTop: 16, borderTop: `1px solid ${C.border}`,
                         }}>
                           {deal.ends_at && (
-                            <span style={{ fontSize: 10, color: C.gray, letterSpacing: '0.05em' }}>
+                            <span style={{ fontSize: 10, color: C.gray, letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>
                               Ends <strong>{fmtDate(deal.ends_at)}</strong>
                             </span>
                           )}
