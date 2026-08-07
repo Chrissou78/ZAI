@@ -217,6 +217,7 @@ const Settings: React.FC = () => {
         postalCode: user?.postalCode,
         birthdate: user?.birthdate,
         isPublic: user?.isPublic,
+        image: user?.image || '',
         language: code,
       });
       const data = res.data as any;

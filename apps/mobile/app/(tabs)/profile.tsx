@@ -126,6 +126,7 @@ export default function ProfileScreen() {
         postalCode: formData.postalCode,
         birthdate: formData.birthdate || null,
         isPublic: formData.isPublic,
+        image: user?.image || '',
       });
       const data = res.data as any;
       if (data?.success) {
