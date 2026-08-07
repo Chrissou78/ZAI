@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAppContext } from '../../context/AppContext';
 import { useWalletAuth } from '../../hooks/useWalletAuth';
 import { apiService } from '../../services/api';
+import { SUPPORTED_LANGUAGES, SupportedLanguage, mapToSupportedLanguage } from '../../i18n';
 
 /* ── Design tokens ── */
 const C = {
@@ -57,21 +59,13 @@ interface RegionSettings {
   language: string;
 }
 
-/* ── Country flags ── */
-const FLAG_MAP: Record<string, string> = {
-  CH: '🇨🇭', DE: '🇩🇪', FR: '🇫🇷', AT: '🇦🇹', IT: '🇮🇹', US: '🇺🇸', GB: '🇬🇧',
-};
-
-const LANG_MAP: Record<string, string> = {
-  en: 'English', fr: 'Français', de: 'Deutsch', it: 'Italiano',
-};
-
 const COUNTRY_MAP: Record<string, string> = {
   CH: 'Switzerland', DE: 'Germany', FR: 'France', AT: 'Austria', IT: 'Italy', US: 'United States', GB: 'United Kingdom',
 };
 
 const Settings: React.FC = () => {
-  const { user } = useAppContext();
+  const { t, i18n } = useTranslation();
+  const { user, setUser } = useAppContext();
   const { logout } = useWalletAuth();
 
   /* ── Mobile width tracking (nav needs a genuine layout switch) ── */
@@ -152,7 +146,7 @@ const Settings: React.FC = () => {
           if (p.settings.region) setRegion(prev => ({ ...prev, ...p.settings.region }));
         }
       } catch (err: any) {
-        if (err?.response?.status !== 404) setError('Failed to load settings');
+        if (err?.response?.status !== 404) setError(t('settings.alerts.loadFailed'));
       }
       setLoading(false);
     };
@@ -184,9 +178,9 @@ const Settings: React.FC = () => {
       const res = await apiService.put('/users/me/settings', { notifications, privacy, region });
       const p = res.data as any;
       if (p.token) localStorage.setItem('token', p.token);
-      setSuccess('Settings saved');
+      setSuccess(t('settings.alerts.saved'));
       setTimeout(() => setSuccess(''), 3000);
-    } catch { setError('Failed to save settings'); }
+    } catch { setError(t('settings.alerts.saveFailed')); }
     setSaving(false);
   };
 
@@ -195,6 +189,53 @@ const Settings: React.FC = () => {
     setNotifications(prev => ({ ...prev, [key]: !prev[key] }));
   const togglePrivacy = (key: keyof PrivacySettings) =>
     setPrivacy(prev => ({ ...prev, [key]: !prev[key] }));
+
+  /* ── Language switcher ──
+     Persists via the existing PUT /users/me endpoint (which writes the
+     `language` column on user_profiles). That endpoint re-derives every
+     updatable field from the request body (falling back to the JWT payload,
+     not the DB row), so we must resend the user's known profile fields
+     alongside `language` to avoid blanking them out. */
+  const currentLanguage: SupportedLanguage = mapToSupportedLanguage(user?.language || i18n.language);
+
+  const handleLanguageChange = async (code: SupportedLanguage) => {
+    if (code === currentLanguage || !user) return;
+    const previous = currentLanguage;
+    i18n.changeLanguage(code);
+    setRegion(prev => ({ ...prev, language: code }));
+    setError(''); setSuccess('');
+    try {
+      const res = await apiService.put('/users/me', {
+        name: user?.name,
+        givenName: user?.givenName,
+        familyName: user?.familyName,
+        email: user?.email,
+        phoneNumber: user?.phoneNumber,
+        address: user?.address,
+        city: user?.city,
+        country: user?.country,
+        postalCode: user?.postalCode,
+        birthdate: user?.birthdate,
+        isPublic: user?.isPublic,
+        language: code,
+      });
+      const data = res.data as any;
+      if (data?.jwtToken) {
+        localStorage.setItem('token', data.jwtToken);
+        localStorage.setItem('zai_token', data.jwtToken);
+      }
+      const updatedUser = { ...user, ...(data?.user || {}), language: code };
+      setUser(updatedUser);
+      localStorage.setItem('zai_user', JSON.stringify(updatedUser));
+      setSuccess(t('settings.alerts.saved'));
+      setTimeout(() => setSuccess(''), 3000);
+    } catch {
+      // Roll back so the UI never claims a language change it couldn't persist.
+      i18n.changeLanguage(previous);
+      setRegion(prev => ({ ...prev, language: previous }));
+      setError(t('settings.alerts.languageSaveFailed'));
+    }
+  };
 
   /* ── Password change ── */
   const handlePasswordChange = async () => {
@@ -281,12 +322,12 @@ const Settings: React.FC = () => {
 
   /* ── Last password text ── */
   const lastPasswordText = () => {
-    if (!security.lastPasswordChange) return 'Never changed';
+    if (!security.lastPasswordChange) return t('settings.security.neverChanged');
     const d = new Date(security.lastPasswordChange);
     const now = new Date();
     const months = Math.floor((now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24 * 30));
-    if (months < 1) return 'Last updated recently';
-    return `Last updated ${months} month${months > 1 ? 's' : ''} ago`;
+    if (months < 1) return t('settings.security.updatedRecently');
+    return t('settings.security.updatedMonthsAgo', { count: months });
   };
 
   const sessionCount = security.sessions?.length || 0;
@@ -405,10 +446,10 @@ const Settings: React.FC = () => {
 
   /* ── Nav labels (no emoji icons — matches screenshots) ── */
   const panels: { key: Panel; label: string }[] = [
-    { key: 'notifications', label: 'Notifications' },
-    { key: 'privacy', label: 'Privacy' },
-    { key: 'region', label: 'Region & Currency' },
-    { key: 'security', label: 'Security' },
+    { key: 'notifications', label: t('settings.panels.notifications') },
+    { key: 'privacy', label: t('settings.panels.privacy') },
+    { key: 'region', label: t('settings.panels.region') },
+    { key: 'security', label: t('settings.panels.security') },
   ];
 
   if (loading) {
@@ -418,7 +459,7 @@ const Settings: React.FC = () => {
         padding: 'clamp(24px, 6vw, 48px) clamp(16px, 5vw, 48px) 80px',
         boxSizing: 'border-box', textAlign: 'center', fontFamily: C.font,
       }}>
-        <div style={{ fontSize: '14px', color: C.gray }}>Loading settings...</div>
+        <div style={{ fontSize: '14px', color: C.gray }}>{t('settings.loading')}</div>
       </div>
     );
   }
@@ -447,7 +488,7 @@ const Settings: React.FC = () => {
             color: C.red, marginBottom: '0.4rem',
           }}
         >
-          account
+          {t('settings.eyebrow')}
         </div>
         <h1
           style={{
@@ -455,10 +496,10 @@ const Settings: React.FC = () => {
             margin: '0 0 0.3rem', color: C.black,
           }}
         >
-          Settings
+          {t('settings.title')}
         </h1>
         <p style={{ color: C.gray, fontSize: '13px', maxWidth: '520px', margin: '0.4rem 0 0' }}>
-          Manage notifications, privacy, and account preferences.
+          {t('settings.subtitle')}
         </p>
       </div>
 
@@ -544,40 +585,40 @@ const Settings: React.FC = () => {
           {/* ══════ NOTIFICATIONS ══════ */}
           {activePanel === 'notifications' && (
             <div>
-              <SectionHead text="Email Notifications" />
+              <SectionHead text={t('settings.notifications.emailHeading')} />
               <Row
-                title="Event invitations"
-                desc="Upcoming events and exclusive invitations"
+                title={t('settings.notifications.eventInvitations.title')}
+                desc={t('settings.notifications.eventInvitations.desc')}
                 right={<Toggle checked={notifications.eventInvitations} onChange={() => toggleNotif('eventInvitations')} />}
               />
               <Row
-                title="Membership updates"
-                desc="When your membership status changes"
+                title={t('settings.notifications.membershipUpdates.title')}
+                desc={t('settings.notifications.membershipUpdates.desc')}
                 right={<Toggle checked={notifications.membershipUpdates} onChange={() => toggleNotif('membershipUpdates')} />}
               />
               <Row
-                title="Product launches"
-                desc="New zai products before public release"
+                title={t('settings.notifications.productLaunches.title')}
+                desc={t('settings.notifications.productLaunches.desc')}
                 right={<Toggle checked={notifications.productLaunches} onChange={() => toggleNotif('productLaunches')} />}
               />
               <Row
-                title="Partner offers"
-                desc="Exclusive offers from our ecosystem partners"
+                title={t('settings.notifications.partnerOffers.title')}
+                desc={t('settings.notifications.partnerOffers.desc')}
                 right={<Toggle checked={notifications.partnerOffers} onChange={() => toggleNotif('partnerOffers')} />}
                 noBorder
               />
 
               <div style={{ marginTop: '2rem', marginBottom: '0.25rem' }}>
-                <SectionHead text="Push Notifications" />
+                <SectionHead text={t('settings.notifications.pushHeading')} />
               </div>
               <Row
-                title="Product updates"
-                desc="Notifications about your registered products"
+                title={t('settings.notifications.pushProductUpdates.title')}
+                desc={t('settings.notifications.pushProductUpdates.desc')}
                 right={<Toggle checked={notifications.pushProductUpdates} onChange={() => toggleNotif('pushProductUpdates')} />}
               />
               <Row
-                title="Event reminders"
-                desc="48 hours before registered events"
+                title={t('settings.notifications.pushEventReminders.title')}
+                desc={t('settings.notifications.pushEventReminders.desc')}
                 right={<Toggle checked={notifications.pushEventReminders} onChange={() => toggleNotif('pushEventReminders')} />}
                 noBorder
               />
@@ -587,25 +628,25 @@ const Settings: React.FC = () => {
           {/* ══════ PRIVACY ══════ */}
           {activePanel === 'privacy' && (
             <div>
-              <SectionHead text="Privacy Settings" />
+              <SectionHead text={t('settings.privacy.heading')} />
               <Row
-                title="Data sharing"
-                desc="Share usage data to improve ZAI"
+                title={t('settings.privacy.dataSharing.title')}
+                desc={t('settings.privacy.dataSharing.desc')}
                 right={<Toggle checked={privacy.dataSharing} onChange={() => togglePrivacy('dataSharing')} />}
               />
               <Row
-                title="Analytics"
-                desc="Allow analytics tracking"
+                title={t('settings.privacy.analytics.title')}
+                desc={t('settings.privacy.analytics.desc')}
                 right={<Toggle checked={privacy.analytics} onChange={() => togglePrivacy('analytics')} />}
               />
               <Row
-                title="Profile visibility"
-                desc="Make your profile visible to other members"
+                title={t('settings.privacy.profileVisibility.title')}
+                desc={t('settings.privacy.profileVisibility.desc')}
                 right={<Toggle checked={privacy.profileVisibility} onChange={() => togglePrivacy('profileVisibility')} />}
               />
               <Row
-                title="Community visibility"
-                desc="Appear in community member lists"
+                title={t('settings.privacy.communityVisibility.title')}
+                desc={t('settings.privacy.communityVisibility.desc')}
                 right={<Toggle checked={privacy.communityVisibility} onChange={() => togglePrivacy('communityVisibility')} />}
                 noBorder
               />
@@ -615,24 +656,19 @@ const Settings: React.FC = () => {
           {/* ══════ REGION & CURRENCY ══════ */}
           {activePanel === 'region' && (
             <div>
-              <SectionHead text="Region & Currency" />
+              <SectionHead text={t('settings.region.heading')} />
               <Row
-                title="Account region"
+                title={t('settings.region.accountRegion')}
                 desc={COUNTRY_MAP[region.countryCode] || region.country}
                 right={
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontSize: '18px' }}>
-                      {FLAG_MAP[region.countryCode] || '🏳️'}
-                    </span>
-                    <span style={{ fontSize: '13px', color: C.black, fontWeight: 500 }}>
-                      {region.countryCode}
-                    </span>
-                  </div>
+                  <span style={{ fontSize: '13px', color: C.black, fontWeight: 500 }}>
+                    {region.countryCode}
+                  </span>
                 }
               />
               <Row
-                title="Currency"
-                desc="Used for pricing and reward values"
+                title={t('settings.region.currency.title')}
+                desc={t('settings.region.currency.desc')}
                 right={
                   <span style={{ fontSize: '13px', color: C.black, fontWeight: 500 }}>
                     {region.currency}
@@ -640,12 +676,25 @@ const Settings: React.FC = () => {
                 }
               />
               <Row
-                title="Language"
-                desc="Portal display language"
+                title={t('settings.region.language.title')}
+                desc={t('settings.region.language.desc')}
                 right={
-                  <span style={{ fontSize: '13px', color: C.black, fontWeight: 500 }}>
-                    {LANG_MAP[region.language] || region.language}
-                  </span>
+                  <select
+                    value={currentLanguage}
+                    onChange={e => handleLanguageChange(e.target.value as SupportedLanguage)}
+                    style={{
+                      fontSize: '13px', color: C.black, fontWeight: 500,
+                      border: `1px solid ${C.border}`, padding: '7px 10px',
+                      background: '#fff', cursor: 'pointer', fontFamily: C.font,
+                      outline: 'none',
+                    }}
+                  >
+                    {SUPPORTED_LANGUAGES.map(code => (
+                      <option key={code} value={code}>
+                        {t(`settings.region.languages.${code}`)}
+                      </option>
+                    ))}
+                  </select>
                 }
                 noBorder
               />
@@ -655,13 +704,13 @@ const Settings: React.FC = () => {
           {/* ══════ SECURITY ══════ */}
           {activePanel === 'security' && (
             <div>
-              <SectionHead text="Account Security" />
+              <SectionHead text={t('settings.security.heading')} />
               <Row
-                title="Change password"
+                title={t('settings.security.changePassword')}
                 desc={lastPasswordText()}
                 right={
                   <TextLink
-                    text="Update"
+                    text={t('settings.security.update')}
                     onClick={() => {
                       setShowPasswordModal(true);
                       setPasswordError('');
@@ -671,11 +720,11 @@ const Settings: React.FC = () => {
                 }
               />
               <Row
-                title="Two-factor authentication"
+                title={t('settings.security.twoFactor')}
                 desc={
                   security.twoFactorEnabled
-                    ? `Enabled via ${security.twoFactorMethod}`
-                    : 'Add an extra layer of security'
+                    ? t('settings.security.twoFactorEnabledVia', { method: security.twoFactorMethod })
+                    : t('settings.security.twoFactorAddLayer')
                 }
                 right={
                   <Toggle
@@ -694,9 +743,9 @@ const Settings: React.FC = () => {
                 }
               />
               <Row
-                title="Active sessions"
-                desc={`${sessionCount} device${sessionCount !== 1 ? 's' : ''} logged in`}
-                right={<TextLink text="Sign out others" onClick={openSessionsModal} />}
+                title={t('settings.security.activeSessions')}
+                desc={t('settings.security.deviceCount', { count: sessionCount })}
+                right={<TextLink text={t('settings.security.signOutOthers')} onClick={openSessionsModal} />}
                 noBorder
               />
             </div>

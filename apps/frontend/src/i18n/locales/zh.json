@@ -1,0 +1,187 @@
+{
+  "nav": {
+    "brand": "尊享俱乐部",
+    "sections": {
+      "overview": "概览",
+      "exclusive": "zai 尊享",
+      "account": "账户",
+      "admin": "管理"
+    },
+    "items": {
+      "home": "首页",
+      "dashboard": "仪表盘",
+      "myCollection": "我的收藏",
+      "events": "活动",
+      "community": "社区",
+      "pointsTiers": "积分与等级",
+      "dealsCollectibles": "优惠与收藏品",
+      "profile": "个人资料",
+      "settings": "设置",
+      "claimRequests": "认领申请",
+      "storeContent": "商店与内容"
+    },
+    "member": "会员",
+    "exclusiveMember": "尊享会员",
+    "footer": "匠心铸造于阿尔卑斯山"
+  },
+  "layout": {
+    "brand": "zai"
+  },
+  "settings": {
+    "eyebrow": "账户",
+    "title": "设置",
+    "subtitle": "管理通知、隐私和账户偏好设置。",
+    "loading": "正在加载设置…",
+    "alerts": {
+      "loadFailed": "设置加载失败",
+      "saveFailed": "设置保存失败",
+      "saved": "设置已保存",
+      "languageSaveFailed": "语言偏好保存失败"
+    },
+    "panels": {
+      "notifications": "通知",
+      "privacy": "隐私",
+      "region": "地区与货币",
+      "security": "安全"
+    },
+    "notifications": {
+      "emailHeading": "邮件通知",
+      "eventInvitations": { "title": "活动邀请", "desc": "近期活动与专属邀请" },
+      "membershipUpdates": { "title": "会员状态更新", "desc": "当您的会员状态发生变化时" },
+      "productLaunches": { "title": "新品发布", "desc": "抢先了解 zai 新品发布" },
+      "partnerOffers": { "title": "合作品牌优惠", "desc": "来自我们生态合作伙伴的专属优惠" },
+      "pushHeading": "推送通知",
+      "pushProductUpdates": { "title": "产品动态", "desc": "关于您已注册产品的通知" },
+      "pushEventReminders": { "title": "活动提醒", "desc": "已报名活动开始前 48 小时提醒" }
+    },
+    "privacy": {
+      "heading": "隐私设置",
+      "dataSharing": { "title": "数据共享", "desc": "共享使用数据以帮助改进 ZAI" },
+      "analytics": { "title": "数据分析", "desc": "允许分析跟踪" },
+      "profileVisibility": { "title": "资料可见性", "desc": "让其他会员可以看到您的个人资料" },
+      "communityVisibility": { "title": "社区可见性", "desc": "在社区会员列表中显示" }
+    },
+    "region": {
+      "heading": "地区与货币",
+      "accountRegion": "账户所在地区",
+      "currency": { "title": "货币", "desc": "用于定价及奖励价值计算" },
+      "language": { "title": "语言", "desc": "门户显示语言" },
+      "languages": { "en": "English", "de": "Deutsch", "zh": "中文" }
+    },
+    "security": {
+      "heading": "账户安全",
+      "changePassword": "修改密码",
+      "update": "修改",
+      "neverChanged": "从未修改",
+      "updatedRecently": "近期已更新",
+      "updatedMonthsAgo_one": "{{count}} 个月前更新",
+      "updatedMonthsAgo_other": "{{count}} 个月前更新",
+      "twoFactor": "双重身份验证",
+      "twoFactorEnabledVia": "已通过{{method}}启用",
+      "twoFactorAddLayer": "增加一层额外的安全保障",
+      "activeSessions": "活跃会话",
+      "deviceCount_one": "{{count}} 台设备已登录",
+      "deviceCount_other": "{{count}} 台设备已登录",
+      "signOutOthers": "注销其他设备"
+    }
+  },
+  "home": {
+    "referralBanner": "您已受邀加入 zai 尊享俱乐部。连接您的钱包即可开始体验并赢取积分。",
+    "hero": {
+      "badge": "zai 尊享俱乐部",
+      "headingLine1": "属于您的世界",
+      "headingLine2": "超越山峰",
+      "headingLine3": "之外。",
+      "description": "欢迎加入 zai 尊享俱乐部。在这里认领您的产品、报名参加 zai 活动，并一站式管理您的个人 zai 滑雪装备收藏。zai 尊享俱乐部让 zai 变得前所未有的贴近与互动！",
+      "claimProduct": "认领您的产品",
+      "seeEvents": "查看活动",
+      "viewRewards": "查看奖励",
+      "stats": {
+        "founded": "创立于",
+        "alpineDesign": "阿尔卑斯设计",
+        "handcrafted": "匠心手作"
+      }
+    },
+    "lockedTooltip": {
+      "badge": "尊享专属",
+      "defaultMessage": "开通 Experience Card 会员，即可解锁专属内容。",
+      "claimProduct": "激活您的 zai Experience Card，解锁产品认领与专属个人收藏。",
+      "events": "开通 Experience Card 会员，畅享 zai 专属活动。",
+      "rewards": "开通 Experience Card 会员，解锁奖励与专属优惠。",
+      "joinRewards": "加入 zai 尊享俱乐部，开始赢取奖励积分。",
+      "joinDeals": "加入 zai 尊享俱乐部，畅享专属优惠与限量发售。"
+    },
+    "experienceCard": {
+      "label": "zai experience card",
+      "headingLine1": "开启 zai 世界",
+      "headingLine2": "的专属钥匙",
+      "description": "凡在 zai 产品消费满 CHF 500 的顾客，均可申请加入尊享的 zai 尊享俱乐部。线下门店顾客将获得实体 NFC 感应式 zai Experience Card；线上顾客则可通过 zai 尊享俱乐部后台提交购买凭证，申请会员资格。",
+      "step1": "在 zai 产品消费满 CHF 500，即可获得加入 zai 尊享俱乐部的资格",
+      "step2": "前往授权经销商或精品店领取实体 NFC Experience Card；若为线上购买，请前往 zai 尊享俱乐部后台，提交购买凭证以申请会员资格。",
+      "step3": "登录您的会员专属后台，解锁尊享会员权益",
+      "note": "适用于消费满 CHF 500 的顾客"
+    },
+    "howItWorks": {
+      "label": "运作方式",
+      "headingLine1": "开启您的",
+      "headingLine2": "会员之旅",
+      "step1": { "num": "步骤一", "title": "激活您的会员资格", "desc": "线下购买？轻触您的 NFC 感应式 zai Experience Card 即可激活会员资格。线上购买？请前往 zai 尊享俱乐部后台，提交购买凭证以申请会员资格。" },
+      "step2": { "num": "步骤二", "title": "认领您购买的产品", "desc": "在「我的收藏」页面认领您的 zai 产品，建立专属数字收藏、验证所有权，并解锁产品专属体验与权益。" },
+      "step3": { "num": "步骤三", "title": "解锁尊享权益", "desc": "激活您的免费滑雪保险，报名参加专属活动，探索会员专属优惠，尽享独一无二的体验。更多权益与奖励将持续揭晓。" },
+      "step4": { "num": "步骤四", "title": "融入 zai 社区", "desc": "与全球 zai 车主互动交流，分享您的体验，探索来自 zai 尊享俱乐部全球社区的精彩故事。" }
+    },
+    "benefits": {
+      "label": "尊享权益",
+      "heading": "您将解锁的权益",
+      "insurance": { "title": "免费滑雪保险", "desc": "每购买一副新款 zai 雪板，即可直接通过您的后台激活免费保险。" },
+      "events": { "title": "专属活动", "desc": "优先体验滑雪试用、工厂参观、采石场探访及专属见面会。" },
+      "rewards": { "title": "奖励与优惠", "desc": "每次消费均可累积积分，升级会员等级享受更多礼遇，并兑换专属优惠及限量收藏品。" },
+      "explore": "探索更多 →"
+    },
+    "rewardsSection": {
+      "label": "忠诚计划",
+      "heading": "奖励与等级",
+      "description": "每消费 1 瑞士法郎即可赢取 2.7 积分。晋升四大专属等级，解锁愈加尊贵的奖励、优惠与体验。",
+      "startingTier": "起始等级",
+      "ptsSuffix": "+ 积分",
+      "cta": "查看我的奖励",
+      "tiers": {
+        "blue": { "name": "蓝金", "perks": ["产品注册", "活动资讯订阅", "数字保修凭证"] },
+        "red": { "name": "红金", "perks": ["活动优先预订", "维护保养折扣", "合作品牌权益", "专属客户支持"] },
+        "black": { "name": "黑金", "perks": ["VIP 活动邀请", "新品优先发售", "定制适配服务", "推荐好友奖励"] },
+        "diamond": { "name": "钻石", "perks": ["彭特雷西纳工厂之旅", "专属定制委托", "专属 zai 大使服务", "年度 zai 静修体验"] }
+      }
+    },
+    "updatesSection": {
+      "label": "优惠与动态",
+      "heading": "尊享优惠与限量发售",
+      "description": "探索会员专属优惠，用积分兑换折扣与周边商品，认领限量数字收藏品，并第一时间获取 zai 世界的最新资讯。",
+      "deals": { "tag": "优惠", "title": "优惠与折扣", "desc": "用积分兑换 zai 产品及合作品牌体验的专属折扣。" },
+      "drops": { "tag": "限量发售", "title": "限量收藏品", "desc": "认领限量版数字收藏品——部分需拥有特定产品或参与活动方可解锁。" },
+      "stories": { "tag": "资讯故事", "title": "zai 洞察", "desc": "阅读文章、浏览图片，观看来自 zai 世界的幕后视频。" },
+      "cta": "浏览优惠与收藏品"
+    },
+    "ecosystem": {
+      "label": "zai 生态圈",
+      "heading": "合作伙伴与社区",
+      "description": "zai 生态圈汇聚尊贵品牌合作伙伴与全球 zai 车主社区——因对山峦的共同热爱而紧密相连。合作伙伴将于近期公布。欢迎加入社区，分享您的精彩体验。",
+      "placeholders": ["山地通票", "旅行目的地", "金融服务", "山地通票", "旅行目的地"],
+      "toBeAnnounced": "合作伙伴将于近期公布"
+    },
+    "referralSection": {
+      "label": "邀请好友",
+      "heading": "分享尊享体验",
+      "description": "邀请好友加入 zai 尊享俱乐部。好友认领首件产品后，您将获得 200 分奖励积分，好友也将获得 100 分新手积分。",
+      "cta": "获取您的专属邀请码"
+    },
+    "footer": {
+      "explore": "探索",
+      "members": "会员专区",
+      "follow": "关注我们",
+      "linksExplore": { "shop": "商店", "dealers": "经销商", "contact": "联系我们" },
+      "linksMembers": { "pointsTiers": "积分与等级", "dealsCollectibles": "优惠与收藏品", "insights": "zai 洞察", "events": "活动" },
+      "location": "彭特雷西纳，阿尔卑斯山 · 始于 2003 年",
+      "legal": { "privacy": "隐私政策", "terms": "条款与条件", "legalInfo": "法律信息" }
+    }
+  }
+}

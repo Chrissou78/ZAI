@@ -1,0 +1,187 @@
+{
+  "nav": {
+    "brand": "experience club",
+    "sections": {
+      "overview": "Übersicht",
+      "exclusive": "zai Exklusiv",
+      "account": "Konto",
+      "admin": "Admin"
+    },
+    "items": {
+      "home": "Start",
+      "dashboard": "Dashboard",
+      "myCollection": "Meine Sammlung",
+      "events": "Events",
+      "community": "Community",
+      "pointsTiers": "Punkte & Stufen",
+      "dealsCollectibles": "Angebote & Sammlerstücke",
+      "profile": "Profil",
+      "settings": "Einstellungen",
+      "claimRequests": "Anfragen",
+      "storeContent": "Shop & Inhalte"
+    },
+    "member": "Mitglied",
+    "exclusiveMember": "Exklusivmitglied",
+    "footer": "Entwickelt in den Alpen"
+  },
+  "layout": {
+    "brand": "zai"
+  },
+  "settings": {
+    "eyebrow": "konto",
+    "title": "Einstellungen",
+    "subtitle": "Verwalten Sie Benachrichtigungen, Datenschutz und Kontoeinstellungen.",
+    "loading": "Einstellungen werden geladen …",
+    "alerts": {
+      "loadFailed": "Einstellungen konnten nicht geladen werden",
+      "saveFailed": "Einstellungen konnten nicht gespeichert werden",
+      "saved": "Einstellungen gespeichert",
+      "languageSaveFailed": "Sprachauswahl konnte nicht gespeichert werden"
+    },
+    "panels": {
+      "notifications": "Benachrichtigungen",
+      "privacy": "Datenschutz",
+      "region": "Region & Währung",
+      "security": "Sicherheit"
+    },
+    "notifications": {
+      "emailHeading": "E-Mail-Benachrichtigungen",
+      "eventInvitations": { "title": "Einladungen zu Events", "desc": "Kommende Veranstaltungen und exklusive Einladungen" },
+      "membershipUpdates": { "title": "Mitgliedschafts-Updates", "desc": "Wenn sich Ihr Mitgliedschaftsstatus ändert" },
+      "productLaunches": { "title": "Produkteinführungen", "desc": "Neue zai Produkte vor der offiziellen Veröffentlichung" },
+      "partnerOffers": { "title": "Partnerangebote", "desc": "Exklusive Angebote aus unserem Partner-Netzwerk" },
+      "pushHeading": "Push-Benachrichtigungen",
+      "pushProductUpdates": { "title": "Produkt-Updates", "desc": "Benachrichtigungen zu Ihren registrierten Produkten" },
+      "pushEventReminders": { "title": "Event-Erinnerungen", "desc": "48 Stunden vor registrierten Veranstaltungen" }
+    },
+    "privacy": {
+      "heading": "Datenschutzeinstellungen",
+      "dataSharing": { "title": "Datenfreigabe", "desc": "Nutzungsdaten zur Verbesserung von ZAI teilen" },
+      "analytics": { "title": "Analyse", "desc": "Analyse-Tracking zulassen" },
+      "profileVisibility": { "title": "Profilsichtbarkeit", "desc": "Ihr Profil für andere Mitglieder sichtbar machen" },
+      "communityVisibility": { "title": "Sichtbarkeit in der Community", "desc": "In Mitgliederlisten der Community erscheinen" }
+    },
+    "region": {
+      "heading": "Region & Währung",
+      "accountRegion": "Kontoregion",
+      "currency": { "title": "Währung", "desc": "Wird für Preise und Prämienwerte verwendet" },
+      "language": { "title": "Sprache", "desc": "Anzeigesprache des Portals" },
+      "languages": { "en": "English", "de": "Deutsch", "zh": "中文" }
+    },
+    "security": {
+      "heading": "Kontosicherheit",
+      "changePassword": "Passwort ändern",
+      "update": "Ändern",
+      "neverChanged": "Nie geändert",
+      "updatedRecently": "Kürzlich aktualisiert",
+      "updatedMonthsAgo_one": "Zuletzt vor {{count}} Monat aktualisiert",
+      "updatedMonthsAgo_other": "Zuletzt vor {{count}} Monaten aktualisiert",
+      "twoFactor": "Zwei-Faktor-Authentifizierung",
+      "twoFactorEnabledVia": "Aktiviert über {{method}}",
+      "twoFactorAddLayer": "Fügen Sie eine zusätzliche Sicherheitsebene hinzu",
+      "activeSessions": "Aktive Sitzungen",
+      "deviceCount_one": "{{count}} Gerät angemeldet",
+      "deviceCount_other": "{{count}} Geräte angemeldet",
+      "signOutOthers": "Andere abmelden"
+    }
+  },
+  "home": {
+    "referralBanner": "Sie wurden zum zai Experience Club eingeladen. Verbinden Sie Ihr Wallet, um zu starten und Bonuspunkte zu sammeln.",
+    "hero": {
+      "badge": "zai Experience Club",
+      "headingLine1": "Ihre Welt",
+      "headingLine2": "jenseits des",
+      "headingLine3": "Berges.",
+      "description": "Willkommen im zai Experience Club. Registrieren Sie Ihre Produkte, melden Sie sich für zai Events an und verwalten Sie Ihre persönliche zai Ski-Sammlung – alles an einem Ort. Der zai Experience Club macht zai persönlicher, interaktiver und näher als je zuvor!",
+      "claimProduct": "Produkt registrieren",
+      "seeEvents": "Events entdecken",
+      "viewRewards": "Prämien ansehen",
+      "stats": {
+        "founded": "Gegründet",
+        "alpineDesign": "Alpines Design",
+        "handcrafted": "Handgefertigt"
+      }
+    },
+    "lockedTooltip": {
+      "badge": "Exklusiv",
+      "defaultMessage": "Exklusive Inhalte mit der Experience Card Mitgliedschaft freischalten.",
+      "claimProduct": "Aktivieren Sie Ihre zai Experience Card, um Produktregistrierungen und Ihre persönliche Sammlung freizuschalten.",
+      "events": "Exklusive zai Events mit der Experience Card Mitgliedschaft erleben.",
+      "rewards": "Prämien und exklusive Angebote mit Ihrer Experience Card Mitgliedschaft freischalten.",
+      "joinRewards": "Treten Sie dem zai Experience Club bei, um Prämienpunkte zu sammeln.",
+      "joinDeals": "Treten Sie dem zai Experience Club bei, um Zugang zu Angeboten und Drops zu erhalten."
+    },
+    "experienceCard": {
+      "label": "zai experience card",
+      "headingLine1": "Ihr Schlüssel zu",
+      "headingLine2": "der ganzen zai Welt",
+      "description": "Kunden, die mehr als CHF 500 für zai Produkte ausgeben, können dem exklusiven zai Experience Club beitreten. Kunden im Fachhandel erhalten eine physische, NFC-fähige zai Experience Card, während Online-Kunden die Mitgliedschaft über das zai Experience Club Dashboard mit einem Kaufnachweis beantragen können.",
+      "step1": "Geben Sie mehr als CHF 500 für zai Produkte aus, um sich für den zai Experience Club zu qualifizieren",
+      "step2": "Erhalten Sie eine physische NFC Experience Card bei einem autorisierten Händler oder in einer Boutique – oder besuchen Sie bei einem Online-Kauf das zai Experience Club Dashboard, um Ihre Mitgliedschaft mit einem Kaufnachweis zu beantragen.",
+      "step3": "Greifen Sie auf Ihr Mitgliederportal zu und schalten Sie exklusive Mitgliedervorteile frei",
+      "note": "Verfügbar ab einem Einkaufswert von CHF 500"
+    },
+    "howItWorks": {
+      "label": "so funktioniert es",
+      "headingLine1": "Starten Sie Ihre",
+      "headingLine2": "Mitgliedschaftsreise",
+      "step1": { "num": "Schritt 01", "title": "Aktivieren Sie Ihre Mitgliedschaft", "desc": "Im Fachhandel gekauft? Halten Sie Ihre NFC-fähige zai Experience Card an Ihr Gerät, um Ihre Mitgliedschaft zu aktivieren. Online gekauft? Besuchen Sie das zai Experience Club Dashboard und reichen Sie einen Kaufnachweis ein, um Ihre Mitgliedschaft zu beantragen." },
+      "step2": { "num": "Schritt 02", "title": "Registrieren Sie Ihre gekauften Produkte", "desc": "Registrieren Sie Ihre zai Produkte in Meine Sammlung, um Ihre digitale Sammlung aufzubauen, das Eigentum zu bestätigen und Zugang zu produktspezifischen Erlebnissen und Vorteilen zu erhalten." },
+      "step3": { "num": "Schritt 03", "title": "Schalten Sie exklusive Vorteile frei", "desc": "Aktivieren Sie Ihre kostenlose Skiversicherung, melden Sie sich für exklusive Events an, entdecken Sie Angebote nur für Mitglieder und erleben Sie einzigartige Momente. Neue Vorteile und Prämien werden laufend enthüllt." },
+      "step4": { "num": "Schritt 04", "title": "Werden Sie Teil der Community", "desc": "Vernetzen Sie sich mit anderen zai Besitzern, teilen Sie Ihre Erlebnisse und entdecken Sie Geschichten aus der weltweiten zai Experience Club Community." }
+    },
+    "benefits": {
+      "label": "exklusive vorteile",
+      "heading": "Das schalten Sie frei",
+      "insurance": { "title": "Kostenlose Skiversicherung", "desc": "Aktivieren Sie eine kostenlose Versicherung für jeden neuen zai Ski-Kauf direkt über Ihr Portal." },
+      "events": { "title": "Exklusive Events", "desc": "Bevorzugter Zugang zu Ski-Testtagen, Werksbesichtigungen, Steinbruch-Touren und persönlichen Treffen." },
+      "rewards": { "title": "Prämien & Angebote", "desc": "Sammeln Sie Punkte bei jedem Einkauf, steigen Sie in höhere Stufen auf und lösen Sie exklusive Mitgliederangebote und Sammlerstücke ein." },
+      "explore": "Entdecken →"
+    },
+    "rewardsSection": {
+      "label": "treueprogramm",
+      "heading": "Prämien & Stufen",
+      "description": "Sammeln Sie 2,7 Punkte für jeden ausgegebenen CHF bei zai Produkten. Steigen Sie durch vier exklusive Stufen auf und schalten Sie zunehmend hochwertigere Prämien, Angebote und Erlebnisse frei.",
+      "startingTier": "Einstiegsstufe",
+      "ptsSuffix": "+ Punkte",
+      "cta": "Meine Prämien ansehen",
+      "tiers": {
+        "blue": { "name": "Blau", "perks": ["Produktregistrierung", "Event-Newsletter", "Digitale Garantie"] },
+        "red": { "name": "Rot", "perks": ["Bevorzugter Event-Zugang", "Rabatt auf Wartung", "Partnervorteile", "Persönlicher Support"] },
+        "black": { "name": "Schwarz", "perks": ["VIP-Einladungen zu Events", "Frühzeitige Produkteinführungen", "Individueller Anpassungsservice", "Empfehlungsprämien"] },
+        "diamond": { "name": "Diamant", "perks": ["Werksbesuche in Pontresina", "Massgefertigte Sonderanfertigung", "Persönlicher zai Botschafter", "Jährliches zai Retreat"] }
+      }
+    },
+    "updatesSection": {
+      "label": "angebote & neuigkeiten",
+      "heading": "Exklusive Angebote & Drops",
+      "description": "Entdecken Sie Angebote nur für Mitglieder, lösen Sie Punkte gegen Rabatte und Merchandise ein, sichern Sie sich limitierte Sammlerstücke und bleiben Sie auf dem Laufenden mit den neuesten Geschichten aus der zai Welt.",
+      "deals": { "tag": "ANGEBOTE", "title": "Angebote & Aktionen", "desc": "Tauschen Sie Punkte gegen exklusive Rabatte auf zai Produkte und Partnererlebnisse ein." },
+      "drops": { "tag": "DROPS", "title": "Sammlerstücke", "desc": "Sichern Sie sich limitierte digitale Sammlerstücke – manche werden erst durch den Besitz bestimmter Produkte oder die Teilnahme an Events freigeschaltet." },
+      "stories": { "tag": "GESCHICHTEN", "title": "zai Insights", "desc": "Lesen Sie Artikel, sehen Sie Fotos und schauen Sie Behind-the-Scenes-Videos aus dem zai Universum." },
+      "cta": "Angebote & Sammlerstücke entdecken"
+    },
+    "ecosystem": {
+      "label": "zai ökosystem",
+      "heading": "Partner & Community",
+      "description": "Das zai Ökosystem vereint exklusive Markenpartner und eine weltweite Community von zai Besitzern – verbunden durch die gemeinsame Leidenschaft für die Berge. Partner werden in Kürze bekannt gegeben. Treten Sie der Community bei, um Ihre Erlebnisse zu teilen.",
+      "placeholders": ["Bergpass", "Reiseziel", "Finanzen", "Bergpass", "Reiseziel"],
+      "toBeAnnounced": "Partner werden noch bekannt gegeben"
+    },
+    "referralSection": {
+      "label": "freunde einladen",
+      "heading": "Teilen Sie das Erlebnis",
+      "description": "Laden Sie Freunde ein, dem zai Experience Club beizutreten. Sobald sie ihr erstes Produkt registrieren, erhalten Sie 200 Bonuspunkte und Ihre Freunde starten mit 100 Punkten.",
+      "cta": "Ihren Empfehlungscode erhalten"
+    },
+    "footer": {
+      "explore": "Entdecken",
+      "members": "Mitglieder",
+      "follow": "Folgen",
+      "linksExplore": { "shop": "Shop", "dealers": "Händler", "contact": "Kontakt" },
+      "linksMembers": { "pointsTiers": "Punkte & Stufen", "dealsCollectibles": "Angebote & Sammlerstücke", "insights": "zai Insights", "events": "Events" },
+      "location": "Pontresina, Alpen · Seit 2003",
+      "legal": { "privacy": "Datenschutzerklärung", "terms": "Allgemeine Geschäftsbedingungen", "legalInfo": "Rechtliche Hinweise" }
+    }
+  }
+}

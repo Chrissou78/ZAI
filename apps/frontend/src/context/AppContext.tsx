@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User, WalletState } from '../types';
+import i18n, { mapToSupportedLanguage } from '../i18n';
 
 interface AppContextType {
   user: User | null;
@@ -39,6 +40,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
     }
   }, []);
+
+  // Keep the active i18n language in sync with the logged-in user's saved preference
+  useEffect(() => {
+    if (user?.language) {
+      const mapped = mapToSupportedLanguage(user.language);
+      if (i18n.language !== mapped) {
+        i18n.changeLanguage(mapped);
+      }
+    }
+  }, [user?.language]);
 
   const logout = async (): Promise<void> => {
     try {

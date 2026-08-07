@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import Sidebar from './Sidebar';
 import OnboardingWidget from '../Onboarding/OnboardingWidget';
 
 const MainLayout: React.FC = () => {
+  const { t } = useTranslation();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
@@ -86,7 +88,7 @@ const MainLayout: React.FC = () => {
             >
               ☰
             </button>
-            <span style={{ fontSize: '14px', fontWeight: 500, color: '#f5f4f0' }}>zai</span>
+            <span style={{ fontSize: '14px', fontWeight: 500, color: '#f5f4f0' }}>{t('layout.brand')}</span>
           </div>
         )}
 

@@ -36,6 +36,8 @@ export interface User {
   memberSince?: string;
   nfcCardId?: string;
   organizations?: UserOrganization[];
+  /** Preferred display language for the portal (e.g. 'en', 'de', 'zh'). */
+  language?: string;
 }
 
 export interface WalletState {

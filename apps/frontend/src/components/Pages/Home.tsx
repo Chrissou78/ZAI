@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { StarIcon, CalendarIcon, LocationIcon, MountainIcon } from '../Icons/BenefitIcons';
 import { ZaiLogo, ZaiMark, InstagramIcon, FacebookIcon, LinkedInIcon, YouTubeIcon } from '../Icons/LogoIcons';
 import { WalletConnectButton } from '../Auth/WalletConnectButton';
@@ -50,30 +51,10 @@ const BTN_BASE: React.CSSProperties = {
 const GREY_40 = '#B2B2B2';
 const GREY_70 = '#706F6F';
 const TIERS = [
-  {
-    name: 'Blue',
-    color: GREY_40,
-    minPoints: 0,
-    perks: ['Product registration', 'Event newsletter', 'Digital warranty'],
-  },
-  {
-    name: 'Red',
-    color: WINE,
-    minPoints: 15000,
-    perks: ['Priority event access', 'Maintenance discount', 'Partner benefits', 'Dedicated support'],
-  },
-  {
-    name: 'Black',
-    color: '#f5f4f0',
-    minPoints: 30000,
-    perks: ['VIP event invitations', 'Early product launches', 'Custom fitting service', 'Referral bonuses'],
-  },
-  {
-    name: 'Diamond',
-    color: GREY_70,
-    minPoints: 50000,
-    perks: ['Factory visits, Pontresina', 'Bespoke commission', 'Personal zai ambassador', 'Annual zai retreat'],
-  },
+  { key: 'blue', color: GREY_40, minPoints: 0 },
+  { key: 'red', color: WINE, minPoints: 15000 },
+  { key: 'black', color: '#f5f4f0', minPoints: 30000 },
+  { key: 'diamond', color: GREY_70, minPoints: 50000 },
 ];
 
 /* ── Locked-feature tooltip (hover) ── */
@@ -83,6 +64,7 @@ const LockedTooltip: React.FC<{
   message?: string;
   dark?: boolean;
 }> = ({ children, locked, message, dark = true }) => {
+  const { t } = useTranslation();
   const [hover, setHover] = useState(false);
 
   if (!locked) return <>{children}</>;
@@ -126,7 +108,7 @@ const LockedTooltip: React.FC<{
               textTransform: 'uppercase',
             }}
           >
-            Exclusive
+            {t('home.lockedTooltip.badge')}
           </span>
         </div>
       </div>
@@ -156,7 +138,7 @@ const LockedTooltip: React.FC<{
               lineHeight: 1.6,
             }}
           >
-            {message || 'Access exclusive content with the Experience Card membership.'}
+            {message || t('home.lockedTooltip.defaultMessage')}
           </div>
           <div
             style={{
@@ -183,6 +165,7 @@ const LockedTooltip: React.FC<{
    HOME
    ════════════════════════════════════════════════════ */
 const Home: React.FC = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user } = useAppContext();
@@ -237,7 +220,7 @@ const Home: React.FC = () => {
             zIndex: 10,
           }}
         >
-          You've been invited to the zai Experience Club. Connect your wallet to get started and earn bonus points.
+          {t('home.referralBanner')}
         </div>
       )}
 
@@ -333,7 +316,7 @@ const Home: React.FC = () => {
               marginBottom: '1.5rem',
             }}
           >
-            zai Experience Club
+            {t('home.hero.badge')}
           </div>
           <h1
             style={{
@@ -345,11 +328,11 @@ const Home: React.FC = () => {
               color: '#fff',
             }}
           >
-            Your world
+            {t('home.hero.headingLine1')}
             <br />
-            beyond the
+            {t('home.hero.headingLine2')}
             <br />
-            <span style={{ color: '#f5f4f0' }}>mountain.</span>
+            <span style={{ color: '#f5f4f0' }}>{t('home.hero.headingLine3')}</span>
           </h1>
           <p
             style={{
@@ -360,16 +343,13 @@ const Home: React.FC = () => {
               marginBottom: '2rem',
             }}
           >
-            Welcome to zai Experience Club. Claim your products, sign up for zai
-            events, and manage your personal zai ski collection all in one
-            place. The zai Experience Club makes zai more personal, more
-            interactive, and closer than ever before!
+            {t('home.hero.description')}
           </p>
           {user && (
             <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
               <LockedTooltip
                 locked={!exclusive}
-                message="Claim your zai Experience Card to unlock product claims and your personal collection."
+                message={t('home.lockedTooltip.claimProduct')}
               >
                 <button
                   onClick={() => navigate('/products')}
@@ -381,12 +361,12 @@ const Home: React.FC = () => {
                     (e.currentTarget.style.background = WINE)
                   }
                 >
-                  Claim Your Product
+                  {t('home.hero.claimProduct')}
                 </button>
               </LockedTooltip>
               <LockedTooltip
                 locked={!exclusive}
-                message="Access exclusive zai events with the Experience Card membership."
+                message={t('home.lockedTooltip.events')}
               >
                 <button
                   onClick={() => navigate('/events')}
@@ -403,12 +383,12 @@ const Home: React.FC = () => {
                     (e.currentTarget.style.borderColor = '#444')
                   }
                 >
-                  See Events
+                  {t('home.hero.seeEvents')}
                 </button>
               </LockedTooltip>
               <LockedTooltip
                 locked={!exclusive}
-                message="Unlock rewards and exclusive deals with your Experience Card membership."
+                message={t('home.lockedTooltip.rewards')}
               >
                 <button
                   onClick={() => navigate('/rewards')}
@@ -425,7 +405,7 @@ const Home: React.FC = () => {
                     (e.currentTarget.style.borderColor = '#444')
                   }
                 >
-                  View Rewards
+                  {t('home.hero.viewRewards')}
                 </button>
               </LockedTooltip>
             </div>
@@ -475,7 +455,7 @@ const Home: React.FC = () => {
                 marginTop: '3px',
               }}
             >
-              Founded
+              {t('home.hero.stats.founded')}
             </div>
           </div>
           <div
@@ -509,7 +489,7 @@ const Home: React.FC = () => {
                 marginTop: '3px',
               }}
             >
-              Alpine Design
+              {t('home.hero.stats.alpineDesign')}
             </div>
           </div>
           <div style={{ flex: 1, padding: 'clamp(0.6rem, 2vw, 1.25rem) clamp(0.4rem, 2vw, 1.25rem)', textAlign: 'center', minWidth: 0 }}>
@@ -535,7 +515,7 @@ const Home: React.FC = () => {
                 marginTop: '3px',
               }}
             >
-              Handcrafted
+              {t('home.hero.stats.handcrafted')}
             </div>
           </div>
         </div>
@@ -560,11 +540,11 @@ const Home: React.FC = () => {
           }}
         >
           <div>
-            <div style={LABEL}>zai experience card</div>
+            <div style={LABEL}>{t('home.experienceCard.label')}</div>
             <div style={{ ...HEADING, color: '#1a1a1a' }}>
-              Your key to
+              {t('home.experienceCard.headingLine1')}
               <br />
-              everything zai
+              {t('home.experienceCard.headingLine2')}
             </div>
             <p
               style={{
@@ -574,26 +554,13 @@ const Home: React.FC = () => {
                 marginBottom: '2rem',
               }}
             >
-              Customers who spend over CHF 500 on zai products are eligible to
-              join the exclusive zai Experience Club. In-store customers receive a
-              physical NFC-enabled zai Experience Card, while online customers can
-              request membership through the zai Experience Club dashboard by
-              submitting proof of purchase.
+              {t('home.experienceCard.description')}
             </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               {[
-                {
-                  num: 1,
-                  text: 'Spend over CHF 500 on zai products to become eligible for the zai Experience Club',
-                },
-                {
-                  num: 2,
-                  text: 'Receive a physical NFC Experience Card from an authorized dealer or boutique, or, if you purchased online, visit the zai Experience Club dashboard to request your membership by submitting proof of purchase.',
-                },
-                {
-                  num: 3,
-                  text: 'Access your membership portal and unlock exclusive member privileges',
-                },
+                { num: 1, text: t('home.experienceCard.step1') },
+                { num: 2, text: t('home.experienceCard.step2') },
+                { num: 3, text: t('home.experienceCard.step3') },
               ].map((step) => (
                 <div key={step.num} style={{ display: 'flex', gap: '10px' }}>
                   <div
@@ -651,18 +618,18 @@ const Home: React.FC = () => {
               borderRadius: '50%',
             }}
           />
-          Available for purchases over CHF 500
+          {t('home.experienceCard.note')}
         </div>
       </section>
 
       {/* ════════════  HOW IT WORKS  ════════════ */}
       <section style={{ background: BG_DARK, padding: 'clamp(2.5rem, 7vw, 5rem) clamp(1.25rem, 5vw, 4rem)' }}>
         <div style={{ maxWidth: '900px', margin: '0 auto' }}>
-          <div style={LABEL}>how it works</div>
+          <div style={LABEL}>{t('home.howItWorks.label')}</div>
           <h2 style={{ ...HEADING, color: '#fff', marginBottom: '3rem' }}>
-            Start Your
+            {t('home.howItWorks.headingLine1')}
             <br />
-            Membership Journey
+            {t('home.howItWorks.headingLine2')}
           </h2>
           <div
             style={{
@@ -673,28 +640,11 @@ const Home: React.FC = () => {
               border: '1px solid #2a2a2a',
             }}
           >
-            {[
-              {
-                num: 'Step 01',
-                title: 'Activate your membership',
-                desc: 'Purchased in-store? Tap your NFC-enabled zai Experience Card to activate your membership. Purchased online? Visit the zai Experience Club dashboard and submit proof of purchase to request your membership.',
-              },
-              {
-                num: 'Step 02',
-                title: 'Claim your purchased products',
-                desc: 'Claim your zai products in the My Collection page to build your digital collection, verify ownership, and access product-specific experiences and benefits.',
-              },
-              {
-                num: 'Step 03',
-                title: 'Unlock exclusive benefits',
-                desc: 'Activate your complimentary ski insurance, register for exclusive events, discover member-only offers, and enjoy unique experiences. New benefits and rewards will continue to be revealed over time.',
-              },
-              {
-                num: 'Step 04',
-                title: 'Be part of the community',
-                desc: 'Connect with fellow zai owners, share your experiences, and discover stories from the global zai Experience Club community.',
-              },
-            ].map((step, i) => (
+            {(['step1', 'step2', 'step3', 'step4'] as const).map((stepKey) => ({
+              num: t(`home.howItWorks.${stepKey}.num`),
+              title: t(`home.howItWorks.${stepKey}.title`),
+              desc: t(`home.howItWorks.${stepKey}.desc`),
+            })).map((step, i) => (
               <div
                 key={i}
                 style={{ background: BG_CARD, padding: '2rem 1.5rem' }}
@@ -741,8 +691,8 @@ const Home: React.FC = () => {
         }}
       >
         <div style={{ maxWidth: '900px', margin: '0 auto' }}>
-          <div style={LABEL}>exclusive benefits</div>
-          <div style={{ ...HEADING, color: '#1a1a1a' }}>What you unlock</div>
+          <div style={LABEL}>{t('home.benefits.label')}</div>
+          <div style={{ ...HEADING, color: '#1a1a1a' }}>{t('home.benefits.heading')}</div>
           <div
             style={{
               display: 'grid',
@@ -756,20 +706,20 @@ const Home: React.FC = () => {
             {[
               {
                 icon: <StarIcon />,
-                title: 'Free Ski Insurance',
-                desc: 'Activate complimentary insurance on every new zai ski purchase directly through your portal.',
+                title: t('home.benefits.insurance.title'),
+                desc: t('home.benefits.insurance.desc'),
                 link: exclusive ? '/products' : undefined,
               },
               {
                 icon: <CalendarIcon />,
-                title: 'Exclusive Events',
-                desc: 'Priority access to ski demos, factory tours, quarry visits, and personal meet-and-greets.',
+                title: t('home.benefits.events.title'),
+                desc: t('home.benefits.events.desc'),
                 link: exclusive ? '/events' : undefined,
               },
               {
                 icon: <LocationIcon />,
-                title: 'Rewards & Deals',
-                desc: 'Earn points on every purchase, climb tiers for better perks, and redeem exclusive member-only deals and collectible drops.',
+                title: t('home.benefits.rewards.title'),
+                desc: t('home.benefits.rewards.desc'),
                 link: exclusive ? '/rewards' : undefined,
               },
             ].map((b, i) => (
@@ -832,7 +782,7 @@ const Home: React.FC = () => {
                       fontWeight: 600,
                     }}
                   >
-                    Explore &rarr;
+                    {t('home.benefits.explore')}
                   </div>
                 )}
               </div>
@@ -844,9 +794,9 @@ const Home: React.FC = () => {
       {/* ════════════  REWARDS & TIERS  ════════════ */}
       <section style={{ background: BG_DARK, padding: 'clamp(2.5rem, 7vw, 5rem) clamp(1.25rem, 5vw, 4rem)' }}>
         <div style={{ maxWidth: '900px', margin: '0 auto' }}>
-          <div style={LABEL}>loyalty program</div>
+          <div style={LABEL}>{t('home.rewardsSection.label')}</div>
           <h2 style={{ ...HEADING, color: '#fff', marginBottom: '0.5rem' }}>
-            Rewards &amp; Tiers
+            {t('home.rewardsSection.heading')}
           </h2>
           <p
             style={{
@@ -857,9 +807,7 @@ const Home: React.FC = () => {
               marginBottom: '3rem',
             }}
           >
-            Earn 2.7 points for every CHF spent on zai products. Climb through
-            four exclusive tiers to unlock increasingly premium rewards, deals,
-            and experiences.
+            {t('home.rewardsSection.description')}
           </p>
 
           <div
@@ -871,9 +819,12 @@ const Home: React.FC = () => {
               border: '1px solid #2a2a2a',
             }}
           >
-            {TIERS.map((tier) => (
+            {TIERS.map((tier) => {
+              const tierName = t(`home.rewardsSection.tiers.${tier.key}.name`);
+              const tierPerks = t(`home.rewardsSection.tiers.${tier.key}.perks`, { returnObjects: true }) as string[];
+              return (
               <div
-                key={tier.name}
+                key={tier.key}
                 style={{
                   background: BG_CARD,
                   padding: '2rem 1.5rem',
@@ -911,7 +862,7 @@ const Home: React.FC = () => {
                       fontWeight: 700,
                     }}
                   >
-                    {tier.name[0]}
+                    {tierName[0]}
                   </span>
                 </div>
                 <div
@@ -922,7 +873,7 @@ const Home: React.FC = () => {
                     marginBottom: '4px',
                   }}
                 >
-                  {tier.name}
+                  {tierName}
                 </div>
                 <div
                   style={{
@@ -933,8 +884,8 @@ const Home: React.FC = () => {
                   }}
                 >
                   {tier.minPoints === 0
-                    ? 'Starting tier'
-                    : `${tier.minPoints.toLocaleString()}+ pts`}
+                    ? t('home.rewardsSection.startingTier')
+                    : `${tier.minPoints.toLocaleString()}${t('home.rewardsSection.ptsSuffix')}`}
                 </div>
                 <div
                   style={{
@@ -943,7 +894,7 @@ const Home: React.FC = () => {
                     gap: '8px',
                   }}
                 >
-                  {tier.perks.map((p, j) => (
+                  {tierPerks.map((p, j) => (
                     <div
                       key={j}
                       style={{
@@ -975,7 +926,8 @@ const Home: React.FC = () => {
                   ))}
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
 
           {/* CTA */}
@@ -983,7 +935,7 @@ const Home: React.FC = () => {
             <div style={{ marginTop: '2rem', textAlign: 'center' }}>
               <LockedTooltip
                 locked={!exclusive}
-                message="Join the zai Experience Club to start earning rewards."
+                message={t('home.lockedTooltip.joinRewards')}
               >
                 <button
                   onClick={() => navigate('/rewards')}
@@ -999,7 +951,7 @@ const Home: React.FC = () => {
                     (e.currentTarget.style.background = WINE)
                   }
                 >
-                  View My Rewards
+                  {t('home.rewardsSection.cta')}
                 </button>
               </LockedTooltip>
             </div>
@@ -1016,9 +968,9 @@ const Home: React.FC = () => {
         }}
       >
         <div style={{ maxWidth: '900px', margin: '0 auto' }}>
-          <div style={LABEL}>updates &amp; deals</div>
+          <div style={LABEL}>{t('home.updatesSection.label')}</div>
           <div style={{ ...HEADING, color: '#1a1a1a' }}>
-            Exclusive Offers &amp; Drops
+            {t('home.updatesSection.heading')}
           </div>
           <p
             style={{
@@ -1029,9 +981,7 @@ const Home: React.FC = () => {
               marginBottom: '3rem',
             }}
           >
-            Discover member-only deals, redeem your points for discounts and
-            merchandise, claim limited-edition collectible drops, and stay up to
-            date with the latest stories from the world of zai.
+            {t('home.updatesSection.description')}
           </p>
 
           <div
@@ -1045,21 +995,21 @@ const Home: React.FC = () => {
           >
             {[
               {
-                title: 'Deals & Offers',
-                desc: 'Exchange points for exclusive discounts on zai products and partner experiences.',
-                tag: 'DEALS',
+                title: t('home.updatesSection.deals.title'),
+                desc: t('home.updatesSection.deals.desc'),
+                tag: t('home.updatesSection.deals.tag'),
                 to: '/updates',
               },
               {
-                title: 'Collectible Drops',
-                desc: 'Claim limited-edition digital collectibles — some unlocked by owning specific products or attending events.',
-                tag: 'DROPS',
+                title: t('home.updatesSection.drops.title'),
+                desc: t('home.updatesSection.drops.desc'),
+                tag: t('home.updatesSection.drops.tag'),
                 to: '/updates',
               },
               {
-                title: 'zai Insights',
-                desc: 'Read articles, view photos, and watch behind-the-scenes videos from the zai universe.',
-                tag: 'STORIES',
+                title: t('home.updatesSection.stories.title'),
+                desc: t('home.updatesSection.stories.desc'),
+                tag: t('home.updatesSection.stories.tag'),
                 to: '/community',
               },
             ].map((card, i) => (
@@ -1118,7 +1068,7 @@ const Home: React.FC = () => {
             <div style={{ marginTop: '2rem', textAlign: 'center' }}>
               <LockedTooltip
                 locked={!exclusive}
-                message="Join the zai Experience Club to access deals and drops."
+                message={t('home.lockedTooltip.joinDeals')}
               >
                 <button
                   onClick={() => navigate('/updates')}
@@ -1134,7 +1084,7 @@ const Home: React.FC = () => {
                     (e.currentTarget.style.background = '#1a1a1a')
                   }
                 >
-                  Browse Deals &amp; Collectibles
+                  {t('home.updatesSection.cta')}
                 </button>
               </LockedTooltip>
             </div>
@@ -1151,9 +1101,9 @@ const Home: React.FC = () => {
         }}
       >
         <div style={{ maxWidth: '900px', margin: '0 auto' }}>
-          <div style={LABEL}>zai ecosystem</div>
+          <div style={LABEL}>{t('home.ecosystem.label')}</div>
           <h2 style={{ ...HEADING, color: '#fff' }}>
-            Partners &amp; Community
+            {t('home.ecosystem.heading')}
           </h2>
           <p
             style={{
@@ -1164,10 +1114,7 @@ const Home: React.FC = () => {
               marginBottom: '2.5rem',
             }}
           >
-            The zai ecosystem brings together exclusive brand partners and a
-            global community of zai owners — connected through a shared passion
-            for the mountain. Partners will be revealed soon. Join the community
-            to share your experiences.
+            {t('home.ecosystem.description')}
           </p>
           <div
             style={{
@@ -1179,13 +1126,7 @@ const Home: React.FC = () => {
               marginBottom: '2rem',
             }}
           >
-            {[
-              'Mountain Pass',
-              'Destination',
-              'Financial',
-              'Mountain Pass',
-              'Destination',
-            ].map((label, i) => (
+            {(t('home.ecosystem.placeholders', { returnObjects: true }) as string[]).map((label, i) => (
               <div
                 key={i}
                 style={{
@@ -1268,7 +1209,7 @@ const Home: React.FC = () => {
                 whiteSpace: 'nowrap',
               }}
             >
-              Partners to be announced
+              {t('home.ecosystem.toBeAnnounced')}
             </span>
             <div
               style={{
@@ -1302,9 +1243,9 @@ const Home: React.FC = () => {
             }}
           >
             <div style={{ flex: 1, minWidth: '280px' }}>
-              <div style={LABEL}>refer a friend</div>
+              <div style={LABEL}>{t('home.referralSection.label')}</div>
               <div style={{ ...HEADING, color: '#1a1a1a', marginBottom: '0.5rem' }}>
-                Share the Experience
+                {t('home.referralSection.heading')}
               </div>
               <p
                 style={{
@@ -1314,9 +1255,7 @@ const Home: React.FC = () => {
                   maxWidth: '420px',
                 }}
               >
-                Invite friends to join the zai Experience Club. When they claim
-                their first product, you'll earn 200 bonus points and they'll
-                receive 100 points to get started.
+                {t('home.referralSection.description')}
               </p>
             </div>
             <button
@@ -1332,7 +1271,7 @@ const Home: React.FC = () => {
                 (e.currentTarget.style.background = '#1a1a1a')
               }
             >
-              Get Your Referral Code
+              {t('home.referralSection.cta')}
             </button>
           </div>
         </section>
@@ -1385,7 +1324,7 @@ const Home: React.FC = () => {
                   marginBottom: '0.6rem',
                 }}
               >
-                Explore
+                {t('home.footer.explore')}
               </div>
               <div
                 style={{
@@ -1395,9 +1334,9 @@ const Home: React.FC = () => {
                 }}
               >
                 {[
-                  { href: 'https://www.zai.ch/shop', label: 'Shop' },
-                  { href: 'https://www.zai.ch/dealer', label: 'Dealers' },
-                  { href: 'https://www.zai.ch/contact', label: 'Contact' },
+                  { href: 'https://www.zai.ch/shop', label: t('home.footer.linksExplore.shop') },
+                  { href: 'https://www.zai.ch/dealer', label: t('home.footer.linksExplore.dealers') },
+                  { href: 'https://www.zai.ch/contact', label: t('home.footer.linksExplore.contact') },
                 ].map((link) => (
                   <a
                     key={link.label}
@@ -1431,7 +1370,7 @@ const Home: React.FC = () => {
                   marginBottom: '0.6rem',
                 }}
               >
-                Members
+                {t('home.footer.members')}
               </div>
               <div
                 style={{
@@ -1441,10 +1380,10 @@ const Home: React.FC = () => {
                 }}
               >
                 {[
-                  { to: '/rewards', label: 'Points & Tiers' },
-                  { to: '/updates', label: 'Deals & Collectibles' },
-                  { to: '/community', label: 'zai Insights' },
-                  { to: '/events', label: 'Events' },
+                  { to: '/rewards', label: t('home.footer.linksMembers.pointsTiers') },
+                  { to: '/updates', label: t('home.footer.linksMembers.dealsCollectibles') },
+                  { to: '/community', label: t('home.footer.linksMembers.insights') },
+                  { to: '/events', label: t('home.footer.linksMembers.events') },
                 ].map((link) => (
                   <span
                     key={link.label}
@@ -1479,7 +1418,7 @@ const Home: React.FC = () => {
                   marginBottom: '0.6rem',
                 }}
               >
-                Follow
+                {t('home.footer.follow')}
               </div>
               <div style={{ display: 'flex', gap: '10px' }}>
                 {[
@@ -1577,10 +1516,14 @@ const Home: React.FC = () => {
                 strokeLinecap="round"
               />
             </svg>
-            <span>Pontresina, Alps · Since 2003</span>
+            <span>{t('home.footer.location')}</span>
           </div>
           <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
-            {['Privacy Policy', 'Terms & Conditions', 'Legal Information'].map(
+            {[
+              t('home.footer.legal.privacy'),
+              t('home.footer.legal.terms'),
+              t('home.footer.legal.legalInfo'),
+            ].map(
               (text) => (
                 <a
                   key={text}
