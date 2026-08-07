@@ -177,7 +177,7 @@ export default async function handler(req, res) {
           email: row.email, phoneNumber: row.phone_number,
           address: row.address, city: row.city, country: row.country,
           postalCode: row.postal_code, birthdate: row.birthdate, isPublic: row.is_public,
-          salutation: row.salutation, language: row.language,
+          salutation: row.salutation, language: row.language, image: row.image || null,
         },
       });
     } catch (err) {
@@ -204,7 +204,7 @@ export default async function handler(req, res) {
     try {
       const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
       const sanitizedBody = sanitizeObject(body, ['name','givenName','familyName','address','city','country']);
-      const updatableFields = ['name','givenName','familyName','email','phoneNumber','address','city','country','postalCode','birthdate','isPublic','salutation','language'];
+      const updatableFields = ['name','givenName','familyName','email','phoneNumber','address','city','country','postalCode','birthdate','isPublic','salutation','language','image'];
       const updatedUser = { id: decoded.userId, userId: decoded.userId, wallet: decoded.wallet };
       for (const field of updatableFields) {
         updatedUser[field] = sanitizedBody[field] !== undefined ? sanitizedBody[field] : (decoded[field] || '');
@@ -216,7 +216,7 @@ export default async function handler(req, res) {
         `UPDATE user_profiles SET
            name=$2, given_name=$3, family_name=$4, email=$5, phone_number=$6,
            address=$7, city=$8, country=$9, postal_code=$10, birthdate=$11,
-           is_public=$12, salutation=$13, language=$14, updated_at=NOW()
+           is_public=$12, salutation=$13, language=$14, image=$15, updated_at=NOW()
          WHERE user_id=$1`,
         [
           decoded.userId,
@@ -225,7 +225,7 @@ export default async function handler(req, res) {
           updatedUser.address, updatedUser.city, updatedUser.country,
           updatedUser.postalCode, updatedUser.birthdate || null,
           updatedUser.isPublic || false, parseInt(updatedUser.salutation) || 0,
-          updatedUser.language || 'en',
+          updatedUser.language || 'en', updatedUser.image ?? null,
         ]
       );
 
@@ -240,6 +240,96 @@ export default async function handler(req, res) {
       return res.json({ success: true, message: 'Profile updated successfully', jwtToken: newToken, user: updatedUser });
     } catch (err) {
       return res.status(500).json({ success: false, error: err.message });
+    }
+  }
+
+  // ─── POST /api/users/me/avatar ───
+  if (path === 'me/avatar' && method === 'POST') {
+    if (applyRateLimit(req, res, 'users:avatar', 10, 60_000)) return;
+    const decoded = authenticate(req);
+    if (!decoded) return res.status(401).json({ error: 'No token provided' });
+    try {
+      const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+      const { image } = body || {};
+      if (!image) return res.status(400).json({ success: false, error: 'Image is required (base64)' });
+
+      const mimeMatch = image.match(/^data:(image\/[a-zA-Z]+);base64,/);
+      const mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/tiff'];
+      if (!allowedTypes.includes(mimeType)) {
+        return res.status(400).json({ success: false, error: 'Only JPG, PNG, and TIFF images are allowed' });
+      }
+
+      const base64Data = image.replace(/^data:image\/[a-zA-Z]+;base64,/, '');
+      const buffer = Buffer.from(base64Data, 'base64');
+
+      if (buffer.length > 5 * 1024 * 1024) return res.status(400).json({ success: false, error: 'Image must be under 5 MB' });
+
+      if (!process.env.PINATA_JWT) {
+        return res.status(500).json({ success: false, error: 'PINATA_JWT env variable is not set' });
+      }
+
+      const ext = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/tiff': 'tiff' }[mimeType];
+      const boundary = '----PinataFormBoundary' + Date.now().toString(36);
+      const fileName = `avatar-${decoded.userId}-${Date.now()}.${ext}`;
+      const header = `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${fileName}"\r\nContent-Type: ${mimeType}\r\n\r\n`;
+      const footer = `\r\n--${boundary}--\r\n`;
+
+      const multipartBody = Buffer.concat([
+        Buffer.from(header, 'utf-8'),
+        buffer,
+        Buffer.from(footer, 'utf-8'),
+      ]);
+
+      let pinataRes;
+      try {
+        pinataRes = await fetch('https://api.pinata.cloud/pinning/pinFileToIPFS', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${process.env.PINATA_JWT}`,
+            'Content-Type': `multipart/form-data; boundary=${boundary}`,
+          },
+          body: multipartBody,
+        });
+      } catch (fetchErr) {
+        return res.status(500).json({ success: false, error: 'Pinata fetch failed', detail: fetchErr.message });
+      }
+
+      if (!pinataRes.ok) {
+        const errText = await pinataRes.text().catch(() => 'could not read response');
+        return res.status(500).json({
+          success: false,
+          error: 'Pinata rejected upload',
+          pinataStatus: pinataRes.status,
+          detail: errText,
+        });
+      }
+
+      let pinataData;
+      try {
+        pinataData = await pinataRes.json();
+      } catch (jsonErr) {
+        return res.status(500).json({ success: false, error: 'Pinata response not JSON', detail: jsonErr.message });
+      }
+
+      const cid = pinataData.IpfsHash;
+      if (!cid) {
+        return res.status(500).json({ success: false, error: 'No CID returned', detail: JSON.stringify(pinataData) });
+      }
+
+      const gateway = process.env.PINATA_GATEWAY || 'gateway.pinata.cloud';
+      const imageUrl = `https://${gateway}/ipfs/${cid}`;
+
+      await initDB();
+      await ensureProfile(decoded);
+      await getPool().query(
+        'UPDATE user_profiles SET image=$1, updated_at=NOW() WHERE user_id=$2',
+        [imageUrl, decoded.userId]
+      );
+
+      return res.json({ success: true, data: { image: imageUrl } });
+    } catch (err) {
+      return res.status(500).json({ success: false, error: 'Unexpected error', detail: err.message });
     }
   }
 

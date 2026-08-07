@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAppContext } from '../../context/AppContext';
 import { apiService } from '../../services/api';
 import UserAvatar from '../Common/UserAvatar';
@@ -36,6 +37,7 @@ function getDisplayName(user: any): { first: string; last: string; display: stri
 }
 
 const Sidebar: React.FC = () => {
+  const { t } = useTranslation();
   const { user } = useAppContext();
   const location = useLocation();
   const [communityNewCount, setCommunityNewCount] = useState(0);
@@ -126,34 +128,34 @@ const Sidebar: React.FC = () => {
 
   const navSections = [
     {
-      section: 'Overview',
+      section: t('nav.sections.overview'),
       items: [
-        { path: '/', label: 'Home', icon: <HomeIcon /> },
-        { path: '/dashboard', label: 'Dashboard', icon: <DashboardIcon /> },
+        { path: '/', label: t('nav.items.home'), icon: <HomeIcon /> },
+        { path: '/dashboard', label: t('nav.items.dashboard'), icon: <DashboardIcon /> },
       ],
     },
     ...(showExclusive ? [{
-      section: 'zai Exclusive',
+      section: t('nav.sections.exclusive'),
       items: [
-        { path: '/products', label: 'My Collection', icon: <ProductsIcon /> },
-        { path: '/events', label: 'Events', icon: <EventsIcon /> },
-        { path: '/community', label: 'Community', icon: <CommunityIcon />, badge: communityNewCount },
-        { path: '/rewards', label: 'Points & Tiers', icon: <RewardsIcon /> },
-        { path: '/updates', label: 'Deals & Collectibles', icon: <UpdatesIcon /> },
+        { path: '/products', label: t('nav.items.myCollection'), icon: <ProductsIcon /> },
+        { path: '/events', label: t('nav.items.events'), icon: <EventsIcon /> },
+        { path: '/community', label: t('nav.items.community'), icon: <CommunityIcon />, badge: communityNewCount },
+        { path: '/rewards', label: t('nav.items.pointsTiers'), icon: <RewardsIcon /> },
+        { path: '/updates', label: t('nav.items.dealsCollectibles'), icon: <UpdatesIcon /> },
       ],
     }] : []),
     {
-      section: 'Account',
+      section: t('nav.sections.account'),
       items: [
-        { path: '/profile', label: 'Profile', icon: <ProfileIcon /> },
-        { path: '/settings', label: 'Settings', icon: <SettingsIcon /> },
+        { path: '/profile', label: t('nav.items.profile'), icon: <ProfileIcon /> },
+        { path: '/settings', label: t('nav.items.settings'), icon: <SettingsIcon /> },
       ],
     },
     ...(isAdminUser ? [{
-      section: 'Admin',
+      section: t('nav.sections.admin'),
       items: [
-        { path: '/admin', label: 'Claim Requests', icon: <ProductsIcon />, badge: adminPendingCount },
-        { path: '/admin/store', label: 'Store & Content', icon: <UpdatesIcon /> },
+        { path: '/admin', label: t('nav.items.claimRequests'), icon: <ProductsIcon />, badge: adminPendingCount },
+        { path: '/admin/store', label: t('nav.items.storeContent'), icon: <UpdatesIcon /> },
       ],
     }] : []),
   ];
@@ -189,7 +191,7 @@ const Sidebar: React.FC = () => {
           color: '#6a6a6a',
           marginTop: '2px',
         }}>
-          experience club
+          {t('nav.brand')}
         </div>
       </div>
 
@@ -206,6 +208,7 @@ const Sidebar: React.FC = () => {
             firstName={first}
             lastName={last}
             size="sm"
+            imageUrl={user?.image}
           />
           <div>
             <div style={{ fontSize: '12px', color: '#f5f4f0', fontWeight: 500 }}>
@@ -220,7 +223,7 @@ const Sidebar: React.FC = () => {
               fontWeight: 600,
               marginTop: '2px',
             }}>
-              {isAdminUser ? user.role : hasExperienceCard ? 'exclusive member' : 'member'}
+              {isAdminUser ? user.role : hasExperienceCard ? t('nav.exclusiveMember') : t('nav.member')}
             </div>
           </div>
         </div>
@@ -338,7 +341,7 @@ const Sidebar: React.FC = () => {
           <svg width="13" height="13" viewBox="0 0 24 20" fill="none" style={{ flexShrink: 0 }}>
             <polyline points="1,19 7,7 12,13 16,5 23,19" stroke="#555" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
           </svg>
-          <span style={{ fontSize: '11px', color: '#555', letterSpacing: '0.05em' }}>Crafted in the Alps</span>
+          <span style={{ fontSize: '11px', color: '#555', letterSpacing: '0.05em' }}>{t('nav.footer')}</span>
         </div>
       </div>
 

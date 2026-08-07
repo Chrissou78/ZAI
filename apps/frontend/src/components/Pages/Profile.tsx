@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAppContext } from '../../context/AppContext';
 import { apiService } from '../../services/api';
+import UserAvatar from '../Common/UserAvatar';
 
 /* ── Design tokens ── */
 const C = {
@@ -629,6 +630,11 @@ const Profile: React.FC = () => {
   const [points, setPoints] = useState(0);
   const [loadingPoints, setLoadingPoints] = useState(true);
 
+  /* ── Avatar upload state ── */
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [avatarError, setAvatarError] = useState('');
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+
   /* ── Exclusive check ── */
   const isAdmin = (user as any)?.role === 'admin' || (user as any)?.role === 'owner';
   const exclusive = card.isActive || isAdmin;
@@ -797,6 +803,7 @@ const Profile: React.FC = () => {
         postalCode: formData.postalCode,
         birthdate: formData.birthdate || null,
         isPublic: formData.isPublic,
+        image: user.image || '',
       });
       const data = res.data as any;
       if (data?.success) {
@@ -836,6 +843,51 @@ const Profile: React.FC = () => {
       setFormData(toFormData(user));
     }
     setIsEditing(false);
+  };
+
+  /* ── Avatar upload handler ── */
+  const MAX_AVATAR_BYTES = 5 * 1024 * 1024; // 5 MB
+  const ALLOWED_AVATAR_TYPES = ['image/jpeg', 'image/png', 'image/tiff'];
+
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // allow re-selecting the same file later
+    if (!file || !user?.id) return;
+
+    setAvatarError('');
+
+    if (!ALLOWED_AVATAR_TYPES.includes(file.type)) {
+      setAvatarError('Only JPG, PNG, and TIFF images are allowed.');
+      return;
+    }
+    if (file.size > MAX_AVATAR_BYTES) {
+      setAvatarError('Image must be under 5 MB.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const base64 = reader.result as string;
+      setUploadingAvatar(true);
+      try {
+        const res = await apiService.post('/users/me/avatar', { image: base64 });
+        const data = res.data as any;
+        if (data?.success) {
+          const newImage = data.data?.image || null;
+          const updatedUser: typeof user = { ...user, image: newImage };
+          setUser(updatedUser);
+          localStorage.setItem('zai_user', JSON.stringify(updatedUser));
+        } else {
+          setAvatarError(data?.error || 'Failed to upload photo.');
+        }
+      } catch (err: any) {
+        setAvatarError(err?.response?.data?.error || 'Failed to upload photo.');
+      } finally {
+        setUploadingAvatar(false);
+      }
+    };
+    reader.onerror = () => setAvatarError('Could not read the selected file.');
+    reader.readAsDataURL(file);
   };
 
   /* ── Card number handlers ── */
@@ -1051,22 +1103,75 @@ const Profile: React.FC = () => {
         >
           <div
             style={{
-              width: '80px', height: '80px', borderRadius: '50%',
-              background: C.surface2, border: `2px solid ${C.border}`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: '22px', fontWeight: 300, color: C.black,
-              letterSpacing: '0.05em', marginBottom: '1rem',
+              position: 'relative', width: '80px', height: '80px',
+              marginBottom: '1rem', cursor: uploadingAvatar ? 'wait' : 'pointer',
             }}
+            onClick={() => { if (!uploadingAvatar) avatarInputRef.current?.click(); }}
+            title="Change profile photo"
           >
-            {initials}
+            {user?.image ? (
+              <UserAvatar firstName={firstName} lastName={lastName} size="lg" imageUrl={user.image} />
+            ) : (
+              <div
+                style={{
+                  width: '80px', height: '80px', borderRadius: '50%',
+                  background: C.surface2, border: `2px solid ${C.border}`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: '22px', fontWeight: 300, color: C.black,
+                  letterSpacing: '0.05em',
+                }}
+              >
+                {initials}
+              </div>
+            )}
+
+            {/* Camera / edit overlay */}
+            <div
+              style={{
+                position: 'absolute', bottom: 0, right: 0,
+                width: '26px', height: '26px', borderRadius: '50%',
+                background: C.black, border: `2px solid ${C.surface}`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}
+            >
+              {uploadingAvatar ? (
+                <div
+                  style={{
+                    width: '10px', height: '10px', borderRadius: '50%',
+                    border: '2px solid rgba(255,255,255,0.35)', borderTopColor: '#fff',
+                    animation: 'zai-avatar-spin 0.8s linear infinite',
+                  }}
+                />
+              ) : (
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2">
+                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                  <circle cx="12" cy="13" r="4" />
+                </svg>
+              )}
+            </div>
+
+            <input
+              ref={avatarInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleAvatarChange}
+              disabled={uploadingAvatar}
+              style={{ display: 'none' }}
+            />
           </div>
+          <style>{`@keyframes zai-avatar-spin { to { transform: rotate(360deg); } }`}</style>
 
           <div style={{ fontSize: '16px', fontWeight: 400, color: C.black, marginBottom: '2px' }}>
             {firstName}
           </div>
-          <div style={{ fontSize: '11px', color: C.gray, marginBottom: '1.5rem' }}>
+          <div style={{ fontSize: '11px', color: C.gray, marginBottom: avatarError ? '0.5rem' : '1.5rem' }}>
             @{firstName.toLowerCase().replace(/\s+/g, '')}
           </div>
+          {avatarError && (
+            <div style={{ fontSize: '11px', color: C.red, marginBottom: '1.5rem', textAlign: 'center' }}>
+              {avatarError}
+            </div>
+          )}
 
           <div
             style={{

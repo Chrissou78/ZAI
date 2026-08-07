@@ -4,9 +4,10 @@ interface UserAvatarProps {
   firstName?: string;
   lastName?: string;
   size?: 'sm' | 'md' | 'lg';
+  imageUrl?: string | null;
 }
 
-const UserAvatar: React.FC<UserAvatarProps> = ({ firstName = 'U', lastName = '', size = 'md' }) => {
+const UserAvatar: React.FC<UserAvatarProps> = ({ firstName = 'U', lastName = '', size = 'md', imageUrl }) => {
   const initials = `${(firstName || 'U')[0]}${(lastName || '')[0] || ''}`.toUpperCase();
 
   const sizeMap = {
@@ -17,26 +18,39 @@ const UserAvatar: React.FC<UserAvatarProps> = ({ firstName = 'U', lastName = '',
 
   const dimensions = sizeMap[size];
 
+  const baseStyle: React.CSSProperties = {
+    width: dimensions.width,
+    height: dimensions.height,
+    borderRadius: '50%',
+    border: '1px solid #f5f4f0',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    lineHeight: 1,
+    letterSpacing: '0.05em',
+    fontSize: dimensions.fontSize,
+    color: '#f5f4f0',
+    flexShrink: 0,
+    fontWeight: 300,
+    boxShadow: '0 2px 6px rgba(0,0,0,0.5)',
+    overflow: 'hidden',
+  };
+
+  if (imageUrl) {
+    return (
+      <div style={{ ...baseStyle, background: '#1a1a1a' }}>
+        <img
+          src={imageUrl}
+          alt={`${firstName} ${lastName}`.trim() || 'Profile'}
+          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+          onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+        />
+      </div>
+    );
+  }
+
   return (
-    <div
-      style={{
-        width: dimensions.width,
-        height: dimensions.height,
-        borderRadius: '50%',
-        background: 'linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%)',
-        border: '1px solid #f5f4f0',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        lineHeight: 1, 
-        letterSpacing: '0.05em',  
-        fontSize: dimensions.fontSize,
-        color: '#f5f4f0',
-        flexShrink: 0,
-        fontWeight: 300,
-        boxShadow: '0 2px 6px rgba(0,0,0,0.5)',
-      }}
-    >
+    <div style={{ ...baseStyle, background: 'linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%)' }}>
       {initials}
     </div>
   );

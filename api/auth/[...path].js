@@ -71,6 +71,7 @@ export default async function handler(req, res) {
               birthdate: row.birthdate || null,
               isPublic: row.is_public || false,
               language: row.language || 'en',
+              image: row.image || null,
             };
           }
         } catch (profileErr) {
@@ -98,6 +99,7 @@ export default async function handler(req, res) {
           birthdate: profileData.birthdate || null,
           isPublic: profileData.isPublic || false,
           language: profileData.language || 'en',
+          image: profileData.image || null,
           role,
         },
       });
@@ -217,6 +219,7 @@ async function handleLogin(req, res) {
               email: row.email || '', phoneNumber: row.phone_number || '', address: row.address || '',
               city: row.city || '', country: row.country || '', postalCode: row.postal_code || '',
               birthdate: row.birthdate || null, isPublic: row.is_public || false,
+              image: row.image || null, language: row.language || null,
             };
           }
         } catch (profileErr) {
@@ -239,7 +242,8 @@ async function handleLogin(req, res) {
       city: sanitizeString(savedProfile.city || userProfile.city || ''),
       country: sanitizeString(savedProfile.country || userProfile.country || ''),
       postalCode: sanitizeString(savedProfile.postalCode || userProfile.postalCode || ''),
-      image: userProfile.image || null,
+      image: savedProfile.image || userProfile.image || null,
+      language: savedProfile.language || userProfile.language || null,
       birthdate: savedProfile.birthdate || userProfile.birthdate || null,
       wallet: userProfile.wallet || wallet,
       walletAddress: wallet,
