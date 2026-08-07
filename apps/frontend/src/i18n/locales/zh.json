@@ -46,27 +46,67 @@
     },
     "notifications": {
       "emailHeading": "邮件通知",
-      "eventInvitations": { "title": "活动邀请", "desc": "近期活动与专属邀请" },
-      "membershipUpdates": { "title": "会员状态更新", "desc": "当您的会员状态发生变化时" },
-      "productLaunches": { "title": "新品发布", "desc": "抢先了解 zai 新品发布" },
-      "partnerOffers": { "title": "合作品牌优惠", "desc": "来自我们生态合作伙伴的专属优惠" },
+      "eventInvitations": {
+        "title": "活动邀请",
+        "desc": "近期活动与专属邀请"
+      },
+      "membershipUpdates": {
+        "title": "会员状态更新",
+        "desc": "当您的会员状态发生变化时"
+      },
+      "productLaunches": {
+        "title": "新品发布",
+        "desc": "抢先了解 zai 新品发布"
+      },
+      "partnerOffers": {
+        "title": "合作品牌优惠",
+        "desc": "来自我们生态合作伙伴的专属优惠"
+      },
       "pushHeading": "推送通知",
-      "pushProductUpdates": { "title": "产品动态", "desc": "关于您已注册产品的通知" },
-      "pushEventReminders": { "title": "活动提醒", "desc": "已报名活动开始前 48 小时提醒" }
+      "pushProductUpdates": {
+        "title": "产品动态",
+        "desc": "关于您已注册产品的通知"
+      },
+      "pushEventReminders": {
+        "title": "活动提醒",
+        "desc": "已报名活动开始前 48 小时提醒"
+      }
     },
     "privacy": {
       "heading": "隐私设置",
-      "dataSharing": { "title": "数据共享", "desc": "共享使用数据以帮助改进 ZAI" },
-      "analytics": { "title": "数据分析", "desc": "允许分析跟踪" },
-      "profileVisibility": { "title": "资料可见性", "desc": "让其他会员可以看到您的个人资料" },
-      "communityVisibility": { "title": "社区可见性", "desc": "在社区会员列表中显示" }
+      "dataSharing": {
+        "title": "数据共享",
+        "desc": "共享使用数据以帮助改进 ZAI"
+      },
+      "analytics": {
+        "title": "数据分析",
+        "desc": "允许分析跟踪"
+      },
+      "profileVisibility": {
+        "title": "资料可见性",
+        "desc": "让其他会员可以看到您的个人资料"
+      },
+      "communityVisibility": {
+        "title": "社区可见性",
+        "desc": "在社区会员列表中显示"
+      }
     },
     "region": {
       "heading": "地区与货币",
       "accountRegion": "账户所在地区",
-      "currency": { "title": "货币", "desc": "用于定价及奖励价值计算" },
-      "language": { "title": "语言", "desc": "门户显示语言" },
-      "languages": { "en": "English", "de": "Deutsch", "zh": "中文" }
+      "currency": {
+        "title": "货币",
+        "desc": "用于定价及奖励价值计算"
+      },
+      "language": {
+        "title": "语言",
+        "desc": "门户显示语言"
+      },
+      "languages": {
+        "en": "English",
+        "de": "Deutsch",
+        "zh": "中文"
+      }
     },
     "security": {
       "heading": "账户安全",
@@ -125,17 +165,42 @@
       "label": "运作方式",
       "headingLine1": "开启您的",
       "headingLine2": "会员之旅",
-      "step1": { "num": "步骤一", "title": "激活您的会员资格", "desc": "线下购买？轻触您的 NFC 感应式 zai Experience Card 即可激活会员资格。线上购买？请前往 zai 尊享俱乐部后台，提交购买凭证以申请会员资格。" },
-      "step2": { "num": "步骤二", "title": "认领您购买的产品", "desc": "在「我的收藏」页面认领您的 zai 产品，建立专属数字收藏、验证所有权，并解锁产品专属体验与权益。" },
-      "step3": { "num": "步骤三", "title": "解锁尊享权益", "desc": "激活您的免费滑雪保险，报名参加专属活动，探索会员专属优惠，尽享独一无二的体验。更多权益与奖励将持续揭晓。" },
-      "step4": { "num": "步骤四", "title": "融入 zai 社区", "desc": "与全球 zai 车主互动交流，分享您的体验，探索来自 zai 尊享俱乐部全球社区的精彩故事。" }
+      "step1": {
+        "num": "步骤一",
+        "title": "激活您的会员资格",
+        "desc": "线下购买？轻触您的 NFC 感应式 zai Experience Card 即可激活会员资格。线上购买？请前往 zai 尊享俱乐部后台，提交购买凭证以申请会员资格。"
+      },
+      "step2": {
+        "num": "步骤二",
+        "title": "认领您购买的产品",
+        "desc": "在「我的收藏」页面认领您的 zai 产品，建立专属数字收藏、验证所有权，并解锁产品专属体验与权益。"
+      },
+      "step3": {
+        "num": "步骤三",
+        "title": "解锁尊享权益",
+        "desc": "激活您的免费滑雪保险，报名参加专属活动，探索会员专属优惠，尽享独一无二的体验。更多权益与奖励将持续揭晓。"
+      },
+      "step4": {
+        "num": "步骤四",
+        "title": "融入 zai 社区",
+        "desc": "与全球 zai 车主互动交流，分享您的体验，探索来自 zai 尊享俱乐部全球社区的精彩故事。"
+      }
     },
     "benefits": {
       "label": "尊享权益",
       "heading": "您将解锁的权益",
-      "insurance": { "title": "免费滑雪保险", "desc": "每购买一副新款 zai 雪板，即可直接通过您的后台激活免费保险。" },
-      "events": { "title": "专属活动", "desc": "优先体验滑雪试用、工厂参观、采石场探访及专属见面会。" },
-      "rewards": { "title": "奖励与优惠", "desc": "每次消费均可累积积分，升级会员等级享受更多礼遇，并兑换专属优惠及限量收藏品。" },
+      "insurance": {
+        "title": "免费滑雪保险",
+        "desc": "每购买一副新款 zai 雪板，即可直接通过您的后台激活免费保险。"
+      },
+      "events": {
+        "title": "专属活动",
+        "desc": "优先体验滑雪试用、工厂参观、采石场探访及专属见面会。"
+      },
+      "rewards": {
+        "title": "奖励与优惠",
+        "desc": "每次消费均可累积积分，升级会员等级享受更多礼遇，并兑换专属优惠及限量收藏品。"
+      },
       "explore": "探索更多 →"
     },
     "rewardsSection": {
@@ -146,26 +211,75 @@
       "ptsSuffix": "+ 积分",
       "cta": "查看我的奖励",
       "tiers": {
-        "blue": { "name": "蓝金", "perks": ["产品注册", "活动资讯订阅", "数字保修凭证"] },
-        "red": { "name": "红金", "perks": ["活动优先预订", "维护保养折扣", "合作品牌权益", "专属客户支持"] },
-        "black": { "name": "黑金", "perks": ["VIP 活动邀请", "新品优先发售", "定制适配服务", "推荐好友奖励"] },
-        "diamond": { "name": "钻石", "perks": ["彭特雷西纳工厂之旅", "专属定制委托", "专属 zai 大使服务", "年度 zai 静修体验"] }
+        "blue": {
+          "name": "蓝金",
+          "perks": [
+            "产品注册",
+            "活动资讯订阅",
+            "数字保修凭证"
+          ]
+        },
+        "red": {
+          "name": "红金",
+          "perks": [
+            "活动优先预订",
+            "维护保养折扣",
+            "合作品牌权益",
+            "专属客户支持"
+          ]
+        },
+        "black": {
+          "name": "黑金",
+          "perks": [
+            "VIP 活动邀请",
+            "新品优先发售",
+            "定制适配服务",
+            "推荐好友奖励"
+          ]
+        },
+        "diamond": {
+          "name": "钻石",
+          "perks": [
+            "彭特雷西纳工厂之旅",
+            "专属定制委托",
+            "专属 zai 大使服务",
+            "年度 zai 静修体验"
+          ]
+        }
       }
     },
     "updatesSection": {
       "label": "优惠与动态",
       "heading": "尊享优惠与限量发售",
       "description": "探索会员专属优惠，用积分兑换折扣与周边商品，认领限量数字收藏品，并第一时间获取 zai 世界的最新资讯。",
-      "deals": { "tag": "优惠", "title": "优惠与折扣", "desc": "用积分兑换 zai 产品及合作品牌体验的专属折扣。" },
-      "drops": { "tag": "限量发售", "title": "限量收藏品", "desc": "认领限量版数字收藏品——部分需拥有特定产品或参与活动方可解锁。" },
-      "stories": { "tag": "资讯故事", "title": "zai 洞察", "desc": "阅读文章、浏览图片，观看来自 zai 世界的幕后视频。" },
+      "deals": {
+        "tag": "优惠",
+        "title": "优惠与折扣",
+        "desc": "用积分兑换 zai 产品及合作品牌体验的专属折扣。"
+      },
+      "drops": {
+        "tag": "限量发售",
+        "title": "限量收藏品",
+        "desc": "认领限量版数字收藏品——部分需拥有特定产品或参与活动方可解锁。"
+      },
+      "stories": {
+        "tag": "资讯故事",
+        "title": "zai 洞察",
+        "desc": "阅读文章、浏览图片，观看来自 zai 世界的幕后视频。"
+      },
       "cta": "浏览优惠与收藏品"
     },
     "ecosystem": {
       "label": "zai 生态圈",
       "heading": "合作伙伴与社区",
       "description": "zai 生态圈汇聚尊贵品牌合作伙伴与全球 zai 车主社区——因对山峦的共同热爱而紧密相连。合作伙伴将于近期公布。欢迎加入社区，分享您的精彩体验。",
-      "placeholders": ["山地通票", "旅行目的地", "金融服务", "山地通票", "旅行目的地"],
+      "placeholders": [
+        "山地通票",
+        "旅行目的地",
+        "金融服务",
+        "山地通票",
+        "旅行目的地"
+      ],
       "toBeAnnounced": "合作伙伴将于近期公布"
     },
     "referralSection": {
@@ -178,10 +292,1143 @@
       "explore": "探索",
       "members": "会员专区",
       "follow": "关注我们",
-      "linksExplore": { "shop": "商店", "dealers": "经销商", "contact": "联系我们" },
-      "linksMembers": { "pointsTiers": "积分与等级", "dealsCollectibles": "优惠与收藏品", "insights": "zai 洞察", "events": "活动" },
+      "linksExplore": {
+        "shop": "商店",
+        "dealers": "经销商",
+        "contact": "联系我们"
+      },
+      "linksMembers": {
+        "pointsTiers": "积分与等级",
+        "dealsCollectibles": "优惠与收藏品",
+        "insights": "zai 洞察",
+        "events": "活动"
+      },
       "location": "彭特雷西纳，阿尔卑斯山 · 始于 2003 年",
-      "legal": { "privacy": "隐私政策", "terms": "条款与条件", "legalInfo": "法律信息" }
+      "legal": {
+        "privacy": "隐私政策",
+        "terms": "条款与条件",
+        "legalInfo": "法律信息"
+      }
+    }
+  },
+  "dashboard": {
+    "loading": "加载中……",
+    "errors": {
+      "dashboardLoadFailed": "仪表盘加载失败"
+    },
+    "locked": {
+      "badge": "尊享专属",
+      "defaultMessage": "开通 Experience Card 会员，即可解锁专属内容。",
+      "claimProduct": "激活您的 Experience Card，解锁产品认领功能。"
+    },
+    "header": {
+      "eyebrow": "总览",
+      "title": "仪表盘",
+      "subtitle": "一览您的 zai 尊享俱乐部动态——产品、活动及近期安排。",
+      "claimProduct": "认领产品"
+    },
+    "profile": {
+      "locationNotSet": "未设置所在城市",
+      "countryNotSet": "未设置所在国家",
+      "tierBadge": "{{tier}}等级",
+      "points": "{{points}} 积分",
+      "pointsToNextTier": "距{{tier}}还需 {{points}} 积分",
+      "maxTier": "已达最高等级",
+      "memberSince": "会员始于 {{year}} 年",
+      "adminSince": "管理员始于 {{year}} 年",
+      "exclusiveMemberSince": "尊享会员始于 {{year}} 年",
+      "membershipUnderReview": "会员资格审核中",
+      "claimMembershipCta": "申请加入 zai 尊享俱乐部会员",
+      "exclusiveMemberBadge": "尊享会员"
+    },
+    "welcome": {
+      "greeting": "欢迎回来",
+      "welcomeBack": "欢迎回来，",
+      "exclusiveDesc": "探索专属活动，管理您已注册的产品，畅享完整的 zai 尊享俱乐部体验。",
+      "standardDesc": "激活您的 zai Experience Card，解锁您的专属收藏、尊享活动及完整的 zai 体验。",
+      "ecImageAlt": "zai 尊享俱乐部卡"
+    },
+    "stats": {
+      "totalPoints": "累计积分",
+      "pointsThisMonth": "本月 {{sign}}{{count}}",
+      "noActivityThisMonth": "本月暂无活动记录",
+      "productsClaimed": "已认领产品",
+      "getStartedClaim": "认领您的第一件产品，开启专属体验",
+      "withActiveInsurance_one": "{{count}} 件已激活保险",
+      "withActiveInsurance_other": "{{count}} 件已激活保险",
+      "eventsAttended": "已参加活动",
+      "upcomingCount_one": "{{count}} 场即将开始",
+      "upcomingCount_other": "{{count}} 场即将开始"
+    },
+    "activity": {
+      "heading": "近期动态",
+      "empty": "暂无近期动态。认领一件产品或报名参加活动，开启您的旅程！",
+      "pointsActivity": "积分动态",
+      "pointsValue": "{{sign}}{{count}} 积分",
+      "wallet": {
+        "label": "钱包地址：",
+        "copy": "复制",
+        "notConnected": "尚未绑定钱包"
+      }
+    },
+    "quickActions": {
+      "heading": "快捷操作",
+      "claimProduct": {
+        "title": "认领产品",
+        "sub": "NFC 或产品序列号"
+      },
+      "browseEvents": {
+        "title": "浏览活动",
+        "sub": "查看近期活动安排"
+      },
+      "viewTier": {
+        "title": "查看会员等级",
+        "subProgress": "{{tier}} · 距{{nextTier}}还需 {{points}} 积分",
+        "subMax": "{{tier}} · 已达最高等级"
+      },
+      "shareReferral": {
+        "title": "分享推荐码",
+        "sub": "每邀请一位好友赢取 200 积分"
+      }
+    },
+    "dateFormat": {
+      "claimed": "已认领",
+      "today": "今天",
+      "tomorrow": "明天",
+      "inDays_one": "{{count}} 天后",
+      "inDays_other": "{{count}} 天后",
+      "justNow": "刚刚",
+      "minutesAgo_one": "{{count}} 分钟前",
+      "minutesAgo_other": "{{count}} 分钟前",
+      "hoursAgo_one": "{{count}} 小时前",
+      "hoursAgo_other": "{{count}} 小时前",
+      "yesterday": "昨天",
+      "daysAgo_one": "{{count}} 天前",
+      "daysAgo_other": "{{count}} 天前",
+      "weeksAgo_one": "{{count}} 周前",
+      "weeksAgo_other": "{{count}} 周前",
+      "monthsAgo_one": "{{count}} 个月前",
+      "monthsAgo_other": "{{count}} 个月前"
+    },
+    "modal": {
+      "success": {
+        "title": "申请已提交！",
+        "desc": "您的所有权凭证正在审核中。审核通过后，您的 zai 尊享俱乐部卡将完成铸造，专属会员权益即刻生效。",
+        "done": "完成"
+      },
+      "loading": "正在加载 Experience Card……",
+      "qr": {
+        "badge": "尊享会员",
+        "title": "使用手机扫码拍照",
+        "desc": "手机将打开拍照页面，拍摄完成后照片会自动显示于此处。",
+        "waiting": "等待照片上传……",
+        "back": "← 返回上传选项"
+      },
+      "form": {
+        "badge": "尊享会员",
+        "defaultCardName": "zai 尊享俱乐部卡",
+        "desc": "zai 尊享俱乐部专为购买 zai 产品累计消费超过 CHF 500 的会员开设。如您符合此条件，请通过以下方式上传购买凭证，提交会员申请。",
+        "proofOfOwnership": "所有权凭证",
+        "takePhoto": "拍照",
+        "openCamera": "打开相机",
+        "usePhone": "使用手机",
+        "scanQr": "扫描二维码拍照",
+        "uploadImage": "上传图片",
+        "uploadFormats": "支持 JPG、PNG、WebP 格式",
+        "photoReceived": "已收到手机拍摄的照片",
+        "encryptedReady": "已加密，可提交",
+        "submit": "提交审核",
+        "submitting": "提交中……",
+        "reviewNote": "管理员将审核您的凭证，审核通过后为您铸造会员卡。"
+      },
+      "errors": {
+        "ecUnavailable": "Experience Card 暂不可用。",
+        "ecLoadFailed": "Experience Card 详情加载失败。",
+        "imageTooLarge": "图片大小请控制在 8 MB 以内",
+        "uploadLinkFailed": "上传链接生成失败",
+        "submissionFailed": "提交失败",
+        "uploadExpired": "上传链接已过期，请重试。"
+      }
+    }
+  },
+  "profile": {
+    "loading": "正在加载个人资料...",
+    "fallbackName": "会员",
+    "header": {
+      "eyebrow": "账户",
+      "title": "个人资料",
+      "subtitle": "管理您的个人信息与账户偏好设置。",
+      "edit": "编辑",
+      "saveChanges": "保存更改",
+      "saving": "正在保存..."
+    },
+    "tabs": {
+      "overview": "概览",
+      "purchaseHistory": "购买记录"
+    },
+    "avatar": {
+      "changePhoto": "更换头像",
+      "errors": {
+        "invalidType": "仅支持 JPG、PNG 和 TIFF 格式的图片。",
+        "tooLarge": "图片大小不得超过 5 MB。",
+        "uploadFailed": "照片上传失败。",
+        "readFailed": "无法读取所选文件。"
+      }
+    },
+    "stats": {
+      "products": "产品",
+      "events": "活动"
+    },
+    "tier": {
+      "label": "{{name}}等级",
+      "ptsToNext": "距{{tier}}还差 {{count}} 积分"
+    },
+    "tiers": {
+      "blue": "蓝金",
+      "red": "红金",
+      "black": "黑金",
+      "diamond": "钻石"
+    },
+    "bullets": {
+      "memberSince": "会员起始于 {{date}}",
+      "card": "卡号：{{number}}",
+      "nfcCard": "NFC 卡号：{{id}}",
+      "regionTag": "瑞士法郎 · 阿尔卑斯地区"
+    },
+    "sections": {
+      "personalInformation": "个人信息",
+      "rewardsTier": "奖励与等级",
+      "experienceCard": "Experience Card"
+    },
+    "fields": {
+      "firstName": "名",
+      "familyName": "姓",
+      "dateOfBirth": "出生日期",
+      "phoneNumber": "电话号码",
+      "phonePlaceholder": "79 123 4567",
+      "emailAddress": "电子邮箱",
+      "streetAddress": "街道地址",
+      "postalCode": "邮政编码",
+      "city": "城市",
+      "country": "国家/地区",
+      "selectCountry": "选择国家/地区",
+      "homeAddress": "家庭地址"
+    },
+    "actions": {
+      "cancel": "取消"
+    },
+    "tierDisplay": {
+      "loading": "正在加载…",
+      "progressTo": "距{{tier}}的进度",
+      "maxTierReached": "已达最高等级",
+      "ofPoints": "/ {{max}} 积分",
+      "current": "当前",
+      "max": "最高",
+      "hintNext": "认领一款新雪板（+500 积分）或参加一场活动（+150 积分），加速提升您的等级。",
+      "hintMax": "您已解锁所有等级。继续认领产品和参加活动即可赢取更多积分。",
+      "ptsValue": "{{value}} 积分",
+      "claimProductButton": "认领产品 · +500 积分"
+    },
+    "experienceCard": {
+      "editCardNumber": "编辑卡号",
+      "addCardNumber": "添加卡号",
+      "imageAlt": "zai Experience Card",
+      "cardNumberLabel": "卡号",
+      "cardNumberPlaceholder": "输入卡号或通过 NFC 扫描",
+      "cardNumberDisplayLabel": "卡号",
+      "scanNfc": "扫描 NFC",
+      "scanning": "正在扫描…",
+      "holdCardHint": "请将您的卡靠近设备…",
+      "cancel": "取消",
+      "save": "保存",
+      "saving": "正在保存…",
+      "status": {
+        "title": "状态",
+        "desc": "NFC Experience Card",
+        "active": "已激活",
+        "inactive": "未激活"
+      },
+      "nfc": {
+        "title": "NFC",
+        "desc": "非接触式产品认领与权限访问",
+        "enabled": "已启用",
+        "disabled": "已停用"
+      },
+      "contract": "合约地址"
+    },
+    "alerts": {
+      "updateFailed": "个人资料更新失败",
+      "saveCardNumberFailed": "卡号保存失败",
+      "nfcReadError": "无法读取 NFC 卡，请重试。",
+      "nfcPermissionDenied": "NFC 权限被拒绝，请在浏览器设置中允许访问 NFC。",
+      "nfcFailed": "NFC 读取失败，请确认您的设备已开启 NFC 功能。"
+    },
+    "referral": {
+      "heading": "推荐计划",
+      "description": "分享您的专属码。好友认领首件 zai 产品后，您将获得 200 积分，好友获得 100 积分。",
+      "yourCode": "您的专属推荐码",
+      "stats": {
+        "referralsSent": "已发送推荐",
+        "bonusPoints": "奖励积分",
+        "valueUnlocked": "已解锁价值"
+      },
+      "copyCode": "复制代码",
+      "copied": "已复制",
+      "shareLink": "分享链接",
+      "haveCode": "已有推荐码？",
+      "placeholder": "输入代码（例如 ZAI-XXXX）",
+      "apply": "使用",
+      "applying": "正在使用…",
+      "appliedMessage": "推荐码已生效！首次认领产品即可获得奖励积分。",
+      "invalidCode": "推荐码无效。",
+      "couldNotApply": "无法使用该推荐码。",
+      "referredByPrefix": "推荐码来源："
+    },
+    "purchaseHistory": {
+      "loading": "正在加载…",
+      "emptyTitle": "暂无购买记录",
+      "emptyDesc": "您认领的优惠与收藏品将显示于此。",
+      "deal": "优惠",
+      "collectible": "收藏品",
+      "item": "商品",
+      "free": "免费",
+      "pointsUsed": "-{{count}} 积分已使用",
+      "pointsEarned": "+{{count}} 积分已获得"
+    },
+    "countries": {
+      "Afghanistan": "阿富汗",
+      "Albania": "阿尔巴尼亚",
+      "Algeria": "阿尔及利亚",
+      "Andorra": "安道尔",
+      "Angola": "安哥拉",
+      "Argentina": "阿根廷",
+      "Armenia": "亚美尼亚",
+      "Australia": "澳大利亚",
+      "Austria": "奥地利",
+      "Azerbaijan": "阿塞拜疆",
+      "Bahrain": "巴林",
+      "Bangladesh": "孟加拉国",
+      "Belgium": "比利时",
+      "Bolivia": "玻利维亚",
+      "Bosnia and Herzegovina": "波斯尼亚和黑塞哥维那",
+      "Brazil": "巴西",
+      "Bulgaria": "保加利亚",
+      "Cambodia": "柬埔寨",
+      "Cameroon": "喀麦隆",
+      "Canada": "加拿大",
+      "Chile": "智利",
+      "China": "中国",
+      "Colombia": "哥伦比亚",
+      "Costa Rica": "哥斯达黎加",
+      "Croatia": "克罗地亚",
+      "Cuba": "古巴",
+      "Cyprus": "塞浦路斯",
+      "Czech Republic": "捷克",
+      "Denmark": "丹麦",
+      "Dominican Republic": "多米尼加共和国",
+      "Ecuador": "厄瓜多尔",
+      "Egypt": "埃及",
+      "Estonia": "爱沙尼亚",
+      "Ethiopia": "埃塞俄比亚",
+      "Finland": "芬兰",
+      "France": "法国",
+      "Georgia": "格鲁吉亚",
+      "Germany": "德国",
+      "Ghana": "加纳",
+      "Greece": "希腊",
+      "Guatemala": "危地马拉",
+      "Hong Kong": "中国香港",
+      "Hungary": "匈牙利",
+      "Iceland": "冰岛",
+      "India": "印度",
+      "Indonesia": "印度尼西亚",
+      "Iran": "伊朗",
+      "Iraq": "伊拉克",
+      "Ireland": "爱尔兰",
+      "Israel": "以色列",
+      "Italy": "意大利",
+      "Jamaica": "牙买加",
+      "Japan": "日本",
+      "Jordan": "约旦",
+      "Kazakhstan": "哈萨克斯坦",
+      "Kenya": "肯尼亚",
+      "Kuwait": "科威特",
+      "Latvia": "拉脱维亚",
+      "Lebanon": "黎巴嫩",
+      "Libya": "利比亚",
+      "Liechtenstein": "列支敦士登",
+      "Lithuania": "立陶宛",
+      "Luxembourg": "卢森堡",
+      "Malaysia": "马来西亚",
+      "Malta": "马耳他",
+      "Mexico": "墨西哥",
+      "Moldova": "摩尔多瓦",
+      "Monaco": "摩纳哥",
+      "Mongolia": "蒙古",
+      "Montenegro": "黑山",
+      "Morocco": "摩洛哥",
+      "Mozambique": "莫桑比克",
+      "Netherlands": "荷兰",
+      "New Zealand": "新西兰",
+      "Nigeria": "尼日利亚",
+      "North Macedonia": "北马其顿",
+      "Norway": "挪威",
+      "Oman": "阿曼",
+      "Pakistan": "巴基斯坦",
+      "Panama": "巴拿马",
+      "Paraguay": "巴拉圭",
+      "Peru": "秘鲁",
+      "Philippines": "菲律宾",
+      "Poland": "波兰",
+      "Portugal": "葡萄牙",
+      "Qatar": "卡塔尔",
+      "Romania": "罗马尼亚",
+      "Russia": "俄罗斯",
+      "Saudi Arabia": "沙特阿拉伯",
+      "Senegal": "塞内加尔",
+      "Serbia": "塞尔维亚",
+      "Singapore": "新加坡",
+      "Slovakia": "斯洛伐克",
+      "Slovenia": "斯洛文尼亚",
+      "South Africa": "南非",
+      "South Korea": "韩国",
+      "Spain": "西班牙",
+      "Sri Lanka": "斯里兰卡",
+      "Sweden": "瑞典",
+      "Switzerland": "瑞士",
+      "Taiwan": "中国台湾",
+      "Thailand": "泰国",
+      "Tunisia": "突尼斯",
+      "Turkey": "土耳其",
+      "UAE": "阿联酋",
+      "Uganda": "乌干达",
+      "Ukraine": "乌克兰",
+      "United Kingdom": "英国",
+      "United States": "美国",
+      "Uruguay": "乌拉圭",
+      "Uzbekistan": "乌兹别克斯坦",
+      "Venezuela": "委内瑞拉",
+      "Vietnam": "越南"
+    }
+  },
+  "products": {
+    "header": {
+      "eyebrow": "我的收藏",
+      "title": "您的 zai 收藏",
+      "subtitle": "上传购买凭证即可认领产品。管理员审核通过后，您的产品将显示在此处。",
+      "claimButton": "+ 认领产品"
+    },
+    "itemLabel": {
+      "product": "产品",
+      "productCap": "产品",
+      "card": "卡",
+      "cardCap": "卡"
+    },
+    "notifications": {
+      "pending": {
+        "title": "认领申请审核中",
+        "detail": "{{item}} — 提交于 {{date}}"
+      },
+      "minting": {
+        "title": "正在铸造您的{{item}}…",
+        "detail": "{{item}} — 您的 NFT 正在生成中"
+      },
+      "validated": {
+        "title": "{{item}}已添加至您的{{destination}}！",
+        "detail": "{{item}} — 审核通过于 {{date}}",
+        "destinationCollection": "收藏",
+        "destinationAccount": "账户"
+      },
+      "rejected": {
+        "title": "认领申请被拒绝",
+        "detailWithNote": "{{item}} — {{note}}",
+        "detailNoNote": "{{item}} — 请联系客服了解详情"
+      },
+      "error": {
+        "title": "铸造出错 — 管理员已收到通知",
+        "detail": "{{item}} — {{note}}",
+        "defaultNote": "铸造过程中发生错误"
+      }
+    },
+    "stats": {
+      "productsClaimed": "已认领产品",
+      "insuranceActive": "已激活保险"
+    },
+    "collectionLabel": "您的收藏",
+    "categoryFilter": {
+      "all": "全部"
+    },
+    "categories": {
+      "ski": "滑雪板",
+      "apparel": "服饰",
+      "accessory": "配件"
+    },
+    "claimCard": {
+      "title": "认领产品",
+      "subtitle": "扫描或上传您的凭证"
+    },
+    "card": {
+      "insuredBadge": "已投保",
+      "activateInsurance": "激活保险",
+      "insuranceActive": "保险已激活"
+    },
+    "carousel": {
+      "scrollLeft": "向左滚动",
+      "scrollRight": "向右滚动"
+    },
+    "howToClaim": {
+      "eyebrow": "认领流程",
+      "title": "注册您的 zai 产品",
+      "stepLabel": "步骤 {{num}}",
+      "step1": {
+        "title": "上传购买凭证",
+        "desc": "拍摄您的购买凭证照片，或上传购买证明的图片。"
+      },
+      "step2": {
+        "title": "管理员审核",
+        "desc": "我们的团队将审核您的购买凭证并确认您的认领申请。"
+      },
+      "step3": {
+        "title": "享受专属礼遇",
+        "desc": "审核通过后，您的产品 NFT 即被铸造，您可享受保险、活动及社群等专属权益。"
+      }
+    },
+    "detail": {
+      "price": "价格",
+      "materials": "材质",
+      "category": "类别",
+      "insurance": "保险",
+      "active": "已激活",
+      "notActive": "未激活",
+      "certificate": "保险单号 #{{id}}",
+      "activateInsurance": "激活保险",
+      "noInsuranceNote": "保险仅适用于滑雪板产品。此产品已登记为{{category}}。",
+      "categoryAccessory": "配件",
+      "categoryApparel": "服饰"
+    },
+    "errors": {
+      "failedToLoadProducts": "产品加载失败",
+      "retry": "重试",
+      "failedGenerateUploadLink": "上传链接生成失败",
+      "uploadLinkExpired": "上传链接已过期，请重试。",
+      "imageTooLarge": "图片大小不能超过 8 MB",
+      "pleaseChooseProduct": "请选择您的产品",
+      "submissionFailed": "提交失败",
+      "failedToLoadClaimableProducts": "可认领产品加载失败，请重试。",
+      "failedActivateInsurance": "保险激活失败"
+    },
+    "receiptModal": {
+      "title": "认领产品",
+      "success": {
+        "title": "认领申请已提交！",
+        "desc": "您的购买凭证正在审核中。一旦您的{{item}}通过审核，您将收到通知。",
+        "done": "完成"
+      },
+      "qr": {
+        "scanTitle": "用手机扫码拍照",
+        "scanDesc": "您的手机将打开拍照页面。拍照完成后，照片将自动显示在此处。",
+        "waitingForPhoto": "等待照片上传…",
+        "backToUploadOptions": "← 返回上传选项"
+      },
+      "form": {
+        "intro": "拍摄您的购买凭证照片，或上传图片。管理员将审核并确认您的认领申请。",
+        "productNameLabel": "产品名称",
+        "loadingProducts": "正在加载产品…",
+        "selectProductPlaceholder": "选择产品",
+        "enterProductNamePlaceholder": "输入产品名称",
+        "exampleProductPlaceholder": "例如：ZAI Zermatt GT",
+        "proofOfPurchaseLabel": "购买凭证",
+        "takePhoto": "拍照",
+        "openCamera": "打开相机",
+        "usePhone": "使用手机",
+        "scanQrToTakePhoto": "扫描二维码拍照",
+        "uploadImage": "上传图片",
+        "fileTypes": "JPG、PNG、WebP",
+        "photoReceivedTitle": "已收到手机拍摄的照片",
+        "photoReceivedDesc": "您的凭证照片已安全上传，可以提交。",
+        "cancel": "取消",
+        "submitClaim": "提交认领申请",
+        "submitting": "正在提交…"
+      }
+    },
+    "insuranceModal": {
+      "title": "激活保险",
+      "formIntro": "请填写以下信息以激活{{name}}的保险。",
+      "labels": {
+        "salutation": "称谓",
+        "language": "语言",
+        "firstName": "名",
+        "lastName": "姓",
+        "address": "地址",
+        "zip": "邮编",
+        "city": "城市",
+        "country": "国家",
+        "email": "电子邮箱",
+        "phone": "电话",
+        "deviceInformation": "设备信息",
+        "deviceType": "设备类型",
+        "make": "品牌",
+        "model": "型号",
+        "serialNumber": "序列号",
+        "price": "价格（瑞士法郎）",
+        "length": "长度（厘米）",
+        "purchaseDate": "购买日期"
+      },
+      "cancel": "取消",
+      "activateInsurance": "激活保险",
+      "loading": {
+        "activating": "正在激活保险…",
+        "mayTake": "此过程可能需要一点时间"
+      },
+      "success": {
+        "title": "保险已激活！",
+        "certificateId": "保险单号：",
+        "transactionId": "交易编号：",
+        "done": "完成"
+      },
+      "error": {
+        "tryAgain": "重试",
+        "close": "关闭"
+      }
+    },
+    "salutations": {
+      "mr": "先生",
+      "ms": "女士"
+    },
+    "deviceTypes": {
+      "skiAlpine": "高山滑雪板",
+      "snowboard": "单板滑雪",
+      "crossCountry": "越野滑雪"
+    },
+    "dates": {
+      "unknown": "未知"
+    }
+  },
+  "events": {
+    "header": {
+      "eyebrow": "尊享体验",
+      "title": "zai 专属尊享活动",
+      "subtitle": "尊享卡会员可优先参与我们的专属活动。"
+    },
+    "sections": {
+      "upcoming": "近期活动",
+      "past": "往期活动"
+    },
+    "empty": {
+      "upcomingTitle": "暂无近期活动",
+      "upcomingSubtitle": "敬请期待，全新体验即将呈现。",
+      "pastTitle": "暂无往期活动",
+      "pastSubtitle": "您参加过的活动将在此展示"
+    },
+    "tag": {
+      "demoDay": "试滑日",
+      "factoryInviteOnly": "工厂参观 · 仅限受邀",
+      "partnerEvent": "合作伙伴活动",
+      "community": "社区活动",
+      "fallback": "活动"
+    },
+    "card": {
+      "registered": "已报名",
+      "scrollLeft": "向左滚动",
+      "scrollRight": "向右滚动"
+    },
+    "modal": {
+      "program": "活动流程",
+      "price": "价格",
+      "attendees_one": "{{current}} / {{max}} 位参与者",
+      "attendees_other": "{{current}} / {{max}} 位参与者",
+      "totalToPay": "应付总额",
+      "cancelRegistration": "取消报名",
+      "registerAndPay": "报名并支付",
+      "register": "立即报名",
+      "processing": "处理中…"
+    },
+    "payment": {
+      "loading": "加载中…",
+      "back": "返回",
+      "pay": "支付 {{currency}} {{amount}}",
+      "processing": "处理中…",
+      "securedByStripe": "由 Stripe 提供安全保障 · 支付成功后即确认报名"
+    },
+    "errors": {
+      "loadFailed": "活动加载失败",
+      "startCheckoutFailed": "无法启动支付流程",
+      "registerFailed": "报名失败",
+      "unregisterFailed": "取消报名失败",
+      "checkPaymentDetails": "请检查您的支付信息",
+      "paymentFailed": "支付失败",
+      "finalizeRegistrationFailed": "支付已成功，但我们暂时无法完成您的报名确认。",
+      "finalizeRegistrationFailedRetry": "支付已成功，但我们暂时无法完成您的报名确认。请稍后刷新页面，系统将自动完成处理。",
+      "unexpected": "发生意外错误",
+      "confirmPaymentFailed": "我们无法确认您的支付。如报名未生效，请联系客服支持。",
+      "confirmPaymentFailedServer": "服务器暂时无法确认您的支付。请刷新页面，系统通常会自动完成处理，或联系客服支持。"
+    },
+    "alerts": {
+      "paymentSuccessful": "支付成功！您的报名已确认。"
+    }
+  },
+  "community": {
+    "eyebrow": "zai 生态圈",
+    "title": "社区",
+    "subtitle": "zai 车主组成的全球大家庭 —— 因山而聚。",
+    "tabs": {
+      "feed": "社区",
+      "insights": "zai 洞察",
+      "newBadge": "{{count}} 条新内容"
+    },
+    "feed": {
+      "allStoriesCount_other": "全部动态 · {{count}} 条帖子"
+    },
+    "empty": {
+      "title": "暂无帖子",
+      "desc": "成为第一个分享您的 zai 时刻的人!"
+    },
+    "pagination": {
+      "prev": "← 上一页",
+      "next": "下一页 →",
+      "posts_other": "{{count}} 条帖子"
+    },
+    "share": {
+      "heading": "分享您的旅程",
+      "desc": "上传一张来自您 zai 冬季探险的高清照片,与社区分享性能表现、粉雪状况或高山之巅的故事。",
+      "cta": "上传并分享照片"
+    },
+    "directory": {
+      "heading": "会员名录",
+      "badge": "zai 会员",
+      "registered_other": "已注册 {{count}} 人",
+      "searchPlaceholder": "搜索会员或所在地...",
+      "empty": "未找到会员",
+      "blockedBadge": "已屏蔽",
+      "unblock": "解除屏蔽",
+      "block": "屏蔽",
+      "prev": "‹ 上一页",
+      "next": "下一页 ›",
+      "page": "第 {{current}} 页,共 {{total}} 页"
+    },
+    "follow": {
+      "eyebrow": "关注 zai",
+      "heading": "随时掌握最新动态",
+      "desc": "关注我们的 WhatsApp 频道,获取活动公告、新款发布以及来自达沃斯工坊的独家故事。",
+      "brand": "zai Experience Club",
+      "followers": "1,843 位关注者 · 每周更新",
+      "cta": "关注 WhatsApp 频道",
+      "note": "您将被重新导向至 WhatsApp。不会分享任何个人数据。"
+    },
+    "upload": {
+      "heading": "上传并分享",
+      "dropzone": "点击选择图片",
+      "dropzoneHint": "JPG、PNG 或 TIFF 格式 · 最大 4 MB",
+      "previewAlt": "预览",
+      "captionLabel": "图片说明",
+      "captionPlaceholder": "分享这一刻的故事...",
+      "submit": "上传并分享",
+      "submitting": "正在上传至 IPFS...",
+      "errors": {
+        "invalidType": "仅支持 JPG、PNG 和 TIFF 格式的图片",
+        "tooLarge": "图片大小必须小于 4 MB",
+        "uploadFailed": "上传失败"
+      }
+    },
+    "photo": {
+      "loading": "加载中…",
+      "delete": "删除",
+      "remove": "移除",
+      "deleteAdminTitle": "删除(管理员)",
+      "addReactionTitle": "添加表情回应",
+      "noComments": "暂无评论",
+      "commentPlaceholder": "添加评论...",
+      "post": "发送",
+      "confirmDelete": "删除这张照片?",
+      "confirmDeleteComment": "删除这条评论?",
+      "errors": {
+        "addComment": "评论发送失败",
+        "deletePhoto": "删除失败",
+        "deleteComment": "评论删除失败",
+        "react": "表情回应失败"
+      }
+    },
+    "members": {
+      "confirmBlock": "屏蔽 \"{{name}}\"?请输入原因(可选):",
+      "confirmUnblock": "解除对该会员的屏蔽?",
+      "errors": {
+        "block": "屏蔽会员失败",
+        "unblock": "解除屏蔽失败"
+      }
+    },
+    "insights": {
+      "empty": "暂无故事,敬请期待。",
+      "topStory": "头条故事",
+      "allStories": "全部故事",
+      "video": "视频",
+      "exclusive": "独家",
+      "exclusiveTag": "{{category}} · 独家",
+      "watch": "观看 →",
+      "view": "查看 →",
+      "read": "阅读 →",
+      "viewOriginal": "查看原文 ↗",
+      "mediaType": {
+        "video": "视频",
+        "photo": "照片",
+        "article": "文章",
+        "product_launch": "新品发布"
+      }
+    },
+    "time": {
+      "justNow": "刚刚",
+      "minutesAgo": "{{count}} 分钟前",
+      "hoursAgo": "{{count}} 小时前",
+      "yesterday": "昨天",
+      "daysAgo": "{{count}} 天前",
+      "weeksAgo": "{{count}} 周前"
+    }
+  },
+  "rewards": {
+    "header": {
+      "label": "会员等级",
+      "title": "积分与等级",
+      "description": "通过登记产品和累积体验积分逐级晋升。"
+    },
+    "loading": "正在加载积分信息…",
+    "banner": {
+      "label": "您当前的等级",
+      "tierWord": "等级"
+    },
+    "yourTierBadge": "您的等级",
+    "tierRange": {
+      "withCeiling": "{{floor}} – {{ceiling}} 积分",
+      "noCeiling": "{{floor}}+ 积分"
+    },
+    "tiers": {
+      "blue": {
+        "name": "蓝金",
+        "perks": [
+          "产品注册",
+          "活动资讯订阅",
+          "数字保修凭证"
+        ]
+      },
+      "red": {
+        "name": "红金",
+        "perks": [
+          "活动优先预订",
+          "维护保养折扣",
+          "合作品牌权益",
+          "专属客户支持"
+        ]
+      },
+      "black": {
+        "name": "黑金",
+        "perks": [
+          "VIP 活动邀请",
+          "新品优先发售",
+          "定制适配服务",
+          "尊享合作品牌权益",
+          "推荐好友奖励"
+        ]
+      },
+      "diamond": {
+        "name": "钻石",
+        "perks": [
+          "彭特雷西纳工厂之旅",
+          "专属定制委托",
+          "专属 zai 大使服务",
+          "全部尊享合作品牌权益",
+          "年度 zai 静修体验"
+        ]
+      }
+    },
+    "progress": {
+      "toNextTier": "距{{tier}}等级的进度",
+      "maxTierReached": "已达最高等级",
+      "helperNext": "登记一副新雪板（+500 积分）或参加一场活动（+150 积分），加速晋级进程。",
+      "helperMax": "您已解锁全部等级。继续登记产品和参加活动即可赢取更多积分。",
+      "current": "当前",
+      "max": "最高",
+      "claimButton": "登记产品 · +500 积分"
+    },
+    "highlights": {
+      "sectionTitle": "您的{{tier}}等级专属权益",
+      "insurance": {
+        "title": "免费滑雪保险",
+        "description": "每购买一副新款 zai 雪板，即可享受免费保险。"
+      },
+      "vipEvents": {
+        "title": "VIP 活动礼遇",
+        "description": "优先获邀参加滑雪试用、工厂参观及专属体验活动。"
+      },
+      "partnerElite": {
+        "title": "尊享合作品牌权益",
+        "description": "尊享 Revolut、Ikon Pass、Epic Pass 及 Engadin 的专属礼遇。"
+      }
+    },
+    "activity": {
+      "sectionTitle": "近期动态"
+    },
+    "units": {
+      "pointsValue": "{{value}} 积分"
+    }
+  },
+  "updates": {
+    "common": {
+      "loading": "加载中…",
+      "processing": "处理中…"
+    },
+    "header": {
+      "title": "优惠与收藏品",
+      "memberAccessOnly": "仅限会员使用"
+    },
+    "tabs": {
+      "deals": "优惠",
+      "collectibles": "收藏品空投"
+    },
+    "featured": {
+      "label": "— 精选优惠",
+      "availableHoursOnly": "⊙ 仅剩 {{hours}} 小时",
+      "exclusiveMemberPricing": "会员专享价格",
+      "limitedAvailability": "名额有限",
+      "claimOffer": "立即领取，CHF {{price}}",
+      "newDeal": "新优惠"
+    },
+    "regular": {
+      "memberDealsLabel": "会员优惠",
+      "exclusiveOffers": "专属优惠",
+      "viewAllDeals": "查看所有优惠 →",
+      "membersOnly": "仅限会员",
+      "upToPtsMax_one": "最高可用 {{count}} 积分",
+      "upToPtsMax_other": "最高可用 {{count}} 积分",
+      "saveChf": "节省 CHF {{amount}}",
+      "endsOn": "截止",
+      "applyPoints": "使用积分 →"
+    },
+    "emptyStates": {
+      "noDeals": "暂无可用优惠，敬请期待。",
+      "noCollectibles": "暂无收藏品空投，敬请期待。"
+    },
+    "deal": {
+      "fullPrice": "原价",
+      "yourBalance": "您的积分余额",
+      "pointsToApply": "使用积分",
+      "pts_one": "{{count}} 积分",
+      "pts_other": "{{count}} 积分",
+      "ptsMax_one": "最多 {{count}} 积分",
+      "ptsMax_other": "最多 {{count}} 积分",
+      "summary": {
+        "fullPrice": "原价",
+        "pointsDiscount_one": "积分抵扣（{{count}} 积分）",
+        "pointsDiscount_other": "积分抵扣（{{count}} 积分）",
+        "youPay": "应付金额"
+      },
+      "continueToPayment": "继续付款",
+      "pointsNote": "1 积分 = CHF 0.01 · 确认后将从您的余额中扣除积分",
+      "totalToPay": "应付总额"
+    },
+    "payment": {
+      "back": "返回",
+      "pay": "支付 CHF {{amount}}",
+      "securedByStripe": "由 Stripe 提供安全保障",
+      "errors": {
+        "fulfillmentFailed": "支付已成功，但订单未能完成处理。",
+        "checkDetails": "请检查您的支付信息",
+        "paymentFailed": "支付失败",
+        "fulfillmentFailedRetry": "支付已成功，但订单未能完成处理。请稍后刷新页面，系统将自动完成处理。",
+        "unexpected": "发生意外错误"
+      }
+    },
+    "alerts": {
+      "paymentCancelled": "支付已取消。",
+      "paymentSuccessful": "支付成功！您的积分已更新。",
+      "confirmFailedGeneric": "我们无法确认您的支付。如积分或商品未到账，请联系客服。",
+      "confirmFailedNetwork": "我们无法与服务器确认您的支付。请刷新页面，系统通常会自动解决，或联系客服。",
+      "createPaymentFailed": "创建支付失败",
+      "somethingWrong": "出现问题，请稍后重试",
+      "claimed": "领取成功！+{{points}} 积分",
+      "claimFailed": "领取失败"
+    },
+    "collectibles": {
+      "dropsLabel": "收藏品空投",
+      "piecesSet": "{{count}} 件套 · 第 {{season}} 季",
+      "collectDesc": "收集专属收藏品空投，赚取积分并解锁专属会员奖励",
+      "yourCollection": "我的收藏",
+      "locked": "已锁定",
+      "editionClosed": "版次已关闭",
+      "claimed": "已领取 ✓",
+      "availableNow": "现已可领取",
+      "ptsEarned": "已获积分",
+      "ptsToEarn": "可获积分",
+      "claimNow": "立即领取"
+    }
+  },
+  "admin": {
+    "header": {
+      "label": "管理",
+      "title": "认领申请",
+      "subtitle": "审核购买凭证并验证产品认领。"
+    },
+    "accessRequired": "需要管理员权限。",
+    "filters": {
+      "pending": "待处理",
+      "validated": "已验证",
+      "rejected": "已拒绝",
+      "all": "全部",
+      "count_other": "{{count}} 项申请"
+    },
+    "status": {
+      "pending": "待处理",
+      "minting": "铸造中",
+      "validated": "已验证",
+      "rejected": "已拒绝",
+      "error": "错误"
+    },
+    "loading": "正在加载申请…",
+    "errors": {
+      "retry": "重试",
+      "failedToLoadClaims": "加载申请失败",
+      "validationFailed": "验证失败",
+      "rejectionFailed": "拒绝操作失败",
+      "mintStartFailed": "无法开始铸造：{{error}}",
+      "unknownError": "未知错误"
+    },
+    "empty": {
+      "noClaimsFiltered": "暂无{{status}}的认领申请。",
+      "noClaimsAll": "暂无认领申请。"
+    },
+    "list": {
+      "product": "产品",
+      "unnamedProduct": "未命名产品",
+      "submitted": "提交于 {{date}}",
+      "proofAlt": "凭证"
+    },
+    "pagination": {
+      "prev": "← 上一页",
+      "next": "下一页 →"
+    },
+    "modal": {
+      "reviewTitle": "审核认领申请"
+    },
+    "claim": {
+      "claimId": "申请编号：",
+      "submittedBy": "提交人",
+      "proofOfPurchase": "购买凭证",
+      "proofAlt": "购买凭证",
+      "clickToZoom": "点击放大",
+      "status": "状态：{{status}}",
+      "note": "备注：{{note}}",
+      "mintTx": "铸造交易：",
+      "productToMint": "待铸造产品",
+      "selectProductToMint": "选择要铸造的产品",
+      "experienceCardName": "zai 体验俱乐部卡",
+      "membershipCardAuto": "会员卡 · 自动选择",
+      "selectProductPlaceholder": "— 选择产品 —",
+      "adminNoteLabel": "管理员备注（可选）",
+      "notePlaceholder": "添加备注…",
+      "reject": "拒绝",
+      "validateAndMint": "验证并铸造",
+      "processing": "处理中…"
+    }
+  },
+  "adminStore": {
+    "accessDenied": "需要管理员权限。",
+    "header": {
+      "badge": "管理",
+      "title": "商店与内容",
+      "subtitle": "管理优惠活动、收藏卡系列和媒体报道。"
+    },
+    "tabs": {
+      "deals": "优惠",
+      "collectibles": "收藏卡",
+      "media": "媒体与报道"
+    },
+    "common": {
+      "loading": "加载中…",
+      "cancel": "取消",
+      "saving": "保存中…",
+      "create": "创建",
+      "update": "更新",
+      "edit": "编辑",
+      "remove": "移除",
+      "saveFailed": "保存失败",
+      "featured": "精选",
+      "selectPlaceholder": "选择产品…",
+      "clearSelection": "清除选择",
+      "searchPlaceholder": "搜索产品…",
+      "noProductsMatch": "没有匹配 \"{{search}}\" 的产品"
+    },
+    "list": {
+      "dealsCount_one": "{{count}} 个优惠",
+      "dealsCount_other": "{{count}} 个优惠",
+      "storiesCount_one": "{{count}} 篇报道",
+      "storiesCount_other": "{{count}} 篇报道",
+      "newDeal": "+ 新建优惠",
+      "newStory": "+ 新建报道",
+      "noDeals": "暂无优惠。创建您的第一个优惠。",
+      "noStories": "暂无报道。创建您的第一篇报道。",
+      "nft": "NFT",
+      "endsOn": "截止于 {{date}}",
+      "spotsLeft": "{{left}}/{{total}} 个名额"
+    },
+    "dealForm": {
+      "editTitle": "编辑优惠",
+      "newTitle": "新建优惠",
+      "linkProduct": "关联产品（可选 — 自动填充字段）",
+      "inheritedFrom": "已继承产品信息",
+      "nftAutoMint": "已启用 NFT 自动铸造",
+      "title": "标题",
+      "titlePlaceholder": "zai 太阳镜",
+      "description": "描述",
+      "category": "分类",
+      "categoryOptions": {
+        "accessories": "配件",
+        "apparel": "服饰",
+        "skis": "雪板",
+        "event": "活动",
+        "experience": "体验"
+      },
+      "price": "价格（瑞士法郎）",
+      "maxPointsDiscount": "最高积分抵扣",
+      "totalSpots": "名额总数（0 表示不限）",
+      "imageUrl": "图片链接",
+      "endsAt": "结束时间",
+      "confirmDeactivate": "确定要停用此优惠吗？"
+    },
+    "collectibles": {
+      "infoText": "收藏卡系列通过数据库创建，并与 Engage NFT 关联。此面板显示所有系列和卡片的当前状态。如需添加新系列或卡片，请直接使用数据库或联系开发团队。",
+      "noSeries": "未找到收藏卡系列。",
+      "season": "第 {{season}} 季",
+      "cardsCount_one": "{{count}} 张卡片",
+      "cardsCount_other": "{{count}} 张卡片",
+      "claimedByYou": "您已领取 {{count}} 张",
+      "pts": "{{count}} 积分",
+      "claimed": "✓ 已领取",
+      "closed": "已结束"
+    },
+    "mediaForm": {
+      "editTitle": "编辑报道",
+      "newTitle": "新建报道",
+      "title": "标题",
+      "titlePlaceholder": "工作坊：滑雪板调校大师课",
+      "type": "类型",
+      "typeOptions": {
+        "article": "文章",
+        "video": "视频",
+        "photo": "图片",
+        "productLaunch": "产品发布"
+      },
+      "category": "分类",
+      "categoryOptions": {
+        "editorial": "专题",
+        "behindTheScenes": "幕后花絮",
+        "tech": "技术",
+        "lifestyle": "生活方式",
+        "product": "产品"
+      },
+      "description": "描述",
+      "mediaUrl": "媒体链接（视频/文章）",
+      "thumbnailUrl": "缩略图链接",
+      "duration": "时长（视频用）",
+      "publishedAt": "发布时间",
+      "exclusive": "会员专享",
+      "confirmRemove": "确定要移除此报道吗？"
     }
   }
 }

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAppContext } from '../../context/AppContext';
 import { apiService } from '../../services/api';
 import Button from '../Common/Button';
@@ -85,15 +86,19 @@ interface PendingClaimRequest {
 }
 
 const DEVICE_TYPES = [
-  { id: 1, label: 'Ski Alpine' },
-  { id: 2, label: 'Snowboard' },
-  { id: 3, label: 'Cross-country' },
+  { id: 1, key: 'skiAlpine' },
+  { id: 2, key: 'snowboard' },
+  { id: 3, key: 'crossCountry' },
 ];
 
 const SALUTATIONS = [
-  { id: 1, label: 'Mr.' },
-  { id: 2, label: 'Ms.' },
+  { id: 1, key: 'mr' },
+  { id: 2, key: 'ms' },
 ];
+
+/* Minimal translate-function shape used by module-scope helpers below
+   (avoids depending on react-i18next's exact TFunction generic signature). */
+type TFn = (key: string, opts?: Record<string, any>) => string;
 
 /* ───── Styles ───── */
 
@@ -147,10 +152,10 @@ const sideArrowBase: React.CSSProperties = {
 
 /* ───── Helpers ───── */
 
-const formatClaimedDate = (d?: string | null): string => {
-  if (!d) return 'Unknown';
+const formatClaimedDate = (t: TFn, d?: string | null): string => {
+  if (!d) return t('products.dates.unknown');
   const dt = new Date(d);
-  if (isNaN(dt.getTime())) return 'Unknown';
+  if (isNaN(dt.getTime())) return t('products.dates.unknown');
   return dt.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
 };
 
@@ -161,10 +166,10 @@ const isExperienceCard = (name?: string): boolean => {
   const n = (name || '').toLowerCase();
   return n.includes('experience') && n.includes('card');
 };
-const getItemLabel = (name?: string): string =>
-  isExperienceCard(name) ? 'card' : 'product';
-const getItemLabelCap = (name?: string): string =>
-  isExperienceCard(name) ? 'Card' : 'Product';
+const getItemLabel = (t: TFn, name?: string): string =>
+  isExperienceCard(name) ? t('products.itemLabel.card') : t('products.itemLabel.product');
+const getItemLabelCap = (t: TFn, name?: string): string =>
+  isExperienceCard(name) ? t('products.itemLabel.cardCap') : t('products.itemLabel.productCap');
 
 /* ── Robust price display ──
    The backend may return price as "0" after a metadata update while the real
@@ -206,11 +211,13 @@ const getCategory = (name?: string, collection?: string, type?: string): Categor
 // Insurance is only available for ski products.
 const categorySupportsInsurance = (cat: Category) => cat === 'ski';
 
-const CATEGORY_META: Record<Category, { label: string; badgeBg: string }> = {
-  ski:       { label: 'SKI',       badgeBg: 'rgba(10,10,10,0.78)' },
-  apparel:   { label: 'APPAREL',   badgeBg: 'rgba(106,106,106,0.78)' },
-  accessory: { label: 'ACCESSORY', badgeBg: 'rgba(122,34,46,0.82)' },
+const CATEGORY_META: Record<Category, { key: string; badgeBg: string }> = {
+  ski:       { key: 'ski',       badgeBg: 'rgba(10,10,10,0.78)' },
+  apparel:   { key: 'apparel',   badgeBg: 'rgba(106,106,106,0.78)' },
+  accessory: { key: 'accessory', badgeBg: 'rgba(122,34,46,0.82)' },
 };
+
+const getCategoryLabel = (t: TFn, category: Category): string => t(`products.categories.${CATEGORY_META[category].key}`);
 
 const CATEGORY_ORDER: Category[] = ['ski', 'apparel', 'accessory'];
 
@@ -219,29 +226,32 @@ const MAX_GRID_CARDS = 3;
 /* ───── Card sub-components (module scope = stable identity, so background
    refreshes re-render in place instead of remounting and reloading images) ───── */
 
-const ClaimCard: React.FC<{ onClaim: () => void; style?: React.CSSProperties }> = ({ onClaim, style: extraStyle }) => (
-  <div
-    onClick={onClaim}
-    style={{
-      height: 300,
-      border: `2px dashed ${C.border}`, borderRadius: 8,
-      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-      cursor: 'pointer', transition: 'border-color 0.2s, background 0.2s',
-      ...extraStyle,
-    }}
-    onMouseEnter={e => { e.currentTarget.style.borderColor = C.red; e.currentTarget.style.background = C.surface; }}
-    onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.background = 'transparent'; }}
-  >
-    <div style={{
-      width: 48, height: 48, borderRadius: '50%', border: `2px solid ${C.red}`,
-      display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12,
-    }}>
-      <span style={{ fontSize: 24, color: C.red, lineHeight: 1 }}>+</span>
+const ClaimCard: React.FC<{ onClaim: () => void; style?: React.CSSProperties }> = ({ onClaim, style: extraStyle }) => {
+  const { t } = useTranslation();
+  return (
+    <div
+      onClick={onClaim}
+      style={{
+        height: 300,
+        border: `2px dashed ${C.border}`, borderRadius: 8,
+        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+        cursor: 'pointer', transition: 'border-color 0.2s, background 0.2s',
+        ...extraStyle,
+      }}
+      onMouseEnter={e => { e.currentTarget.style.borderColor = C.red; e.currentTarget.style.background = C.surface; }}
+      onMouseLeave={e => { e.currentTarget.style.borderColor = C.border; e.currentTarget.style.background = 'transparent'; }}
+    >
+      <div style={{
+        width: 48, height: 48, borderRadius: '50%', border: `2px solid ${C.red}`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 12,
+      }}>
+        <span style={{ fontSize: 24, color: C.red, lineHeight: 1 }}>+</span>
+      </div>
+      <span style={{ fontSize: 13, fontWeight: 600, color: C.mid }}>{t('products.claimCard.title')}</span>
+      <span style={{ fontSize: 11, color: C.gray, marginTop: 4 }}>{t('products.claimCard.subtitle')}</span>
     </div>
-    <span style={{ fontSize: 13, fontWeight: 600, color: C.mid }}>Claim a Product</span>
-    <span style={{ fontSize: 11, color: C.gray, marginTop: 4 }}>Scan or upload your receipt</span>
-  </div>
-);
+  );
+};
 
 const ProductCard: React.FC<{
   product: Product;
@@ -249,8 +259,10 @@ const ProductCard: React.FC<{
   onActivateInsurance: (p: Product) => void;
   style?: React.CSSProperties;
 }> = ({ product, onSelect, onActivateInsurance, style: extraStyle }) => {
+  const { t } = useTranslation();
   const category = getCategory(product.name, product.collection, product.type);
   const cat = CATEGORY_META[category];
+  const catLabel = getCategoryLabel(t, category);
   const canInsure = categorySupportsInsurance(category);
   const displayPrice = getDisplayPrice(product.price, product.priceRaw);
 
@@ -281,7 +293,7 @@ const ProductCard: React.FC<{
             background: 'rgba(76,175,125,0.9)', color: '#fff', fontSize: 8, fontWeight: 700,
             letterSpacing: '0.15em', textTransform: 'uppercase',
             padding: '3px 8px', borderRadius: 2,
-          }}>INSURED</div>
+          }}>{t('products.card.insuredBadge')}</div>
         )}
         {/* Category badge */}
         <div style={{
@@ -292,7 +304,7 @@ const ProductCard: React.FC<{
           padding: '3px 8px', borderRadius: 2,
           backdropFilter: 'blur(4px)',
         }}>
-          {cat.label}
+          {catLabel}
         </div>
       </div>
 
@@ -316,7 +328,7 @@ const ProductCard: React.FC<{
           color: product.insurance?.active ? C.green : C.gray,
         }}>
           <span style={{ width: 6, height: 6, borderRadius: '50%', background: product.insurance?.active ? C.green : C.gray }} />
-          {product.insurance?.active ? 'INSURED' : ''}
+          {product.insurance?.active ? t('products.card.insuredBadge') : ''}
         </div>
       </div>
 
@@ -334,7 +346,7 @@ const ProductCard: React.FC<{
               onMouseEnter={e => (e.currentTarget.style.color = C.red)}
               onMouseLeave={e => (e.currentTarget.style.color = C.mid)}
             >
-              ACTIVATE INSURANCE <span style={{ fontSize: 14 }}>→</span>
+              {t('products.card.activateInsurance')} <span style={{ fontSize: 14 }}>→</span>
             </div>
           ) : (
             <div style={{
@@ -342,7 +354,7 @@ const ProductCard: React.FC<{
               fontSize: 11, fontWeight: 600, letterSpacing: '0.05em', color: C.green,
               display: 'flex', alignItems: 'center', gap: 4,
             }}>
-              INSURANCE ACTIVE <span style={{ fontSize: 14 }}>✓</span>
+              {t('products.card.insuranceActive')} <span style={{ fontSize: 14 }}>✓</span>
             </div>
           )
         ) : (
@@ -354,7 +366,7 @@ const ProductCard: React.FC<{
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={C.gray} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/>
             </svg>
-            {cat.label}
+            {catLabel}
           </div>
         )}
       </div>
@@ -365,6 +377,7 @@ const ProductCard: React.FC<{
 /* ───── Component ───── */
 
 const Products: React.FC = () => {
+  const { t } = useTranslation();
   const { user } = useAppContext();
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -558,7 +571,7 @@ const Products: React.FC = () => {
       }
     } catch (err: any) {
       console.error('Error fetching products:', err);
-      if (!background) setError(err.response?.data?.error || 'Failed to load products');
+      if (!background) setError(err.response?.data?.error || t('products.errors.failedToLoadProducts'));
     } finally {
       if (!background) setIsLoading(false);
     }
@@ -634,10 +647,10 @@ const Products: React.FC = () => {
         setShowQrLink(true);
         setQrPolling(true);
       } else {
-        setReceiptError('Failed to generate upload link');
+        setReceiptError(t('products.errors.failedGenerateUploadLink'));
       }
     } catch (err: any) {
-      setReceiptError('Failed to generate upload link');
+      setReceiptError(t('products.errors.failedGenerateUploadLink'));
     }
   };
 
@@ -661,7 +674,7 @@ const Products: React.FC = () => {
       } catch (err: any) {
         if (err?.response?.status === 410) {
           setQrPolling(false);
-          setReceiptError('Upload link expired. Please try again.');
+          setReceiptError(t('products.errors.uploadLinkExpired'));
           setShowQrLink(false);
           if (uploadPollRef.current) clearInterval(uploadPollRef.current);
         }
@@ -684,10 +697,10 @@ const Products: React.FC = () => {
       if (payload?.success) {
         setClaimableRwas(payload.data || []);
       } else {
-        setClaimableError(payload?.error || 'Failed to load claimable products');
+        setClaimableError(payload?.error || t('products.errors.failedToLoadClaimableProducts'));
       }
     } catch (err: any) {
-      const msg = err?.response?.data?.error || err?.message || 'Failed to load claimable products. Please try again.';
+      const msg = err?.response?.data?.error || err?.message || t('products.errors.failedToLoadClaimableProducts');
       setClaimableError(msg);
     } finally {
       setClaimableLoading(false);
@@ -716,7 +729,7 @@ const Products: React.FC = () => {
     if (!file) return;
 
     if (file.size > 8 * 1024 * 1024) {
-      setReceiptError('Image must be under 8 MB');
+      setReceiptError(t('products.errors.imageTooLarge'));
       return;
     }
 
@@ -731,7 +744,7 @@ const Products: React.FC = () => {
   const handleReceiptSubmit = async () => {
     if (!receiptImage && !receiptCid) return;
     if (!receiptProductId.trim() && !receiptProductName.trim()) {
-      setReceiptError('Please choose your product');
+      setReceiptError(t('products.errors.pleaseChooseProduct'));
       return;
     }
     setReceiptSubmitting(true);
@@ -765,10 +778,10 @@ const Products: React.FC = () => {
         // any other claims) instead of waiting for the 15s poll.
         fetchClaimRequests();
       } else {
-        setReceiptError(payload?.error || 'Submission failed');
+        setReceiptError(payload?.error || t('products.errors.submissionFailed'));
       }
     } catch (err: any) {
-      setReceiptError(err?.response?.data?.error || err?.message || 'Submission failed');
+      setReceiptError(err?.response?.data?.error || err?.message || t('products.errors.submissionFailed'));
     } finally {
       setReceiptSubmitting(false);
     }
@@ -796,12 +809,12 @@ const Products: React.FC = () => {
     try {
       const response = await apiService.post(`/products/${insuranceProduct.id}/activate-insurance`, insuranceForm);
       const payload = response.data as any;
-      if (!payload?.success) throw new Error(payload?.error || 'Insurance activation failed');
+      if (!payload?.success) throw new Error(payload?.error || t('products.errors.failedActivateInsurance'));
       setInsuranceResult({ certificateId: payload.certificateId, transactionId: payload.transactionId });
       setInsuranceStep('success');
       fetchUserProducts();
     } catch (err: any) {
-      setInsuranceError(err?.response?.data?.error || err?.message || 'Failed to activate insurance');
+      setInsuranceError(err?.response?.data?.error || err?.message || t('products.errors.failedActivateInsurance'));
       setInsuranceStep('error');
     }
   };
@@ -838,7 +851,7 @@ const Products: React.FC = () => {
         <div style={{ maxWidth: 1100, margin: '0 auto', textAlign: 'center', paddingTop: 80 }}>
           <div style={{ fontSize: 48, marginBottom: 16 }}>!</div>
           <p style={{ fontSize: 15, color: C.gray, marginBottom: 24 }}>{error}</p>
-          <Button onClick={() => fetchUserProducts()}>Retry</Button>
+          <Button onClick={() => fetchUserProducts()}>{t('products.errors.retry')}</Button>
         </div>
       </div>
     );
@@ -861,15 +874,15 @@ const Products: React.FC = () => {
           marginBottom: '2.5rem', paddingBottom: '2rem', borderBottom: bdr,
         }}>
           <div>
-            <div style={sectionLabel}>my collection</div>
+            <div style={sectionLabel}>{t('products.header.eyebrow')}</div>
             <h1 style={{
               fontSize: 'clamp(32px, 4vw, 40px)', fontWeight: 300,
               lineHeight: 1.15, margin: '6px 0 6px', color: C.black,
             }}>
-              Your zai Collection
+              {t('products.header.title')}
             </h1>
             <p style={{ color: C.gray, fontSize: '13px', margin: 0, maxWidth: 480 }}>
-              Claim products by uploading your proof of purchase. An admin will validate your claim and your product will appear here.
+              {t('products.header.subtitle')}
             </p>
           </div>
           <button
@@ -884,7 +897,7 @@ const Products: React.FC = () => {
             onMouseEnter={e => (e.currentTarget.style.background = C.burgundy)}
             onMouseLeave={e => (e.currentTarget.style.background = C.red)}
           >
-            + Claim Product
+            {t('products.header.claimButton')}
           </button>
         </div>
 
@@ -902,10 +915,13 @@ const Products: React.FC = () => {
                 <span style={{ fontSize: 18, flexShrink: 0 }}>⏳</span>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: C.black }}>
-                    Claim pending review
+                    {t('products.notifications.pending.title')}
                   </div>
                   <div style={{ fontSize: 11, color: C.gray, marginTop: 2 }}>
-                    {c.productName || getItemLabelCap(c.productName)} — submitted {formatClaimedDate(c.createdAt)}
+                    {t('products.notifications.pending.detail', {
+                      item: c.productName || getItemLabelCap(t, c.productName),
+                      date: formatClaimedDate(t, c.createdAt),
+                    })}
                   </div>
                 </div>
               </div>
@@ -921,10 +937,10 @@ const Products: React.FC = () => {
                 <span style={{ fontSize: 18, flexShrink: 0 }}>⛏️</span>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: C.black }}>
-                    Minting your {getItemLabel(c.productName)}…
+                    {t('products.notifications.minting.title', { item: getItemLabel(t, c.productName) })}
                   </div>
                   <div style={{ fontSize: 11, color: C.gray, marginTop: 2 }}>
-                    {c.productName || getItemLabelCap(c.productName)} — your NFT is being created
+                    {t('products.notifications.minting.detail', { item: c.productName || getItemLabelCap(t, c.productName) })}
                   </div>
                 </div>
               </div>
@@ -940,10 +956,18 @@ const Products: React.FC = () => {
                 <span style={{ fontSize: 18, flexShrink: 0 }}>✅</span>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: C.green }}>
-                    {getItemLabelCap(c.productName)} added to your {isExperienceCard(c.productName) ? 'account' : 'collection'}!
+                    {t('products.notifications.validated.title', {
+                      item: getItemLabelCap(t, c.productName),
+                      destination: isExperienceCard(c.productName)
+                        ? t('products.notifications.validated.destinationAccount')
+                        : t('products.notifications.validated.destinationCollection'),
+                    })}
                   </div>
                   <div style={{ fontSize: 11, color: C.gray, marginTop: 2 }}>
-                    {c.productName || getItemLabelCap(c.productName)} — validated {c.reviewedAt ? new Date(c.reviewedAt).toLocaleDateString() : ''}
+                    {t('products.notifications.validated.detail', {
+                      item: c.productName || getItemLabelCap(t, c.productName),
+                      date: c.reviewedAt ? new Date(c.reviewedAt).toLocaleDateString() : '',
+                    })}
                   </div>
                 </div>
                 <button
@@ -966,11 +990,12 @@ const Products: React.FC = () => {
                 <span style={{ fontSize: 18, flexShrink: 0 }}>❌</span>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: '#d44' }}>
-                    Claim rejected
+                    {t('products.notifications.rejected.title')}
                   </div>
                   <div style={{ fontSize: 11, color: C.gray, marginTop: 2 }}>
-                    {c.productName || getItemLabelCap(c.productName)}
-                    {c.adminNote ? ` — ${c.adminNote}` : ' — contact support for details'}
+                    {c.adminNote
+                      ? t('products.notifications.rejected.detailWithNote', { item: c.productName || getItemLabelCap(t, c.productName), note: c.adminNote })
+                      : t('products.notifications.rejected.detailNoNote', { item: c.productName || getItemLabelCap(t, c.productName) })}
                   </div>
                 </div>
                 <button
@@ -993,10 +1018,13 @@ const Products: React.FC = () => {
                 <span style={{ fontSize: 18, flexShrink: 0 }}>⚠️</span>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: '#ff6400' }}>
-                    Minting error — admin notified
+                    {t('products.notifications.error.title')}
                   </div>
                   <div style={{ fontSize: 11, color: C.gray, marginTop: 2 }}>
-                    {c.productName || getItemLabelCap(c.productName)} — {c.adminNote || 'an error occurred during minting'}
+                    {t('products.notifications.error.detail', {
+                      item: c.productName || getItemLabelCap(t, c.productName),
+                      note: c.adminNote || t('products.notifications.error.defaultNote'),
+                    })}
                   </div>
                 </div>
                 <button
@@ -1021,30 +1049,30 @@ const Products: React.FC = () => {
             <span style={{ fontSize: 16, color: C.mid }}>■</span>
             <div>
               <div style={{ fontSize: 28, fontWeight: 300, color: C.black }}>{totalClaimed}</div>
-              <div style={lbl}>Products Claimed</div>
+              <div style={lbl}>{t('products.stats.productsClaimed')}</div>
             </div>
           </div>
           <div style={{ padding: '20px 24px', display: 'flex', alignItems: 'center', gap: 10 }}>
             <span style={{ fontSize: 16, color: C.green }}>●</span>
             <div>
               <div style={{ fontSize: 28, fontWeight: 300, color: C.black }}>{activeInsurances}</div>
-              <div style={lbl}>Insurance Active</div>
+              <div style={lbl}>{t('products.stats.insuranceActive')}</div>
             </div>
           </div>
         </div>
 
         {/* ══════ COLLECTION LABEL ══════ */}
-        <div style={sectionLabel}>your collection</div>
+        <div style={sectionLabel}>{t('products.collectionLabel')}</div>
         <div style={{ height: 16 }} />
 
         {/* ══════ CATEGORY FILTER ══════ */}
         {products.length > 0 && (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
             {([
-              { key: 'all' as const, label: 'All', count: products.length },
+              { key: 'all' as const, label: t('products.categoryFilter.all'), count: products.length },
               ...CATEGORY_ORDER
                 .filter(c => categoryCounts[c] > 0)
-                .map(c => ({ key: c, label: CATEGORY_META[c].label, count: categoryCounts[c] })),
+                .map(c => ({ key: c, label: getCategoryLabel(t, c), count: categoryCounts[c] })),
             ]).map(tab => {
               const active = activeCategory === tab.key;
               return (
@@ -1097,7 +1125,7 @@ const Products: React.FC = () => {
                 style={{ ...sideArrowBase, left: isMobile ? 0 : -18 }}
                 onMouseEnter={e => { e.currentTarget.style.background = C.pureWhite; e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.22)'; }}
                 onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.92)'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)'; }}
-                aria-label="Scroll left"
+                aria-label={t('products.carousel.scrollLeft')}
               >
                 ‹
               </button>
@@ -1110,7 +1138,7 @@ const Products: React.FC = () => {
                 style={{ ...sideArrowBase, right: isMobile ? 0 : -18 }}
                 onMouseEnter={e => { e.currentTarget.style.background = C.pureWhite; e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.22)'; }}
                 onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.92)'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)'; }}
-                aria-label="Scroll right"
+                aria-label={t('products.carousel.scrollRight')}
               >
                 ›
               </button>
@@ -1169,10 +1197,10 @@ const Products: React.FC = () => {
             fontSize: '10px', letterSpacing: '0.3em', textTransform: 'uppercase',
             color: C.gray, marginBottom: 8,
           }}>
-            how to claim
+            {t('products.howToClaim.eyebrow')}
           </div>
           <h2 style={{ fontSize: 'clamp(22px, 4vw, 26px)', fontWeight: 300, margin: '0 0 40px', color: '#fff' }}>
-            Register your zai product
+            {t('products.howToClaim.title')}
           </h2>
 
           <div style={{
@@ -1182,18 +1210,18 @@ const Products: React.FC = () => {
             {[
               {
                 step: '01',
-                title: 'Upload your receipt',
-                desc: 'Take a photo of your purchase receipt or upload an image of your proof of purchase.',
+                title: t('products.howToClaim.step1.title'),
+                desc: t('products.howToClaim.step1.desc'),
               },
               {
                 step: '02',
-                title: 'Admin review',
-                desc: 'Our team reviews your proof of purchase and validates your claim.',
+                title: t('products.howToClaim.step2.title'),
+                desc: t('products.howToClaim.step2.desc'),
               },
               {
                 step: '03',
-                title: 'Enjoy benefits',
-                desc: 'Once validated, your product NFT is minted and you can access insurance, events, and community.',
+                title: t('products.howToClaim.step3.title'),
+                desc: t('products.howToClaim.step3.desc'),
               },
             ].map((item) => (
               <div key={item.step} style={{
@@ -1203,7 +1231,7 @@ const Products: React.FC = () => {
                   fontSize: '10px', letterSpacing: '0.3em', textTransform: 'uppercase',
                   color: C.red, marginBottom: 12, fontWeight: 600,
                 }}>
-                  step {item.step}
+                  {t('products.howToClaim.stepLabel', { num: item.step })}
                 </div>
                 <div style={{ fontSize: 16, fontWeight: 500, color: '#fff', marginBottom: 8 }}>
                   {item.title}
@@ -1221,7 +1249,7 @@ const Products: React.FC = () => {
       {/* ════════════ PRODUCT DETAIL MODAL ════════════ */}
       {selectedProduct && (() => {
         const detailCategory = getCategory(selectedProduct.name, selectedProduct.collection, selectedProduct.type);
-        const detailMeta = CATEGORY_META[detailCategory];
+        const detailLabel = getCategoryLabel(t, detailCategory);
         const detailIsSki = detailCategory === 'ski';
         const detailPrice = getDisplayPrice(selectedProduct.price, selectedProduct.priceRaw);
         return (
@@ -1259,19 +1287,19 @@ const Products: React.FC = () => {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 {detailPrice && (
                   <div>
-                    <div style={lbl}>Price</div>
+                    <div style={lbl}>{t('products.detail.price')}</div>
                     <div style={{ fontSize: 14, fontWeight: 600 }}>{selectedProduct.currency || 'CHF'} {detailPrice}</div>
                   </div>
                 )}
                 {selectedProduct.materials && (
                   <div>
-                    <div style={lbl}>Materials</div>
+                    <div style={lbl}>{t('products.detail.materials')}</div>
                     <div style={{ fontSize: 13 }}>{selectedProduct.materials}</div>
                   </div>
                 )}
                 {/* "Claimed" row removed — product is in the collection so it's self-evident */}
                 <div>
-                  <div style={lbl}>Category</div>
+                  <div style={lbl}>{t('products.detail.category')}</div>
                   <div style={{
                     display: 'inline-flex', alignItems: 'center', gap: 4,
                     fontSize: 12, fontWeight: 600,
@@ -1282,14 +1310,14 @@ const Products: React.FC = () => {
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <line x1="12" y1="2" x2="12" y2="22"/>
                         </svg>
-                        {detailMeta.label}
+                        {detailLabel}
                       </>
                     ) : (
                       <>
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={C.gray} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/>
                         </svg>
-                        {detailMeta.label}
+                        {detailLabel}
                       </>
                     )}
                   </div>
@@ -1303,7 +1331,7 @@ const Products: React.FC = () => {
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                 }}>
                   <div>
-                    <div style={lbl}>Insurance</div>
+                    <div style={lbl}>{t('products.detail.insurance')}</div>
                     <div style={{
                       display: 'inline-flex', alignItems: 'center', gap: 6,
                       fontSize: 13, fontWeight: 600, marginTop: 4,
@@ -1313,11 +1341,11 @@ const Products: React.FC = () => {
                         width: 8, height: 8, borderRadius: '50%',
                         background: selectedProduct.insurance?.active ? C.green : C.gray,
                       }} />
-                      {selectedProduct.insurance?.active ? 'Active' : 'Not Active'}
+                      {selectedProduct.insurance?.active ? t('products.detail.active') : t('products.detail.notActive')}
                     </div>
                     {selectedProduct.insurance?.certificateId && (
                       <div style={{ fontSize: 11, color: C.gray, marginTop: 4 }}>
-                        Certificate #{selectedProduct.insurance.certificateId}
+                        {t('products.detail.certificate', { id: selectedProduct.insurance.certificateId })}
                       </div>
                     )}
                   </div>
@@ -1334,7 +1362,7 @@ const Products: React.FC = () => {
                       onMouseEnter={e => (e.currentTarget.style.background = '#333')}
                       onMouseLeave={e => (e.currentTarget.style.background = C.black)}
                     >
-                      Activate Insurance
+                      {t('products.detail.activateInsurance')}
                     </button>
                   )}
                 </div>
@@ -1347,7 +1375,9 @@ const Products: React.FC = () => {
                   background: C.surface,
                 }}>
                   <div style={{ fontSize: 12, color: C.gray }}>
-                    Insurance is available for ski products only. This item is registered as {detailCategory === 'accessory' ? 'an accessory' : 'apparel'}.
+                    {t('products.detail.noInsuranceNote', {
+                      category: detailCategory === 'accessory' ? t('products.detail.categoryAccessory') : t('products.detail.categoryApparel'),
+                    })}
                   </div>
                 </div>
               )}
@@ -1358,27 +1388,27 @@ const Products: React.FC = () => {
 
       {/* ════════════ RECEIPT UPLOAD MODAL (CLAIM FLOW) ════════════ */}
       {showReceiptModal && (
-        <Modal isOpen onClose={() => { setShowReceiptModal(false); setShowQrLink(false); setQrPolling(false); }} title="Claim a Product">
+        <Modal isOpen onClose={() => { setShowReceiptModal(false); setShowQrLink(false); setQrPolling(false); }} title={t('products.receiptModal.title')}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20, minHeight: 200 }}>
 
             {receiptSuccess ? (
               <div style={{ textAlign: 'center', padding: 32 }}>
                 <div style={{ fontSize: 48, marginBottom: 12 }}>&#x2713;</div>
-                <p style={{ fontSize: 16, fontWeight: 600, marginBottom: 8 }}>Claim Submitted!</p>
+                <p style={{ fontSize: 16, fontWeight: 600, marginBottom: 8 }}>{t('products.receiptModal.success.title')}</p>
                 <p style={{ fontSize: 13, color: C.gray, marginBottom: 24 }}>
-                  Your proof of purchase is being reviewed. You&rsquo;ll be notified once your {getItemLabel(receiptProductName)} is validated.
+                  {t('products.receiptModal.success.desc', { item: getItemLabel(t, receiptProductName) })}
                 </p>
-                <Button onClick={() => setShowReceiptModal(false)}>Done</Button>
+                <Button onClick={() => setShowReceiptModal(false)}>{t('products.receiptModal.success.done')}</Button>
               </div>
 
             ) : showQrLink && uploadToken ? (
               /* ── QR Code screen — desktop waits for phone upload ── */
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20, padding: '16px 0' }}>
                 <p style={{ fontSize: 14, fontWeight: 500, margin: 0, textAlign: 'center' }}>
-                  Scan with your phone to take a photo
+                  {t('products.receiptModal.qr.scanTitle')}
                 </p>
                 <p style={{ fontSize: 12, color: C.gray, margin: 0, textAlign: 'center', maxWidth: 300 }}>
-                  Your phone will open a camera page. After you take the photo it will appear here automatically.
+                  {t('products.receiptModal.qr.scanDesc')}
                 </p>
                 <div style={{
                   padding: 16, background: '#fff', borderRadius: 12,
@@ -1395,7 +1425,7 @@ const Products: React.FC = () => {
                     borderTopColor: C.red, borderRadius: '50%',
                     animation: 'zai-spin 0.8s linear infinite',
                   }} />
-                  <span style={{ fontSize: 12, color: C.gray }}>Waiting for photo&hellip;</span>
+                  <span style={{ fontSize: 12, color: C.gray }}>{t('products.receiptModal.qr.waitingForPhoto')}</span>
                 </div>
                 <button
                   onClick={() => { setShowQrLink(false); setQrPolling(false); }}
@@ -1404,21 +1434,21 @@ const Products: React.FC = () => {
                     fontSize: 12, cursor: 'pointer', textDecoration: 'underline',
                   }}
                 >
-                  &#8592; Back to upload options
+                  {t('products.receiptModal.qr.backToUploadOptions')}
                 </button>
               </div>
 
             ) : (
               <>
                 <p style={{ fontSize: 13, color: C.gray, margin: 0 }}>
-                  Take a photo of your purchase receipt or upload an image. An admin will review it and validate your claim.
+                  {t('products.receiptModal.form.intro')}
                 </p>
 
                 {/* Product name (optional) — pick from claimable products */}
                 <div>
-                  <label style={labelStyle}>Product Name</label>
+                  <label style={labelStyle}>{t('products.receiptModal.form.productNameLabel')}</label>
                   {claimableLoading ? (
-                    <div style={{ fontSize: 12, color: C.gray, padding: '10px 0' }}>Loading products&hellip;</div>
+                    <div style={{ fontSize: 12, color: C.gray, padding: '10px 0' }}>{t('products.receiptModal.form.loadingProducts')}</div>
                   ) : claimableRwas.length > 0 ? (
                     <>
                       <ProductPicker
@@ -1444,12 +1474,12 @@ const Products: React.FC = () => {
                           setReceiptProductName('');
                         }}
                         isOther={isCustomProduct}
-                        placeholder="Select a product"
+                        placeholder={t('products.receiptModal.form.selectProductPlaceholder')}
                       />
                       {isCustomProduct && (
                         <input
                           style={{ ...inputStyle, marginTop: 8 }}
-                          placeholder="Enter product name"
+                          placeholder={t('products.receiptModal.form.enterProductNamePlaceholder')}
                           value={receiptProductName}
                           onChange={e => setReceiptProductName(e.target.value)}
                         />
@@ -1458,7 +1488,7 @@ const Products: React.FC = () => {
                   ) : (
                     <input
                       style={inputStyle}
-                      placeholder="e.g. ZAI Zermatt GT"
+                      placeholder={t('products.receiptModal.form.exampleProductPlaceholder')}
                       value={receiptProductName}
                       onChange={e => setReceiptProductName(e.target.value)}
                     />
@@ -1467,7 +1497,7 @@ const Products: React.FC = () => {
 
                 {/* Image capture / upload */}
                 <div>
-                  <label style={labelStyle}>Proof of Purchase</label>
+                  <label style={labelStyle}>{t('products.receiptModal.form.proofOfPurchaseLabel')}</label>
 
                   {!receiptImage ? (
                     <div style={{ display: 'flex', gap: 12 }}>
@@ -1483,8 +1513,8 @@ const Products: React.FC = () => {
                           onMouseLeave={e => (e.currentTarget.style.borderColor = C.border)}
                         >
                           <CameraIcon size={28} color="#2e2e2e" />
-                          <span style={{ fontSize: 12, fontWeight: 600, color: C.mid }}>Take Photo</span>
-                          <span style={{ fontSize: 10, color: C.gray }}>Open camera</span>
+                          <span style={{ fontSize: 12, fontWeight: 600, color: C.mid }}>{t('products.receiptModal.form.takePhoto')}</span>
+                          <span style={{ fontSize: 10, color: C.gray }}>{t('products.receiptModal.form.openCamera')}</span>
                           <input
                             type="file"
                             accept="image/*"
@@ -1505,8 +1535,8 @@ const Products: React.FC = () => {
                           onMouseLeave={e => (e.currentTarget.style.borderColor = C.border)}
                         >
                           <SmartphoneIcon size={28} color="#2e2e2e" />
-                          <span style={{ fontSize: 12, fontWeight: 600, color: C.mid }}>Use Phone</span>
-                          <span style={{ fontSize: 10, color: C.gray }}>Scan QR to take photo</span>
+                          <span style={{ fontSize: 12, fontWeight: 600, color: C.mid }}>{t('products.receiptModal.form.usePhone')}</span>
+                          <span style={{ fontSize: 10, color: C.gray }}>{t('products.receiptModal.form.scanQrToTakePhoto')}</span>
                         </div>
                       )}
 
@@ -1521,8 +1551,8 @@ const Products: React.FC = () => {
                         onMouseLeave={e => (e.currentTarget.style.borderColor = C.border)}
                       >
                         <UploadIcon size={28} color="#2e2e2e" />
-                        <span style={{ fontSize: 12, fontWeight: 600, color: C.mid }}>Upload Image</span>
-                        <span style={{ fontSize: 10, color: C.gray }}>JPG, PNG, WebP</span>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: C.mid }}>{t('products.receiptModal.form.uploadImage')}</span>
+                        <span style={{ fontSize: 10, color: C.gray }}>{t('products.receiptModal.form.fileTypes')}</span>
                         <input
                           type="file"
                           accept="image/jpeg,image/png,image/webp,image/heic"
@@ -1545,10 +1575,10 @@ const Products: React.FC = () => {
                             <CameraIcon size={40} color={C.mid} />
                           </div>
                           <div style={{ fontSize: 14, fontWeight: 600, color: C.black, marginBottom: 4 }}>
-                            Photo received from phone
+                            {t('products.receiptModal.form.photoReceivedTitle')}
                           </div>
                           <div style={{ fontSize: 11, color: C.gray }}>
-                            Your receipt photo has been securely uploaded and is ready to submit.
+                            {t('products.receiptModal.form.photoReceivedDesc')}
                           </div>
                         </div>
                       ) : (
@@ -1582,7 +1612,7 @@ const Products: React.FC = () => {
 
                 {/* Submit */}
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
-                  <Button onClick={() => setShowReceiptModal(false)}>Cancel</Button>
+                  <Button onClick={() => setShowReceiptModal(false)}>{t('products.receiptModal.form.cancel')}</Button>
                   <button
                     onClick={handleReceiptSubmit}
                     disabled={!hasProof || !hasProduct || receiptSubmitting}
@@ -1596,7 +1626,7 @@ const Products: React.FC = () => {
                       opacity: receiptSubmitting ? 0.6 : 1,
                     }}
                   >
-                    {receiptSubmitting ? 'Submitting\u2026' : 'Submit Claim'}
+                    {receiptSubmitting ? t('products.receiptModal.form.submitting') : t('products.receiptModal.form.submitClaim')}
                   </button>
                 </div>
               </>
@@ -1607,21 +1637,21 @@ const Products: React.FC = () => {
 
       {/* ════════════ INSURANCE MODAL ════════════ */}
       {showInsuranceModal && insuranceProduct && (
-        <Modal isOpen onClose={() => setShowInsuranceModal(false)} title="Activate Insurance">
+        <Modal isOpen onClose={() => setShowInsuranceModal(false)} title={t('products.insuranceModal.title')}>
           {insuranceStep === 'form' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxHeight: 480, overflowY: 'auto' }}>
               <p style={{ fontSize: 13, color: C.gray, margin: 0 }}>
-                Fill in the details below to activate insurance for <strong>{insuranceProduct.name}</strong>.
+                {t('products.insuranceModal.formIntro', { name: insuranceProduct.name })}
               </p>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div>
-                  <label style={labelStyle}>Salutation</label>
+                  <label style={labelStyle}>{t('products.insuranceModal.labels.salutation')}</label>
                   <select value={insuranceForm.salutation} onChange={e => updateInsuranceField('salutation', Number(e.target.value))} style={inputStyle}>
-                    {SALUTATIONS.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
+                    {SALUTATIONS.map(s => <option key={s.id} value={s.id}>{t(`products.salutations.${s.key}`)}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label style={labelStyle}>Language</label>
+                  <label style={labelStyle}>{t('products.insuranceModal.labels.language')}</label>
                   <select value={insuranceForm.language} onChange={e => updateInsuranceField('language', e.target.value)} style={inputStyle}>
                     <option value="en">English</option>
                     <option value="de">Deutsch</option>
@@ -1632,84 +1662,84 @@ const Products: React.FC = () => {
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div>
-                  <label style={labelStyle}>First Name</label>
+                  <label style={labelStyle}>{t('products.insuranceModal.labels.firstName')}</label>
                   <input style={inputStyle} value={insuranceForm.firstname} onChange={e => updateInsuranceField('firstname', e.target.value)} />
                 </div>
                 <div>
-                  <label style={labelStyle}>Last Name</label>
+                  <label style={labelStyle}>{t('products.insuranceModal.labels.lastName')}</label>
                   <input style={inputStyle} value={insuranceForm.lastname} onChange={e => updateInsuranceField('lastname', e.target.value)} />
                 </div>
               </div>
               <div>
-                <label style={labelStyle}>Address</label>
+                <label style={labelStyle}>{t('products.insuranceModal.labels.address')}</label>
                 <input style={inputStyle} value={insuranceForm.address1} onChange={e => updateInsuranceField('address1', e.target.value)} />
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
                 <div>
-                  <label style={labelStyle}>Zip</label>
+                  <label style={labelStyle}>{t('products.insuranceModal.labels.zip')}</label>
                   <input style={inputStyle} value={insuranceForm.zip} onChange={e => updateInsuranceField('zip', e.target.value)} />
                 </div>
                 <div>
-                  <label style={labelStyle}>City</label>
+                  <label style={labelStyle}>{t('products.insuranceModal.labels.city')}</label>
                   <input style={inputStyle} value={insuranceForm.city} onChange={e => updateInsuranceField('city', e.target.value)} />
                 </div>
                 <div>
-                  <label style={labelStyle}>Country</label>
+                  <label style={labelStyle}>{t('products.insuranceModal.labels.country')}</label>
                   <input style={inputStyle} value={insuranceForm.country} onChange={e => updateInsuranceField('country', e.target.value)} />
                 </div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div>
-                  <label style={labelStyle}>Email</label>
+                  <label style={labelStyle}>{t('products.insuranceModal.labels.email')}</label>
                   <input style={inputStyle} type="email" value={insuranceForm.email} onChange={e => updateInsuranceField('email', e.target.value)} />
                 </div>
                 <div>
-                  <label style={labelStyle}>Phone</label>
+                  <label style={labelStyle}>{t('products.insuranceModal.labels.phone')}</label>
                   <input style={inputStyle} type="tel" value={insuranceForm.phone} onChange={e => updateInsuranceField('phone', e.target.value)} />
                 </div>
               </div>
               <div style={{ borderTop: bdr, paddingTop: 16, marginTop: 4 }}>
-                <div style={{ ...lbl, marginBottom: 12 }}>Device Information</div>
+                <div style={{ ...lbl, marginBottom: 12 }}>{t('products.insuranceModal.labels.deviceInformation')}</div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div>
-                  <label style={labelStyle}>Device Type</label>
+                  <label style={labelStyle}>{t('products.insuranceModal.labels.deviceType')}</label>
                   <select value={insuranceForm.deviceType} onChange={e => updateInsuranceField('deviceType', Number(e.target.value))} style={inputStyle}>
-                    {DEVICE_TYPES.map(d => <option key={d.id} value={d.id}>{d.label}</option>)}
+                    {DEVICE_TYPES.map(d => <option key={d.id} value={d.id}>{t(`products.deviceTypes.${d.key}`)}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label style={labelStyle}>Make</label>
+                  <label style={labelStyle}>{t('products.insuranceModal.labels.make')}</label>
                   <input style={inputStyle} value={insuranceForm.makeName} readOnly />
                 </div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div>
-                  <label style={labelStyle}>Model</label>
+                  <label style={labelStyle}>{t('products.insuranceModal.labels.model')}</label>
                   <input style={inputStyle} value={insuranceForm.model} onChange={e => updateInsuranceField('model', e.target.value)} />
                 </div>
                 <div>
-                  <label style={labelStyle}>Serial Number</label>
+                  <label style={labelStyle}>{t('products.insuranceModal.labels.serialNumber')}</label>
                   <input style={inputStyle} value={insuranceForm.serial} onChange={e => updateInsuranceField('serial', e.target.value)} />
                 </div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
                 <div>
-                  <label style={labelStyle}>Price (CHF)</label>
+                  <label style={labelStyle}>{t('products.insuranceModal.labels.price')}</label>
                   <input style={inputStyle} type="number" value={insuranceForm.price} onChange={e => updateInsuranceField('price', e.target.value)} />
                 </div>
                 <div>
-                  <label style={labelStyle}>Length (cm)</label>
+                  <label style={labelStyle}>{t('products.insuranceModal.labels.length')}</label>
                   <input style={inputStyle} type="number" value={insuranceForm.length} onChange={e => updateInsuranceField('length', e.target.value)} />
                 </div>
                 <div>
-                  <label style={labelStyle}>Purchase Date</label>
+                  <label style={labelStyle}>{t('products.insuranceModal.labels.purchaseDate')}</label>
                   <input style={inputStyle} type="date" value={insuranceForm.purchasingdate} onChange={e => updateInsuranceField('purchasingdate', e.target.value)} />
                 </div>
               </div>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 8 }}>
-                <Button onClick={() => setShowInsuranceModal(false)}>Cancel</Button>
-                <Button onClick={handleInsuranceSubmit}>Activate Insurance</Button>
+                <Button onClick={() => setShowInsuranceModal(false)}>{t('products.insuranceModal.cancel')}</Button>
+                <Button onClick={handleInsuranceSubmit}>{t('products.insuranceModal.activateInsurance')}</Button>
               </div>
             </div>
           )}
@@ -1721,21 +1751,21 @@ const Products: React.FC = () => {
                 borderTopColor: C.red, borderRadius: '50%',
                 animation: 'zai-spin 0.8s linear infinite', marginBottom: 16,
               }} />
-              <span style={{ fontSize: 14, color: C.mid }}>Activating insurance&hellip;</span>
-              <span style={{ fontSize: 12, color: C.gray, marginTop: 8 }}>This may take a moment</span>
+              <span style={{ fontSize: 14, color: C.mid }}>{t('products.insuranceModal.loading.activating')}</span>
+              <span style={{ fontSize: 12, color: C.gray, marginTop: 8 }}>{t('products.insuranceModal.loading.mayTake')}</span>
             </div>
           )}
 
           {insuranceStep === 'success' && insuranceResult && (
             <div style={{ textAlign: 'center', padding: 32 }}>
               <div style={{ fontSize: 48, marginBottom: 12 }}>&#x2713;</div>
-              <p style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>Insurance Activated!</p>
+              <p style={{ fontSize: 16, fontWeight: 600, marginBottom: 16 }}>{t('products.insuranceModal.success.title')}</p>
               <div style={{ display: 'inline-flex', flexDirection: 'column', gap: 8, textAlign: 'left', padding: '16px 24px', background: C.surface, borderRadius: 8 }}>
-                <div><span style={lbl}>Certificate ID: </span><span style={{ fontFamily: 'monospace' }}>{insuranceResult.certificateId}</span></div>
-                <div><span style={lbl}>Transaction ID: </span><span style={{ fontFamily: 'monospace' }}>{insuranceResult.transactionId}</span></div>
+                <div><span style={lbl}>{t('products.insuranceModal.success.certificateId')} </span><span style={{ fontFamily: 'monospace' }}>{insuranceResult.certificateId}</span></div>
+                <div><span style={lbl}>{t('products.insuranceModal.success.transactionId')} </span><span style={{ fontFamily: 'monospace' }}>{insuranceResult.transactionId}</span></div>
               </div>
               <div style={{ marginTop: 24 }}>
-                <Button onClick={() => setShowInsuranceModal(false)}>Done</Button>
+                <Button onClick={() => setShowInsuranceModal(false)}>{t('products.insuranceModal.success.done')}</Button>
               </div>
             </div>
           )}
@@ -1745,8 +1775,8 @@ const Products: React.FC = () => {
               <div style={{ fontSize: 48, marginBottom: 12 }}>&#x2715;</div>
               <p style={{ color: C.red, fontSize: 14, marginBottom: 16 }}>{insuranceError}</p>
               <div style={{ display: 'flex', justifyContent: 'center', gap: 12 }}>
-                <Button onClick={() => setInsuranceStep('form')}>Try Again</Button>
-                <Button onClick={() => setShowInsuranceModal(false)}>Close</Button>
+                <Button onClick={() => setInsuranceStep('form')}>{t('products.insuranceModal.error.tryAgain')}</Button>
+                <Button onClick={() => setShowInsuranceModal(false)}>{t('products.insuranceModal.error.close')}</Button>
               </div>
             </div>
           )}

@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import { useTranslation } from 'react-i18next';
 import { stripePromise } from '../../lib/stripe';
 
 const C = {
@@ -32,6 +33,7 @@ function InlinePaymentForm({ onSuccess, onBack, amount, redemptionId }: {
   amount: number;
   redemptionId: string;
 }) {
+  const { t } = useTranslation();
   const stripe = useStripe();
   const elements = useElements();
   const [loading, setLoading] = useState(false);
@@ -44,7 +46,7 @@ function InlinePaymentForm({ onSuccess, onBack, amount, redemptionId }: {
     });
     const json = await r.json();
     if (!json.success) {
-      throw new Error(json.error || 'Payment succeeded but we could not finalize your order.');
+      throw new Error(json.error || t('updates.payment.errors.fulfillmentFailed'));
     }
   };
 
@@ -58,7 +60,7 @@ function InlinePaymentForm({ onSuccess, onBack, amount, redemptionId }: {
     try {
       const { error: submitError } = await elements.submit();
       if (submitError) {
-        setError(submitError.message || 'Please check your payment details');
+        setError(submitError.message || t('updates.payment.errors.checkDetails'));
         setLoading(false);
         return;
       }
@@ -72,7 +74,7 @@ function InlinePaymentForm({ onSuccess, onBack, amount, redemptionId }: {
       });
 
       if (confirmError) {
-        setError(confirmError.message || 'Payment failed');
+        setError(confirmError.message || t('updates.payment.errors.paymentFailed'));
         setLoading(false);
         return;
       }
@@ -85,7 +87,7 @@ function InlinePaymentForm({ onSuccess, onBack, amount, redemptionId }: {
           localStorage.removeItem('zai_pending_redemption');
           onSuccess();
         } catch (fulfillErr: any) {
-          setError(fulfillErr?.message || 'Payment succeeded but we could not finalize your order. Please refresh in a moment — it will resolve automatically.');
+          setError(fulfillErr?.message || t('updates.payment.errors.fulfillmentFailedRetry'));
           setLoading(false);
         }
       } else {
@@ -95,7 +97,7 @@ function InlinePaymentForm({ onSuccess, onBack, amount, redemptionId }: {
         onSuccess();
       }
     } catch (err: any) {
-      setError(err?.message || 'An unexpected error occurred');
+      setError(err?.message || t('updates.payment.errors.unexpected'));
       setLoading(false);
     }
   };
@@ -111,7 +113,7 @@ function InlinePaymentForm({ onSuccess, onBack, amount, redemptionId }: {
             borderRadius: '50%', animation: 'zai-spin 0.6s linear infinite',
             margin: '0 auto 8px', display: 'inline-block',
           }} />
-          <div>Loading…</div>
+          <div>{t('updates.common.loading')}</div>
         </div>
       )}
 
@@ -130,7 +132,7 @@ function InlinePaymentForm({ onSuccess, onBack, amount, redemptionId }: {
           color: C.black, cursor: 'pointer', fontSize: 12, fontWeight: 600,
           letterSpacing: '0.08em', textTransform: 'uppercase', borderRadius: 6,
           fontFamily: C.font, opacity: loading ? 0.5 : 1,
-        }}>Back</button>
+        }}>{t('updates.payment.back')}</button>
         <button type="submit" disabled={!stripe || !ready || loading} style={{
           flex: 1, padding: '14px', border: 'none',
           background: (!stripe || !ready || loading) ? '#999' : C.red,
@@ -138,7 +140,7 @@ function InlinePaymentForm({ onSuccess, onBack, amount, redemptionId }: {
           fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase',
           borderRadius: 6, fontFamily: C.font,
         }}>
-          {loading ? 'Processing…' : `Pay CHF ${amount.toFixed(2)}`}
+          {loading ? t('updates.common.processing') : t('updates.payment.pay', { amount: amount.toFixed(2) })}
         </button>
       </div>
 
@@ -147,7 +149,7 @@ function InlinePaymentForm({ onSuccess, onBack, amount, redemptionId }: {
           <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
           <path d="M7 11V7a5 5 0 0 1 10 0v4" />
         </svg>
-        Secured by Stripe
+        {t('updates.payment.securedByStripe')}
       </div>
     </form>
   );
@@ -159,6 +161,7 @@ function DealModal({ deal, onClose, onSuccess }: {
   onClose: () => void;
   onSuccess: () => void;
 }) {
+  const { t } = useTranslation();
   const [balance, setBalance] = useState(0);
   const [points, setPoints] = useState(0);
   const [step, setStep] = useState<'points' | 'pay'>('points');
@@ -189,10 +192,10 @@ function DealModal({ deal, onClose, onSuccess }: {
         localStorage.setItem('zai_pending_redemption', json.data.redemptionId);
         setStep('pay');
       } else {
-        alert(json.error || 'Failed to create payment');
+        alert(json.error || t('updates.alerts.createPaymentFailed'));
       }
     } catch {
-      alert('Something went wrong');
+      alert(t('updates.alerts.somethingWrong'));
     } finally {
       setLoading(false);
     }
@@ -235,41 +238,41 @@ function DealModal({ deal, onClose, onSuccess }: {
         {step === 'points' && (
           <>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
-              <div style={LABEL}>FULL PRICE</div>
-              <div style={LABEL}>YOUR BALANCE</div>
+              <div style={LABEL}>{t('updates.deal.fullPrice')}</div>
+              <div style={LABEL}>{t('updates.deal.yourBalance')}</div>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 24 }}>
               <div style={{ fontSize: 28, fontWeight: 300 }}>CHF {parseFloat(deal.price_chf).toLocaleString('de-CH', { minimumFractionDigits: 0 })}</div>
-              <div style={{ fontSize: 16, fontWeight: 500 }}>{balance.toLocaleString('de-CH')} pts</div>
+              <div style={{ fontSize: 16, fontWeight: 500 }}>{t('updates.deal.pts', { count: balance })}</div>
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-              <div style={LABEL}>POINTS TO APPLY</div>
-              <div style={{ fontSize: 16, fontWeight: 500 }}>{points.toLocaleString('de-CH')} pts</div>
+              <div style={LABEL}>{t('updates.deal.pointsToApply')}</div>
+              <div style={{ fontSize: 16, fontWeight: 500 }}>{t('updates.deal.pts', { count: points })}</div>
             </div>
             <input type="range" min={0} max={max} step={50} value={points}
                    onChange={e => setPoints(parseInt(e.target.value))}
                    style={{ width: '100%', accentColor: C.red, marginBottom: 4 }} />
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: C.gray, marginBottom: 20 }}>
-              <span>0 pts</span>
-              <span>{max.toLocaleString('de-CH')} pts max</span>
+              <span>{t('updates.deal.pts', { count: 0 })}</span>
+              <span>{t('updates.deal.ptsMax', { count: max })}</span>
             </div>
 
             <div style={{
               border: `1px solid ${C.border}`, borderRadius: 8, padding: '16px 20px', marginBottom: 20,
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 8, color: C.gray }}>
-                <span>Full price</span>
+                <span>{t('updates.deal.summary.fullPrice')}</span>
                 <span>CHF {parseFloat(deal.price_chf).toLocaleString('de-CH', { minimumFractionDigits: 2 })}</span>
               </div>
               {points > 0 && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 8, color: C.red }}>
-                  <span>Points discount ({points.toLocaleString('de-CH')} pts)</span>
+                  <span>{t('updates.deal.summary.pointsDiscount', { count: points })}</span>
                   <span>– CHF {discount.toLocaleString('de-CH', { minimumFractionDigits: 2 })}</span>
                 </div>
               )}
               <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 10, display: 'flex', justifyContent: 'space-between', fontSize: 14 }}>
-                <span style={{ fontWeight: 500 }}>You pay</span>
+                <span style={{ fontWeight: 500 }}>{t('updates.deal.summary.youPay')}</span>
                 <span style={{ fontSize: 18, fontWeight: 600 }}>CHF {finalPrice.toLocaleString('de-CH', { minimumFractionDigits: 2 })}</span>
               </div>
             </div>
@@ -280,11 +283,11 @@ function DealModal({ deal, onClose, onSuccess }: {
               borderRadius: 6, cursor: loading ? 'default' : 'pointer', fontFamily: C.font,
               opacity: loading ? 0.6 : 1,
             }}>
-              {loading ? 'Processing…' : `CONTINUE TO PAYMENT`}
+              {loading ? t('updates.common.processing') : t('updates.deal.continueToPayment')}
             </button>
 
             <div style={{ textAlign: 'center', fontSize: 11, color: C.gray, marginTop: 10 }}>
-              1 pt = CHF 0.01 · Points deducted from your balance on confirmation
+              {t('updates.deal.pointsNote')}
             </div>
           </>
         )}
@@ -296,7 +299,7 @@ function DealModal({ deal, onClose, onSuccess }: {
               border: `1px solid ${C.border}`, borderRadius: 8, padding: '12px 16px', marginBottom: 20,
               display: 'flex', justifyContent: 'space-between', alignItems: 'center',
             }}>
-              <span style={{ fontSize: 13, color: C.gray }}>Total to pay</span>
+              <span style={{ fontSize: 13, color: C.gray }}>{t('updates.deal.totalToPay')}</span>
               <span style={{ fontSize: 18, fontWeight: 600 }}>CHF {paymentData.amount.toFixed(2)}</span>
             </div>
 
@@ -317,6 +320,7 @@ function DealModal({ deal, onClose, onSuccess }: {
 
 // ─── Collectible Card ───
 function CollectibleCard({ card, onClaim }: { card: any; onClaim: (id: string) => void }) {
+  const { t } = useTranslation();
   const isLocked = card.locked;
   const isClaimed = card.claimed;
   const isClosed = card.editionClosed;
@@ -362,23 +366,23 @@ function CollectibleCard({ card, onClaim }: { card: any; onClaim: (id: string) =
         {isLocked && (
           <>
             <div style={{ fontSize: 11, color: C.red, fontWeight: 600, marginBottom: 2 }}>{card.lockReason}</div>
-            <div style={{ fontSize: 11, color: C.gray }}>● Locked</div>
+            <div style={{ fontSize: 11, color: C.gray }}>● {t('updates.collectibles.locked')}</div>
           </>
         )}
         {isClosed && !isClaimed && (
-          <div style={{ fontSize: 11, color: C.gray }}>● Edition closed</div>
+          <div style={{ fontSize: 11, color: C.gray }}>● {t('updates.collectibles.editionClosed')}</div>
         )}
         {isClaimed && (
-          <div style={{ fontSize: 11, color: C.green, fontWeight: 600 }}>● Claimed ✓</div>
+          <div style={{ fontSize: 11, color: C.green, fontWeight: 600 }}>● {t('updates.collectibles.claimed')} ✓</div>
         )}
         {available && (
-          <div style={{ fontSize: 11, color: C.green }}>● Available now</div>
+          <div style={{ fontSize: 11, color: C.green }}>● {t('updates.collectibles.availableNow')}</div>
         )}
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 }}>
           <div style={{ fontSize: 16, fontWeight: 600 }}>{card.pointsReward}</div>
           <div style={{ fontSize: 10, color: C.gray, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-            {isClaimed ? 'PTS EARNED' : 'PTS TO EARN'}
+            {isClaimed ? t('updates.collectibles.ptsEarned') : t('updates.collectibles.ptsToEarn')}
           </div>
         </div>
 
@@ -387,7 +391,7 @@ function CollectibleCard({ card, onClaim }: { card: any; onClaim: (id: string) =
             width: '100%', marginTop: 10, padding: '10px', background: C.red, color: '#fff',
             border: 'none', fontSize: 11, fontWeight: 700, letterSpacing: '0.12em',
             textTransform: 'uppercase', borderRadius: 4, cursor: 'pointer', fontFamily: C.font,
-          }}>CLAIM NOW</button>
+          }}>{t('updates.collectibles.claimNow')}</button>
         )}
       </div>
     </div>
@@ -396,6 +400,7 @@ function CollectibleCard({ card, onClaim }: { card: any; onClaim: (id: string) =
 
 // ─── Main Page ───
 export default function Updates() {
+  const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const [tab, setTab] = useState<'deals' | 'collectibles'>('deals');
   const [deals, setDeals] = useState<any[]>([]);
@@ -432,7 +437,7 @@ export default function Updates() {
   useEffect(() => {
     const p = searchParams.get('payment');
     if (p === 'cancelled') {
-      alert('Payment was cancelled.');
+      alert(t('updates.alerts.paymentCancelled'));
       localStorage.removeItem('zai_pending_redemption');
       return;
     }
@@ -448,20 +453,20 @@ export default function Updates() {
       .then(json => {
         localStorage.removeItem('zai_pending_redemption');
         if (json.success) {
-          alert('Payment successful! Points have been updated.');
+          alert(t('updates.alerts.paymentSuccessful'));
           refreshDeals();
         } else {
-          alert(json.error || 'We could not confirm your payment. Please contact support if points/product are missing.');
+          alert(json.error || t('updates.alerts.confirmFailedGeneric'));
         }
       })
       .catch(() => {
-        alert('We could not confirm your payment with the server. Please refresh — it should resolve automatically, or contact support.');
+        alert(t('updates.alerts.confirmFailedNetwork'));
       });
   }, [searchParams]);
 
   const handlePaymentSuccess = () => {
     setSelectedDeal(null);
-    alert('Payment successful! Points have been updated.');
+    alert(t('updates.alerts.paymentSuccessful'));
     refreshDeals();
   };
 
@@ -472,14 +477,14 @@ export default function Updates() {
       });
       const json = await r.json();
       if (json.success) {
-        alert(`Claimed! +${json.data.pointsEarned} pts`);
+        alert(t('updates.alerts.claimed', { points: json.data.pointsEarned }));
         const cRes = await fetch('/api/store/collectibles/series', { headers: authHeaders() }).then(r => r.json());
         if (cRes.success) setSeries(cRes.data);
       } else {
-        alert(json.error || 'Claim failed');
+        alert(json.error || t('updates.alerts.claimFailed'));
       }
     } catch {
-      alert('Something went wrong');
+      alert(t('updates.alerts.somethingWrong'));
     }
   };
 
@@ -489,7 +494,7 @@ export default function Updates() {
     return (
       <div style={{ padding: 48, fontFamily: C.font, textAlign: 'center' }}>
         <div style={{ width: 32, height: 32, border: `3px solid ${C.border}`, borderTopColor: C.red, borderRadius: '50%', animation: 'zai-spin 0.8s linear infinite', margin: '0 auto 16px' }} />
-        <span style={{ fontSize: 13, color: C.gray }}>Loading…</span>
+        <span style={{ fontSize: 13, color: C.gray }}>{t('updates.common.loading')}</span>
       </div>
     );
   }
@@ -500,20 +505,20 @@ export default function Updates() {
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 8, marginBottom: 24, borderBottom: `1px solid ${C.border}`, paddingBottom: 20 }}>
           <h1 style={{ fontSize: 'clamp(28px, 3vw, 36px)', fontWeight: 300, margin: 0, lineHeight: 1.15 }}>
-            Deals & Collectibles
+            {t('updates.header.title')}
           </h1>
-          <div style={{ fontSize: 12, color: C.green, whiteSpace: 'nowrap' }}>Member access only ●</div>
+          <div style={{ fontSize: 12, color: C.green, whiteSpace: 'nowrap' }}>{t('updates.header.memberAccessOnly')} ●</div>
         </div>
 
         {/* Tabs */}
         <div style={{ display: 'flex', gap: 0, borderBottom: `1px solid ${C.border}`, marginBottom: 32, overflowX: 'auto' }}>
-          {(['deals', 'collectibles'] as const).map(t => (
-            <button key={t} onClick={() => setTab(t)} style={{
-              padding: '12px 20px', background: 'none', border: 'none', borderBottom: tab === t ? `2px solid ${C.black}` : '2px solid transparent',
-              fontSize: 12, fontWeight: tab === t ? 700 : 500, letterSpacing: '0.08em', textTransform: 'uppercase',
-              cursor: 'pointer', fontFamily: C.font, color: tab === t ? C.black : C.gray, whiteSpace: 'nowrap',
+          {(['deals', 'collectibles'] as const).map(tabKey => (
+            <button key={tabKey} onClick={() => setTab(tabKey)} style={{
+              padding: '12px 20px', background: 'none', border: 'none', borderBottom: tab === tabKey ? `2px solid ${C.black}` : '2px solid transparent',
+              fontSize: 12, fontWeight: tab === tabKey ? 700 : 500, letterSpacing: '0.08em', textTransform: 'uppercase',
+              cursor: 'pointer', fontFamily: C.font, color: tab === tabKey ? C.black : C.gray, whiteSpace: 'nowrap',
             }}>
-              {t === 'deals' ? 'Deals' : 'Collectible Drops'}
+              {tabKey === 'deals' ? t('updates.tabs.deals') : t('updates.tabs.collectibles')}
             </button>
           ))}
         </div>
@@ -531,19 +536,19 @@ export default function Updates() {
                 <div style={{ position: 'absolute', bottom: 0, right: 0, width: '50%', height: '100%', opacity: 0.15, background: 'linear-gradient(135deg, transparent 40%, #7A222E 100%)' }} />
 
                 <div style={{ position: 'relative', zIndex: 1, flex: '1 1 320px', minWidth: 0 }}>
-                  <div style={{ ...LABEL, color: '#888', marginBottom: 16 }}>— FEATURED DEAL</div>
+                  <div style={{ ...LABEL, color: '#888', marginBottom: 16 }}>{t('updates.featured.label')}</div>
                   <h2 style={{ fontSize: 'clamp(20px, 2.5vw, 28px)', fontWeight: 400, margin: '0 0 12px' }}>{featuredDeal.title}</h2>
                   <div style={{ fontSize: 12, color: '#999', display: 'flex', gap: 20, marginBottom: 20, flexWrap: 'wrap' }}>
-                    {featuredDeal.ends_at && <span>⊙ Available {Math.ceil((new Date(featuredDeal.ends_at).getTime() - Date.now()) / 86400000)}h only</span>}
-                    <span>Exclusive Member Pricing</span>
-                    {featuredDeal.spots_left > 0 && <span>Limited availability</span>}
+                    {featuredDeal.ends_at && <span>{t('updates.featured.availableHoursOnly', { hours: Math.ceil((new Date(featuredDeal.ends_at).getTime() - Date.now()) / 86400000) })}</span>}
+                    <span>{t('updates.featured.exclusiveMemberPricing')}</span>
+                    {featuredDeal.spots_left > 0 && <span>{t('updates.featured.limitedAvailability')}</span>}
                   </div>
                   <button onClick={() => setSelectedDeal(featuredDeal)} style={{
                     padding: '14px 28px', background: C.red, color: '#fff', border: 'none',
                     fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase',
                     borderRadius: 4, cursor: 'pointer', fontFamily: C.font,
                   }}>
-                    CLAIM OFFER, CHF {parseFloat(featuredDeal.price_chf).toLocaleString('de-CH')}
+                    {t('updates.featured.claimOffer', { price: parseFloat(featuredDeal.price_chf).toLocaleString('de-CH') })}
                   </button>
                 </div>
 
@@ -568,7 +573,7 @@ export default function Updates() {
                       padding: '5px 12px', borderRadius: 4, color: '#fff',
                       background: 'rgba(122,34,46,0.9)', border: '1px solid rgba(122,34,46,0.5)',
                       backdropFilter: 'blur(8px)',
-                    }}>New Deal</div>
+                    }}>{t('updates.featured.newDeal')}</div>
                   </div>
                 ) : (
                   <div style={{
@@ -577,17 +582,17 @@ export default function Updates() {
                     padding: '6px 14px', borderRadius: 4, color: '#fff',
                     background: 'rgba(122,34,46,0.9)', border: '1px solid rgba(122,34,46,0.5)',
                     backdropFilter: 'blur(8px)',
-                  }}>New Deal</div>
+                  }}>{t('updates.featured.newDeal')}</div>
                 )}
               </div>
             )}
 
             {regularDeals.length > 0 && (
               <div style={{ marginBottom: 48 }}>
-                <div style={RED_LABEL}>MEMBER DEALS</div>
+                <div style={RED_LABEL}>{t('updates.regular.memberDealsLabel')}</div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 8, marginBottom: 20 }}>
-                  <h2 style={{ fontSize: 'clamp(22px, 2.5vw, 30px)', fontWeight: 300, margin: '6px 0 0' }}>Exclusive Offers</h2>
-                  <span style={{ fontSize: 12, color: C.gray, cursor: 'pointer', whiteSpace: 'nowrap' }}>View all deals →</span>
+                  <h2 style={{ fontSize: 'clamp(22px, 2.5vw, 30px)', fontWeight: 300, margin: '6px 0 0' }}>{t('updates.regular.exclusiveOffers')}</h2>
+                  <span style={{ fontSize: 12, color: C.gray, cursor: 'pointer', whiteSpace: 'nowrap' }}>{t('updates.regular.viewAllDeals')}</span>
                 </div>
                 <div style={{
                   display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
@@ -620,7 +625,7 @@ export default function Updates() {
                             position: 'absolute', top: 8, left: 8, fontSize: 7,
                             letterSpacing: '0.2em', textTransform: 'uppercase', padding: '3px 7px',
                             background: C.black, color: C.white, zIndex: 1,
-                          }}>Members only</div>
+                          }}>{t('updates.regular.membersOnly')}</div>
                         )}
                         {deal.image_url ? (
                           <img src={deal.image_url} alt={deal.title} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
@@ -663,9 +668,9 @@ export default function Updates() {
                             <span style={{
                               fontSize: 9.5, color: C.gray, whiteSpace: 'nowrap',
                               overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0,
-                            }}>Up to {deal.max_points_discount.toLocaleString('de-CH')} pts max</span>
+                            }}>{t('updates.regular.upToPtsMax', { count: deal.max_points_discount })}</span>
                             <span style={{ fontSize: 9.5, color: C.red, fontWeight: 500, whiteSpace: 'nowrap', flexShrink: 0 }}>
-                              save CHF {(deal.max_points_discount / 100).toLocaleString('de-CH', { minimumFractionDigits: 2 })}
+                              {t('updates.regular.saveChf', { amount: (deal.max_points_discount / 100).toLocaleString('de-CH', { minimumFractionDigits: 2 }) })}
                             </span>
                           </div>
                         )}
@@ -676,7 +681,7 @@ export default function Updates() {
                         }}>
                           {deal.ends_at && (
                             <span style={{ fontSize: 10, color: C.gray, letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>
-                              Ends <strong>{fmtDate(deal.ends_at)}</strong>
+                              {t('updates.regular.endsOn')} <strong>{fmtDate(deal.ends_at)}</strong>
                             </span>
                           )}
                           {/* marginLeft:auto keeps the CTA right-aligned even when
@@ -692,7 +697,7 @@ export default function Updates() {
                             }}
                             onMouseEnter={e => (e.currentTarget.style.background = '#9a2535')}
                             onMouseLeave={e => (e.currentTarget.style.background = C.red)}
-                          >Apply Points →</button>
+                          >{t('updates.regular.applyPoints')}</button>
                         </div>
                       </div>
                     </div>
@@ -703,7 +708,7 @@ export default function Updates() {
 
             {deals.length === 0 && (
               <div style={{ textAlign: 'center', padding: 48, color: C.gray, fontSize: 14 }}>
-                No deals available yet. Check back soon.
+                {t('updates.emptyStates.noDeals')}
               </div>
             )}
           </>
@@ -714,16 +719,16 @@ export default function Updates() {
           <>
             {series.map(s => (
               <div key={s.id} style={{ marginBottom: 48 }}>
-                <div style={RED_LABEL}>COLLECTIBLE DROPS</div>
+                <div style={RED_LABEL}>{t('updates.collectibles.dropsLabel')}</div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 8, marginBottom: 6 }}>
                   <h2 style={{ fontSize: 'clamp(22px, 2.5vw, 30px)', fontWeight: 300, margin: '6px 0 0' }}>{s.name}</h2>
-                  <span style={{ fontSize: 12, color: C.gray, whiteSpace: 'nowrap' }}>{s.totalCards}-piece set · Season {s.season}</span>
+                  <span style={{ fontSize: 12, color: C.gray, whiteSpace: 'nowrap' }}>{t('updates.collectibles.piecesSet', { count: s.totalCards, season: s.season })}</span>
                 </div>
                 <div style={{ fontSize: 10, letterSpacing: '0.15em', textTransform: 'uppercase', color: C.gray, marginBottom: 8 }}>
-                  COLLECT EXCLUSIVE COLLECTIBLE DROPS TO EARN POINTS AND UNLOCK EXCLUSIVE MEMBER REWARDS
+                  {t('updates.collectibles.collectDesc')}
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-                  <span style={{ fontSize: 12, color: C.gray }}>YOUR COLLECTION</span>
+                  <span style={{ fontSize: 12, color: C.gray }}>{t('updates.collectibles.yourCollection')}</span>
                   <span style={{ fontSize: 14, fontWeight: 600 }}>{s.claimedCount}</span>
                   <span style={{ color: C.red }}>●</span>
                 </div>
@@ -740,7 +745,7 @@ export default function Updates() {
 
             {series.length === 0 && (
               <div style={{ textAlign: 'center', padding: 48, color: C.gray, fontSize: 14 }}>
-                No collectible drops available yet. Check back soon.
+                {t('updates.emptyStates.noCollectibles')}
               </div>
             )}
           </>

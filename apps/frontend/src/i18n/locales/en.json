@@ -46,27 +46,67 @@
     },
     "notifications": {
       "emailHeading": "Email Notifications",
-      "eventInvitations": { "title": "Event invitations", "desc": "Upcoming events and exclusive invitations" },
-      "membershipUpdates": { "title": "Membership updates", "desc": "When your membership status changes" },
-      "productLaunches": { "title": "Product launches", "desc": "New zai products before public release" },
-      "partnerOffers": { "title": "Partner offers", "desc": "Exclusive offers from our ecosystem partners" },
+      "eventInvitations": {
+        "title": "Event invitations",
+        "desc": "Upcoming events and exclusive invitations"
+      },
+      "membershipUpdates": {
+        "title": "Membership updates",
+        "desc": "When your membership status changes"
+      },
+      "productLaunches": {
+        "title": "Product launches",
+        "desc": "New zai products before public release"
+      },
+      "partnerOffers": {
+        "title": "Partner offers",
+        "desc": "Exclusive offers from our ecosystem partners"
+      },
       "pushHeading": "Push Notifications",
-      "pushProductUpdates": { "title": "Product updates", "desc": "Notifications about your registered products" },
-      "pushEventReminders": { "title": "Event reminders", "desc": "48 hours before registered events" }
+      "pushProductUpdates": {
+        "title": "Product updates",
+        "desc": "Notifications about your registered products"
+      },
+      "pushEventReminders": {
+        "title": "Event reminders",
+        "desc": "48 hours before registered events"
+      }
     },
     "privacy": {
       "heading": "Privacy Settings",
-      "dataSharing": { "title": "Data sharing", "desc": "Share usage data to improve ZAI" },
-      "analytics": { "title": "Analytics", "desc": "Allow analytics tracking" },
-      "profileVisibility": { "title": "Profile visibility", "desc": "Make your profile visible to other members" },
-      "communityVisibility": { "title": "Community visibility", "desc": "Appear in community member lists" }
+      "dataSharing": {
+        "title": "Data sharing",
+        "desc": "Share usage data to improve ZAI"
+      },
+      "analytics": {
+        "title": "Analytics",
+        "desc": "Allow analytics tracking"
+      },
+      "profileVisibility": {
+        "title": "Profile visibility",
+        "desc": "Make your profile visible to other members"
+      },
+      "communityVisibility": {
+        "title": "Community visibility",
+        "desc": "Appear in community member lists"
+      }
     },
     "region": {
       "heading": "Region & Currency",
       "accountRegion": "Account region",
-      "currency": { "title": "Currency", "desc": "Used for pricing and reward values" },
-      "language": { "title": "Language", "desc": "Portal display language" },
-      "languages": { "en": "English", "de": "Deutsch", "zh": "中文" }
+      "currency": {
+        "title": "Currency",
+        "desc": "Used for pricing and reward values"
+      },
+      "language": {
+        "title": "Language",
+        "desc": "Portal display language"
+      },
+      "languages": {
+        "en": "English",
+        "de": "Deutsch",
+        "zh": "中文"
+      }
     },
     "security": {
       "heading": "Account Security",
@@ -125,17 +165,42 @@
       "label": "how it works",
       "headingLine1": "Start Your",
       "headingLine2": "Membership Journey",
-      "step1": { "num": "Step 01", "title": "Activate your membership", "desc": "Purchased in-store? Tap your NFC-enabled zai Experience Card to activate your membership. Purchased online? Visit the zai Experience Club dashboard and submit proof of purchase to request your membership." },
-      "step2": { "num": "Step 02", "title": "Claim your purchased products", "desc": "Claim your zai products in the My Collection page to build your digital collection, verify ownership, and access product-specific experiences and benefits." },
-      "step3": { "num": "Step 03", "title": "Unlock exclusive benefits", "desc": "Activate your complimentary ski insurance, register for exclusive events, discover member-only offers, and enjoy unique experiences. New benefits and rewards will continue to be revealed over time." },
-      "step4": { "num": "Step 04", "title": "Be part of the community", "desc": "Connect with fellow zai owners, share your experiences, and discover stories from the global zai Experience Club community." }
+      "step1": {
+        "num": "Step 01",
+        "title": "Activate your membership",
+        "desc": "Purchased in-store? Tap your NFC-enabled zai Experience Card to activate your membership. Purchased online? Visit the zai Experience Club dashboard and submit proof of purchase to request your membership."
+      },
+      "step2": {
+        "num": "Step 02",
+        "title": "Claim your purchased products",
+        "desc": "Claim your zai products in the My Collection page to build your digital collection, verify ownership, and access product-specific experiences and benefits."
+      },
+      "step3": {
+        "num": "Step 03",
+        "title": "Unlock exclusive benefits",
+        "desc": "Activate your complimentary ski insurance, register for exclusive events, discover member-only offers, and enjoy unique experiences. New benefits and rewards will continue to be revealed over time."
+      },
+      "step4": {
+        "num": "Step 04",
+        "title": "Be part of the community",
+        "desc": "Connect with fellow zai owners, share your experiences, and discover stories from the global zai Experience Club community."
+      }
     },
     "benefits": {
       "label": "exclusive benefits",
       "heading": "What you unlock",
-      "insurance": { "title": "Free Ski Insurance", "desc": "Activate complimentary insurance on every new zai ski purchase directly through your portal." },
-      "events": { "title": "Exclusive Events", "desc": "Priority access to ski demos, factory tours, quarry visits, and personal meet-and-greets." },
-      "rewards": { "title": "Rewards & Deals", "desc": "Earn points on every purchase, climb tiers for better perks, and redeem exclusive member-only deals and collectible drops." },
+      "insurance": {
+        "title": "Free Ski Insurance",
+        "desc": "Activate complimentary insurance on every new zai ski purchase directly through your portal."
+      },
+      "events": {
+        "title": "Exclusive Events",
+        "desc": "Priority access to ski demos, factory tours, quarry visits, and personal meet-and-greets."
+      },
+      "rewards": {
+        "title": "Rewards & Deals",
+        "desc": "Earn points on every purchase, climb tiers for better perks, and redeem exclusive member-only deals and collectible drops."
+      },
       "explore": "Explore →"
     },
     "rewardsSection": {
@@ -146,26 +211,75 @@
       "ptsSuffix": "+ pts",
       "cta": "View My Rewards",
       "tiers": {
-        "blue": { "name": "Blue", "perks": ["Product registration", "Event newsletter", "Digital warranty"] },
-        "red": { "name": "Red", "perks": ["Priority event access", "Maintenance discount", "Partner benefits", "Dedicated support"] },
-        "black": { "name": "Black", "perks": ["VIP event invitations", "Early product launches", "Custom fitting service", "Referral bonuses"] },
-        "diamond": { "name": "Diamond", "perks": ["Factory visits, Pontresina", "Bespoke commission", "Personal zai ambassador", "Annual zai retreat"] }
+        "blue": {
+          "name": "Blue",
+          "perks": [
+            "Product registration",
+            "Event newsletter",
+            "Digital warranty"
+          ]
+        },
+        "red": {
+          "name": "Red",
+          "perks": [
+            "Priority event access",
+            "Maintenance discount",
+            "Partner benefits",
+            "Dedicated support"
+          ]
+        },
+        "black": {
+          "name": "Black",
+          "perks": [
+            "VIP event invitations",
+            "Early product launches",
+            "Custom fitting service",
+            "Referral bonuses"
+          ]
+        },
+        "diamond": {
+          "name": "Diamond",
+          "perks": [
+            "Factory visits, Pontresina",
+            "Bespoke commission",
+            "Personal zai ambassador",
+            "Annual zai retreat"
+          ]
+        }
       }
     },
     "updatesSection": {
       "label": "updates & deals",
       "heading": "Exclusive Offers & Drops",
       "description": "Discover member-only deals, redeem your points for discounts and merchandise, claim limited-edition collectible drops, and stay up to date with the latest stories from the world of zai.",
-      "deals": { "tag": "DEALS", "title": "Deals & Offers", "desc": "Exchange points for exclusive discounts on zai products and partner experiences." },
-      "drops": { "tag": "DROPS", "title": "Collectible Drops", "desc": "Claim limited-edition digital collectibles — some unlocked by owning specific products or attending events." },
-      "stories": { "tag": "STORIES", "title": "zai Insights", "desc": "Read articles, view photos, and watch behind-the-scenes videos from the zai universe." },
+      "deals": {
+        "tag": "DEALS",
+        "title": "Deals & Offers",
+        "desc": "Exchange points for exclusive discounts on zai products and partner experiences."
+      },
+      "drops": {
+        "tag": "DROPS",
+        "title": "Collectible Drops",
+        "desc": "Claim limited-edition digital collectibles — some unlocked by owning specific products or attending events."
+      },
+      "stories": {
+        "tag": "STORIES",
+        "title": "zai Insights",
+        "desc": "Read articles, view photos, and watch behind-the-scenes videos from the zai universe."
+      },
       "cta": "Browse Deals & Collectibles"
     },
     "ecosystem": {
       "label": "zai ecosystem",
       "heading": "Partners & Community",
       "description": "The zai ecosystem brings together exclusive brand partners and a global community of zai owners — connected through a shared passion for the mountain. Partners will be revealed soon. Join the community to share your experiences.",
-      "placeholders": ["Mountain Pass", "Destination", "Financial", "Mountain Pass", "Destination"],
+      "placeholders": [
+        "Mountain Pass",
+        "Destination",
+        "Financial",
+        "Mountain Pass",
+        "Destination"
+      ],
       "toBeAnnounced": "Partners to be announced"
     },
     "referralSection": {
@@ -178,10 +292,1147 @@
       "explore": "Explore",
       "members": "Members",
       "follow": "Follow",
-      "linksExplore": { "shop": "Shop", "dealers": "Dealers", "contact": "Contact" },
-      "linksMembers": { "pointsTiers": "Points & Tiers", "dealsCollectibles": "Deals & Collectibles", "insights": "zai Insights", "events": "Events" },
+      "linksExplore": {
+        "shop": "Shop",
+        "dealers": "Dealers",
+        "contact": "Contact"
+      },
+      "linksMembers": {
+        "pointsTiers": "Points & Tiers",
+        "dealsCollectibles": "Deals & Collectibles",
+        "insights": "zai Insights",
+        "events": "Events"
+      },
       "location": "Pontresina, Alps · Since 2003",
-      "legal": { "privacy": "Privacy Policy", "terms": "Terms & Conditions", "legalInfo": "Legal Information" }
+      "legal": {
+        "privacy": "Privacy Policy",
+        "terms": "Terms & Conditions",
+        "legalInfo": "Legal Information"
+      }
+    }
+  },
+  "dashboard": {
+    "loading": "Loading...",
+    "errors": {
+      "dashboardLoadFailed": "Failed to load dashboard"
+    },
+    "locked": {
+      "badge": "Exclusive",
+      "defaultMessage": "Access exclusive content with the Experience Card membership.",
+      "claimProduct": "Claim your Experience Card to unlock product claims."
+    },
+    "header": {
+      "eyebrow": "overview",
+      "title": "Dashboard",
+      "subtitle": "Your zai experience club at a glance — products, events, and upcoming activity.",
+      "claimProduct": "Claim Product"
+    },
+    "profile": {
+      "locationNotSet": "Location not set",
+      "countryNotSet": "Country not set",
+      "tierBadge": "{{tier}} Tier",
+      "points": "{{points}} pts",
+      "pointsToNextTier": "{{points}} for {{tier}}",
+      "maxTier": "Max tier",
+      "memberSince": "Member since {{year}}",
+      "adminSince": "Admin since {{year}}",
+      "exclusiveMemberSince": "Exclusive Member since {{year}}",
+      "membershipUnderReview": "Membership under review",
+      "claimMembershipCta": "Claim Your zai Experience Club Membership",
+      "exclusiveMemberBadge": "Exclusive Member"
+    },
+    "welcome": {
+      "greeting": "Good to see you",
+      "welcomeBack": "Welcome back,",
+      "exclusiveDesc": "Explore exclusive events, manage your registered products, and access the full zai experience club.",
+      "standardDesc": "Claim your zai Experience Card to unlock your collection, exclusive events, and the full zai experience.",
+      "ecImageAlt": "zai Experience Club Card"
+    },
+    "stats": {
+      "totalPoints": "Total points",
+      "pointsThisMonth": "{{sign}}{{count}} this month",
+      "noActivityThisMonth": "No activity this month",
+      "productsClaimed": "Products claimed",
+      "getStartedClaim": "Get started by claiming a product",
+      "withActiveInsurance_one": "{{count}} with active insurance",
+      "withActiveInsurance_other": "{{count}} with active insurance",
+      "eventsAttended": "Events attended",
+      "upcomingCount_one": "{{count}} upcoming",
+      "upcomingCount_other": "{{count}} upcoming"
+    },
+    "activity": {
+      "heading": "Recent activity",
+      "empty": "No recent activity. Start by claiming a product or registering for an event!",
+      "pointsActivity": "Points activity",
+      "pointsValue": "{{sign}}{{count}} pts",
+      "wallet": {
+        "label": "Wallet Address:",
+        "copy": "Copy",
+        "notConnected": "No wallet connected"
+      }
+    },
+    "quickActions": {
+      "heading": "Quick actions",
+      "claimProduct": {
+        "title": "Claim a product",
+        "sub": "NFC or serial number"
+      },
+      "browseEvents": {
+        "title": "Browse events",
+        "sub": "See upcoming events"
+      },
+      "viewTier": {
+        "title": "View your tier",
+        "subProgress": "{{tier}} · {{points}} pts to {{nextTier}}",
+        "subMax": "{{tier}} · Max tier reached"
+      },
+      "shareReferral": {
+        "title": "Share referral code",
+        "sub": "Earn 200 pts per friend"
+      }
+    },
+    "dateFormat": {
+      "claimed": "Claimed",
+      "today": "Today",
+      "tomorrow": "Tomorrow",
+      "inDays_one": "In {{count}} day",
+      "inDays_other": "In {{count}} days",
+      "justNow": "Just now",
+      "minutesAgo_one": "{{count}}m ago",
+      "minutesAgo_other": "{{count}}m ago",
+      "hoursAgo_one": "{{count}}h ago",
+      "hoursAgo_other": "{{count}}h ago",
+      "yesterday": "Yesterday",
+      "daysAgo_one": "{{count}} day ago",
+      "daysAgo_other": "{{count}} days ago",
+      "weeksAgo_one": "{{count}} week ago",
+      "weeksAgo_other": "{{count}} weeks ago",
+      "monthsAgo_one": "{{count}} month ago",
+      "monthsAgo_other": "{{count}} months ago"
+    },
+    "modal": {
+      "success": {
+        "title": "Claim Submitted!",
+        "desc": "Your proof of ownership is being reviewed. Once validated, your zai Experience Club Card will be minted and your exclusive membership activated.",
+        "done": "Done"
+      },
+      "loading": "Loading Experience Card...",
+      "qr": {
+        "badge": "Exclusive Membership",
+        "title": "Scan with your phone to take a photo",
+        "desc": "Your phone will open a camera page. After you take the photo it will appear here automatically.",
+        "waiting": "Waiting for photo…",
+        "back": "← Back to upload options"
+      },
+      "form": {
+        "badge": "Exclusive Membership",
+        "defaultCardName": "zai Experience Club Card",
+        "desc": "The zai Experience Club is an exclusive club for zai members who have spent more than CHF 500 on zai products. If you feel like you meet this criteria, please upload your invoice using one of the options below to submit your membership request.",
+        "proofOfOwnership": "Proof of Ownership",
+        "takePhoto": "Take Photo",
+        "openCamera": "Open camera",
+        "usePhone": "Use Phone",
+        "scanQr": "Scan QR to take photo",
+        "uploadImage": "Upload Image",
+        "uploadFormats": "JPG, PNG, WebP",
+        "photoReceived": "Photo received from phone",
+        "encryptedReady": "Encrypted and ready to submit",
+        "submit": "Submit for Review",
+        "submitting": "Submitting...",
+        "reviewNote": "An admin will review your proof and mint your membership card once validated."
+      },
+      "errors": {
+        "ecUnavailable": "Experience Card not available at the moment.",
+        "ecLoadFailed": "Failed to load Experience Card details.",
+        "imageTooLarge": "Image must be under 8 MB",
+        "uploadLinkFailed": "Failed to generate upload link",
+        "submissionFailed": "Submission failed",
+        "uploadExpired": "Upload link expired. Please try again."
+      }
+    }
+  },
+  "profile": {
+    "loading": "Loading profile...",
+    "fallbackName": "User",
+    "header": {
+      "eyebrow": "account",
+      "title": "Profile",
+      "subtitle": "Manage your personal details and account preferences.",
+      "edit": "Edit",
+      "saveChanges": "Save Changes",
+      "saving": "Saving..."
+    },
+    "tabs": {
+      "overview": "Overview",
+      "purchaseHistory": "Purchase History"
+    },
+    "avatar": {
+      "changePhoto": "Change profile photo",
+      "errors": {
+        "invalidType": "Only JPG, PNG, and TIFF images are allowed.",
+        "tooLarge": "Image must be under 5 MB.",
+        "uploadFailed": "Failed to upload photo.",
+        "readFailed": "Could not read the selected file."
+      }
+    },
+    "stats": {
+      "products": "Products",
+      "events": "Events"
+    },
+    "tier": {
+      "label": "{{name}} Tier",
+      "ptsToNext": "{{count}} pts to {{tier}}"
+    },
+    "tiers": {
+      "blue": "Blue",
+      "red": "Red",
+      "black": "Black",
+      "diamond": "Diamond"
+    },
+    "bullets": {
+      "memberSince": "Member since {{date}}",
+      "card": "Card: {{number}}",
+      "nfcCard": "NFC Card: {{id}}",
+      "regionTag": "CHF · Alpine region"
+    },
+    "sections": {
+      "personalInformation": "Personal Information",
+      "rewardsTier": "Rewards & Tier",
+      "experienceCard": "Experience Card"
+    },
+    "fields": {
+      "firstName": "First Name",
+      "familyName": "Family Name",
+      "dateOfBirth": "Date of Birth",
+      "phoneNumber": "Phone Number",
+      "phonePlaceholder": "79 123 4567",
+      "emailAddress": "Email Address",
+      "streetAddress": "Street Address",
+      "postalCode": "Postal Code",
+      "city": "City",
+      "country": "Country",
+      "selectCountry": "Select country",
+      "homeAddress": "Home Address"
+    },
+    "actions": {
+      "cancel": "Cancel"
+    },
+    "tierDisplay": {
+      "loading": "Loading…",
+      "progressTo": "Progress to {{tier}}",
+      "maxTierReached": "Maximum Tier Reached",
+      "ofPoints": "/ {{max}} points",
+      "current": "Current",
+      "max": "Max",
+      "hintNext": "Claim a new ski (+500 pts) or attend an event (+150 pts) to accelerate your progress.",
+      "hintMax": "You've unlocked every tier. Keep claiming products and attending events to earn more points.",
+      "ptsValue": "{{value}} pts",
+      "claimProductButton": "Claim Product · +500 pts"
+    },
+    "experienceCard": {
+      "editCardNumber": "Edit Card #",
+      "addCardNumber": "Add Card #",
+      "imageAlt": "zai Experience Card",
+      "cardNumberLabel": "Card Number",
+      "cardNumberPlaceholder": "Enter card number or scan via NFC",
+      "cardNumberDisplayLabel": "Card #",
+      "scanNfc": "Scan NFC",
+      "scanning": "Scanning…",
+      "holdCardHint": "Hold your card near the device…",
+      "cancel": "Cancel",
+      "save": "Save",
+      "saving": "Saving…",
+      "status": {
+        "title": "Status",
+        "desc": "NFC Experience Card",
+        "active": "Active",
+        "inactive": "Inactive"
+      },
+      "nfc": {
+        "title": "NFC",
+        "desc": "Contactless product claim and access",
+        "enabled": "Enabled",
+        "disabled": "Disabled"
+      },
+      "contract": "Contract"
+    },
+    "alerts": {
+      "updateFailed": "Failed to update profile",
+      "saveCardNumberFailed": "Failed to save card number",
+      "nfcReadError": "Could not read NFC tag. Please try again.",
+      "nfcPermissionDenied": "NFC permission denied. Please allow NFC access in your browser settings.",
+      "nfcFailed": "NFC reading failed. Make sure NFC is enabled on your device."
+    },
+    "referral": {
+      "heading": "Referral Program",
+      "description": "Share your code. When friends claim their first zai product, you earn 200 pts and they earn 100.",
+      "yourCode": "Your Referral Code",
+      "stats": {
+        "referralsSent": "Referrals Sent",
+        "bonusPoints": "Bonus Points",
+        "valueUnlocked": "Value Unlocked"
+      },
+      "copyCode": "Copy Code",
+      "copied": "Copied",
+      "shareLink": "Share Link",
+      "haveCode": "Have a Referral Code?",
+      "placeholder": "Enter code (e.g. ZAI-XXXX)",
+      "apply": "Apply",
+      "applying": "Applying…",
+      "appliedMessage": "Referral applied! You'll earn bonus points on your first product claim.",
+      "invalidCode": "Invalid referral code.",
+      "couldNotApply": "Could not apply referral code.",
+      "referredByPrefix": "Referred by code"
+    },
+    "purchaseHistory": {
+      "loading": "Loading…",
+      "emptyTitle": "No purchases yet",
+      "emptyDesc": "Deals and collectibles you claim will appear here.",
+      "deal": "Deal",
+      "collectible": "Collectible",
+      "item": "Item",
+      "free": "Free",
+      "pointsUsed": "-{{count}} pts used",
+      "pointsEarned": "+{{count}} pts earned"
+    },
+    "countries": {
+      "Afghanistan": "Afghanistan",
+      "Albania": "Albania",
+      "Algeria": "Algeria",
+      "Andorra": "Andorra",
+      "Angola": "Angola",
+      "Argentina": "Argentina",
+      "Armenia": "Armenia",
+      "Australia": "Australia",
+      "Austria": "Austria",
+      "Azerbaijan": "Azerbaijan",
+      "Bahrain": "Bahrain",
+      "Bangladesh": "Bangladesh",
+      "Belgium": "Belgium",
+      "Bolivia": "Bolivia",
+      "Bosnia and Herzegovina": "Bosnia and Herzegovina",
+      "Brazil": "Brazil",
+      "Bulgaria": "Bulgaria",
+      "Cambodia": "Cambodia",
+      "Cameroon": "Cameroon",
+      "Canada": "Canada",
+      "Chile": "Chile",
+      "China": "China",
+      "Colombia": "Colombia",
+      "Costa Rica": "Costa Rica",
+      "Croatia": "Croatia",
+      "Cuba": "Cuba",
+      "Cyprus": "Cyprus",
+      "Czech Republic": "Czech Republic",
+      "Denmark": "Denmark",
+      "Dominican Republic": "Dominican Republic",
+      "Ecuador": "Ecuador",
+      "Egypt": "Egypt",
+      "Estonia": "Estonia",
+      "Ethiopia": "Ethiopia",
+      "Finland": "Finland",
+      "France": "France",
+      "Georgia": "Georgia",
+      "Germany": "Germany",
+      "Ghana": "Ghana",
+      "Greece": "Greece",
+      "Guatemala": "Guatemala",
+      "Hong Kong": "Hong Kong",
+      "Hungary": "Hungary",
+      "Iceland": "Iceland",
+      "India": "India",
+      "Indonesia": "Indonesia",
+      "Iran": "Iran",
+      "Iraq": "Iraq",
+      "Ireland": "Ireland",
+      "Israel": "Israel",
+      "Italy": "Italy",
+      "Jamaica": "Jamaica",
+      "Japan": "Japan",
+      "Jordan": "Jordan",
+      "Kazakhstan": "Kazakhstan",
+      "Kenya": "Kenya",
+      "Kuwait": "Kuwait",
+      "Latvia": "Latvia",
+      "Lebanon": "Lebanon",
+      "Libya": "Libya",
+      "Liechtenstein": "Liechtenstein",
+      "Lithuania": "Lithuania",
+      "Luxembourg": "Luxembourg",
+      "Malaysia": "Malaysia",
+      "Malta": "Malta",
+      "Mexico": "Mexico",
+      "Moldova": "Moldova",
+      "Monaco": "Monaco",
+      "Mongolia": "Mongolia",
+      "Montenegro": "Montenegro",
+      "Morocco": "Morocco",
+      "Mozambique": "Mozambique",
+      "Netherlands": "Netherlands",
+      "New Zealand": "New Zealand",
+      "Nigeria": "Nigeria",
+      "North Macedonia": "North Macedonia",
+      "Norway": "Norway",
+      "Oman": "Oman",
+      "Pakistan": "Pakistan",
+      "Panama": "Panama",
+      "Paraguay": "Paraguay",
+      "Peru": "Peru",
+      "Philippines": "Philippines",
+      "Poland": "Poland",
+      "Portugal": "Portugal",
+      "Qatar": "Qatar",
+      "Romania": "Romania",
+      "Russia": "Russia",
+      "Saudi Arabia": "Saudi Arabia",
+      "Senegal": "Senegal",
+      "Serbia": "Serbia",
+      "Singapore": "Singapore",
+      "Slovakia": "Slovakia",
+      "Slovenia": "Slovenia",
+      "South Africa": "South Africa",
+      "South Korea": "South Korea",
+      "Spain": "Spain",
+      "Sri Lanka": "Sri Lanka",
+      "Sweden": "Sweden",
+      "Switzerland": "Switzerland",
+      "Taiwan": "Taiwan",
+      "Thailand": "Thailand",
+      "Tunisia": "Tunisia",
+      "Turkey": "Turkey",
+      "UAE": "UAE",
+      "Uganda": "Uganda",
+      "Ukraine": "Ukraine",
+      "United Kingdom": "United Kingdom",
+      "United States": "United States",
+      "Uruguay": "Uruguay",
+      "Uzbekistan": "Uzbekistan",
+      "Venezuela": "Venezuela",
+      "Vietnam": "Vietnam"
+    }
+  },
+  "products": {
+    "header": {
+      "eyebrow": "my collection",
+      "title": "Your zai Collection",
+      "subtitle": "Claim products by uploading your proof of purchase. An admin will validate your claim and your product will appear here.",
+      "claimButton": "+ Claim Product"
+    },
+    "itemLabel": {
+      "product": "product",
+      "productCap": "Product",
+      "card": "card",
+      "cardCap": "Card"
+    },
+    "notifications": {
+      "pending": {
+        "title": "Claim pending review",
+        "detail": "{{item}} — submitted {{date}}"
+      },
+      "minting": {
+        "title": "Minting your {{item}}…",
+        "detail": "{{item}} — your NFT is being created"
+      },
+      "validated": {
+        "title": "{{item}} added to your {{destination}}!",
+        "detail": "{{item}} — validated {{date}}",
+        "destinationCollection": "collection",
+        "destinationAccount": "account"
+      },
+      "rejected": {
+        "title": "Claim rejected",
+        "detailWithNote": "{{item}} — {{note}}",
+        "detailNoNote": "{{item}} — contact support for details"
+      },
+      "error": {
+        "title": "Minting error — admin notified",
+        "detail": "{{item}} — {{note}}",
+        "defaultNote": "an error occurred during minting"
+      }
+    },
+    "stats": {
+      "productsClaimed": "Products Claimed",
+      "insuranceActive": "Insurance Active"
+    },
+    "collectionLabel": "your collection",
+    "categoryFilter": {
+      "all": "All"
+    },
+    "categories": {
+      "ski": "SKI",
+      "apparel": "APPAREL",
+      "accessory": "ACCESSORY"
+    },
+    "claimCard": {
+      "title": "Claim a Product",
+      "subtitle": "Scan or upload your receipt"
+    },
+    "card": {
+      "insuredBadge": "INSURED",
+      "activateInsurance": "ACTIVATE INSURANCE",
+      "insuranceActive": "INSURANCE ACTIVE"
+    },
+    "carousel": {
+      "scrollLeft": "Scroll left",
+      "scrollRight": "Scroll right"
+    },
+    "howToClaim": {
+      "eyebrow": "how to claim",
+      "title": "Register your zai product",
+      "stepLabel": "step {{num}}",
+      "step1": {
+        "title": "Upload your receipt",
+        "desc": "Take a photo of your purchase receipt or upload an image of your proof of purchase."
+      },
+      "step2": {
+        "title": "Admin review",
+        "desc": "Our team reviews your proof of purchase and validates your claim."
+      },
+      "step3": {
+        "title": "Enjoy benefits",
+        "desc": "Once validated, your product NFT is minted and you can access insurance, events, and community."
+      }
+    },
+    "detail": {
+      "price": "Price",
+      "materials": "Materials",
+      "category": "Category",
+      "insurance": "Insurance",
+      "active": "Active",
+      "notActive": "Not Active",
+      "certificate": "Certificate #{{id}}",
+      "activateInsurance": "Activate Insurance",
+      "noInsuranceNote": "Insurance is available for ski products only. This item is registered as {{category}}.",
+      "categoryAccessory": "an accessory",
+      "categoryApparel": "apparel"
+    },
+    "errors": {
+      "failedToLoadProducts": "Failed to load products",
+      "retry": "Retry",
+      "failedGenerateUploadLink": "Failed to generate upload link",
+      "uploadLinkExpired": "Upload link expired. Please try again.",
+      "imageTooLarge": "Image must be under 8 MB",
+      "pleaseChooseProduct": "Please choose your product",
+      "submissionFailed": "Submission failed",
+      "failedToLoadClaimableProducts": "Failed to load claimable products. Please try again.",
+      "failedActivateInsurance": "Failed to activate insurance"
+    },
+    "receiptModal": {
+      "title": "Claim a Product",
+      "success": {
+        "title": "Claim Submitted!",
+        "desc": "Your proof of purchase is being reviewed. You'll be notified once your {{item}} is validated.",
+        "done": "Done"
+      },
+      "qr": {
+        "scanTitle": "Scan with your phone to take a photo",
+        "scanDesc": "Your phone will open a camera page. After you take the photo it will appear here automatically.",
+        "waitingForPhoto": "Waiting for photo…",
+        "backToUploadOptions": "← Back to upload options"
+      },
+      "form": {
+        "intro": "Take a photo of your purchase receipt or upload an image. An admin will review it and validate your claim.",
+        "productNameLabel": "Product Name",
+        "loadingProducts": "Loading products…",
+        "selectProductPlaceholder": "Select a product",
+        "enterProductNamePlaceholder": "Enter product name",
+        "exampleProductPlaceholder": "e.g. ZAI Zermatt GT",
+        "proofOfPurchaseLabel": "Proof of Purchase",
+        "takePhoto": "Take Photo",
+        "openCamera": "Open camera",
+        "usePhone": "Use Phone",
+        "scanQrToTakePhoto": "Scan QR to take photo",
+        "uploadImage": "Upload Image",
+        "fileTypes": "JPG, PNG, WebP",
+        "photoReceivedTitle": "Photo received from phone",
+        "photoReceivedDesc": "Your receipt photo has been securely uploaded and is ready to submit.",
+        "cancel": "Cancel",
+        "submitClaim": "Submit Claim",
+        "submitting": "Submitting…"
+      }
+    },
+    "insuranceModal": {
+      "title": "Activate Insurance",
+      "formIntro": "Fill in the details below to activate insurance for {{name}}.",
+      "labels": {
+        "salutation": "Salutation",
+        "language": "Language",
+        "firstName": "First Name",
+        "lastName": "Last Name",
+        "address": "Address",
+        "zip": "Zip",
+        "city": "City",
+        "country": "Country",
+        "email": "Email",
+        "phone": "Phone",
+        "deviceInformation": "Device Information",
+        "deviceType": "Device Type",
+        "make": "Make",
+        "model": "Model",
+        "serialNumber": "Serial Number",
+        "price": "Price (CHF)",
+        "length": "Length (cm)",
+        "purchaseDate": "Purchase Date"
+      },
+      "cancel": "Cancel",
+      "activateInsurance": "Activate Insurance",
+      "loading": {
+        "activating": "Activating insurance…",
+        "mayTake": "This may take a moment"
+      },
+      "success": {
+        "title": "Insurance Activated!",
+        "certificateId": "Certificate ID:",
+        "transactionId": "Transaction ID:",
+        "done": "Done"
+      },
+      "error": {
+        "tryAgain": "Try Again",
+        "close": "Close"
+      }
+    },
+    "salutations": {
+      "mr": "Mr.",
+      "ms": "Ms."
+    },
+    "deviceTypes": {
+      "skiAlpine": "Ski Alpine",
+      "snowboard": "Snowboard",
+      "crossCountry": "Cross-country"
+    },
+    "dates": {
+      "unknown": "Unknown"
+    }
+  },
+  "events": {
+    "header": {
+      "eyebrow": "experiences",
+      "title": "Exclusive zai experiences",
+      "subtitle": "Experience card holders receive priority access to exclusive events."
+    },
+    "sections": {
+      "upcoming": "upcoming events",
+      "past": "past events"
+    },
+    "empty": {
+      "upcomingTitle": "No upcoming events",
+      "upcomingSubtitle": "Check back soon for new experiences.",
+      "pastTitle": "No past events yet",
+      "pastSubtitle": "Events you attend will appear here"
+    },
+    "tag": {
+      "demoDay": "DEMO DAY",
+      "factoryInviteOnly": "FACTORY · INVITE ONLY",
+      "partnerEvent": "PARTNER EVENT",
+      "community": "COMMUNITY",
+      "fallback": "EVENT"
+    },
+    "card": {
+      "registered": "Registered",
+      "scrollLeft": "Scroll left",
+      "scrollRight": "Scroll right"
+    },
+    "modal": {
+      "program": "Program",
+      "price": "Price",
+      "attendees_one": "{{current}} / {{max}} attendee",
+      "attendees_other": "{{current}} / {{max}} attendees",
+      "totalToPay": "Total to pay",
+      "cancelRegistration": "Cancel Registration",
+      "registerAndPay": "Register & Pay",
+      "register": "Register",
+      "processing": "Processing…"
+    },
+    "payment": {
+      "loading": "Loading…",
+      "back": "Back",
+      "pay": "Pay {{currency}} {{amount}}",
+      "processing": "Processing…",
+      "securedByStripe": "Secured by Stripe · Registration is confirmed once payment succeeds"
+    },
+    "errors": {
+      "loadFailed": "Failed to load events",
+      "startCheckoutFailed": "Failed to start checkout",
+      "registerFailed": "Failed to register",
+      "unregisterFailed": "Failed to unregister",
+      "checkPaymentDetails": "Please check your payment details",
+      "paymentFailed": "Payment failed",
+      "finalizeRegistrationFailed": "Payment succeeded but we could not finalize your registration.",
+      "finalizeRegistrationFailedRetry": "Payment succeeded but we could not finalize your registration. Please refresh in a moment — it will resolve automatically.",
+      "unexpected": "An unexpected error occurred",
+      "confirmPaymentFailed": "We could not confirm your payment. Please contact support if your registration is missing.",
+      "confirmPaymentFailedServer": "We could not confirm your payment with the server. Please refresh — it should resolve automatically, or contact support."
+    },
+    "alerts": {
+      "paymentSuccessful": "Payment successful! Your registration is confirmed."
+    }
+  },
+  "community": {
+    "eyebrow": "zai ecosystem",
+    "title": "Community",
+    "subtitle": "A global family of zai owners — connected by the mountain.",
+    "tabs": {
+      "feed": "Community",
+      "insights": "zai Insights",
+      "newBadge": "{{count}} NEW"
+    },
+    "feed": {
+      "allStoriesCount_one": "All Stories · {{count}} Post",
+      "allStoriesCount_other": "All Stories · {{count}} Posts"
+    },
+    "empty": {
+      "title": "No posts yet",
+      "desc": "Be the first to share your zai moment!"
+    },
+    "pagination": {
+      "prev": "← Prev",
+      "next": "Next →",
+      "posts_one": "{{count}} post",
+      "posts_other": "{{count}} posts"
+    },
+    "share": {
+      "heading": "Share your journey",
+      "desc": "Upload a high-fidelity image from your zai winter adventure. Tell the community about the performance, powder conditions, or alpine peaks.",
+      "cta": "Upload & Share Photo"
+    },
+    "directory": {
+      "heading": "Directory",
+      "badge": "zai members",
+      "registered_one": "{{count}} registered",
+      "registered_other": "{{count}} registered",
+      "searchPlaceholder": "Search members or locations...",
+      "empty": "No members found",
+      "blockedBadge": "blocked",
+      "unblock": "Unblock",
+      "block": "Block",
+      "prev": "‹ PREV",
+      "next": "NEXT ›",
+      "page": "Page {{current}} of {{total}}"
+    },
+    "follow": {
+      "eyebrow": "Follow zai",
+      "heading": "Stay in the loop",
+      "desc": "Follow our WhatsApp channel for event announcements, new model drops, and exclusive stories from the Davos manufactory.",
+      "brand": "zai Experience Club",
+      "followers": "1,843 followers · Updated weekly",
+      "cta": "Follow WhatsApp Channel",
+      "note": "You will be redirected to WhatsApp. No personal data is shared."
+    },
+    "upload": {
+      "heading": "Upload & Share",
+      "dropzone": "Click to select an image",
+      "dropzoneHint": "JPG, PNG, or TIFF · Max 4 MB",
+      "previewAlt": "Preview",
+      "captionLabel": "Caption",
+      "captionPlaceholder": "Tell us about this moment...",
+      "submit": "Upload & Share",
+      "submitting": "Uploading to IPFS...",
+      "errors": {
+        "invalidType": "Only JPG, PNG, and TIFF images are allowed",
+        "tooLarge": "Image must be under 4 MB",
+        "uploadFailed": "Upload failed"
+      }
+    },
+    "photo": {
+      "loading": "Loading…",
+      "delete": "Delete",
+      "remove": "Remove",
+      "deleteAdminTitle": "Delete (admin)",
+      "addReactionTitle": "Add reaction",
+      "noComments": "No comments yet",
+      "commentPlaceholder": "Add a comment...",
+      "post": "Post",
+      "confirmDelete": "Delete this photo?",
+      "confirmDeleteComment": "Delete this comment?",
+      "errors": {
+        "addComment": "Failed to add comment",
+        "deletePhoto": "Failed to delete",
+        "deleteComment": "Failed to delete comment",
+        "react": "Failed to react"
+      }
+    },
+    "members": {
+      "confirmBlock": "Block \"{{name}}\"? Enter a reason (optional):",
+      "confirmUnblock": "Unblock this member?",
+      "errors": {
+        "block": "Failed to block member",
+        "unblock": "Failed to unblock member"
+      }
+    },
+    "insights": {
+      "empty": "No stories yet. Check back soon.",
+      "topStory": "Top Story",
+      "allStories": "All Stories",
+      "video": "VIDEO",
+      "exclusive": "EXCLUSIVE",
+      "exclusiveTag": "{{category}} · EXCLUSIVE",
+      "watch": "WATCH →",
+      "view": "VIEW →",
+      "read": "READ →",
+      "viewOriginal": "View Original ↗",
+      "mediaType": {
+        "video": "video",
+        "photo": "photo",
+        "article": "article",
+        "product_launch": "product launch"
+      }
+    },
+    "time": {
+      "justNow": "just now",
+      "minutesAgo": "{{count}}m ago",
+      "hoursAgo": "{{count}}h ago",
+      "yesterday": "yesterday",
+      "daysAgo": "{{count}}d ago",
+      "weeksAgo": "{{count}}w ago"
+    }
+  },
+  "rewards": {
+    "header": {
+      "label": "Loyalty tiers",
+      "title": "Points & tiers",
+      "description": "Progress through tiers by claiming products and accumulating experience points."
+    },
+    "loading": "Loading rewards…",
+    "banner": {
+      "label": "Your current standing",
+      "tierWord": "Tier"
+    },
+    "yourTierBadge": "Your tier",
+    "tierRange": {
+      "withCeiling": "{{floor}} – {{ceiling}} points",
+      "noCeiling": "{{floor}}+ points"
+    },
+    "tiers": {
+      "blue": {
+        "name": "Blue",
+        "perks": [
+          "Product registration",
+          "Event newsletter",
+          "Digital warranty"
+        ]
+      },
+      "red": {
+        "name": "Red",
+        "perks": [
+          "Priority event access",
+          "Maintenance discount",
+          "Partner benefits",
+          "Dedicated support"
+        ]
+      },
+      "black": {
+        "name": "Black",
+        "perks": [
+          "VIP event invitations",
+          "Early product launches",
+          "Custom fitting service",
+          "Partner elite access",
+          "Referral bonuses"
+        ]
+      },
+      "diamond": {
+        "name": "Diamond",
+        "perks": [
+          "Factory visits, Pontresina",
+          "Bespoke commission",
+          "Personal zai ambassador",
+          "All partner elite benefits",
+          "Annual zai retreat"
+        ]
+      }
+    },
+    "progress": {
+      "toNextTier": "Progress to {{tier}}",
+      "maxTierReached": "Maximum tier reached",
+      "helperNext": "Claim a new ski (+500 pts) or attend an event (+150 pts) to accelerate your progress.",
+      "helperMax": "You've unlocked every tier. Keep claiming products and attending events to earn more points.",
+      "current": "Current",
+      "max": "Max",
+      "claimButton": "Claim product · +500 pts"
+    },
+    "highlights": {
+      "sectionTitle": "Your {{tier}} benefits",
+      "insurance": {
+        "title": "Free Ski Insurance",
+        "description": "Complimentary insurance on every new zai ski purchase."
+      },
+      "vipEvents": {
+        "title": "VIP Event Access",
+        "description": "Priority invitations to ski demos, factory tours, and exclusive experiences."
+      },
+      "partnerElite": {
+        "title": "Partner Elite Access",
+        "description": "Premium perks with Revolut, Ikon Pass, Epic Pass and Engadin."
+      }
+    },
+    "activity": {
+      "sectionTitle": "Recent activity"
+    },
+    "units": {
+      "pointsValue": "{{value}} pts"
+    }
+  },
+  "updates": {
+    "common": {
+      "loading": "Loading…",
+      "processing": "Processing…"
+    },
+    "header": {
+      "title": "Deals & Collectibles",
+      "memberAccessOnly": "Member access only"
+    },
+    "tabs": {
+      "deals": "Deals",
+      "collectibles": "Collectible Drops"
+    },
+    "featured": {
+      "label": "— FEATURED DEAL",
+      "availableHoursOnly": "⊙ Available {{hours}}h only",
+      "exclusiveMemberPricing": "Exclusive Member Pricing",
+      "limitedAvailability": "Limited availability",
+      "claimOffer": "Claim offer, CHF {{price}}",
+      "newDeal": "New Deal"
+    },
+    "regular": {
+      "memberDealsLabel": "MEMBER DEALS",
+      "exclusiveOffers": "Exclusive Offers",
+      "viewAllDeals": "View all deals →",
+      "membersOnly": "Members only",
+      "upToPtsMax_one": "Up to {{count}} pt max",
+      "upToPtsMax_other": "Up to {{count}} pts max",
+      "saveChf": "save CHF {{amount}}",
+      "endsOn": "Ends",
+      "applyPoints": "Apply Points →"
+    },
+    "emptyStates": {
+      "noDeals": "No deals available yet. Check back soon.",
+      "noCollectibles": "No collectible drops available yet. Check back soon."
+    },
+    "deal": {
+      "fullPrice": "Full price",
+      "yourBalance": "Your balance",
+      "pointsToApply": "Points to apply",
+      "pts_one": "{{count}} pt",
+      "pts_other": "{{count}} pts",
+      "ptsMax_one": "{{count}} pt max",
+      "ptsMax_other": "{{count}} pts max",
+      "summary": {
+        "fullPrice": "Full price",
+        "pointsDiscount_one": "Points discount ({{count}} pt)",
+        "pointsDiscount_other": "Points discount ({{count}} pts)",
+        "youPay": "You pay"
+      },
+      "continueToPayment": "Continue to payment",
+      "pointsNote": "1 pt = CHF 0.01 · Points deducted from your balance on confirmation",
+      "totalToPay": "Total to pay"
+    },
+    "payment": {
+      "back": "Back",
+      "pay": "Pay CHF {{amount}}",
+      "securedByStripe": "Secured by Stripe",
+      "errors": {
+        "fulfillmentFailed": "Payment succeeded but we could not finalize your order.",
+        "checkDetails": "Please check your payment details",
+        "paymentFailed": "Payment failed",
+        "fulfillmentFailedRetry": "Payment succeeded but we could not finalize your order. Please refresh in a moment — it will resolve automatically.",
+        "unexpected": "An unexpected error occurred"
+      }
+    },
+    "alerts": {
+      "paymentCancelled": "Payment was cancelled.",
+      "paymentSuccessful": "Payment successful! Points have been updated.",
+      "confirmFailedGeneric": "We could not confirm your payment. Please contact support if points/product are missing.",
+      "confirmFailedNetwork": "We could not confirm your payment with the server. Please refresh — it should resolve automatically, or contact support.",
+      "createPaymentFailed": "Failed to create payment",
+      "somethingWrong": "Something went wrong",
+      "claimed": "Claimed! +{{points}} pts",
+      "claimFailed": "Claim failed"
+    },
+    "collectibles": {
+      "dropsLabel": "COLLECTIBLE DROPS",
+      "piecesSet": "{{count}}-piece set · Season {{season}}",
+      "collectDesc": "Collect exclusive collectible drops to earn points and unlock exclusive member rewards",
+      "yourCollection": "Your collection",
+      "locked": "Locked",
+      "editionClosed": "Edition closed",
+      "claimed": "Claimed ✓",
+      "availableNow": "Available now",
+      "ptsEarned": "Pts earned",
+      "ptsToEarn": "Pts to earn",
+      "claimNow": "Claim now"
+    }
+  },
+  "admin": {
+    "header": {
+      "label": "admin",
+      "title": "Claim Requests",
+      "subtitle": "Review proof-of-purchase submissions and validate product claims."
+    },
+    "accessRequired": "Admin access required.",
+    "filters": {
+      "pending": "pending",
+      "validated": "validated",
+      "rejected": "rejected",
+      "all": "all",
+      "count_one": "{{count}} claim",
+      "count_other": "{{count}} claims"
+    },
+    "status": {
+      "pending": "pending",
+      "minting": "minting",
+      "validated": "validated",
+      "rejected": "rejected",
+      "error": "error"
+    },
+    "loading": "Loading claims…",
+    "errors": {
+      "retry": "Retry",
+      "failedToLoadClaims": "Failed to load claims",
+      "validationFailed": "Validation failed",
+      "rejectionFailed": "Rejection failed",
+      "mintStartFailed": "Could not start minting: {{error}}",
+      "unknownError": "Unknown error"
+    },
+    "empty": {
+      "noClaimsFiltered": "No {{status}} claim requests.",
+      "noClaimsAll": "No claim requests."
+    },
+    "list": {
+      "product": "Product",
+      "unnamedProduct": "Unnamed product",
+      "submitted": "Submitted {{date}}",
+      "proofAlt": "Proof"
+    },
+    "pagination": {
+      "prev": "← Prev",
+      "next": "Next →"
+    },
+    "modal": {
+      "reviewTitle": "Review Claim Request"
+    },
+    "claim": {
+      "claimId": "Claim ID:",
+      "submittedBy": "Submitted By",
+      "proofOfPurchase": "Proof of Purchase",
+      "proofAlt": "Proof of purchase",
+      "clickToZoom": "Click to zoom",
+      "status": "Status: {{status}}",
+      "note": "Note: {{note}}",
+      "mintTx": "Mint TX:",
+      "productToMint": "Product to Mint",
+      "selectProductToMint": "Select Product to Mint",
+      "experienceCardName": "zai Experience Club Card",
+      "membershipCardAuto": "Membership card · selected automatically",
+      "selectProductPlaceholder": "— Select a product —",
+      "adminNoteLabel": "Admin Note (optional)",
+      "notePlaceholder": "Add a note…",
+      "reject": "Reject",
+      "validateAndMint": "Validate & Mint",
+      "processing": "Processing…"
+    }
+  },
+  "adminStore": {
+    "accessDenied": "Admin access required.",
+    "header": {
+      "badge": "admin",
+      "title": "Store & Content",
+      "subtitle": "Manage deals, collectible drops, and media stories."
+    },
+    "tabs": {
+      "deals": "Deals",
+      "collectibles": "Collectibles",
+      "media": "Media & Stories"
+    },
+    "common": {
+      "loading": "Loading…",
+      "cancel": "Cancel",
+      "saving": "Saving…",
+      "create": "Create",
+      "update": "Update",
+      "edit": "Edit",
+      "remove": "Remove",
+      "saveFailed": "Save failed",
+      "featured": "Featured",
+      "selectPlaceholder": "Select a product…",
+      "clearSelection": "Clear selection",
+      "searchPlaceholder": "Search products…",
+      "noProductsMatch": "No products match \"{{search}}\""
+    },
+    "list": {
+      "dealsCount_one": "{{count}} deal",
+      "dealsCount_other": "{{count}} deals",
+      "storiesCount_one": "{{count}} story",
+      "storiesCount_other": "{{count}} stories",
+      "newDeal": "+ New Deal",
+      "newStory": "+ New Story",
+      "noDeals": "No deals yet. Create your first deal.",
+      "noStories": "No stories yet. Create your first story.",
+      "nft": "NFT",
+      "endsOn": "Ends {{date}}",
+      "spotsLeft": "{{left}}/{{total}} spots"
+    },
+    "dealForm": {
+      "editTitle": "Edit Deal",
+      "newTitle": "New Deal",
+      "linkProduct": "Link to Product (optional — auto-fills fields)",
+      "inheritedFrom": "Inherited from product",
+      "nftAutoMint": "NFT auto-mint enabled",
+      "title": "Title",
+      "titlePlaceholder": "zai Sunglasses",
+      "description": "Description",
+      "category": "Category",
+      "categoryOptions": {
+        "accessories": "Accessories",
+        "apparel": "Apparel",
+        "skis": "Skis",
+        "event": "Event",
+        "experience": "Experience"
+      },
+      "price": "Price (CHF)",
+      "maxPointsDiscount": "Max Points Discount",
+      "totalSpots": "Total Spots (0 = unlimited)",
+      "imageUrl": "Image URL",
+      "endsAt": "Ends At",
+      "confirmDeactivate": "Deactivate this deal?"
+    },
+    "collectibles": {
+      "infoText": "Collectible drops are created via the database and linked to Engage NFTs. This panel shows the current state of all series and cards. To add a new series or card, use the database directly or contact the dev team.",
+      "noSeries": "No collectible series found.",
+      "season": "Season {{season}}",
+      "cardsCount_one": "{{count}} card",
+      "cardsCount_other": "{{count}} cards",
+      "claimedByYou": "{{count}} claimed by you",
+      "pts": "{{count}} pts",
+      "claimed": "✓ Claimed",
+      "closed": "Closed"
+    },
+    "mediaForm": {
+      "editTitle": "Edit Story",
+      "newTitle": "New Story",
+      "title": "Title",
+      "titlePlaceholder": "Workshop: Ski Tuning Masterclass",
+      "type": "Type",
+      "typeOptions": {
+        "article": "Article",
+        "video": "Video",
+        "photo": "Photo",
+        "productLaunch": "Product Launch"
+      },
+      "category": "Category",
+      "categoryOptions": {
+        "editorial": "Editorial",
+        "behindTheScenes": "Behind the Scenes",
+        "tech": "Tech",
+        "lifestyle": "Lifestyle",
+        "product": "Product"
+      },
+      "description": "Description",
+      "mediaUrl": "Media URL (video/article link)",
+      "thumbnailUrl": "Thumbnail URL",
+      "duration": "Duration (for video)",
+      "publishedAt": "Published At",
+      "exclusive": "Exclusive",
+      "confirmRemove": "Remove this story?"
     }
   }
 }

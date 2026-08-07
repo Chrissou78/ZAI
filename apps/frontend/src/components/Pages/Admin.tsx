@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAppContext } from '../../context/AppContext';
 import { apiService } from '../../services/api';
 import Modal from '../Common/Modal';
@@ -253,6 +254,7 @@ const PREFETCH_AHEAD = 1;
    ═══════════════════════════════════════════ */
 
 const Admin: React.FC = () => {
+  const { t } = useTranslation();
   const { user } = useAppContext();
   const [claims, setClaims] = useState<ClaimRequest[]>([]);
   const [catalog, setCatalog] = useState<CatalogProduct[]>([]);
@@ -352,14 +354,14 @@ const Admin: React.FC = () => {
       if (res.data?.success) {
         setClaims(res.data.data || []);
       } else {
-        setError(res.data?.error || 'Failed to load claims');
+        setError(res.data?.error || t('admin.errors.failedToLoadClaims'));
       }
     } catch (err: any) {
-      setError(err?.response?.data?.error || err?.message || 'Failed to load claims');
+      setError(err?.response?.data?.error || err?.message || t('admin.errors.failedToLoadClaims'));
     } finally {
       setIsLoading(false);
     }
-  }, [filter]);
+  }, [filter, t]);
 
   useEffect(() => { fetchClaims(); }, [fetchClaims]);
 
@@ -417,7 +419,7 @@ const Admin: React.FC = () => {
         const payload = res.data as any;
         if (!payload.queued) {
           const mintResult = payload.mintResult;
-          setActionError(`Could not start minting: ${mintResult?.error || 'Unknown error'}`);
+          setActionError(t('admin.errors.mintStartFailed', { error: mintResult?.error || t('admin.errors.unknownError') }));
           fetchClaims();
         } else {
           // Minting runs in the background; wt-rwa's webhook flips the claim to
@@ -426,10 +428,10 @@ const Admin: React.FC = () => {
           fetchClaims();
         }
       } else {
-        setActionError(res.data?.error || 'Validation failed');
+        setActionError(res.data?.error || t('admin.errors.validationFailed'));
       }
     } catch (err: any) {
-      setActionError(err?.response?.data?.error || err?.message || 'Validation failed');
+      setActionError(err?.response?.data?.error || err?.message || t('admin.errors.validationFailed'));
     } finally {
       setActionLoading(false);
     }
@@ -447,10 +449,10 @@ const Admin: React.FC = () => {
         setSelectedClaim(null);
         fetchClaims();
       } else {
-        setActionError(res.data?.error || 'Rejection failed');
+        setActionError(res.data?.error || t('admin.errors.rejectionFailed'));
       }
     } catch (err: any) {
-      setActionError(err?.response?.data?.error || err?.message || 'Rejection failed');
+      setActionError(err?.response?.data?.error || err?.message || t('admin.errors.rejectionFailed'));
     } finally {
       setActionLoading(false);
     }
@@ -461,7 +463,7 @@ const Admin: React.FC = () => {
   if (!isAdminUser) {
     return (
       <div style={{ padding: '48px', fontFamily: C.font, textAlign: 'center' }}>
-        <p style={{ fontSize: 16, color: C.gray }}>Admin access required.</p>
+        <p style={{ fontSize: 16, color: C.gray }}>{t('admin.accessRequired')}</p>
       </div>
     );
   }
@@ -474,12 +476,12 @@ const Admin: React.FC = () => {
 
         {/* Header */}
         <div style={{ marginBottom: '2.5rem', paddingBottom: '2rem', borderBottom: bdr }}>
-          <div style={sectionLabel}>admin</div>
+          <div style={sectionLabel}>{t('admin.header.label')}</div>
           <h1 style={{ fontSize: 'clamp(28px, 3vw, 36px)', fontWeight: 300, lineHeight: 1.15, margin: '6px 0 6px' }}>
-            Claim Requests
+            {t('admin.header.title')}
           </h1>
           <p style={{ color: C.gray, fontSize: '13px', margin: 0 }}>
-            Review proof-of-purchase submissions and validate product claims.
+            {t('admin.header.subtitle')}
           </p>
         </div>
 
@@ -501,7 +503,7 @@ const Admin: React.FC = () => {
                   transition: 'all 0.2s',
                 }}
               >
-                {f}
+                {t(`admin.filters.${f}`)}
               </button>
             );
           })}
@@ -511,7 +513,7 @@ const Admin: React.FC = () => {
               display: 'flex', alignItems: 'center', fontSize: 11,
               color: C.gray, marginLeft: 4,
             }}>
-              {claims.length} claim{claims.length !== 1 ? 's' : ''}
+              {t('admin.filters.count', { count: claims.length })}
             </span>
           )}
         </div>
@@ -524,7 +526,7 @@ const Admin: React.FC = () => {
               borderTopColor: C.red, borderRadius: '50%',
               animation: 'zai-spin 0.8s linear infinite', margin: '0 auto 16px',
             }} />
-            <span style={{ fontSize: 13, color: C.gray }}>Loading claims…</span>
+            <span style={{ fontSize: 13, color: C.gray }}>{t('admin.loading')}</span>
           </div>
         )}
 
@@ -532,14 +534,18 @@ const Admin: React.FC = () => {
         {error && !isLoading && (
           <div style={{ textAlign: 'center', padding: 32 }}>
             <p style={{ color: C.red, fontSize: 14, marginBottom: 16 }}>{error}</p>
-            <Button onClick={fetchClaims}>Retry</Button>
+            <Button onClick={fetchClaims}>{t('admin.errors.retry')}</Button>
           </div>
         )}
 
         {/* Empty */}
         {!isLoading && !error && claims.length === 0 && (
           <div style={{ textAlign: 'center', padding: 48, color: C.gray }}>
-            <p style={{ fontSize: 14 }}>No {filter || ''} claim requests.</p>
+            <p style={{ fontSize: 14 }}>
+              {filter
+                ? t('admin.empty.noClaimsFiltered', { status: t(`admin.status.${filter}`) })
+                : t('admin.empty.noClaimsAll')}
+            </p>
           </div>
         )}
 
@@ -571,7 +577,7 @@ const Admin: React.FC = () => {
                       {prodImg ? (
                         <CachedImg
                           src={prodImg}
-                          alt={claim.productName || 'Product'}
+                          alt={claim.productName || t('admin.list.product')}
                           style={{
                             width: 56, height: 56, objectFit: 'cover',
                             borderRadius: 6, display: 'block',
@@ -593,21 +599,21 @@ const Admin: React.FC = () => {
                           fontSize: 14, fontWeight: 600,
                           overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                         }}>
-                          {claim.productName || 'Unnamed product'}
+                          {claim.productName || t('admin.list.unnamedProduct')}
                         </span>
                         <span style={{
                           fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase',
                           padding: '2px 8px', borderRadius: 3, flexShrink: 0,
                           background: sc.bg, color: sc.color,
                         }}>
-                          {claim.status}
+                          {t(`admin.status.${claim.status}`)}
                         </span>
                       </div>
                       <div style={{ fontSize: 12, color: C.mid, marginBottom: 2 }}>
                         {claim.userName || claim.userId}
                       </div>
                       <div style={{ fontSize: 11, color: C.gray }}>
-                        Submitted {formatDate(claim.createdAt)}
+                        {t('admin.list.submitted', { date: formatDate(claim.createdAt) })}
                       </div>
                     </div>
 
@@ -618,7 +624,7 @@ const Admin: React.FC = () => {
                     }}>
                       <CachedImg
                         src={`/api/products/claim-proof/${claim.id}`}
-                        alt="Proof"
+                        alt={t('admin.list.proofAlt')}
                         style={{
                           width: 48, height: 48, objectFit: 'cover',
                           borderRadius: 4, display: 'block',
@@ -652,7 +658,7 @@ const Admin: React.FC = () => {
                     cursor: page <= 1 ? 'default' : 'pointer',
                   }}
                 >
-                  ← Prev
+                  {t('admin.pagination.prev')}
                 </button>
 
                 {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
@@ -683,7 +689,7 @@ const Admin: React.FC = () => {
                     cursor: page >= totalPages ? 'default' : 'pointer',
                   }}
                 >
-                  Next →
+                  {t('admin.pagination.next')}
                 </button>
               </div>
             )}
@@ -693,7 +699,7 @@ const Admin: React.FC = () => {
 
       {/* ════════════ REVIEW MODAL ════════════ */}
       {selectedClaim && (
-        <Modal isOpen onClose={() => setSelectedClaim(null)} title="Review Claim Request">
+        <Modal isOpen onClose={() => setSelectedClaim(null)} title={t('admin.modal.reviewTitle')}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
             {/* Product info card */}
@@ -704,26 +710,26 @@ const Admin: React.FC = () => {
               <div style={{ width: 64, height: 64, borderRadius: 6, overflow: 'hidden', flexShrink: 0, border: bdr }}>
                 <CachedImg
                   src={getProductImage(selectedClaim)}
-                  alt={selectedClaim.productName || 'Product'}
+                  alt={selectedClaim.productName || t('admin.list.product')}
                   style={{ width: 64, height: 64, objectFit: 'cover', borderRadius: 6, display: 'block' }}
                 />
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 4 }}>
-                  {selectedClaim.productName || 'Unnamed product'}
+                  {selectedClaim.productName || t('admin.list.unnamedProduct')}
                 </div>
                 <div style={{ fontSize: 12, color: C.gray, marginBottom: 2 }}>
-                  Claim ID: <span style={{ fontFamily: 'monospace', fontSize: 11, wordBreak: 'break-all' }}>{selectedClaim.id}</span>
+                  {t('admin.claim.claimId')} <span style={{ fontFamily: 'monospace', fontSize: 11, wordBreak: 'break-all' }}>{selectedClaim.id}</span>
                 </div>
                 <div style={{ fontSize: 12, color: C.gray }}>
-                  Submitted {formatDate(selectedClaim.createdAt)}
+                  {t('admin.list.submitted', { date: formatDate(selectedClaim.createdAt) })}
                 </div>
               </div>
             </div>
 
             {/* User info */}
             <div>
-              <div style={{ ...lbl, marginBottom: 8 }}>Submitted By</div>
+              <div style={{ ...lbl, marginBottom: 8 }}>{t('admin.claim.submittedBy')}</div>
               <div style={{
                 padding: '12px 16px', borderRadius: 8, border: bdr,
                 background: C.pureWhite,
@@ -742,7 +748,7 @@ const Admin: React.FC = () => {
 
             {/* Proof image */}
             <div>
-              <div style={{ ...lbl, marginBottom: 8 }}>Proof of Purchase</div>
+              <div style={{ ...lbl, marginBottom: 8 }}>{t('admin.claim.proofOfPurchase')}</div>
               <div
                 style={{
                   borderRadius: 8, overflow: 'hidden', cursor: 'zoom-in',
@@ -752,14 +758,14 @@ const Admin: React.FC = () => {
               >
                 <CachedImg
                   src={`/api/products/claim-proof/${selectedClaim.id}`}
-                  alt="Proof of purchase"
+                  alt={t('admin.claim.proofAlt')}
                   style={{
                     width: '100%', height: 'auto', display: 'block',
                     maxHeight: 300, objectFit: 'contain',
                   }}
                 />
               </div>
-              <div style={{ fontSize: 11, color: C.gray, marginTop: 4 }}>Click to zoom</div>
+              <div style={{ fontSize: 11, color: C.gray, marginTop: 4 }}>{t('admin.claim.clickToZoom')}</div>
             </div>
 
             {/* Status (non-pending) */}
@@ -770,15 +776,15 @@ const Admin: React.FC = () => {
                 color: statusColors[selectedClaim.status]?.color || C.mid,
                 fontSize: 13, fontWeight: 600,
               }}>
-                Status: {selectedClaim.status.toUpperCase()}
+                {t('admin.claim.status', { status: t(`admin.status.${selectedClaim.status}`).toUpperCase() })}
                 {selectedClaim.adminNote && (
                   <div style={{ fontWeight: 400, marginTop: 4, fontSize: 12 }}>
-                    Note: {selectedClaim.adminNote}
+                    {t('admin.claim.note', { note: selectedClaim.adminNote })}
                   </div>
                 )}
                 {selectedClaim.mintTx && (
                   <div style={{ fontWeight: 400, marginTop: 4, fontSize: 11, fontFamily: 'monospace', wordBreak: 'break-all' }}>
-                    Mint TX: {selectedClaim.mintTx}
+                    {t('admin.claim.mintTx')} {selectedClaim.mintTx}
                   </div>
                 )}
               </div>
@@ -789,7 +795,7 @@ const Admin: React.FC = () => {
               <>
                 <div>
                   <div style={{ ...lbl, marginBottom: 8 }}>
-                    {isExperienceCardClaim ? 'Product to Mint' : 'Select Product to Mint'}
+                    {isExperienceCardClaim ? t('admin.claim.productToMint') : t('admin.claim.selectProductToMint')}
                   </div>
                   {isExperienceCardClaim ? (
                     <div style={{
@@ -800,16 +806,16 @@ const Admin: React.FC = () => {
                       <div style={{ width: 36, height: 36, borderRadius: 4, overflow: 'hidden', flexShrink: 0, border: bdr }}>
                         <CachedImg
                           src={ecCardInfo?.image || getProductImage(selectedClaim)}
-                          alt={ecCardInfo?.name || 'Experience Card'}
+                          alt={ecCardInfo?.name || t('admin.claim.experienceCardName')}
                           style={{ width: 36, height: 36, objectFit: 'cover', borderRadius: 4, display: 'block' }}
                         />
                       </div>
                       <div>
                         <div style={{ fontSize: 13, fontWeight: 600 }}>
-                          {ecCardInfo?.name || 'zai Experience Club Card'}
+                          {ecCardInfo?.name || t('admin.claim.experienceCardName')}
                         </div>
                         <div style={{ fontSize: 11, color: C.gray }}>
-                          Membership card · selected automatically
+                          {t('admin.claim.membershipCardAuto')}
                         </div>
                       </div>
                     </div>
@@ -821,17 +827,17 @@ const Admin: React.FC = () => {
                       }))}
                       value={selectedRwaId}
                       onChange={(id) => setSelectedRwaId(id)}
-                      placeholder="— Select a product —"
+                      placeholder={t('admin.claim.selectProductPlaceholder')}
                     />
                   )}
                 </div>
 
                 <div>
-                  <div style={{ ...lbl, marginBottom: 8 }}>Admin Note (optional)</div>
+                  <div style={{ ...lbl, marginBottom: 8 }}>{t('admin.claim.adminNoteLabel')}</div>
                   <textarea
                     value={adminNote}
                     onChange={e => setAdminNote(e.target.value)}
-                    placeholder="Add a note…"
+                    placeholder={t('admin.claim.notePlaceholder')}
                     style={{
                       width: '100%', padding: '10px 12px', border: bdr,
                       fontSize: 13, fontFamily: C.font, borderRadius: 4,
@@ -863,7 +869,7 @@ const Admin: React.FC = () => {
                       transition: 'all 0.2s',
                     }}
                   >
-                    Reject
+                    {t('admin.claim.reject')}
                   </button>
                   <button
                     onClick={handleValidate}
@@ -879,7 +885,7 @@ const Admin: React.FC = () => {
                       transition: 'all 0.2s',
                     }}
                   >
-                    {actionLoading ? 'Processing…' : 'Validate & Mint'}
+                    {actionLoading ? t('admin.claim.processing') : t('admin.claim.validateAndMint')}
                   </button>
                 </div>
               </>
@@ -894,7 +900,7 @@ const Admin: React.FC = () => {
           <div style={{ display: 'flex', justifyContent: 'center' }}>
             <CachedImg
               src={zoomImage}
-              alt="Proof"
+              alt={t('admin.list.proofAlt')}
               style={{
                 maxWidth: '100%', maxHeight: '80vh',
                 objectFit: 'contain', borderRadius: 8,

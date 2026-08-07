@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { stripePromise } from '../../lib/stripe';
 import { useAppContext } from '../../context/AppContext';
@@ -137,13 +138,13 @@ function parseDate(dateStr: string) {
   }
 }
 
-function getTagLabel(tag: string) {
-  const t = tag?.toLowerCase() || '';
-  if (t.includes('demo')) return 'DEMO DAY';
-  if (t.includes('factory')) return 'FACTORY · INVITE ONLY';
-  if (t.includes('partner')) return 'PARTNER EVENT';
-  if (t.includes('community')) return 'COMMUNITY';
-  return tag?.toUpperCase() || 'EVENT';
+function getTagLabel(tag: string, tFn: (key: string) => string) {
+  const lower = tag?.toLowerCase() || '';
+  if (lower.includes('demo')) return tFn('events.tag.demoDay');
+  if (lower.includes('factory')) return tFn('events.tag.factoryInviteOnly');
+  if (lower.includes('partner')) return tFn('events.tag.partnerEvent');
+  if (lower.includes('community')) return tFn('events.tag.community');
+  return tag?.toUpperCase() || tFn('events.tag.fallback');
 }
 
 function getTagColor(tag: string) {
@@ -312,6 +313,7 @@ function EventPaymentForm({ amount, currency, paymentId, onSuccess, onBack }: {
   onSuccess: () => void;
   onBack: () => void;
 }) {
+  const { t } = useTranslation();
   const stripe = useStripe();
   const elements = useElements();
   const [loading, setLoading] = useState(false);
@@ -321,7 +323,7 @@ function EventPaymentForm({ amount, currency, paymentId, onSuccess, onBack }: {
   const confirmRegistration = async () => {
     const res = await apiService.post(`/events/payments/${paymentId}/confirm`);
     if (!res.data?.success) {
-      throw new Error(res.data?.error || 'Payment succeeded but we could not finalize your registration.');
+      throw new Error(res.data?.error || t('events.errors.finalizeRegistrationFailed'));
     }
   };
 
@@ -335,7 +337,7 @@ function EventPaymentForm({ amount, currency, paymentId, onSuccess, onBack }: {
     try {
       const { error: submitError } = await elements.submit();
       if (submitError) {
-        setError(submitError.message || 'Please check your payment details');
+        setError(submitError.message || t('events.errors.checkPaymentDetails'));
         setLoading(false);
         return;
       }
@@ -349,7 +351,7 @@ function EventPaymentForm({ amount, currency, paymentId, onSuccess, onBack }: {
       });
 
       if (confirmError) {
-        setError(confirmError.message || 'Payment failed');
+        setError(confirmError.message || t('events.errors.paymentFailed'));
         setLoading(false);
         return;
       }
@@ -360,7 +362,7 @@ function EventPaymentForm({ amount, currency, paymentId, onSuccess, onBack }: {
           localStorage.removeItem('zai_pending_event_payment');
           onSuccess();
         } catch (fulfillErr: any) {
-          setError(fulfillErr?.message || 'Payment succeeded but we could not finalize your registration. Please refresh in a moment — it will resolve automatically.');
+          setError(fulfillErr?.message || t('events.errors.finalizeRegistrationFailedRetry'));
           setLoading(false);
         }
       } else {
@@ -369,7 +371,7 @@ function EventPaymentForm({ amount, currency, paymentId, onSuccess, onBack }: {
         onSuccess();
       }
     } catch (err: any) {
-      setError(err?.message || 'An unexpected error occurred');
+      setError(err?.message || t('events.errors.unexpected'));
       setLoading(false);
     }
   };
@@ -380,7 +382,7 @@ function EventPaymentForm({ amount, currency, paymentId, onSuccess, onBack }: {
 
       {!ready && (
         <div style={{ textAlign: 'center', padding: '20px 0', color: C.muted, fontSize: 13 }}>
-          Loading…
+          {t('events.payment.loading')}
         </div>
       )}
 
@@ -399,7 +401,7 @@ function EventPaymentForm({ amount, currency, paymentId, onSuccess, onBack }: {
           color: C.black, cursor: 'pointer', fontSize: 12, fontWeight: 600,
           letterSpacing: '0.08em', textTransform: 'uppercase', borderRadius: 4,
           fontFamily: "'Inter',sans-serif", opacity: loading ? 0.5 : 1,
-        }}>Back</button>
+        }}>{t('events.payment.back')}</button>
         <button type="submit" disabled={!stripe || !ready || loading} style={{
           flex: 1, padding: '14px', border: 'none',
           background: (!stripe || !ready || loading) ? '#999' : C.red,
@@ -407,12 +409,12 @@ function EventPaymentForm({ amount, currency, paymentId, onSuccess, onBack }: {
           fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase',
           borderRadius: 4, fontFamily: "'Inter',sans-serif",
         }}>
-          {loading ? 'Processing…' : `Pay ${currency.toUpperCase()} ${amount.toFixed(2)}`}
+          {loading ? t('events.payment.processing') : t('events.payment.pay', { currency: currency.toUpperCase(), amount: amount.toFixed(2) })}
         </button>
       </div>
 
       <div style={{ textAlign: 'center', fontSize: 11, color: C.muted, marginTop: 12 }}>
-        Secured by Stripe · Registration is confirmed once payment succeeds
+        {t('events.payment.securedByStripe')}
       </div>
     </form>
   );
@@ -423,6 +425,7 @@ function EventPaymentForm({ amount, currency, paymentId, onSuccess, onBack }: {
 // ═══════════════════════════════
 
 const Events: React.FC = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user } = useAppContext();
@@ -473,14 +476,14 @@ const Events: React.FC = () => {
       .then(res => {
         localStorage.removeItem('zai_pending_event_payment');
         if (res.data?.success) {
-          alert('Payment successful! Your registration is confirmed.');
+          alert(t('events.alerts.paymentSuccessful'));
           fetchEvents();
         } else {
-          alert(res.data?.error || 'We could not confirm your payment. Please contact support if your registration is missing.');
+          alert(res.data?.error || t('events.errors.confirmPaymentFailed'));
         }
       })
       .catch(() => {
-        alert('We could not confirm your payment with the server. Please refresh — it should resolve automatically, or contact support.');
+        alert(t('events.errors.confirmPaymentFailedServer'));
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
@@ -526,7 +529,7 @@ const Events: React.FC = () => {
       setEvents(response.data?.data || []);
     } catch (err: any) {
       console.error('Error fetching events:', err);
-      setError(err.response?.data?.error || 'Failed to load events');
+      setError(err.response?.data?.error || t('events.errors.loadFailed'));
     } finally { setIsLoading(false); }
   };
 
@@ -566,9 +569,9 @@ const Events: React.FC = () => {
           setPaymentData({ clientSecret, amount: amt, currency, paymentId });
           localStorage.setItem('zai_pending_event_payment', paymentId);
         } else {
-          alert(response.data?.error || 'Failed to start checkout');
+          alert(response.data?.error || t('events.errors.startCheckoutFailed'));
         }
-      } catch (err: any) { alert(err.response?.data?.error || 'Failed to start checkout'); }
+      } catch (err: any) { alert(err.response?.data?.error || t('events.errors.startCheckoutFailed')); }
       finally { setRegistering(false); }
       return;
     }
@@ -579,14 +582,14 @@ const Events: React.FC = () => {
       if (response.data?.success) {
         markRegistered(selectedEvent.id);
       }
-    } catch (err: any) { alert(err.response?.data?.error || 'Failed to register'); }
+    } catch (err: any) { alert(err.response?.data?.error || t('events.errors.registerFailed')); }
     finally { setRegistering(false); }
   };
 
   const handlePaymentSuccess = () => {
     if (selectedEvent) markRegistered(selectedEvent.id);
     setPaymentData(null);
-    alert('Payment successful! Your registration is confirmed.');
+    alert(t('events.alerts.paymentSuccessful'));
   };
 
   const handleUnregister = async () => {
@@ -598,7 +601,7 @@ const Events: React.FC = () => {
           setEvents(events.map(e => e.id === selectedEvent.id ? { ...e, registered: false, totalAttendees: Math.max((e.totalAttendees || 1) - 1, 0) } : e));
           setSelectedEvent(prev => prev ? { ...prev, registered: false, totalAttendees: Math.max((prev.totalAttendees || 1) - 1, 0) } : null);
         }
-      } catch (err: any) { alert(err.response?.data?.error || 'Failed to unregister'); }
+      } catch (err: any) { alert(err.response?.data?.error || t('events.errors.unregisterFailed')); }
       finally { setRegistering(false); }
     }
   };
@@ -635,7 +638,7 @@ const Events: React.FC = () => {
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
               <span style={{ fontSize: '11px', color: '#555', letterSpacing: '0.2em', textTransform: 'uppercase' }}>
-                {getTagLabel(event.tag)}
+                {getTagLabel(event.tag, t)}
               </span>
             </div>
           )}
@@ -655,7 +658,7 @@ const Events: React.FC = () => {
               background: 'rgba(42,157,78,0.9)', color: '#fff',
               fontSize: '8px', fontWeight: 600, letterSpacing: '0.1em',
               padding: '4px 8px', textTransform: 'uppercase', borderRadius: 3,
-            }}>Registered</div>
+            }}>{t('events.card.registered')}</div>
           )}
         </div>
 
@@ -665,7 +668,7 @@ const Events: React.FC = () => {
             fontSize: '9px', letterSpacing: '0.25em', textTransform: 'uppercase',
             color: getTagColor(event.tag), marginBottom: 8, fontWeight: 600,
           }}>
-            {getTagLabel(event.tag)}
+            {getTagLabel(event.tag, t)}
           </div>
           <h3 style={{ fontSize: '14px', fontWeight: 500, margin: '0 0 8px', lineHeight: 1.35, color: C.black }}>
             {event.title}
@@ -739,13 +742,13 @@ const Events: React.FC = () => {
         marginBottom: '2.5rem', paddingBottom: '2rem', borderBottom: bdr,
       }}>
         <div style={{ ...sectionLabel, color: C.red, letterSpacing: '0.3em', marginBottom: 8, fontSize: '10px' }}>
-          experiences
+          {t('events.header.eyebrow')}
         </div>
         <h1 style={{ fontSize: 'clamp(32px, 4vw, 40px)', fontWeight: 300, lineHeight: 1.15, margin: '0 0 8px', color: C.black }}>
-          Exclusive zai experiences
+          {t('events.header.title')}
         </h1>
         <p style={{ color: C.muted, fontSize: '13px', margin: 0, fontWeight: 300, maxWidth: 520 }}>
-          Experience card holders receive priority access to exclusive events.
+          {t('events.header.subtitle')}
         </p>
       </div>
 
@@ -757,13 +760,13 @@ const Events: React.FC = () => {
 
       {/* ══════ UPCOMING EVENTS ══════ */}
       <div style={{ ...sectionLabel, color: C.black, marginBottom: 16, fontSize: '11px' }}>
-        upcoming events
+        {t('events.sections.upcoming')}
       </div>
 
       {upcomingEvents.length === 0 ? (
         <div style={{ padding: '48px 24px', textAlign: 'center', background: C.surface, border: bdr, marginBottom: 48, borderRadius: 8 }}>
-          <div style={{ fontSize: '15px', fontWeight: 300, color: C.black, marginBottom: 4 }}>No upcoming events</div>
-          <p style={{ color: C.muted, fontSize: '12px', margin: 0 }}>Check back soon for new experiences.</p>
+          <div style={{ fontSize: '15px', fontWeight: 300, color: C.black, marginBottom: 4 }}>{t('events.empty.upcomingTitle')}</div>
+          <p style={{ color: C.muted, fontSize: '12px', margin: 0 }}>{t('events.empty.upcomingSubtitle')}</p>
         </div>
       ) : !needsCarousel ? (
         <div style={{ marginBottom: 48 }}>
@@ -790,7 +793,7 @@ const Events: React.FC = () => {
               style={{ ...sideArrowBase, left: -18 }}
               onMouseEnter={e => { e.currentTarget.style.background = C.pureWhite; e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.22)'; }}
               onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.92)'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)'; }}
-              aria-label="Scroll left"
+              aria-label={t('events.card.scrollLeft')}
             >
               ‹
             </button>
@@ -803,7 +806,7 @@ const Events: React.FC = () => {
               style={{ ...sideArrowBase, right: -18 }}
               onMouseEnter={e => { e.currentTarget.style.background = C.pureWhite; e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.22)'; }}
               onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.92)'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.15)'; }}
-              aria-label="Scroll right"
+              aria-label={t('events.card.scrollRight')}
             >
               ›
             </button>
@@ -860,7 +863,7 @@ const Events: React.FC = () => {
 
       {/* ══════ PAST EVENTS ══════ */}
       <div style={{ ...sectionLabel, color: C.black, marginBottom: 16, fontSize: '11px' }}>
-        past events
+        {t('events.sections.past')}
       </div>
 
       {pastEvents.length === 0 ? (
@@ -877,10 +880,10 @@ const Events: React.FC = () => {
             }} />
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: '13px', fontWeight: 400, color: C.muted, fontStyle: 'italic' }}>
-                No past events yet
+                {t('events.empty.pastTitle')}
               </div>
               <div style={{ fontSize: '10px', color: C.border, marginTop: 3 }}>
-                Events you attend will appear here
+                {t('events.empty.pastSubtitle')}
               </div>
             </div>
           </div>
@@ -942,7 +945,7 @@ const Events: React.FC = () => {
                 fontSize: '9px', letterSpacing: '0.25em', textTransform: 'uppercase',
                 color: getTagColor(selectedEvent.tag), marginBottom: 6, fontWeight: 600,
               }}>
-                {getTagLabel(selectedEvent.tag)}
+                {getTagLabel(selectedEvent.tag, t)}
               </div>
 
               <h2 style={{ fontSize: 22, fontWeight: 400, margin: '0 0 12px', color: C.black, lineHeight: 1.3 }}>
@@ -970,7 +973,7 @@ const Events: React.FC = () => {
                 if (lines.length === 0) return null;
                 return (
                   <div style={{ marginBottom: 20 }}>
-                    <div style={{ ...lbl, marginBottom: 10 }}>Program</div>
+                    <div style={{ ...lbl, marginBottom: 10 }}>{t('events.modal.program')}</div>
                     <div style={{ background: C.surface, borderRadius: 6, padding: '14px 18px' }}>
                       {lines.map((line, i) => (
                         <div key={i} style={{
@@ -993,7 +996,7 @@ const Events: React.FC = () => {
                   flexWrap: 'wrap', gap: 10,
                 }}>
                   <div>
-                    <div style={lbl}>Price</div>
+                    <div style={lbl}>{t('events.modal.price')}</div>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginTop: 4 }}>
                       {selectedEvent.discountPrice != null ? (
                         <>
@@ -1025,7 +1028,7 @@ const Events: React.FC = () => {
               {/* Attendees */}
               {selectedEvent.maxAttendees && (
                 <div style={{ fontSize: 12, color: C.muted, marginBottom: 20 }}>
-                  {selectedEvent.totalAttendees || 0} / {selectedEvent.maxAttendees} attendees
+                  {t('events.modal.attendees', { count: selectedEvent.maxAttendees, current: selectedEvent.totalAttendees || 0, max: selectedEvent.maxAttendees })}
                 </div>
               )}
 
@@ -1037,7 +1040,7 @@ const Events: React.FC = () => {
                     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                     flexWrap: 'wrap', gap: 8,
                   }}>
-                    <span style={{ fontSize: 13, color: C.muted }}>Total to pay</span>
+                    <span style={{ fontSize: 13, color: C.muted }}>{t('events.modal.totalToPay')}</span>
                     <span style={{ fontSize: 18, fontWeight: 600 }}>{paymentData.currency.toUpperCase()} {paymentData.amount.toFixed(2)}</span>
                   </div>
                   <Elements stripe={stripePromise} options={elementsOptions}>
@@ -1063,7 +1066,7 @@ const Events: React.FC = () => {
                         transition: 'all .15s',
                       }}
                     >
-                      {registering ? 'Processing…' : 'Cancel Registration'}
+                      {registering ? t('events.modal.processing') : t('events.modal.cancelRegistration')}
                     </button>
                   ) : (
                     <button
@@ -1078,7 +1081,7 @@ const Events: React.FC = () => {
                       onMouseEnter={e => (e.currentTarget.style.background = C.burgundy)}
                       onMouseLeave={e => (e.currentTarget.style.background = C.red)}
                     >
-                      {registering ? 'Processing…' : ((selectedEvent.discountPrice ?? selectedEvent.price ?? 0) > 0 ? 'Register & Pay' : 'Register')}
+                      {registering ? t('events.modal.processing') : ((selectedEvent.discountPrice ?? selectedEvent.price ?? 0) > 0 ? t('events.modal.registerAndPay') : t('events.modal.register'))}
                     </button>
                   )}
                 </div>

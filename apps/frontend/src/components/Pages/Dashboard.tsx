@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAppContext } from '../../context/AppContext';
 import { apiService } from '../../services/api';
 import { QRCodeSVG } from 'qrcode.react';
@@ -170,6 +171,7 @@ const LockedOverlay: React.FC<{
   locked: boolean;
   message?: string;
 }> = ({ children, locked, message }) => {
+  const { t } = useTranslation();
   const [hover, setHover] = useState(false);
 
   if (!locked) return <>{children}</>;
@@ -207,7 +209,7 @@ const LockedOverlay: React.FC<{
         >
           <span style={{ fontSize: 14 }}>🔒</span>
           <span style={{ fontSize: 10, letterSpacing: '0.1em', fontWeight: 600, color: '#7A222E', textTransform: 'uppercase' }}>
-            Exclusive
+            {t('dashboard.locked.badge')}
           </span>
         </div>
       </div>
@@ -232,7 +234,7 @@ const LockedOverlay: React.FC<{
           }}
         >
           <div style={{ fontSize: 12, color: '#1a1a1a', lineHeight: 1.6 }}>
-            {message || 'Access exclusive content with the Experience Card membership.'}
+            {message || t('dashboard.locked.defaultMessage')}
           </div>
         </div>
       )}
@@ -263,6 +265,7 @@ const ecLabelStyle: React.CSSProperties = {
 const EC_IMAGE = '/images/experience-card.png';
 
 const Dashboard: React.FC = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { user, isLoading } = useAppContext();
   const [copiedWallet, setCopiedWallet] = useState(false);
@@ -378,7 +381,7 @@ const Dashboard: React.FC = () => {
       } catch (err: any) {
         if (err?.response?.status === 410) {
           setEcQrPolling(false);
-          setEcError('Upload link expired. Please try again.');
+          setEcError(t('dashboard.modal.errors.uploadExpired'));
           setEcShowQr(false);
           if (ecUploadPollRef.current) clearInterval(ecUploadPollRef.current);
         }
@@ -440,7 +443,7 @@ const Dashboard: React.FC = () => {
       const recentActivity: Activity[] = ledger.slice(0, 5).map((h: any) => ({
         id: h.id,
         type: (h.type === 'referral' ? 'referral' : h.type === 'collectible' ? 'collectible' : h.type === 'purchase' || h.type === 'deal_redeem' ? 'purchase' : 'product') as Activity['type'],
-        title: h.description || 'Points activity',
+        title: h.description || t('dashboard.activity.pointsActivity'),
         date: h.created_at,
         icon: h.type,
         points: h.amount,
@@ -456,7 +459,7 @@ const Dashboard: React.FC = () => {
       setActivity(recentActivity);
     } catch (err: any) {
       console.error('Error fetching dashboard data:', err);
-      setError(err.response?.data?.error || 'Failed to load dashboard');
+      setError(err.response?.data?.error || t('dashboard.errors.dashboardLoadFailed'));
     } finally {
       setDashboardLoading(false);
     }
@@ -487,12 +490,12 @@ const Dashboard: React.FC = () => {
       const res = await apiService.get('/products/experience-card');
       const data = (res.data as any)?.data;
       if (!data) {
-        setEcError('Experience Card not available at the moment.');
+        setEcError(t('dashboard.modal.errors.ecUnavailable'));
         return;
       }
       setEcData(data);
     } catch (err: any) {
-      setEcError(err?.response?.data?.error || 'Failed to load Experience Card details.');
+      setEcError(err?.response?.data?.error || t('dashboard.modal.errors.ecLoadFailed'));
     } finally {
       setEcLoading(false);
     }
@@ -502,7 +505,7 @@ const Dashboard: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 8 * 1024 * 1024) {
-      setEcError('Image must be under 8 MB');
+      setEcError(t('dashboard.modal.errors.imageTooLarge'));
       return;
     }
     const reader = new FileReader();
@@ -522,10 +525,10 @@ const Dashboard: React.FC = () => {
         setEcShowQr(true);
         setEcQrPolling(true);
       } else {
-        setEcError('Failed to generate upload link');
+        setEcError(t('dashboard.modal.errors.uploadLinkFailed'));
       }
     } catch {
-      setEcError('Failed to generate upload link');
+      setEcError(t('dashboard.modal.errors.uploadLinkFailed'));
     }
   };
 
@@ -535,7 +538,7 @@ const Dashboard: React.FC = () => {
     setEcError(null);
     try {
       const body: any = {
-        productName: ecData?.name || 'zai Experience Club Card',
+        productName: ecData?.name || t('dashboard.modal.form.defaultCardName'),
         productId: ecData?.rwaId || '',
       };
       if (ecCid) {
@@ -550,10 +553,10 @@ const Dashboard: React.FC = () => {
         setEcSuccess(true);
         setEcClaimStatus('pending');
       } else {
-        setEcError(payload?.error || 'Submission failed');
+        setEcError(payload?.error || t('dashboard.modal.errors.submissionFailed'));
       }
     } catch (err: any) {
-      setEcError(err?.response?.data?.error || err?.message || 'Submission failed');
+      setEcError(err?.response?.data?.error || err?.message || t('dashboard.modal.errors.submissionFailed'));
     } finally {
       setEcSubmitting(false);
     }
@@ -567,7 +570,7 @@ const Dashboard: React.FC = () => {
   };
 
   if (isLoading || !user) {
-    return <div style={{ padding: '2rem' }}>Loading...</div>;
+    return <div style={{ padding: '2rem' }}>{t('dashboard.loading')}</div>;
   }
 
   if (dashboardLoading) {
@@ -578,9 +581,9 @@ const Dashboard: React.FC = () => {
 
   const formatDate = (dateStr: string) => {
     try {
-      if (!dateStr) return 'Claimed';
+      if (!dateStr) return t('dashboard.dateFormat.claimed');
       const date = new Date(dateStr);
-      if (isNaN(date.getTime())) return 'Claimed';
+      if (isNaN(date.getTime())) return t('dashboard.dateFormat.claimed');
 
       const now = new Date();
       const diffMs = now.getTime() - date.getTime();
@@ -591,29 +594,29 @@ const Dashboard: React.FC = () => {
       const diffDays = Math.floor(absDiffMs / (1000 * 60 * 60 * 24));
 
       if (isFuture) {
-        if (diffDays === 0 && diffHours < 24) return 'Today';
-        if (diffDays === 1) return 'Tomorrow';
-        if (diffDays < 7) return `In ${diffDays} days`;
+        if (diffDays === 0 && diffHours < 24) return t('dashboard.dateFormat.today');
+        if (diffDays === 1) return t('dashboard.dateFormat.tomorrow');
+        if (diffDays < 7) return t('dashboard.dateFormat.inDays', { count: diffDays });
         return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
       }
 
-      if (diffMinutes < 1) return 'Just now';
-      if (diffMinutes < 60) return `${diffMinutes}m ago`;
-      if (diffHours < 24) return `${diffHours}h ago`;
-      if (diffDays === 1) return 'Yesterday';
-      if (diffDays < 7) return `${diffDays} days ago`;
+      if (diffMinutes < 1) return t('dashboard.dateFormat.justNow');
+      if (diffMinutes < 60) return t('dashboard.dateFormat.minutesAgo', { count: diffMinutes });
+      if (diffHours < 24) return t('dashboard.dateFormat.hoursAgo', { count: diffHours });
+      if (diffDays === 1) return t('dashboard.dateFormat.yesterday');
+      if (diffDays < 7) return t('dashboard.dateFormat.daysAgo', { count: diffDays });
       if (diffDays < 30) {
         const weeks = Math.floor(diffDays / 7);
-        return `${weeks} week${weeks > 1 ? 's' : ''} ago`;
+        return t('dashboard.dateFormat.weeksAgo', { count: weeks });
       }
       if (diffDays < 365) {
         const months = Math.floor(diffDays / 30);
-        return `${months} month${months > 1 ? 's' : ''} ago`;
+        return t('dashboard.dateFormat.monthsAgo', { count: months });
       }
 
       return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     } catch {
-      return dateStr || 'Claimed';
+      return dateStr || t('dashboard.dateFormat.claimed');
     }
   };
 
@@ -651,13 +654,13 @@ const Dashboard: React.FC = () => {
       >
         <div style={{ minWidth: 0 }}>
           <div style={{ fontSize: '11px', letterSpacing: '0.3em', textTransform: 'uppercase', color: '#7A222E', marginBottom: '0.4rem' }}>
-            overview
+            {t('dashboard.header.eyebrow')}
           </div>
           <h1 style={{ fontSize: 'clamp(32px, 4vw, 40px)', fontWeight: 300, lineHeight: 1.15, margin: '0 0 0.3rem', color: '#1a1a1a' }}>
-            Dashboard
+            {t('dashboard.header.title')}
           </h1>
           <p style={{ color: '#6a6a6a', fontSize: '13px', maxWidth: '520px', margin: '0.4rem 0 0' }}>
-            Your zai experience club at a glance — products, events, and upcoming activity.
+            {t('dashboard.header.subtitle')}
           </p>
         </div>
 
@@ -682,10 +685,10 @@ const Dashboard: React.FC = () => {
             onMouseEnter={(e) => (e.currentTarget.style.background = '#9a2535')}
             onMouseLeave={(e) => (e.currentTarget.style.background = '#7A222E')}
           >
-            Claim Product
+            {t('dashboard.header.claimProduct')}
           </button>
         ) : (
-          <LockedOverlay locked message="Claim your Experience Card to unlock product claims.">
+          <LockedOverlay locked message={t('dashboard.locked.claimProduct')}>
             <button
               style={{
                 background: '#7A222E',
@@ -700,7 +703,7 @@ const Dashboard: React.FC = () => {
                 borderRadius: 4,
               }}
             >
-              Claim Product
+              {t('dashboard.header.claimProduct')}
             </button>
           </LockedOverlay>
         )}
@@ -756,7 +759,7 @@ const Dashboard: React.FC = () => {
             {userFirst || userDisplay}
           </div>
           <div style={{ fontSize: '11px', color: '#6a6a6a', marginBottom: '1.25rem' }}>
-            {clean(user.city) || 'Location not set'} · {clean(user.country) || 'Country not set'}
+            {clean(user.city) || t('dashboard.profile.locationNotSet')} · {clean(user.country) || t('dashboard.profile.countryNotSet')}
           </div>
 
           {/* ── Tier badge (every member starts at Blue) ── */}
@@ -774,15 +777,15 @@ const Dashboard: React.FC = () => {
           >
             <div style={{ width: '4px', height: '4px', background: '#7A222E', borderRadius: '50%' }} />
             <span style={{ fontSize: '10px', letterSpacing: '0.15em', textTransform: 'uppercase', fontWeight: 600, color: '#7A222E' }}>
-              {currentTier.name} Tier
+              {t('dashboard.profile.tierBadge', { tier: currentTier.name })}
             </span>
           </div>
 
           {/* ── Tier progress bar ── */}
           <div style={{ width: '100%', marginBottom: '1.25rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#6a6a6a', marginBottom: '6px' }}>
-              <span>{pointsBalance.toLocaleString('de-CH')} pts</span>
-              <span>{nextTier ? `${nextTier.floor.toLocaleString('de-CH')} for ${nextTier.name}` : 'Max tier'}</span>
+              <span>{t('dashboard.profile.points', { count: pointsBalance, points: pointsBalance.toLocaleString('de-CH') })}</span>
+              <span>{nextTier ? t('dashboard.profile.pointsToNextTier', { points: nextTier.floor.toLocaleString('de-CH'), tier: nextTier.name }) : t('dashboard.profile.maxTier')}</span>
             </div>
             <div style={{ height: '4px', background: '#e0ddd6', borderRadius: '2px', overflow: 'hidden' }}>
               <div style={{ height: '100%', width: `${tierProgress}%`, background: '#7A222E', borderRadius: '2px', transition: 'width 0.6s ease' }} />
@@ -793,7 +796,11 @@ const Dashboard: React.FC = () => {
           <div style={{ fontSize: '10px', display: 'flex', alignItems: 'center', gap: '5px' }}>
             <div style={{ width: '4px', height: '4px', background: '#7A222E', borderRadius: '50%' }} />
             <span style={{ color: exclusive ? '#7A222E' : '#6a6a6a', fontWeight: exclusive ? 600 : 400 }}>
-              {isAdmin ? 'Admin' : hasExperienceCard ? 'Exclusive Member' : 'Member'} since {memberSince}
+              {isAdmin
+                ? t('dashboard.profile.adminSince', { year: memberSince })
+                : hasExperienceCard
+                  ? t('dashboard.profile.exclusiveMemberSince', { year: memberSince })
+                  : t('dashboard.profile.memberSince', { year: memberSince })}
             </span>
           </div>
 
@@ -818,7 +825,7 @@ const Dashboard: React.FC = () => {
                 width: 'fit-content',
               }}
             >
-              <span>&#9203;</span> Membership under review
+              <span>&#9203;</span> {t('dashboard.profile.membershipUnderReview')}
             </div>
           ) : !exclusive ? (
             <button
@@ -845,7 +852,7 @@ const Dashboard: React.FC = () => {
                 e.currentTarget.style.background = '#7A222E';
               }}
             >
-              CLAIM YOUR ZAI EXPERIENCE CLUB MEMBERSHIP
+              {t('dashboard.profile.claimMembershipCta')}
             </button>
           ) : null}
 
@@ -863,7 +870,7 @@ const Dashboard: React.FC = () => {
             }}>
               <span style={{ fontSize: 12, color: '#fff' }}>★</span>
               <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#fff' }}>
-                Exclusive Member
+                {t('dashboard.profile.exclusiveMemberBadge')}
               </span>
             </div>
           )}
@@ -884,16 +891,16 @@ const Dashboard: React.FC = () => {
           {/* Left part: Greeting */}
           <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center', height: '100%' }}>
             <div style={{ fontSize: '10px', letterSpacing: '0.3em', textTransform: 'uppercase', color: '#555', marginBottom: '0.75rem' }}>
-              Good to see you
+              {t('dashboard.welcome.greeting')}
             </div>
             <div style={{ fontSize: 'clamp(28px, 3.2vw, 38px)', fontWeight: 200, lineHeight: 1.2, marginBottom: '1rem' }}>
-              Welcome back,<br />
+              {t('dashboard.welcome.welcomeBack')}<br />
               <span style={{ color: '#f5f4f0' }}>{userFirst || userDisplay}.</span>
             </div>
             <div style={{ fontSize: '15px', color: '#999', lineHeight: 1.8, maxWidth: '420px' }}>
               {exclusive
-                ? 'Explore exclusive events, manage your registered products, and access the full zai experience club.'
-                : 'Claim your zai Experience Card to unlock your collection, exclusive events, and the full zai experience.'}
+                ? t('dashboard.welcome.exclusiveDesc')
+                : t('dashboard.welcome.standardDesc')}
             </div>
           </div>
 
@@ -907,7 +914,7 @@ const Dashboard: React.FC = () => {
             }}>
               <img
                 src={EC_IMAGE}
-                alt="zai Experience Club Card"
+                alt={t('dashboard.welcome.ecImageAlt')}
                 style={{
                   width: '100%',
                   maxWidth: 280,
@@ -948,10 +955,12 @@ const Dashboard: React.FC = () => {
             {pointsBalance.toLocaleString('de-CH')}
           </div>
           <div style={{ fontSize: '11px', letterSpacing: '0.25em', textTransform: 'uppercase', color: '#6a6a6a', marginTop: '6px' }}>
-            Total points
+            {t('dashboard.stats.totalPoints')}
           </div>
           <div style={{ fontSize: '11px', color: '#6a6a6a', marginTop: '2px' }}>
-            {pointsThisMonth !== 0 ? `${pointsThisMonth > 0 ? '+' : ''}${pointsThisMonth.toLocaleString('de-CH')} this month` : 'No activity this month'}
+            {pointsThisMonth !== 0
+              ? t('dashboard.stats.pointsThisMonth', { sign: pointsThisMonth > 0 ? '+' : '', count: pointsThisMonth.toLocaleString('de-CH') })
+              : t('dashboard.stats.noActivityThisMonth')}
           </div>
         </div>
 
@@ -961,10 +970,10 @@ const Dashboard: React.FC = () => {
             {stats.productsClaimed}
           </div>
           <div style={{ fontSize: '11px', letterSpacing: '0.25em', textTransform: 'uppercase', color: '#6a6a6a', marginTop: '6px' }}>
-            Products claimed
+            {t('dashboard.stats.productsClaimed')}
           </div>
           <div style={{ fontSize: '11px', color: '#6a6a6a', marginTop: '2px' }}>
-            {stats.productsClaimed === 0 ? 'Get started by claiming a product' : `${stats.insuranceActive} with active insurance`}
+            {stats.productsClaimed === 0 ? t('dashboard.stats.getStartedClaim') : t('dashboard.stats.withActiveInsurance', { count: stats.insuranceActive })}
           </div>
         </div>
 
@@ -974,10 +983,10 @@ const Dashboard: React.FC = () => {
             {exclusive ? stats.eventsAttended : 0}
           </div>
           <div style={{ fontSize: '11px', letterSpacing: '0.25em', textTransform: 'uppercase', color: '#6a6a6a', marginTop: '6px' }}>
-            Events attended
+            {t('dashboard.stats.eventsAttended')}
           </div>
           <div style={{ fontSize: '11px', color: '#6a6a6a', marginTop: '2px' }}>
-            {exclusive ? `${stats.eventsUpcoming} upcoming` : '0 upcoming'}
+            {t('dashboard.stats.upcomingCount', { count: exclusive ? stats.eventsUpcoming : 0 })}
           </div>
         </div>
       </div>
@@ -1006,12 +1015,12 @@ const Dashboard: React.FC = () => {
               borderBottom: '1px solid #e0ddd6',
             }}
           >
-            Recent activity
+            {t('dashboard.activity.heading')}
           </div>
 
           {activity.length === 0 ? (
             <div style={{ color: '#6a6a6a', fontSize: '12px' }}>
-              No recent activity. Start by claiming a product or registering for an event!
+              {t('dashboard.activity.empty')}
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
@@ -1046,7 +1055,7 @@ const Dashboard: React.FC = () => {
                   </div>
                   {typeof item.points === 'number' && item.points !== 0 && (
                     <div style={{ fontSize: '12px', fontWeight: 600, color: item.points > 0 ? '#4caf7d' : '#7A222E', whiteSpace: 'nowrap' }}>
-                      {item.points > 0 ? '+' : ''}{item.points.toLocaleString('de-CH')} pts
+                      {t('dashboard.activity.pointsValue', { sign: item.points > 0 ? '+' : '', count: item.points.toLocaleString('de-CH') })}
                     </div>
                   )}
                 </div>
@@ -1057,7 +1066,7 @@ const Dashboard: React.FC = () => {
           {/* Wallet Info */}
           <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid #e0ddd6' }}>
             <div style={{ fontSize: '11px', color: '#6a6a6a', marginBottom: '1rem' }}>
-              <strong style={{ color: '#1a1a1a' }}>Wallet Address:</strong>
+              <strong style={{ color: '#1a1a1a' }}>{t('dashboard.activity.wallet.label')}</strong>
             </div>
             {user.walletAddress ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
@@ -1100,11 +1109,11 @@ const Dashboard: React.FC = () => {
                     }
                   }}
                 >
-                  {copiedWallet ? '✓' : 'Copy'}
+                  {copiedWallet ? '✓' : t('dashboard.activity.wallet.copy')}
                 </button>
               </div>
             ) : (
-              <div style={{ fontSize: '11px', color: '#6a6a6a' }}>No wallet connected</div>
+              <div style={{ fontSize: '11px', color: '#6a6a6a' }}>{t('dashboard.activity.wallet.notConnected')}</div>
             )}
           </div>
         </div>
@@ -1122,12 +1131,12 @@ const Dashboard: React.FC = () => {
               borderBottom: '1px solid #e0ddd6',
             }}
           >
-            Quick actions
+            {t('dashboard.quickActions.heading')}
           </div>
           {[
             {
-              title: 'Claim a product',
-              sub: 'NFC or serial number',
+              title: t('dashboard.quickActions.claimProduct.title'),
+              sub: t('dashboard.quickActions.claimProduct.sub'),
               page: '/products',
               icon: (
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a1a1a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1138,8 +1147,8 @@ const Dashboard: React.FC = () => {
               ),
             },
             {
-              title: 'Browse events',
-              sub: 'See upcoming events',
+              title: t('dashboard.quickActions.browseEvents.title'),
+              sub: t('dashboard.quickActions.browseEvents.sub'),
               page: '/events',
               icon: (
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a1a1a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1151,10 +1160,10 @@ const Dashboard: React.FC = () => {
               ),
             },
             {
-              title: 'View your tier',
+              title: t('dashboard.quickActions.viewTier.title'),
               sub: nextTier
-                ? `${currentTier.name} · ${Math.max(0, nextTier.floor - pointsBalance).toLocaleString('de-CH')} pts to ${nextTier.name}`
-                : `${currentTier.name} · Max tier reached`,
+                ? t('dashboard.quickActions.viewTier.subProgress', { tier: currentTier.name, points: Math.max(0, nextTier.floor - pointsBalance).toLocaleString('de-CH'), nextTier: nextTier.name })
+                : t('dashboard.quickActions.viewTier.subMax', { tier: currentTier.name }),
               page: '/rewards',
               icon: (
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a1a1a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1163,8 +1172,8 @@ const Dashboard: React.FC = () => {
               ),
             },
             {
-              title: 'Share referral code',
-              sub: 'Earn 200 pts per friend',
+              title: t('dashboard.quickActions.shareReferral.title'),
+              sub: t('dashboard.quickActions.shareReferral.sub'),
               page: '/profile',
               icon: (
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a1a1a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1254,10 +1263,10 @@ const Dashboard: React.FC = () => {
               <div style={{ textAlign: 'center', padding: '1rem 0' }}>
                 <div style={{ fontSize: 48, marginBottom: 16 }}>&#x2713;</div>
                 <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 8, color: '#1a1a1a' }}>
-                  Claim Submitted!
+                  {t('dashboard.modal.success.title')}
                 </h3>
                 <p style={{ fontSize: 13, color: EC_GRAY, lineHeight: 1.6, marginBottom: 20 }}>
-                  Your proof of ownership is being reviewed. Once validated, your zai Experience Club Card will be minted and your exclusive membership activated.
+                  {t('dashboard.modal.success.desc')}
                 </p>
                 <button
                   onClick={() => { closeECModal(); fetchDashboardData(); }}
@@ -1268,7 +1277,7 @@ const Dashboard: React.FC = () => {
                     fontFamily: "'Inter', sans-serif", fontWeight: 600,
                   }}
                 >
-                  Done
+                  {t('dashboard.modal.success.done')}
                 </button>
               </div>
 
@@ -1283,7 +1292,7 @@ const Dashboard: React.FC = () => {
                   animation: 'zai-spin 0.8s linear infinite',
                   margin: '0 auto 16px',
                 }} />
-                <p style={{ fontSize: 13, color: EC_GRAY }}>Loading Experience Card...</p>
+                <p style={{ fontSize: 13, color: EC_GRAY }}>{t('dashboard.modal.loading')}</p>
               </div>
 
             ) : ecShowQr && ecUploadToken ? (
@@ -1293,13 +1302,13 @@ const Dashboard: React.FC = () => {
                   fontSize: 10, letterSpacing: '0.3em', textTransform: 'uppercase',
                   color: EC_RED, fontWeight: 600,
                 }}>
-                  Exclusive Membership
+                  {t('dashboard.modal.qr.badge')}
                 </div>
                 <p style={{ fontSize: 14, fontWeight: 500, margin: 0, textAlign: 'center' }}>
-                  Scan with your phone to take a photo
+                  {t('dashboard.modal.qr.title')}
                 </p>
                 <p style={{ fontSize: 12, color: EC_GRAY, margin: 0, textAlign: 'center', maxWidth: 300 }}>
-                  Your phone will open a camera page. After you take the photo it will appear here automatically.
+                  {t('dashboard.modal.qr.desc')}
                 </p>
                 <div style={{
                   padding: 16, background: '#fff', borderRadius: 12,
@@ -1316,7 +1325,7 @@ const Dashboard: React.FC = () => {
                     borderTopColor: EC_RED, borderRadius: '50%',
                     animation: 'zai-spin 0.8s linear infinite',
                   }} />
-                  <span style={{ fontSize: 12, color: EC_GRAY }}>Waiting for photo&hellip;</span>
+                  <span style={{ fontSize: 12, color: EC_GRAY }}>{t('dashboard.modal.qr.waiting')}</span>
                 </div>
                 <button
                   onClick={() => { setEcShowQr(false); setEcQrPolling(false); }}
@@ -1325,7 +1334,7 @@ const Dashboard: React.FC = () => {
                     fontSize: 12, cursor: 'pointer', textDecoration: 'underline',
                   }}
                 >
-                  &larr; Back to upload options
+                  {t('dashboard.modal.qr.back')}
                 </button>
               </div>
 
@@ -1336,13 +1345,13 @@ const Dashboard: React.FC = () => {
                   fontSize: 10, letterSpacing: '0.3em', textTransform: 'uppercase',
                   color: EC_RED, marginBottom: 12, fontWeight: 600,
                 }}>
-                  Exclusive Membership
+                  {t('dashboard.modal.form.badge')}
                 </div>
                 <h3 style={{ fontSize: 18, fontWeight: 600, marginBottom: 6, color: '#1a1a1a' }}>
-                  {ecData?.name || 'zai Experience Club Card'}
+                  {ecData?.name || t('dashboard.modal.form.defaultCardName')}
                 </h3>
                 <p style={{ fontSize: 13, color: EC_GRAY, lineHeight: 1.6, marginBottom: 16 }}>
-                  The zai Experience Club is an exclusive club for zai members who have spent more than CHF 500 on zai products. If you feel like you meet this criteria, please upload your invoice using one of the options below to submit your membership request.
+                  {t('dashboard.modal.form.desc')}
                 </p>
 
                 {ecData?.image && (
@@ -1360,7 +1369,7 @@ const Dashboard: React.FC = () => {
 
                 {/* ── Proof of Ownership ── */}
                 <div style={{ marginBottom: 16 }}>
-                  <label style={ecLabelStyle}>Proof of Ownership</label>
+                  <label style={ecLabelStyle}>{t('dashboard.modal.form.proofOfOwnership')}</label>
 
                   {!ecImage ? (
                     <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
@@ -1376,8 +1385,8 @@ const Dashboard: React.FC = () => {
                           onMouseLeave={e => (e.currentTarget.style.borderColor = EC_BORDER)}
                         >
                           <CameraIcon size={28} color="#2e2e2e" />
-                          <span style={{ fontSize: 12, fontWeight: 600, color: '#2e2e2e' }}>Take Photo</span>
-                          <span style={{ fontSize: 10, color: EC_GRAY }}>Open camera</span>
+                          <span style={{ fontSize: 12, fontWeight: 600, color: '#2e2e2e' }}>{t('dashboard.modal.form.takePhoto')}</span>
+                          <span style={{ fontSize: 10, color: EC_GRAY }}>{t('dashboard.modal.form.openCamera')}</span>
                           <input
                             type="file"
                             accept="image/*"
@@ -1398,8 +1407,8 @@ const Dashboard: React.FC = () => {
                           onMouseLeave={e => (e.currentTarget.style.borderColor = EC_BORDER)}
                         >
                           <SmartphoneIcon size={28} color="#2e2e2e" />
-                          <span style={{ fontSize: 12, fontWeight: 600, color: '#2e2e2e' }}>Use Phone</span>
-                          <span style={{ fontSize: 10, color: EC_GRAY }}>Scan QR to take photo</span>
+                          <span style={{ fontSize: 12, fontWeight: 600, color: '#2e2e2e' }}>{t('dashboard.modal.form.usePhone')}</span>
+                          <span style={{ fontSize: 10, color: EC_GRAY }}>{t('dashboard.modal.form.scanQr')}</span>
                         </div>
                       )}
 
@@ -1414,8 +1423,8 @@ const Dashboard: React.FC = () => {
                         onMouseLeave={e => (e.currentTarget.style.borderColor = EC_BORDER)}
                       >
                         <UploadIcon size={28} color="#2e2e2e" />
-                        <span style={{ fontSize: 12, fontWeight: 600, color: '#2e2e2e' }}>Upload Image</span>
-                        <span style={{ fontSize: 10, color: EC_GRAY }}>JPG, PNG, WebP</span>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: '#2e2e2e' }}>{t('dashboard.modal.form.uploadImage')}</span>
+                        <span style={{ fontSize: 10, color: EC_GRAY }}>{t('dashboard.modal.form.uploadFormats')}</span>
                         <input
                           type="file"
                           accept="image/jpeg,image/png,image/webp,image/heic"
@@ -1438,17 +1447,17 @@ const Dashboard: React.FC = () => {
                             <CameraIcon size={32} color="#2e2e2e" />
                           </div>
                           <div style={{ fontSize: 14, fontWeight: 600, color: '#1a1a1a', marginBottom: 4 }}>
-                            Photo received from phone
+                            {t('dashboard.modal.form.photoReceived')}
                           </div>
                           <div style={{ fontSize: 11, color: EC_GRAY }}>
-                            Encrypted and ready to submit
+                            {t('dashboard.modal.form.encryptedReady')}
                           </div>
                         </div>
                       ) : (
                         /* Local file preview */
                         <img
                           src={ecImage!}
-                          alt="Proof of ownership"
+                          alt={t('dashboard.modal.form.proofOfOwnership')}
                           style={{
                             width: '100%', maxHeight: 200, objectFit: 'contain',
                             borderRadius: 8, border: `1px solid ${EC_BORDER}`,
@@ -1496,11 +1505,11 @@ const Dashboard: React.FC = () => {
                     fontWeight: 600, transition: 'background 0.2s',
                   }}
                 >
-                  {ecSubmitting ? 'Submitting...' : 'Submit for Review'}
+                  {ecSubmitting ? t('dashboard.modal.form.submitting') : t('dashboard.modal.form.submit')}
                 </button>
 
                 <p style={{ fontSize: 11, color: EC_GRAY, textAlign: 'center', marginTop: 12, marginBottom: 0 }}>
-                  An admin will review your proof and mint your membership card once validated.
+                  {t('dashboard.modal.form.reviewNote')}
                 </p>
               </>
             )}

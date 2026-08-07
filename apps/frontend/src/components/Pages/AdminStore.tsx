@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAppContext } from '../../context/AppContext';
 import { apiService } from '../../services/api';
 
@@ -90,6 +91,7 @@ function ProductDropdown({
   selectedId: string | null;
   onSelect: (p: Product | null) => void;
 }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const ref = useRef<HTMLDivElement>(null);
@@ -136,7 +138,7 @@ function ProductDropdown({
             </span>
           </>
         ) : (
-          <span style={{ fontSize: 13, color: C.gray }}>Select a product…</span>
+          <span style={{ fontSize: 13, color: C.gray }}>{t('adminStore.common.selectPlaceholder')}</span>
         )}
         <span style={{ marginLeft: 'auto', fontSize: 10, color: C.gray, flexShrink: 0 }}>▼</span>
       </div>
@@ -149,7 +151,7 @@ function ProductDropdown({
             background: 'none', border: 'none', fontSize: 14, cursor: 'pointer',
             color: C.gray, padding: '0 4px',
           }}
-          title="Clear selection"
+          title={t('adminStore.common.clearSelection')}
         >
           ×
         </button>
@@ -165,7 +167,7 @@ function ProductDropdown({
           <div style={{ padding: '8px 10px', borderBottom: BR }}>
             <input
               autoFocus
-              placeholder="Search products…"
+              placeholder={t('adminStore.common.searchPlaceholder')}
               value={search}
               onChange={e => setSearch(e.target.value)}
               style={{
@@ -181,7 +183,7 @@ function ProductDropdown({
           <div style={{ overflowY: 'auto', maxHeight: 260 }}>
             {filtered.length === 0 && (
               <div style={{ padding: 16, textAlign: 'center', fontSize: 12, color: C.gray }}>
-                No products match "{search}"
+                {t('adminStore.common.noProductsMatch', { search })}
               </div>
             )}
             {filtered.map(p => (
@@ -226,6 +228,7 @@ function ProductDropdown({
 // DEALS MANAGER
 // ═══════════════════════════════════════════════════════════
 function DealsManager() {
+  const { t } = useTranslation();
   const [deals, setDeals] = useState<any[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -265,12 +268,12 @@ function DealsManager() {
       setEditing(null);
       load();
     } catch (e: any) {
-      alert(e?.response?.data?.error || 'Save failed');
+      alert(e?.response?.data?.error || t('adminStore.common.saveFailed'));
     } finally { setSaving(false); }
   };
 
   const remove = async (id: string) => {
-    if (!confirm('Deactivate this deal?')) return;
+    if (!confirm(t('adminStore.dealForm.confirmDeactivate'))) return;
     try {
       await apiService.delete(`/store/deals/admin/${id}`);
       load();
@@ -300,18 +303,18 @@ function DealsManager() {
   return (
     <div>
       <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-        <div style={{ fontSize: 13, color: C.gray }}>{deals.length} deal{deals.length !== 1 ? 's' : ''}</div>
+        <div style={{ fontSize: 13, color: C.gray }}>{t('adminStore.list.dealsCount', { count: deals.length })}</div>
         <button style={BTN_PRIMARY} onClick={() => setEditing({
           title: '', description: '', category: 'accessories', price_chf: '',
           max_points_discount: 0, image_url: '', ends_at: '', spots_total: 0,
           featured: false, product_id: null, contract_address: '',
-        })}>+ New Deal</button>
+        })}>{t('adminStore.list.newDeal')}</button>
       </div>
 
-      {loading && <div style={{ textAlign: 'center', padding: 32, color: C.gray, fontSize: 13 }}>Loading…</div>}
+      {loading && <div style={{ textAlign: 'center', padding: 32, color: C.gray, fontSize: 13 }}>{t('adminStore.common.loading')}</div>}
 
       {!loading && deals.length === 0 && (
-        <div style={{ textAlign: 'center', padding: 48, color: C.gray, fontSize: 14 }}>No deals yet. Create your first deal.</div>
+        <div style={{ textAlign: 'center', padding: 48, color: C.gray, fontSize: 14 }}>{t('adminStore.list.noDeals')}</div>
       )}
 
       {!loading && deals.map(d => (
@@ -327,27 +330,27 @@ function DealsManager() {
             <div style={{ minWidth: 0 }}>
               <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                 <span style={{ fontSize: 14, fontWeight: 600, wordBreak: 'break-word' }}>{d.title}</span>
-                {d.featured && <span style={{ fontSize: 8, fontWeight: 700, padding: '2px 6px', background: C.red, color: '#fff', borderRadius: 2, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Featured</span>}
-                {d.contract_address && <span style={{ fontSize: 8, fontWeight: 700, padding: '2px 6px', background: C.green, color: '#fff', borderRadius: 2, textTransform: 'uppercase', letterSpacing: '0.1em' }}>NFT</span>}
+                {d.featured && <span style={{ fontSize: 8, fontWeight: 700, padding: '2px 6px', background: C.red, color: '#fff', borderRadius: 2, textTransform: 'uppercase', letterSpacing: '0.1em' }}>{t('adminStore.common.featured')}</span>}
+                {d.contract_address && <span style={{ fontSize: 8, fontWeight: 700, padding: '2px 6px', background: C.green, color: '#fff', borderRadius: 2, textTransform: 'uppercase', letterSpacing: '0.1em' }}>{t('adminStore.list.nft')}</span>}
               </div>
               <div style={{ fontSize: 12, color: C.gray }}>
                 CHF {parseFloat(d.price_chf).toLocaleString('de-CH')} · {d.category}
-                {d.ends_at && ` · Ends ${new Date(d.ends_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`}
-                {d.spots_total > 0 && ` · ${d.spots_left}/${d.spots_total} spots`}
+                {d.ends_at && ` · ${t('adminStore.list.endsOn', { date: new Date(d.ends_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) })}`}
+                {d.spots_total > 0 && ` · ${t('adminStore.list.spotsLeft', { left: d.spots_left, total: d.spots_total })}`}
               </div>
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-            <button style={BTN_SECONDARY} onClick={() => setEditing({ ...d, price_chf: String(d.price_chf) })}>Edit</button>
-            <button style={BTN_DANGER} onClick={() => remove(d.id)}>Remove</button>
+            <button style={BTN_SECONDARY} onClick={() => setEditing({ ...d, price_chf: String(d.price_chf) })}>{t('adminStore.common.edit')}</button>
+            <button style={BTN_DANGER} onClick={() => remove(d.id)}>{t('adminStore.common.remove')}</button>
           </div>
         </div>
       ))}
 
       {editing && (
-        <Modal title={editing.id ? 'Edit Deal' : 'New Deal'} onClose={() => setEditing(null)}>
+        <Modal title={editing.id ? t('adminStore.dealForm.editTitle') : t('adminStore.dealForm.newTitle')} onClose={() => setEditing(null)}>
           {/* ── Product selection ── */}
-          <Field label="Link to Product (optional — auto-fills fields)">
+          <Field label={t('adminStore.dealForm.linkProduct')}>
             <ProductDropdown
               products={products}
               selectedId={editing.product_id || null}
@@ -368,62 +371,62 @@ function DealsManager() {
                 style={{ width: 48, height: 48, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }}
               />
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 11, color: C.gray, marginBottom: 2 }}>Inherited from product</div>
+                <div style={{ fontSize: 11, color: C.gray, marginBottom: 2 }}>{t('adminStore.dealForm.inheritedFrom')}</div>
                 <div style={{ fontSize: 13, fontWeight: 500 }}>
                   {editing.title} — CHF {editing.price_chf}
                 </div>
                 <div style={{ fontSize: 11, color: C.gray }}>
                   {editing.category}
-                  {editing.contract_address && <span style={{ color: C.green }}> · NFT auto-mint enabled</span>}
+                  {editing.contract_address && <span style={{ color: C.green }}> · {t('adminStore.dealForm.nftAutoMint')}</span>}
                 </div>
               </div>
             </div>
           )}
 
-          <Field label="Title">
-            <input style={INPUT} value={editing.title || ''} onChange={e => set('title', e.target.value)} placeholder="zai Sunglasses" />
+          <Field label={t('adminStore.dealForm.title')}>
+            <input style={INPUT} value={editing.title || ''} onChange={e => set('title', e.target.value)} placeholder={t('adminStore.dealForm.titlePlaceholder')} />
           </Field>
-          <Field label="Description">
+          <Field label={t('adminStore.dealForm.description')}>
             <textarea style={{ ...INPUT, minHeight: 60, resize: 'vertical' }} value={editing.description || ''} onChange={e => set('description', e.target.value)} />
           </Field>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
-            <Field label="Category">
+            <Field label={t('adminStore.dealForm.category')}>
               <select style={INPUT} value={editing.category || 'accessories'} onChange={e => set('category', e.target.value)}>
-                <option value="accessories">Accessories</option>
-                <option value="apparel">Apparel</option>
-                <option value="skis">Skis</option>
-                <option value="event">Event</option>
-                <option value="experience">Experience</option>
+                <option value="accessories">{t('adminStore.dealForm.categoryOptions.accessories')}</option>
+                <option value="apparel">{t('adminStore.dealForm.categoryOptions.apparel')}</option>
+                <option value="skis">{t('adminStore.dealForm.categoryOptions.skis')}</option>
+                <option value="event">{t('adminStore.dealForm.categoryOptions.event')}</option>
+                <option value="experience">{t('adminStore.dealForm.categoryOptions.experience')}</option>
               </select>
             </Field>
-            <Field label="Price (CHF)">
+            <Field label={t('adminStore.dealForm.price')}>
               <input style={INPUT} type="number" step="0.01" value={editing.price_chf || ''} onChange={e => set('price_chf', e.target.value)} />
             </Field>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
-            <Field label="Max Points Discount">
+            <Field label={t('adminStore.dealForm.maxPointsDiscount')}>
               <input style={INPUT} type="number" value={editing.max_points_discount || 0} onChange={e => set('max_points_discount', parseInt(e.target.value) || 0)} />
             </Field>
-            <Field label="Total Spots (0 = unlimited)">
+            <Field label={t('adminStore.dealForm.totalSpots')}>
               <input style={INPUT} type="number" value={editing.spots_total || 0} onChange={e => set('spots_total', parseInt(e.target.value) || 0)} />
             </Field>
           </div>
-          <Field label="Image URL">
+          <Field label={t('adminStore.dealForm.imageUrl')}>
             <input style={INPUT} value={editing.image_url || ''} onChange={e => set('image_url', e.target.value)} placeholder="https://..." />
           </Field>
-          <Field label="Ends At">
+          <Field label={t('adminStore.dealForm.endsAt')}>
             <input style={INPUT} type="datetime-local" value={editing.ends_at ? editing.ends_at.slice(0, 16) : ''} onChange={e => set('ends_at', e.target.value ? new Date(e.target.value).toISOString() : null)} />
           </Field>
           <div style={{ display: 'flex', gap: 16, marginBottom: 20 }}>
             <label style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
               <input type="checkbox" checked={editing.featured === true} onChange={e => set('featured', e.target.checked)} />
-              Featured
+              {t('adminStore.common.featured')}
             </label>
           </div>
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-            <button style={BTN_SECONDARY} onClick={() => setEditing(null)}>Cancel</button>
+            <button style={BTN_SECONDARY} onClick={() => setEditing(null)}>{t('adminStore.common.cancel')}</button>
             <button style={{ ...BTN_PRIMARY, opacity: saving ? 0.6 : 1 }} onClick={save} disabled={saving || !editing.title || !editing.price_chf}>
-              {saving ? 'Saving…' : editing.id ? 'Update' : 'Create'}
+              {saving ? t('adminStore.common.saving') : editing.id ? t('adminStore.common.update') : t('adminStore.common.create')}
             </button>
           </div>
         </Modal>
@@ -436,6 +439,7 @@ function DealsManager() {
 // COLLECTIBLES MANAGER
 // ═══════════════════════════════════════════════════════════
 function CollectiblesManager() {
+  const { t } = useTranslation();
   const [series, setSeries] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -453,16 +457,14 @@ function CollectiblesManager() {
     <div>
       <div style={{ padding: '16px 20px', background: C.surface, borderRadius: 8, marginBottom: 20, border: BR }}>
         <div style={{ fontSize: 13, color: C.gray, lineHeight: 1.6 }}>
-          Collectible drops are created via the database and linked to Engage NFTs.
-          This panel shows the current state of all series and cards.
-          To add a new series or card, use the database directly or contact the dev team.
+          {t('adminStore.collectibles.infoText')}
         </div>
       </div>
 
-      {loading && <div style={{ textAlign: 'center', padding: 32, color: C.gray, fontSize: 13 }}>Loading…</div>}
+      {loading && <div style={{ textAlign: 'center', padding: 32, color: C.gray, fontSize: 13 }}>{t('adminStore.common.loading')}</div>}
 
       {!loading && series.length === 0 && (
-        <div style={{ textAlign: 'center', padding: 48, color: C.gray, fontSize: 14 }}>No collectible series found.</div>
+        <div style={{ textAlign: 'center', padding: 48, color: C.gray, fontSize: 14 }}>{t('adminStore.collectibles.noSeries')}</div>
       )}
 
       {!loading && series.map(s => (
@@ -470,7 +472,9 @@ function CollectiblesManager() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 12 }}>
             <div>
               <div style={{ fontSize: 16, fontWeight: 600 }}>{s.name}</div>
-              <div style={{ fontSize: 12, color: C.gray }}>Season {s.season} · {s.totalCards} cards · {s.claimedCount} claimed by you</div>
+              <div style={{ fontSize: 12, color: C.gray }}>
+                {t('adminStore.collectibles.season', { season: s.season })} · {t('adminStore.collectibles.cardsCount', { count: s.totalCards })} · {t('adminStore.collectibles.claimedByYou', { count: s.claimedCount })}
+              </div>
             </div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 10 }}>
@@ -490,10 +494,10 @@ function CollectiblesManager() {
                   }}>{card.rarity}</span>
                 </div>
                 <div style={{ fontSize: 11, color: C.gray }}>
-                  {card.pointsReward} pts
+                  {t('adminStore.collectibles.pts', { count: card.pointsReward })}
                   {card.locked && ` · ${card.lockReason}`}
-                  {card.claimed && ' · ✓ Claimed'}
-                  {card.editionClosed && ' · Closed'}
+                  {card.claimed && ` · ${t('adminStore.collectibles.claimed')}`}
+                  {card.editionClosed && ` · ${t('adminStore.collectibles.closed')}`}
                 </div>
               </div>
             ))}
@@ -508,6 +512,7 @@ function CollectiblesManager() {
 // MEDIA MANAGER
 // ═══════════════════════════════════════════════════════════
 function MediaManager() {
+  const { t } = useTranslation();
   const [stories, setStories] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<any>(null);
@@ -534,12 +539,12 @@ function MediaManager() {
       setEditing(null);
       load();
     } catch (e: any) {
-      alert(e?.response?.data?.error || 'Save failed');
+      alert(e?.response?.data?.error || t('adminStore.common.saveFailed'));
     } finally { setSaving(false); }
   };
 
   const remove = async (id: string) => {
-    if (!confirm('Remove this story?')) return;
+    if (!confirm(t('adminStore.mediaForm.confirmRemove'))) return;
     try {
       await apiService.delete(`/store/media/admin/${id}`);
       load();
@@ -553,18 +558,18 @@ function MediaManager() {
   return (
     <div>
       <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-        <div style={{ fontSize: 13, color: C.gray }}>{stories.length} stor{stories.length !== 1 ? 'ies' : 'y'}</div>
+        <div style={{ fontSize: 13, color: C.gray }}>{t('adminStore.list.storiesCount', { count: stories.length })}</div>
         <button style={BTN_PRIMARY} onClick={() => setEditing({
           title: '', media_type: 'article', category: 'editorial', description: '',
           media_url: '', thumbnail_url: '', duration: '', exclusive: true,
           published_at: new Date().toISOString(), featured: false,
-        })}>+ New Story</button>
+        })}>{t('adminStore.list.newStory')}</button>
       </div>
 
-      {loading && <div style={{ textAlign: 'center', padding: 32, color: C.gray, fontSize: 13 }}>Loading…</div>}
+      {loading && <div style={{ textAlign: 'center', padding: 32, color: C.gray, fontSize: 13 }}>{t('adminStore.common.loading')}</div>}
 
       {!loading && stories.length === 0 && (
-        <div style={{ textAlign: 'center', padding: 48, color: C.gray, fontSize: 14 }}>No stories yet. Create your first story.</div>
+        <div style={{ textAlign: 'center', padding: 48, color: C.gray, fontSize: 14 }}>{t('adminStore.list.noStories')}</div>
       )}
 
       {!loading && stories.map(s => (
@@ -580,7 +585,7 @@ function MediaManager() {
             <div style={{ minWidth: 0 }}>
               <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginBottom: 3 }}>
                 <span style={{ fontSize: 14, fontWeight: 600, wordBreak: 'break-word' }}>{s.title}</span>
-                {s.featured && <span style={{ fontSize: 8, fontWeight: 700, padding: '2px 6px', background: C.red, color: '#fff', borderRadius: 2, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Featured</span>}
+                {s.featured && <span style={{ fontSize: 8, fontWeight: 700, padding: '2px 6px', background: C.red, color: '#fff', borderRadius: 2, textTransform: 'uppercase', letterSpacing: '0.1em' }}>{t('adminStore.common.featured')}</span>}
               </div>
               <div style={{ fontSize: 12, color: C.gray }}>
                 {s.media_type} · {s.category} · {fmtDate(s.published_at)}
@@ -588,67 +593,67 @@ function MediaManager() {
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-            <button style={BTN_SECONDARY} onClick={() => setEditing({ ...s })}>Edit</button>
-            <button style={BTN_DANGER} onClick={() => remove(s.id)}>Remove</button>
+            <button style={BTN_SECONDARY} onClick={() => setEditing({ ...s })}>{t('adminStore.common.edit')}</button>
+            <button style={BTN_DANGER} onClick={() => remove(s.id)}>{t('adminStore.common.remove')}</button>
           </div>
         </div>
       ))}
 
       {editing && (
-        <Modal title={editing.id ? 'Edit Story' : 'New Story'} onClose={() => setEditing(null)}>
-          <Field label="Title">
-            <input style={INPUT} value={editing.title || ''} onChange={e => set('title', e.target.value)} placeholder="Workshop: Ski Tuning Masterclass" />
+        <Modal title={editing.id ? t('adminStore.mediaForm.editTitle') : t('adminStore.mediaForm.newTitle')} onClose={() => setEditing(null)}>
+          <Field label={t('adminStore.mediaForm.title')}>
+            <input style={INPUT} value={editing.title || ''} onChange={e => set('title', e.target.value)} placeholder={t('adminStore.mediaForm.titlePlaceholder')} />
           </Field>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
-            <Field label="Type">
+            <Field label={t('adminStore.mediaForm.type')}>
               <select style={INPUT} value={editing.media_type || 'article'} onChange={e => set('media_type', e.target.value)}>
-                <option value="article">Article</option>
-                <option value="video">Video</option>
-                <option value="photo">Photo</option>
-                <option value="product_launch">Product Launch</option>
+                <option value="article">{t('adminStore.mediaForm.typeOptions.article')}</option>
+                <option value="video">{t('adminStore.mediaForm.typeOptions.video')}</option>
+                <option value="photo">{t('adminStore.mediaForm.typeOptions.photo')}</option>
+                <option value="product_launch">{t('adminStore.mediaForm.typeOptions.productLaunch')}</option>
               </select>
             </Field>
-            <Field label="Category">
+            <Field label={t('adminStore.mediaForm.category')}>
               <select style={INPUT} value={editing.category || 'editorial'} onChange={e => set('category', e.target.value)}>
-                <option value="editorial">Editorial</option>
-                <option value="behind_the_scenes">Behind the Scenes</option>
-                <option value="tech">Tech</option>
-                <option value="lifestyle">Lifestyle</option>
-                <option value="product">Product</option>
+                <option value="editorial">{t('adminStore.mediaForm.categoryOptions.editorial')}</option>
+                <option value="behind_the_scenes">{t('adminStore.mediaForm.categoryOptions.behindTheScenes')}</option>
+                <option value="tech">{t('adminStore.mediaForm.categoryOptions.tech')}</option>
+                <option value="lifestyle">{t('adminStore.mediaForm.categoryOptions.lifestyle')}</option>
+                <option value="product">{t('adminStore.mediaForm.categoryOptions.product')}</option>
               </select>
             </Field>
           </div>
-          <Field label="Description">
+          <Field label={t('adminStore.mediaForm.description')}>
             <textarea style={{ ...INPUT, minHeight: 60, resize: 'vertical' }} value={editing.description || ''} onChange={e => set('description', e.target.value)} />
           </Field>
-          <Field label="Media URL (video/article link)">
+          <Field label={t('adminStore.mediaForm.mediaUrl')}>
             <input style={INPUT} value={editing.media_url || ''} onChange={e => set('media_url', e.target.value)} placeholder="https://..." />
           </Field>
-          <Field label="Thumbnail URL">
+          <Field label={t('adminStore.mediaForm.thumbnailUrl')}>
             <input style={INPUT} value={editing.thumbnail_url || ''} onChange={e => set('thumbnail_url', e.target.value)} placeholder="https://..." />
           </Field>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
-            <Field label="Duration (for video)">
+            <Field label={t('adminStore.mediaForm.duration')}>
               <input style={INPUT} value={editing.duration || ''} onChange={e => set('duration', e.target.value)} placeholder="4:32" />
             </Field>
-            <Field label="Published At">
+            <Field label={t('adminStore.mediaForm.publishedAt')}>
               <input style={INPUT} type="datetime-local" value={editing.published_at ? editing.published_at.slice(0, 16) : ''} onChange={e => set('published_at', e.target.value ? new Date(e.target.value).toISOString() : null)} />
             </Field>
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, marginBottom: 20 }}>
             <label style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
               <input type="checkbox" checked={editing.exclusive !== false} onChange={e => set('exclusive', e.target.checked)} />
-              Exclusive
+              {t('adminStore.mediaForm.exclusive')}
             </label>
             <label style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
               <input type="checkbox" checked={editing.featured === true} onChange={e => set('featured', e.target.checked)} />
-              Featured
+              {t('adminStore.common.featured')}
             </label>
           </div>
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-            <button style={BTN_SECONDARY} onClick={() => setEditing(null)}>Cancel</button>
+            <button style={BTN_SECONDARY} onClick={() => setEditing(null)}>{t('adminStore.common.cancel')}</button>
             <button style={{ ...BTN_PRIMARY, opacity: saving ? 0.6 : 1 }} onClick={save} disabled={saving || !editing.title}>
-              {saving ? 'Saving…' : editing.id ? 'Update' : 'Create'}
+              {saving ? t('adminStore.common.saving') : editing.id ? t('adminStore.common.update') : t('adminStore.common.create')}
             </button>
           </div>
         </Modal>
@@ -661,6 +666,7 @@ function MediaManager() {
 // MAIN ADMIN STORE PAGE
 // ═══════════════════════════════════════════════════════════
 export default function AdminStore() {
+  const { t } = useTranslation();
   const { user } = useAppContext();
   const isAdminUser = user?.role === 'admin' || user?.role === 'owner';
   const [tab, setTab] = useState<'deals' | 'collectibles' | 'media'>('deals');
@@ -668,7 +674,7 @@ export default function AdminStore() {
   if (!isAdminUser) {
     return (
       <div style={{ padding: 48, fontFamily: C.font, textAlign: 'center' }}>
-        <p style={{ fontSize: 16, color: C.gray }}>Admin access required.</p>
+        <p style={{ fontSize: 16, color: C.gray }}>{t('adminStore.accessDenied')}</p>
       </div>
     );
   }
@@ -677,29 +683,29 @@ export default function AdminStore() {
     <div style={{ padding: 'clamp(20px, 5vw, 48px) clamp(16px, 5vw, 48px) 0', fontFamily: C.font, color: C.black, boxSizing: 'border-box' as const }}>
       <div style={{ maxWidth: 1100, margin: '0 auto' }}>
         <div style={{ marginBottom: '2.5rem', paddingBottom: '2rem', borderBottom: BR }}>
-          <div style={RED_LABEL}>admin</div>
+          <div style={RED_LABEL}>{t('adminStore.header.badge')}</div>
           <h1 style={{ fontSize: 'clamp(28px, 3vw, 36px)', fontWeight: 300, lineHeight: 1.15, margin: '6px 0 6px' }}>
-            Store & Content
+            {t('adminStore.header.title')}
           </h1>
           <p style={{ color: C.gray, fontSize: 13, margin: 0 }}>
-            Manage deals, collectible drops, and media stories.
+            {t('adminStore.header.subtitle')}
           </p>
         </div>
 
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 0, borderBottom: BR, marginBottom: 28 }}>
           {([
-            { key: 'deals', label: 'Deals' },
-            { key: 'collectibles', label: 'Collectibles' },
-            { key: 'media', label: 'Media & Stories' },
-          ] as const).map(t => (
-            <button key={t.key} onClick={() => setTab(t.key)} style={{
+            { key: 'deals', label: t('adminStore.tabs.deals') },
+            { key: 'collectibles', label: t('adminStore.tabs.collectibles') },
+            { key: 'media', label: t('adminStore.tabs.media') },
+          ] as const).map(tabItem => (
+            <button key={tabItem.key} onClick={() => setTab(tabItem.key)} style={{
               padding: '12px 20px', background: 'none', border: 'none',
-              borderBottom: tab === t.key ? `2px solid ${C.black}` : '2px solid transparent',
-              fontSize: 12, fontWeight: tab === t.key ? 700 : 500,
+              borderBottom: tab === tabItem.key ? `2px solid ${C.black}` : '2px solid transparent',
+              fontSize: 12, fontWeight: tab === tabItem.key ? 700 : 500,
               letterSpacing: '0.08em', textTransform: 'uppercase',
               cursor: 'pointer', fontFamily: C.font,
-              color: tab === t.key ? C.black : C.gray,
-            }}>{t.label}</button>
+              color: tab === tabItem.key ? C.black : C.gray,
+            }}>{tabItem.label}</button>
           ))}
         </div>
 

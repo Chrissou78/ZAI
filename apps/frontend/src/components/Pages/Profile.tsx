@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAppContext } from '../../context/AppContext';
 import { apiService } from '../../services/api';
 import UserAvatar from '../Common/UserAvatar';
@@ -224,6 +225,8 @@ const toFormData = (src: any) => {
    TIER DISPLAY — white progress card, matches the design reference
    ═══════════════════════════════════════════════════════════ */
 const TierDisplay: React.FC<{ points: number }> = ({ points }) => {
+  const { t } = useTranslation();
+  const tierName = (name: string) => t(`profile.tiers.${name.toLowerCase()}`, name);
   const tier = getTier(points);
   const next = getNextTier(points);
   const progress = next
@@ -264,7 +267,7 @@ const TierDisplay: React.FC<{ points: number }> = ({ points }) => {
                 fontFamily: C.font,
               }}
             >
-              {next ? `Progress to ${next.name}` : 'Maximum Tier Reached'}
+              {next ? t('profile.tierDisplay.progressTo', { tier: tierName(next.name) }) : t('profile.tierDisplay.maxTierReached')}
             </div>
             {/* Fixed 22px, not a responsive clamp up to 32px — the larger
                 size wrapped "35,500 / 50,000 points" onto a second line
@@ -287,14 +290,14 @@ const TierDisplay: React.FC<{ points: number }> = ({ points }) => {
                     color: C.gray,
                   }}
                 >
-                  {' '}/ {next.min.toLocaleString()} points
+                  {' '}{t('profile.tierDisplay.ofPoints', { max: next.min.toLocaleString() })}
                 </span>
               )}
             </div>
             <div style={{ fontSize: 12, color: C.mid, lineHeight: 1.6 }}>
               {next
-                ? 'Claim a new ski (+500 pts) or attend an event (+150 pts) to accelerate your progress.'
-                : "You've unlocked every tier. Keep claiming products and attending events to earn more points."}
+                ? t('profile.tierDisplay.hintNext')
+                : t('profile.tierDisplay.hintMax')}
             </div>
           </div>
 
@@ -309,8 +312,8 @@ const TierDisplay: React.FC<{ points: number }> = ({ points }) => {
                 fontFamily: C.font,
               }}
             >
-              <span>Current</span>
-              <span>{next ? next.name : 'Max'}</span>
+              <span>{t('profile.tierDisplay.current')}</span>
+              <span>{next ? tierName(next.name) : t('profile.tierDisplay.max')}</span>
             </div>
 
             <div
@@ -344,8 +347,8 @@ const TierDisplay: React.FC<{ points: number }> = ({ points }) => {
                 marginBottom: 20,
               }}
             >
-              <span>{points.toLocaleString()} pts</span>
-              {next && <span>{next.min.toLocaleString()} pts</span>}
+              <span>{t('profile.tierDisplay.ptsValue', { value: points.toLocaleString() })}</span>
+              {next && <span>{t('profile.tierDisplay.ptsValue', { value: next.min.toLocaleString() })}</span>}
             </div>
 
             <button
@@ -373,7 +376,7 @@ const TierDisplay: React.FC<{ points: number }> = ({ points }) => {
                 (e.currentTarget.style.background = C.red)
               }
             >
-              Claim Product · +500 pts
+              {t('profile.tierDisplay.claimProductButton')}
             </button>
           </div>
         </div>
@@ -386,12 +389,14 @@ const TierDisplay: React.FC<{ points: number }> = ({ points }) => {
    REFERRAL PROGRAM — standalone component
    ═══════════════════════════════════════════════════════════ */
 const ReferralProgram: React.FC<{ userId: string }> = ({ userId }) => {
+  const { t } = useTranslation();
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState<'code' | 'link' | null>(null);
   const [referralInput, setReferralInput] = useState('');
   const [applying, setApplying] = useState(false);
   const [applyMsg, setApplyMsg] = useState('');
+  const [applySuccess, setApplySuccess] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -432,18 +437,20 @@ const ReferralProgram: React.FC<{ userId: string }> = ({ userId }) => {
     if (!referralInput.trim()) return;
     setApplying(true);
     setApplyMsg('');
+    setApplySuccess(false);
     try {
       const r = await apiService.post('/store/referrals/apply', { code: referralInput.trim() });
       if (r.data?.success) {
-        setApplyMsg("Referral applied! You'll earn bonus points on your first product claim.");
+        setApplyMsg(t('profile.referral.appliedMessage'));
+        setApplySuccess(true);
         localStorage.removeItem('zai_referral_code');
         const s = await apiService.get('/store/referrals/stats');
         if (s.data?.success) setData(s.data.data);
       } else {
-        setApplyMsg(r.data?.error || 'Invalid referral code.');
+        setApplyMsg(r.data?.error || t('profile.referral.invalidCode'));
       }
     } catch (e: any) {
-      setApplyMsg(e?.response?.data?.error || 'Could not apply referral code.');
+      setApplyMsg(e?.response?.data?.error || t('profile.referral.couldNotApply'));
     } finally { setApplying(false); }
   };
 
@@ -456,10 +463,10 @@ const ReferralProgram: React.FC<{ userId: string }> = ({ userId }) => {
         fontSize: 11, letterSpacing: '0.3em', textTransform: 'uppercase',
         fontWeight: 600, marginBottom: 8,
       }}>
-        REFERRAL PROGRAM
+        {t('profile.referral.heading')}
       </div>
       <p style={{ fontSize: 13, color: C.gray, margin: '0 0 20px', lineHeight: 1.6 }}>
-        Share your code. When friends claim their first zai product, you earn 200 pts and they earn 100.
+        {t('profile.referral.description')}
       </p>
 
       <div style={{
@@ -470,7 +477,7 @@ const ReferralProgram: React.FC<{ userId: string }> = ({ userId }) => {
           fontSize: 10, letterSpacing: '0.25em', textTransform: 'uppercase',
           color: '#777', marginBottom: 16,
         }}>
-          YOUR REFERRAL CODE
+          {t('profile.referral.yourCode')}
         </div>
 
         <div style={{
@@ -486,9 +493,9 @@ const ReferralProgram: React.FC<{ userId: string }> = ({ userId }) => {
           border: '1px solid #333', borderRadius: 6, marginBottom: 20,
         }}>
           {[
-            { value: data.referralsSent, label: 'REFERRALS SENT' },
-            { value: (data.bonusPoints || 0).toLocaleString('de-CH'), label: 'BONUS POINTS' },
-            { value: `CHF ${data.valueUnlockedCHF || 0}`, label: 'VALUE UNLOCKED' },
+            { value: data.referralsSent, label: t('profile.referral.stats.referralsSent') },
+            { value: (data.bonusPoints || 0).toLocaleString('de-CH'), label: t('profile.referral.stats.bonusPoints') },
+            { value: `CHF ${data.valueUnlockedCHF || 0}`, label: t('profile.referral.stats.valueUnlocked') },
           ].map((s, i) => (
             <div key={i} style={{
               padding: '16px 12px', textAlign: 'center',
@@ -515,7 +522,7 @@ const ReferralProgram: React.FC<{ userId: string }> = ({ userId }) => {
             color: '#ccc', cursor: 'pointer', fontFamily: C.font,
             transition: 'all 0.2s',
           }}>
-            {copied === 'code' ? '✓ COPIED' : 'COPY CODE'}
+            {copied === 'code' ? `✓ ${t('profile.referral.copied')}` : t('profile.referral.copyCode')}
           </button>
           <button onClick={shareLink} style={{
             padding: '10px 20px', fontSize: 10, fontWeight: 700,
@@ -524,7 +531,7 @@ const ReferralProgram: React.FC<{ userId: string }> = ({ userId }) => {
             color: '#ccc', cursor: 'pointer', fontFamily: C.font,
             transition: 'all 0.2s',
           }}>
-            {copied === 'link' ? '✓ COPIED' : 'SHARE LINK'}
+            {copied === 'link' ? `✓ ${t('profile.referral.copied')}` : t('profile.referral.shareLink')}
           </button>
         </div>
       </div>
@@ -535,13 +542,13 @@ const ReferralProgram: React.FC<{ userId: string }> = ({ userId }) => {
             fontSize: 10, letterSpacing: '0.25em', textTransform: 'uppercase',
             color: C.gray, marginBottom: 8, fontFamily: C.font,
           }}>
-            HAVE A REFERRAL CODE?
+            {t('profile.referral.haveCode')}
           </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             <input
               value={referralInput}
               onChange={e => setReferralInput(e.target.value.toUpperCase())}
-              placeholder="Enter code (e.g. ZAI-XXXX)"
+              placeholder={t('profile.referral.placeholder')}
               maxLength={20}
               style={{
                 flex: '1 1 180px', minWidth: 0, padding: '10px 12px', border: `1px solid ${C.border}`,
@@ -562,13 +569,13 @@ const ReferralProgram: React.FC<{ userId: string }> = ({ userId }) => {
                 opacity: applying || !referralInput.trim() ? 0.5 : 1,
               }}
             >
-              {applying ? 'Applying…' : 'Apply'}
+              {applying ? t('profile.referral.applying') : t('profile.referral.apply')}
             </button>
           </div>
           {applyMsg && (
             <div style={{
               marginTop: 8, fontSize: 12,
-              color: applyMsg.includes('applied') || applyMsg.includes('Applied') ? C.green : C.red,
+              color: applySuccess ? C.green : C.red,
             }}>
               {applyMsg}
             </div>
@@ -584,7 +591,7 @@ const ReferralProgram: React.FC<{ userId: string }> = ({ userId }) => {
         }}>
           <span style={{ fontSize: 13, color: C.green }}>✓</span>
           <span style={{ fontSize: 12, color: C.gray }}>
-            Referred by code <strong style={{ fontFamily: 'monospace' }}>{data.appliedCode}</strong>
+            {t('profile.referral.referredByPrefix')} <strong style={{ fontFamily: 'monospace' }}>{data.appliedCode}</strong>
           </span>
         </div>
       )}
@@ -596,6 +603,9 @@ const ReferralProgram: React.FC<{ userId: string }> = ({ userId }) => {
    PROFILE COMPONENT
    ═══════════════════════════════════════════════════════════ */
 const Profile: React.FC = () => {
+  const { t } = useTranslation();
+  const tierName = (name: string) => t(`profile.tiers.${name.toLowerCase()}`, name);
+  const countryLabel = (name: string) => t(`profile.countries.${name}`, name);
   const { user, setUser } = useAppContext();
 
   /* ── Mobile width tracking (mirrors MainLayout's own breakpoint hook) ── */
@@ -832,7 +842,7 @@ const Profile: React.FC = () => {
       }
     } catch (err) {
       console.error('Failed to update profile:', err);
-      alert('Failed to update profile');
+      alert(t('profile.alerts.updateFailed'));
     } finally {
       setIsLoading(false);
     }
@@ -857,11 +867,11 @@ const Profile: React.FC = () => {
     setAvatarError('');
 
     if (!ALLOWED_AVATAR_TYPES.includes(file.type)) {
-      setAvatarError('Only JPG, PNG, and TIFF images are allowed.');
+      setAvatarError(t('profile.avatar.errors.invalidType'));
       return;
     }
     if (file.size > MAX_AVATAR_BYTES) {
-      setAvatarError('Image must be under 5 MB.');
+      setAvatarError(t('profile.avatar.errors.tooLarge'));
       return;
     }
 
@@ -878,15 +888,15 @@ const Profile: React.FC = () => {
           setUser(updatedUser);
           localStorage.setItem('zai_user', JSON.stringify(updatedUser));
         } else {
-          setAvatarError(data?.error || 'Failed to upload photo.');
+          setAvatarError(data?.error || t('profile.avatar.errors.uploadFailed'));
         }
       } catch (err: any) {
-        setAvatarError(err?.response?.data?.error || 'Failed to upload photo.');
+        setAvatarError(err?.response?.data?.error || t('profile.avatar.errors.uploadFailed'));
       } finally {
         setUploadingAvatar(false);
       }
     };
-    reader.onerror = () => setAvatarError('Could not read the selected file.');
+    reader.onerror = () => setAvatarError(t('profile.avatar.errors.readFailed'));
     reader.readAsDataURL(file);
   };
 
@@ -898,7 +908,7 @@ const Profile: React.FC = () => {
       setCardNumberStored(cardNumInput.trim());
       setEditingCardNum(false);
     } catch (e: any) {
-      alert(e?.response?.data?.error || 'Failed to save card number');
+      alert(e?.response?.data?.error || t('profile.alerts.saveCardNumberFailed'));
     } finally { setSavingCardNum(false); }
   };
 
@@ -920,15 +930,15 @@ const Profile: React.FC = () => {
       });
       ndef.addEventListener('readingerror', () => {
         setNfcReading(false);
-        alert('Could not read NFC tag. Please try again.');
+        alert(t('profile.alerts.nfcReadError'));
       });
       setTimeout(() => setNfcReading(false), 30000);
     } catch (err: any) {
       setNfcReading(false);
       if (err.name === 'NotAllowedError') {
-        alert('NFC permission denied. Please allow NFC access in your browser settings.');
+        alert(t('profile.alerts.nfcPermissionDenied'));
       } else {
-        alert('NFC reading failed. Make sure NFC is enabled on your device.');
+        alert(t('profile.alerts.nfcFailed'));
       }
     }
   };
@@ -973,24 +983,24 @@ const Profile: React.FC = () => {
   if (!user) {
     return (
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: 'clamp(24px, 6vw, 48px) clamp(16px, 6vw, 48px) clamp(40px, 8vw, 80px)', color: C.gray, fontSize: '14px', fontFamily: C.font }}>
-        Loading profile...
+        {t('profile.loading')}
       </div>
     );
   }
 
-  const firstName = clean(formData.givenName) || clean(user.givenName) || 'User';
+  const firstName = clean(formData.givenName) || clean(user.givenName) || t('profile.fallbackName');
   const lastName = clean(formData.familyName) || clean(user.familyName) || '';
   const initials = (firstName[0] || '').toUpperCase();
 
   const bulletItems: string[] = [];
   const ms = memberSince();
-  if (ms !== '—') bulletItems.push(`Member since ${ms}`);
+  if (ms !== '—') bulletItems.push(t('profile.bullets.memberSince', { date: ms }));
   const loc = locationStr();
   if (loc) bulletItems.push(loc);
   const nfcCardId = clean((user as any).nfcCardId);
-  if (cardNumberStored) bulletItems.push(`Card: ${cardNumberStored}`);
-  else if (nfcCardId) bulletItems.push(`NFC Card: ${nfcCardId}`);
-  bulletItems.push('CHF · Alpine region');
+  if (cardNumberStored) bulletItems.push(t('profile.bullets.card', { number: cardNumberStored }));
+  else if (nfcCardId) bulletItems.push(t('profile.bullets.nfcCard', { id: nfcCardId }));
+  bulletItems.push(t('profile.bullets.regionTag'));
 
   const selectStyle: React.CSSProperties = {
     width: '100%',
@@ -1026,7 +1036,7 @@ const Profile: React.FC = () => {
       >
         <div>
           <div style={{ ...label, color: C.red, marginBottom: '0.4rem', fontSize: '11px' }}>
-            account
+            {t('profile.header.eyebrow')}
           </div>
           <h1
             style={{
@@ -1037,10 +1047,10 @@ const Profile: React.FC = () => {
               color: C.black,
             }}
           >
-            Profile
+            {t('profile.header.title')}
           </h1>
           <p style={{ color: C.gray, fontSize: '13px', maxWidth: '520px', margin: 0 }}>
-            Manage your personal details and account preferences.
+            {t('profile.header.subtitle')}
           </p>
         </div>
 
@@ -1059,20 +1069,20 @@ const Profile: React.FC = () => {
           onMouseEnter={e => { if (!isLoading) e.currentTarget.style.background = '#1a1a1a'; }}
           onMouseLeave={e => (e.currentTarget.style.background = C.black)}
         >
-          {isLoading ? 'Saving...' : isEditing ? 'Save Changes' : 'Edit'}
+          {isLoading ? t('profile.header.saving') : isEditing ? t('profile.header.saveChanges') : t('profile.header.edit')}
         </button>
       </div>
 
       {/* ═══ TABS ═══ */}
       <div style={{ display: 'flex', gap: 0, borderBottom: `1px solid ${C.border}`, marginBottom: '2rem' }}>
-        {(['overview', 'purchases'] as const).map(t => (
-          <button key={t} onClick={() => setActiveTab(t)} style={{
+        {(['overview', 'purchases'] as const).map(tabKey => (
+          <button key={tabKey} onClick={() => setActiveTab(tabKey)} style={{
             padding: '12px 20px', background: 'none', border: 'none',
-            borderBottom: activeTab === t ? `2px solid ${C.black}` : '2px solid transparent',
-            fontSize: 12, fontWeight: activeTab === t ? 700 : 500, letterSpacing: '0.08em', textTransform: 'uppercase',
-            cursor: 'pointer', fontFamily: C.font, color: activeTab === t ? C.black : C.gray,
+            borderBottom: activeTab === tabKey ? `2px solid ${C.black}` : '2px solid transparent',
+            fontSize: 12, fontWeight: activeTab === tabKey ? 700 : 500, letterSpacing: '0.08em', textTransform: 'uppercase',
+            cursor: 'pointer', fontFamily: C.font, color: activeTab === tabKey ? C.black : C.gray,
           }}>
-            {t === 'overview' ? 'Overview' : 'Purchase History'}
+            {tabKey === 'overview' ? t('profile.tabs.overview') : t('profile.tabs.purchaseHistory')}
           </button>
         ))}
       </div>
@@ -1107,7 +1117,7 @@ const Profile: React.FC = () => {
               marginBottom: '1rem', cursor: uploadingAvatar ? 'wait' : 'pointer',
             }}
             onClick={() => { if (!uploadingAvatar) avatarInputRef.current?.click(); }}
-            title="Change profile photo"
+            title={t('profile.avatar.changePhoto')}
           >
             {user?.image ? (
               <UserAvatar firstName={firstName} lastName={lastName} size="lg" imageUrl={user.image} />
@@ -1182,11 +1192,11 @@ const Profile: React.FC = () => {
           >
             <div style={{ textAlign: 'center', padding: '1rem 0', borderRight: `1px solid ${C.border}` }}>
               <div style={{ fontSize: '20px', fontWeight: 300, color: C.black }}>{stats.productsClaimed}</div>
-              <div style={{ ...label, fontSize: '9px', marginTop: '2px', color: C.gray }}>Products</div>
+              <div style={{ ...label, fontSize: '9px', marginTop: '2px', color: C.gray }}>{t('profile.stats.products')}</div>
             </div>
             <div style={{ textAlign: 'center', padding: '1rem 0' }}>
               <div style={{ fontSize: '20px', fontWeight: 300, color: C.black }}>{exclusive ? stats.eventsAttended : 0}</div>
-              <div style={{ ...label, fontSize: '9px', marginTop: '2px', color: C.gray }}>Events</div>
+              <div style={{ ...label, fontSize: '9px', marginTop: '2px', color: C.gray }}>{t('profile.stats.events')}</div>
             </div>
           </div>
 
@@ -1209,11 +1219,11 @@ const Profile: React.FC = () => {
                   </span>
                 </div>
                 <span style={{ fontSize: 13, fontWeight: 500, color: C.black }}>
-                  {getTier(points).name} Tier
+                  {t('profile.tier.label', { name: tierName(getTier(points).name) })}
                 </span>
               </div>
               <div style={{ fontSize: 11, color: C.gray, marginTop: 4 }}>
-                {points.toLocaleString()} pts
+                {t('profile.tierDisplay.ptsValue', { value: points.toLocaleString() })}
               </div>
               {getNextTier(points) && (
                 <div style={{ marginTop: 8, padding: '0 8px' }}>
@@ -1226,7 +1236,7 @@ const Profile: React.FC = () => {
                     }} />
                   </div>
                   <div style={{ fontSize: 9, color: C.mid, marginTop: 4 }}>
-                    {(getNextTier(points)!.min - points).toLocaleString()} pts to {getNextTier(points)!.name}
+                    {t('profile.tier.ptsToNext', { count: (getNextTier(points)!.min - points).toLocaleString(), tier: tierName(getNextTier(points)!.name) })}
                   </div>
                 </div>
               )}
@@ -1251,25 +1261,25 @@ const Profile: React.FC = () => {
 
           {/* ── Personal Information ── */}
           <div style={{ ...label, color: C.black, fontSize: '11px', marginBottom: '1.5rem', paddingBottom: '0.75rem', borderBottom: `1px solid ${C.border}` }}>
-            Personal Information
+            {t('profile.sections.personalInformation')}
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', background: C.border, border: `1px solid ${C.border}` }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1px', background: C.border }}>
-              <FieldCell label="First Name" name="givenName" value={formData.givenName} editing={isEditing} onChange={handleChange} />
-              <FieldCell label="Family Name" name="familyName" value={formData.familyName} editing={isEditing} onChange={handleChange} />
+              <FieldCell label={t('profile.fields.firstName')} name="givenName" value={formData.givenName} editing={isEditing} onChange={handleChange} />
+              <FieldCell label={t('profile.fields.familyName')} name="familyName" value={formData.familyName} editing={isEditing} onChange={handleChange} />
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1px', background: C.border }}>
               <FieldCell
-                label="Date of Birth" name="birthdate"
+                label={t('profile.fields.dateOfBirth')} name="birthdate"
                 value={isEditing ? formData.birthdate : formatBirthdate(formData.birthdate)}
                 editing={isEditing} type={isEditing ? 'date' : 'text'} onChange={handleChange}
               />
               {isEditing ? (
                 <div style={{ background: '#fff', padding: '1rem 1.25rem', minWidth: 0 }}>
                   <div style={{ fontSize: '10px', letterSpacing: '0.25em', textTransform: 'uppercase', color: C.gray, marginBottom: '6px', fontFamily: C.font }}>
-                    Phone Number
+                    {t('profile.fields.phoneNumber')}
                   </div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'flex-end' }}>
                     <select name="phoneCode" value={formData.phoneCode} onChange={handleSelectChange}
@@ -1277,35 +1287,35 @@ const Profile: React.FC = () => {
                       {PHONE_CODES.map(pc => (<option key={pc.code} value={pc.code}>{pc.label}</option>))}
                     </select>
                     <input type="tel" name="phoneLocal" value={formData.phoneLocal} onChange={handleChange}
-                      placeholder="79 123 4567"
+                      placeholder={t('profile.fields.phonePlaceholder')}
                       style={{ flex: '2 1 140px', minWidth: 0, background: 'transparent', border: 'none', borderBottom: `1px solid ${C.border}`, color: C.black, fontFamily: C.font, fontSize: '13px', fontWeight: 400, padding: '4px 0', outline: 'none', boxSizing: 'border-box' }}
                     />
                   </div>
                 </div>
               ) : (
-                <FieldCell label="Phone Number" name="phoneNumber" value={displayPhone()} editing={false} onChange={() => {}} />
+                <FieldCell label={t('profile.fields.phoneNumber')} name="phoneNumber" value={displayPhone()} editing={false} onChange={() => {}} />
               )}
             </div>
 
-            <FieldCell label="Email Address" name="email" value={formData.email} editing={isEditing} type="email" onChange={handleChange} />
+            <FieldCell label={t('profile.fields.emailAddress')} name="email" value={formData.email} editing={isEditing} type="email" onChange={handleChange} />
 
             {isEditing ? (
               <>
-                <FieldCell label="Street Address" name="address" value={formData.address} editing={true} onChange={handleChange} />
+                <FieldCell label={t('profile.fields.streetAddress')} name="address" value={formData.address} editing={true} onChange={handleChange} />
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '1px', background: C.border }}>
-                  <FieldCell label="Postal Code" name="postalCode" value={formData.postalCode} editing={true} onChange={handleChange} />
-                  <FieldCell label="City" name="city" value={formData.city} editing={true} onChange={handleChange} />
+                  <FieldCell label={t('profile.fields.postalCode')} name="postalCode" value={formData.postalCode} editing={true} onChange={handleChange} />
+                  <FieldCell label={t('profile.fields.city')} name="city" value={formData.city} editing={true} onChange={handleChange} />
                   <div style={{ background: '#fff', padding: '1rem 1.25rem', minWidth: 0 }}>
-                    <div style={{ fontSize: '10px', letterSpacing: '0.25em', textTransform: 'uppercase', color: C.gray, marginBottom: '6px', fontFamily: C.font }}>Country</div>
+                    <div style={{ fontSize: '10px', letterSpacing: '0.25em', textTransform: 'uppercase', color: C.gray, marginBottom: '6px', fontFamily: C.font }}>{t('profile.fields.country')}</div>
                     <select name="country" value={formData.country} onChange={handleSelectChange} style={selectStyle}>
-                      <option value="">Select country</option>
-                      {COUNTRIES.map(c => (<option key={c} value={c}>{c}</option>))}
+                      <option value="">{t('profile.fields.selectCountry')}</option>
+                      {COUNTRIES.map(c => (<option key={c} value={c}>{countryLabel(c)}</option>))}
                     </select>
                   </div>
                 </div>
               </>
             ) : (
-              <FieldCell label="Home Address" name="address" value={homeAddress()} editing={false} onChange={() => {}} />
+              <FieldCell label={t('profile.fields.homeAddress')} name="address" value={homeAddress()} editing={false} onChange={() => {}} />
             )}
           </div>
 
@@ -1318,7 +1328,7 @@ const Profile: React.FC = () => {
               }}
                 onMouseEnter={e => (e.currentTarget.style.borderColor = C.black)}
                 onMouseLeave={e => (e.currentTarget.style.borderColor = C.border)}
-              >Cancel</button>
+              >{t('profile.actions.cancel')}</button>
             </div>
           )}
 
@@ -1326,10 +1336,10 @@ const Profile: React.FC = () => {
           {exclusive && (
             <>
               <div style={{ ...label, color: C.black, fontSize: '11px', marginTop: '3rem', marginBottom: '1.5rem', paddingBottom: '0.75rem', borderBottom: `1px solid ${C.border}` }}>
-                Rewards & Tier
+                {t('profile.sections.rewardsTier')}
               </div>
               {loadingPoints ? (
-                <div style={{ padding: '20px 0', fontSize: 13, color: C.gray }}>Loading…</div>
+                <div style={{ padding: '20px 0', fontSize: 13, color: C.gray }}>{t('profile.tierDisplay.loading')}</div>
               ) : (
                 <TierDisplay points={points} />
               )}
@@ -1344,7 +1354,7 @@ const Profile: React.FC = () => {
                 paddingBottom: '0.75rem', borderBottom: `1px solid ${C.border}`,
                 display: 'flex', flexWrap: 'wrap', gap: '10px', justifyContent: 'space-between', alignItems: 'center',
               }}>
-                <span>Experience Card</span>
+                <span>{t('profile.sections.experienceCard')}</span>
                 {!editingCardNum && (
                   <button
                     onClick={() => { setCardNumInput(cardNumberStored); setEditingCardNum(true); }}
@@ -1358,7 +1368,7 @@ const Profile: React.FC = () => {
                     onMouseEnter={e => (e.currentTarget.style.borderColor = C.black)}
                     onMouseLeave={e => (e.currentTarget.style.borderColor = C.border)}
                   >
-                    {cardNumberStored ? 'Edit Card #' : 'Add Card #'}
+                    {cardNumberStored ? t('profile.experienceCard.editCardNumber') : t('profile.experienceCard.addCardNumber')}
                   </button>
                 )}
               </div>
@@ -1366,7 +1376,7 @@ const Profile: React.FC = () => {
               {/* Card image */}
               <img
                 src="/images/experience-card.png"
-                alt="zai Experience Card"
+                alt={t('profile.experienceCard.imageAlt')}
                 style={{ width: '100%', maxWidth: 420, height: 'auto', borderRadius: 12, display: 'block', marginBottom: '1.5rem' }}
               />
 
@@ -1377,13 +1387,13 @@ const Profile: React.FC = () => {
                   padding: '16px 18px', border: `1px solid ${C.border}`, marginBottom: '1.5rem',
                 }}>
                   <div style={{ fontSize: 10, letterSpacing: '0.25em', textTransform: 'uppercase', color: C.gray, marginBottom: 8, fontFamily: C.font }}>
-                    CARD NUMBER
+                    {t('profile.experienceCard.cardNumberLabel')}
                   </div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', marginBottom: 10 }}>
                     <input
                       value={cardNumInput}
                       onChange={e => setCardNumInput(e.target.value.toUpperCase())}
-                      placeholder="Enter card number or scan via NFC"
+                      placeholder={t('profile.experienceCard.cardNumberPlaceholder')}
                       maxLength={32}
                       style={{
                         flex: '1 1 180px', minWidth: 0, padding: '10px 12px', border: `1px solid ${C.border}`,
@@ -1408,14 +1418,14 @@ const Profile: React.FC = () => {
                           <path d="M12.91 4.1a16.1 16.1 0 0 1 0 15.8" />
                           <path d="M16.37 2a20.16 20.16 0 0 1 0 20" />
                         </svg>
-                        {nfcReading ? 'Scanning…' : 'Scan NFC'}
+                        {nfcReading ? t('profile.experienceCard.scanning') : t('profile.experienceCard.scanNfc')}
                       </button>
                     )}
                   </div>
                   {nfcReading && (
                     <div style={{ fontSize: 12, color: C.red, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
                       <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: C.red, animation: 'pulse 1.5s infinite' }} />
-                      Hold your card near the device…
+                      {t('profile.experienceCard.holdCardHint')}
                     </div>
                   )}
                   <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
@@ -1423,14 +1433,14 @@ const Profile: React.FC = () => {
                       background: 'transparent', border: `1px solid ${C.border}`, color: C.black,
                       padding: '8px 16px', fontSize: '10px', letterSpacing: '0.15em',
                       textTransform: 'uppercase', cursor: 'pointer', fontFamily: C.font, borderRadius: 3,
-                    }}>Cancel</button>
+                    }}>{t('profile.experienceCard.cancel')}</button>
                     <button onClick={saveCardNumber} disabled={savingCardNum || !cardNumInput.trim()} style={{
                       background: C.red, border: 'none', color: '#fff',
                       padding: '8px 16px', fontSize: '10px', letterSpacing: '0.15em',
                       textTransform: 'uppercase', cursor: savingCardNum ? 'wait' : 'pointer',
                       fontFamily: C.font, borderRadius: 3,
                       opacity: savingCardNum || !cardNumInput.trim() ? 0.5 : 1,
-                    }}>{savingCardNum ? 'Saving…' : 'Save'}</button>
+                    }}>{savingCardNum ? t('profile.experienceCard.saving') : t('profile.experienceCard.save')}</button>
                   </div>
                 </div>
               )}
@@ -1442,7 +1452,7 @@ const Profile: React.FC = () => {
                   padding: '10px 14px', background: C.surface,
                   border: `1px solid ${C.border}`, borderRadius: 6, marginBottom: '1.5rem',
                 }}>
-                  <div style={{ fontSize: 10, letterSpacing: '0.15em', color: C.gray, textTransform: 'uppercase' }}>Card #</div>
+                  <div style={{ fontSize: 10, letterSpacing: '0.15em', color: C.gray, textTransform: 'uppercase' }}>{t('profile.experienceCard.cardNumberDisplayLabel')}</div>
                   <div style={{ fontSize: 14, fontWeight: 500, fontFamily: "'Courier New', monospace", letterSpacing: '0.08em', color: C.black }}>
                     {cardNumberStored}
                   </div>
@@ -1453,11 +1463,11 @@ const Profile: React.FC = () => {
               <div style={{ display: 'flex', flexDirection: 'column', border: `1px solid ${C.border}` }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.25rem', borderBottom: `1px solid ${C.border}` }}>
                   <div>
-                    <div style={{ fontSize: '13px', color: C.black, fontWeight: 400 }}>Status</div>
-                    <div style={{ fontSize: '11px', color: C.gray, marginTop: '3px' }}>NFC Experience Card</div>
+                    <div style={{ fontSize: '13px', color: C.black, fontWeight: 400 }}>{t('profile.experienceCard.status.title')}</div>
+                    <div style={{ fontSize: '11px', color: C.gray, marginTop: '3px' }}>{t('profile.experienceCard.status.desc')}</div>
                   </div>
                   <span style={{ fontSize: '10px', letterSpacing: '0.2em', textTransform: 'uppercase', color: card.isActive ? C.green : C.gray, fontWeight: 500 }}>
-                    {card.isActive ? 'Active' : 'Inactive'}
+                    {card.isActive ? t('profile.experienceCard.status.active') : t('profile.experienceCard.status.inactive')}
                   </span>
                 </div>
                 <div style={{
@@ -1465,16 +1475,16 @@ const Profile: React.FC = () => {
                   borderBottom: card.isActive && card.tokenAddress ? `1px solid ${C.border}` : 'none',
                 }}>
                   <div>
-                    <div style={{ fontSize: '13px', color: C.black, fontWeight: 400 }}>NFC</div>
-                    <div style={{ fontSize: '11px', color: C.gray, marginTop: '3px' }}>Contactless product claim and access</div>
+                    <div style={{ fontSize: '13px', color: C.black, fontWeight: 400 }}>{t('profile.experienceCard.nfc.title')}</div>
+                    <div style={{ fontSize: '11px', color: C.gray, marginTop: '3px' }}>{t('profile.experienceCard.nfc.desc')}</div>
                   </div>
                   <span style={{ fontSize: '10px', letterSpacing: '0.2em', textTransform: 'uppercase', color: card.nfcEnabled && card.isActive ? C.green : C.gray, fontWeight: 500 }}>
-                    {card.nfcEnabled && card.isActive ? 'Enabled' : 'Disabled'}
+                    {card.nfcEnabled && card.isActive ? t('profile.experienceCard.nfc.enabled') : t('profile.experienceCard.nfc.disabled')}
                   </span>
                 </div>
                 {card.isActive && card.tokenAddress && (
                   <div style={{ padding: '1.25rem' }}>
-                    <div style={{ fontSize: '13px', color: C.black, fontWeight: 400, marginBottom: '3px' }}>Contract</div>
+                    <div style={{ fontSize: '13px', color: C.black, fontWeight: 400, marginBottom: '3px' }}>{t('profile.experienceCard.contract')}</div>
                     <div style={{ fontSize: '11px', color: C.gray, fontFamily: 'monospace', wordBreak: 'break-all' }}>{card.tokenAddress}</div>
                   </div>
                 )}
@@ -1518,6 +1528,7 @@ interface PurchaseRow {
 }
 
 const PurchaseHistorySection: React.FC = () => {
+  const { t } = useTranslation();
   const [purchases, setPurchases] = useState<PurchaseRow[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -1532,7 +1543,7 @@ const PurchaseHistorySection: React.FC = () => {
   if (loading) {
     return (
       <div style={{ padding: '48px 0', textAlign: 'center', color: C.gray, fontSize: 13, fontFamily: C.font }}>
-        Loading…
+        {t('profile.purchaseHistory.loading')}
       </div>
     );
   }
@@ -1540,8 +1551,8 @@ const PurchaseHistorySection: React.FC = () => {
   if (purchases.length === 0) {
     return (
       <div style={{ padding: '48px 24px', textAlign: 'center', background: C.surface, border: `1px solid ${C.border}`, borderRadius: 8, fontFamily: C.font }}>
-        <div style={{ fontSize: '15px', fontWeight: 300, color: C.black, marginBottom: 4 }}>No purchases yet</div>
-        <p style={{ color: C.gray, fontSize: '12px', margin: 0 }}>Deals and collectibles you claim will appear here.</p>
+        <div style={{ fontSize: '15px', fontWeight: 300, color: C.black, marginBottom: 4 }}>{t('profile.purchaseHistory.emptyTitle')}</div>
+        <p style={{ color: C.gray, fontSize: '12px', margin: 0 }}>{t('profile.purchaseHistory.emptyDesc')}</p>
       </div>
     );
   }
@@ -1568,27 +1579,27 @@ const PurchaseHistorySection: React.FC = () => {
               fontSize: 9, letterSpacing: '0.2em', textTransform: 'uppercase',
               color: C.red, marginBottom: 3, fontWeight: 600,
             }}>
-              {p.source === 'deal' ? 'Deal' : 'Collectible'}
+              {p.source === 'deal' ? t('profile.purchaseHistory.deal') : t('profile.purchaseHistory.collectible')}
             </div>
             <div style={{ fontSize: 13, fontWeight: 500, color: C.black, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {p.item_title || 'Item'}
+              {p.item_title || t('profile.purchaseHistory.item')}
             </div>
             <div style={{ fontSize: 10, color: C.gray, marginTop: 2 }}>{fmtDate(p.created_at)}</div>
           </div>
 
           <div style={{ textAlign: 'right', flexShrink: 0 }}>
             <div style={{ fontSize: 14, fontWeight: 600, color: C.black }}>
-              {parseFloat(p.amount_chf as any) > 0 ? `CHF ${parseFloat(p.amount_chf as any).toFixed(2)}` : 'Free'}
+              {parseFloat(p.amount_chf as any) > 0 ? `CHF ${parseFloat(p.amount_chf as any).toFixed(2)}` : t('profile.purchaseHistory.free')}
             </div>
             <div style={{ display: 'flex', gap: 6, marginTop: 4, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
               {p.points_used > 0 && (
                 <span style={{ fontSize: 9, color: C.red, background: 'rgba(122,34,46,0.08)', padding: '2px 6px', borderRadius: 3 }}>
-                  -{p.points_used} pts used
+                  {t('profile.purchaseHistory.pointsUsed', { count: p.points_used })}
                 </span>
               )}
               {p.points_earned > 0 && (
                 <span style={{ fontSize: 9, color: C.green, background: 'rgba(42,157,78,0.08)', padding: '2px 6px', borderRadius: 3 }}>
-                  +{p.points_earned} pts earned
+                  {t('profile.purchaseHistory.pointsEarned', { count: p.points_earned })}
                 </span>
               )}
             </div>

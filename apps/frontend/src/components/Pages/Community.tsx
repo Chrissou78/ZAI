@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAppContext } from '../../context/AppContext';
 import { apiService } from '../../services/api';
+import i18n from '../../i18n';
 
 // ─── Types ───
 
@@ -84,32 +86,38 @@ const Sk: React.FC<{w?:string;h?:string;s?:React.CSSProperties}> = ({w='100%',h=
 
 // ─── Helpers ───
 
+function localeFor(lang: string) {
+  if (lang === 'de') return 'de-DE';
+  if (lang === 'zh') return 'zh-CN';
+  return 'en-GB';
+}
+
 function timeAgo(d: string) {
   if (!d) return '';
   const diff = Date.now() - new Date(d).getTime();
   if (isNaN(diff)) return d;
   const m = Math.floor(diff / 60000);
-  if (m < 1) return 'just now';
-  if (m < 60) return `${m}m ago`;
+  if (m < 1) return i18n.t('community.time.justNow');
+  if (m < 60) return i18n.t('community.time.minutesAgo', { count: m });
   const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
+  if (h < 24) return i18n.t('community.time.hoursAgo', { count: h });
   const days = Math.floor(h / 24);
-  if (days === 1) return 'yesterday';
-  if (days < 7) return `${days}d ago`;
-  if (days < 30) return `${Math.floor(days / 7)}w ago`;
-  return new Date(d).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
+  if (days === 1) return i18n.t('community.time.yesterday');
+  if (days < 7) return i18n.t('community.time.daysAgo', { count: days });
+  if (days < 30) return i18n.t('community.time.weeksAgo', { count: Math.floor(days / 7) });
+  return new Date(d).toLocaleDateString(localeFor(i18n.language), { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 function fmtDate(d: string) {
   if (!d) return '—';
   const dt = new Date(d);
-  const mon = dt.toLocaleString('en-US',{month:'short'});
+  const mon = dt.toLocaleString(localeFor(i18n.language), { month: 'short' });
   return `${mon} ${dt.getFullYear()}`;
 }
 
 function fmtFullDate(d: string) {
   if (!d) return '';
-  return new Date(d).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
+  return new Date(d).toLocaleDateString(localeFor(i18n.language), { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 function groupReactions(reactions: Reaction[], userId?: string) {
@@ -202,7 +210,8 @@ const PhotoZoomContent: React.FC<{
   addComment: () => void;
   C: any;
   bdr: string;
-}> = ({ selectedPhoto, user, isAdmin, deletePhoto, fmtFullDate, ReactionBar, timeAgo, deleteComment, newComment, setNewComment, addComment, C, bdr }) => {
+  t: (key: string, opts?: any) => string;
+}> = ({ selectedPhoto, user, isAdmin, deletePhoto, fmtFullDate, ReactionBar, timeAgo, deleteComment, newComment, setNewComment, addComment, C, bdr, t }) => {
   const [imgSize, setImgSize] = React.useState<{ w: number; h: number } | null>(null);
   const [isSmallScreen, setIsSmallScreen] = React.useState(false);
 
@@ -279,7 +288,7 @@ const PhotoZoomContent: React.FC<{
           {(selectedPhoto.authorId === user?.id || isAdmin) && (
             <button onClick={() => deletePhoto(selectedPhoto.id)}
               style={{ background: 'none', border: 'none', fontSize: '11px', cursor: 'pointer', color: C.red }}>
-              {isAdmin && selectedPhoto.authorId !== user?.id ? 'Remove' : 'Delete'}
+              {isAdmin && selectedPhoto.authorId !== user?.id ? t('community.photo.remove') : t('community.photo.delete')}
             </button>
           )}
         </div>
@@ -304,7 +313,7 @@ const PhotoZoomContent: React.FC<{
         flex: '1 1 auto', overflowY: 'auto', padding: '12px 16px', minHeight: 0,
       }}>
         {(!selectedPhoto.comments || selectedPhoto.comments.length === 0) ? (
-          <p style={{ fontSize: '12px', color: C.muted, textAlign: 'center', marginTop: 16 }}>No comments yet</p>
+          <p style={{ fontSize: '12px', color: C.muted, textAlign: 'center', marginTop: 16 }}>{t('community.photo.noComments')}</p>
         ) : (
           selectedPhoto.comments.map((c: any) => (
             <div key={c.id} style={{ marginBottom: 14 }}>
@@ -325,7 +334,7 @@ const PhotoZoomContent: React.FC<{
       </div>
       {/* Comment input */}
       <div style={{ padding: '10px 16px', borderTop: bdr, display: 'flex', gap: '1px', flexShrink: 0 }}>
-        <input type="text" placeholder="Add a comment..." value={newComment}
+        <input type="text" placeholder={t('community.photo.commentPlaceholder')} value={newComment}
           onChange={e => setNewComment(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && addComment()}
           style={{ flex: 1, padding: '9px 10px', border: bdr, fontSize: '12px', fontFamily: "'Inter',sans-serif", background: C.pureWhite, color: C.black, outline: 'none', borderRadius: '4px 0 0 4px' }} />
@@ -335,7 +344,7 @@ const PhotoZoomContent: React.FC<{
             background: newComment.trim() ? C.black : C.muted, color: C.white, border: 'none',
             cursor: newComment.trim() ? 'pointer' : 'not-allowed', fontFamily: "'Inter',sans-serif", fontWeight: 500,
             borderRadius: '0 4px 4px 0',
-          }}>Post</button>
+          }}>{t('community.photo.post')}</button>
       </div>
     </div>
   );
@@ -361,7 +370,7 @@ const PhotoZoomContent: React.FC<{
       {/* Loading placeholder */}
       {imgSize === null && (
         <div style={{ padding: 40, textAlign: 'center', color: C.gray, fontSize: 13 }}>
-          Loading…
+          {t('community.photo.loading')}
           <img src={selectedPhoto.url} alt="" onLoad={handleImageLoad} style={{ display: 'none' }} />
         </div>
       )}
@@ -428,7 +437,7 @@ function getEmbedUrl(url: string): string | null {
   return null;
 }
 
-function ZaiInsights({ stories, fmtDate, C }: { stories: any[]; fmtDate: (d: string) => string; C: any }) {
+function ZaiInsights({ stories, fmtDate, C, t }: { stories: any[]; fmtDate: (d: string) => string; C: any; t: (key: string, opts?: any) => string }) {
   const RED_LABEL: React.CSSProperties = {
     fontSize: 11, letterSpacing: '0.3em', textTransform: 'uppercase', color: C.red, fontWeight: 500,
   };
@@ -446,7 +455,7 @@ function ZaiInsights({ stories, fmtDate, C }: { stories: any[]; fmtDate: (d: str
   if (!stories.length) {
     return (
       <div style={{ textAlign: 'center', padding: 48, color: C.muted, fontSize: 14 }}>
-        No stories yet. Check back soon.
+        {t('community.insights.empty')}
       </div>
     );
   }
@@ -455,7 +464,7 @@ function ZaiInsights({ stories, fmtDate, C }: { stories: any[]; fmtDate: (d: str
     <div>
       {featuredStory && (
         <>
-          <div style={RED_LABEL}>TOP STORY</div>
+          <div style={RED_LABEL}>{t('community.insights.topStory')}</div>
           <div
             onClick={() => openStory(featuredStory)}
             style={{
@@ -471,7 +480,7 @@ function ZaiInsights({ stories, fmtDate, C }: { stories: any[]; fmtDate: (d: str
             <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', padding: 'clamp(16px, 5vw, 28px) clamp(16px, 6vw, 32px)' }}>
               {featuredStory.media_type === 'video' && (
                 <div style={{ position: 'absolute', top: 16, left: 16, fontSize: 10, fontWeight: 600, background: C.red, padding: '4px 10px', borderRadius: 3 }}>
-                  ▶ VIDEO{featuredStory.duration ? ` · ${featuredStory.duration}` : ''}
+                  ▶ {t('community.insights.video')}{featuredStory.duration ? ` · ${featuredStory.duration}` : ''}
                 </div>
               )}
               {featuredStory.media_type === 'video' && (
@@ -480,7 +489,7 @@ function ZaiInsights({ stories, fmtDate, C }: { stories: any[]; fmtDate: (d: str
                 </div>
               )}
               <div style={{ fontSize: 10, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#999', marginBottom: 8 }}>
-                {featuredStory.category} · EXCLUSIVE
+                {t('community.insights.exclusiveTag', { category: featuredStory.category })}
               </div>
               <h2 style={{ fontSize: 'clamp(18px, 2.5vw, 26px)', fontWeight: 400, margin: '0 0 6px' }}>{featuredStory.title}</h2>
               <div style={{ fontSize: 13, color: '#aaa' }}>{featuredStory.description}</div>
@@ -489,7 +498,7 @@ function ZaiInsights({ stories, fmtDate, C }: { stories: any[]; fmtDate: (d: str
         </>
       )}
 
-      <div style={RED_LABEL}>ALL STORIES</div>
+      <div style={RED_LABEL}>{t('community.insights.allStories')}</div>
       <div style={{ marginTop: 16 }}>
         {regularStories.map(story => (
           <div
@@ -507,7 +516,7 @@ function ZaiInsights({ stories, fmtDate, C }: { stories: any[]; fmtDate: (d: str
             }}>
               {story.thumbnail_url
                 ? <img src={story.thumbnail_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: C.muted, textTransform: 'uppercase' }}>{story.media_type}</div>
+                : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color: C.muted, textTransform: 'uppercase' }}>{t(`community.insights.mediaType.${story.media_type}`, { defaultValue: story.media_type })}</div>
               }
               {story.media_type === 'video' && (
                 <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -517,7 +526,7 @@ function ZaiInsights({ stories, fmtDate, C }: { stories: any[]; fmtDate: (d: str
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.red, fontWeight: 500, marginBottom: 3 }}>
-                {story.media_type === 'video' ? '▶ ' : ''}{story.media_type} · {story.category}
+                {story.media_type === 'video' ? '▶ ' : ''}{t(`community.insights.mediaType.${story.media_type}`, { defaultValue: story.media_type })} · {story.category}
                 {story.media_type === 'product_launch' && ' ●'}
               </div>
               <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 2, color: C.black }}>{story.title}</div>
@@ -526,7 +535,7 @@ function ZaiInsights({ stories, fmtDate, C }: { stories: any[]; fmtDate: (d: str
             <div style={{ textAlign: 'right', flexShrink: 0 }}>
               <div style={{ fontSize: 11, color: C.muted }}>{fmtDate(story.published_at)}</div>
               <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', marginTop: 4, cursor: 'pointer', color: C.black }}>
-                {story.media_type === 'video' ? 'WATCH →' : story.media_type === 'photo' ? 'VIEW →' : 'READ →'}
+                {story.media_type === 'video' ? t('community.insights.watch') : story.media_type === 'photo' ? t('community.insights.view') : t('community.insights.read')}
               </div>
             </div>
           </div>
@@ -573,7 +582,7 @@ function ZaiInsights({ stories, fmtDate, C }: { stories: any[]; fmtDate: (d: str
 
             <div style={{ padding: 'clamp(16px, 5vw, 24px) clamp(16px, 6vw, 28px) clamp(20px, 6vw, 32px)' }}>
               <div style={{ fontSize: 10, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#999', marginBottom: 8 }}>
-                {viewer.category} {viewer.exclusive && '· EXCLUSIVE'}
+                {viewer.category} {viewer.exclusive && `· ${t('community.insights.exclusive')}`}
               </div>
               <h2 style={{ fontSize: 'clamp(20px, 2.8vw, 28px)', fontWeight: 400, margin: '0 0 8px' }}>{viewer.title}</h2>
               <div style={{ fontSize: 12, color: '#888', marginBottom: 20 }}>{fmtDate(viewer.published_at)}</div>
@@ -587,7 +596,7 @@ function ZaiInsights({ stories, fmtDate, C }: { stories: any[]; fmtDate: (d: str
                   rel="noopener noreferrer"
                   style={{ display: 'inline-block', marginTop: 24, fontSize: 12, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: C.red, textDecoration: 'none' }}
                 >
-                  View Original ↗
+                  {t('community.insights.viewOriginal')}
                 </a>
               )}
             </div>
@@ -599,6 +608,7 @@ function ZaiInsights({ stories, fmtDate, C }: { stories: any[]; fmtDate: (d: str
 }
 
 const Community: React.FC = () => {
+  const { t } = useTranslation();
   const { user } = useAppContext();
   const [isAdmin, setIsAdmin] = useState(false);
 
@@ -718,8 +728,8 @@ const Community: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
     const allowed = ['image/jpeg','image/png','image/tiff'];
-    if (!allowed.includes(file.type)) { alert('Only JPG, PNG, and TIFF images are allowed'); e.target.value = ''; return; }
-    if (file.size > 4 * 1024 * 1024) { alert('Image must be under 4 MB'); return; }
+    if (!allowed.includes(file.type)) { alert(t('community.upload.errors.invalidType')); e.target.value = ''; return; }
+    if (file.size > 4 * 1024 * 1024) { alert(t('community.upload.errors.tooLarge')); return; }
     setUploadFile(file);
     const reader = new FileReader();
     reader.onload = () => setUploadPreview(reader.result as string);
@@ -737,7 +747,7 @@ const Community: React.FC = () => {
         setShowUpload(false); setUploadCaption(''); setUploadFile(null); setUploadPreview(null);
         fetchStats();
       }
-    } catch (err: any) { alert(err.response?.data?.error || 'Upload failed'); }
+    } catch (err: any) { alert(err.response?.data?.error || t('community.upload.errors.uploadFailed')); }
     finally { setUploading(false); }
   };
 
@@ -762,27 +772,27 @@ const Community: React.FC = () => {
         } : null);
         setNewComment('');
       }
-    } catch (err: any) { alert(err.response?.data?.error || 'Failed to add comment'); }
+    } catch (err: any) { alert(err.response?.data?.error || t('community.photo.errors.addComment')); }
   };
 
   const deletePhoto = async (photoId: string) => {
-    if (!confirm('Delete this photo?')) return;
+    if (!confirm(t('community.photo.confirmDelete'))) return;
     try {
       await apiService.delete(`/community/gallery/${photoId}`);
       setPhotos(prev => prev.filter(p => p.id !== photoId));
       setSelectedPhoto(null); fetchStats();
-    } catch (err: any) { alert(err.response?.data?.error || 'Failed to delete'); }
+    } catch (err: any) { alert(err.response?.data?.error || t('community.photo.errors.deletePhoto')); }
   };
 
   const deleteComment = async (photoId: string, commentId: string) => {
-    if (!confirm('Delete this comment?')) return;
+    if (!confirm(t('community.photo.confirmDeleteComment'))) return;
     try {
       await apiService.delete(`/community/gallery/${photoId}/comments/${commentId}`);
       setSelectedPhoto(prev => prev ? {
         ...prev, commentCount: Math.max(prev.commentCount - 1, 0),
         comments: (prev.comments || []).filter(c => c.id !== commentId),
       } : null);
-    } catch (err: any) { alert(err.response?.data?.error || 'Failed to delete comment'); }
+    } catch (err: any) { alert(err.response?.data?.error || t('community.photo.errors.deleteComment')); }
   };
 
   const toggleReaction = async (photoId: string, emoji: string) => {
@@ -802,24 +812,24 @@ const Community: React.FC = () => {
         if (selectedPhoto?.id === photoId) setSelectedPhoto(prev => prev ? { ...prev, reactions: patch(prev.reactions || []) } : null);
         setEmojiPickerPhotoId(null); setEmojiPickerPos(null);
       }
-    } catch (err: any) { alert(err.response?.data?.error || 'Failed to react'); }
+    } catch (err: any) { alert(err.response?.data?.error || t('community.photo.errors.react')); }
   };
 
   const blockMember = async (memberId: string, memberName: string) => {
-    const reason = prompt(`Block "${memberName}"? Enter a reason (optional):`);
+    const reason = prompt(t('community.members.confirmBlock', { name: memberName }));
     if (reason === null) return;
     try {
       await apiService.post(`/community/members/${memberId}/block`, { reason });
       setMembers(prev => prev.map(m => m.id === memberId ? { ...m, isBlocked: true } : m));
-    } catch (err: any) { alert(err.response?.data?.error || 'Failed to block member'); }
+    } catch (err: any) { alert(err.response?.data?.error || t('community.members.errors.block')); }
   };
 
   const unblockMember = async (memberId: string) => {
-    if (!confirm('Unblock this member?')) return;
+    if (!confirm(t('community.members.confirmUnblock'))) return;
     try {
       await apiService.delete(`/community/members/${memberId}/block`);
       setMembers(prev => prev.map(m => m.id === memberId ? { ...m, isBlocked: false } : m));
-    } catch (err: any) { alert(err.response?.data?.error || 'Failed to unblock member'); }
+    } catch (err: any) { alert(err.response?.data?.error || t('community.members.errors.unblock')); }
   };
 
   const openEmojiPicker = (e: React.MouseEvent<HTMLButtonElement>, photoId: string) => {
@@ -869,7 +879,7 @@ const Community: React.FC = () => {
             fontSize: '14px', color: C.muted, cursor: 'pointer', borderRadius: 3,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}
-          title="Add reaction">
+          title={t('community.photo.addReactionTitle')}>
           {emojiPickerPhotoId === photo.id ? '×' : '😊'}
         </button>
       </div>
@@ -899,7 +909,7 @@ const Community: React.FC = () => {
           </div>
           <span style={{ fontSize: '10px', color: C.muted, flexShrink: 0 }}>{fmtFullDate(photo.createdAt)}</span>
           {isAdmin && (
-            <button onClick={() => deletePhoto(photo.id)} title="Delete (admin)"
+            <button onClick={() => deletePhoto(photo.id)} title={t('community.photo.deleteAdminTitle')}
               style={{ background: 'none', border: 'none', fontSize: '13px', color: C.red, cursor: 'pointer', padding: '2px 4px', flexShrink: 0 }}>×</button>
           )}
         </div>
@@ -954,7 +964,7 @@ const Community: React.FC = () => {
     onChange: (p: number) => void;
     itemCount: number;
     label?: string;
-  }> = ({ current, total, onChange, itemCount, label = 'posts' }) => {
+  }> = ({ current, total, onChange, itemCount }) => {
     if (total <= 1) return null;
 
     const pages: (number | '…')[] = [];
@@ -986,7 +996,7 @@ const Community: React.FC = () => {
             cursor: current <= 1 ? 'default' : 'pointer',
           }}
         >
-          ← Prev
+          {t('community.pagination.prev')}
         </button>
 
         {pages.map((p, i) =>
@@ -1022,11 +1032,11 @@ const Community: React.FC = () => {
             cursor: current >= total ? 'default' : 'pointer',
           }}
         >
-          Next →
+          {t('community.pagination.next')}
         </button>
 
         <span style={{ fontSize: 11, color: C.muted, marginLeft: 8 }}>
-          {itemCount} {label}
+          {t('community.pagination.posts', { count: itemCount })}
         </span>
       </div>
     );
@@ -1067,12 +1077,12 @@ const Community: React.FC = () => {
 
       {/* ══════ PAGE HEADER ══════ */}
       <div style={{ marginBottom: 32 }}>
-        <div style={{ ...lbl, color: C.red, letterSpacing: '0.3em', marginBottom: 8, fontSize: '10px' }}>ZAI ECOSYSTEM</div>
+        <div style={{ ...lbl, color: C.red, letterSpacing: '0.3em', marginBottom: 8, fontSize: '10px' }}>{t('community.eyebrow')}</div>
         <h1 style={{ fontSize: 'clamp(32px, 4vw, 40px)', fontWeight: 300, lineHeight: 1.15, margin: '0 0 8px', color: C.black }}>
-          Community
+          {t('community.title')}
         </h1>
         <p style={{ color: C.muted, fontSize: '14px', margin: 0, fontWeight: 300 }}>
-          A global family of zai owners — connected by the mountain.
+          {t('community.subtitle')}
         </p>
       </div>
 
@@ -1093,7 +1103,7 @@ const Community: React.FC = () => {
             fontWeight: 500, cursor: 'pointer', fontFamily: "'Inter',sans-serif",
             transition: 'background 0.2s, color 0.2s',
           }}>
-            Community
+            {t('community.tabs.feed')}
           </button>
           <button onClick={() => setMainTab('insights')} style={{
             display: 'inline-flex', alignItems: 'center', gap: 8,
@@ -1108,13 +1118,13 @@ const Community: React.FC = () => {
               width: 5, height: 5, borderRadius: '50%', flexShrink: 0,
               background: mainTab === 'insights' ? '#fff' : C.red,
             }} />
-            zai Insights
+            {t('community.tabs.insights')}
             {stories.length > 0 && (
               <span style={{
                 background: mainTab === 'insights' ? 'rgba(255,255,255,0.2)' : C.red,
                 color: '#fff', borderRadius: 999, padding: '2px 7px',
                 fontSize: 8, letterSpacing: '0.1em', fontWeight: 700,
-              }}>{stories.length} NEW</span>
+              }}>{t('community.tabs.newBadge', { count: stories.length })}</span>
             )}
           </button>
         </div>
@@ -1127,12 +1137,12 @@ const Community: React.FC = () => {
           paddingBottom: 14, marginBottom: 24, borderBottom: bdr,
           fontSize: 10, letterSpacing: '0.25em', textTransform: 'uppercase', color: C.black,
         }}>
-          <span>All Stories · {photos.length} Post{photos.length !== 1 ? 's' : ''}</span>
+          <span>{t('community.feed.allStoriesCount', { count: photos.length })}</span>
         </div>
       )}
 
       {mainTab === 'insights' ? (
-        <ZaiInsights stories={stories} fmtDate={fmtFullDate} C={C} />
+        <ZaiInsights stories={stories} fmtDate={fmtFullDate} C={C} t={t} />
       ) : (
       <>
       {/* ══════ MAIN GRID ══════ */}
@@ -1143,8 +1153,8 @@ const Community: React.FC = () => {
           {photos.length === 0 ? (
             <div style={{ padding: '60px 24px', textAlign: 'center', background: C.surface, border: bdr, borderRadius: 6 }}>
               <div style={{ fontSize: '40px', marginBottom: 12, opacity: 0.15 }}>📷</div>
-              <div style={{ fontSize: '15px', fontWeight: 300, color: C.black, marginBottom: 4 }}>No posts yet</div>
-              <p style={{ color: C.muted, fontSize: '12px', margin: 0 }}>Be the first to share your zai moment!</p>
+              <div style={{ fontSize: '15px', fontWeight: 300, color: C.black, marginBottom: 4 }}>{t('community.empty.title')}</div>
+              <p style={{ color: C.muted, fontSize: '12px', margin: 0 }}>{t('community.empty.desc')}</p>
             </div>
           ) : (
             <>
@@ -1181,10 +1191,10 @@ const Community: React.FC = () => {
           {/* SHARE YOUR JOURNEY */}
           <div style={{ border: bdr, background: C.pureWhite, padding: '20px', borderRadius: 6 }}>
             <div style={{ ...lbl, fontSize: '10px', letterSpacing: '0.22em', marginBottom: 12, color: C.gray, fontWeight: 600 }}>
-              SHARE YOUR JOURNEY
+              {t('community.share.heading')}
             </div>
             <p style={{ fontSize: '12px', color: C.muted, lineHeight: 1.55, margin: '0 0 16px', fontWeight: 300 }}>
-              Upload a high-fidelity image from your zai winter adventure. Tell the community about the performance, powder conditions, or alpine peaks.
+              {t('community.share.desc')}
             </p>
             <button onClick={() => setShowUpload(true)}
               style={{
@@ -1200,22 +1210,22 @@ const Community: React.FC = () => {
                 <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
                 <circle cx="12" cy="13" r="4"/>
               </svg>
-              UPLOAD & SHARE PHOTO
+              {t('community.share.cta')}
             </button>
           </div>
 
           {/* DIRECTORY — ZAI MEMBERS */}
           <div style={{ border: bdr, background: C.pureWhite, borderRadius: 6, overflow: 'hidden' }}>
             <div style={{ padding: '16px 20px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-              <span style={{ ...lbl, fontSize: '10px', letterSpacing: '0.22em', color: C.gray, fontWeight: 600 }}>DIRECTORY</span>
-              <span style={{ ...lbl, fontSize: '9px', letterSpacing: '0.18em', color: C.red, fontWeight: 600 }}>ZAI MEMBERS</span>
+              <span style={{ ...lbl, fontSize: '10px', letterSpacing: '0.22em', color: C.gray, fontWeight: 600 }}>{t('community.directory.heading')}</span>
+              <span style={{ ...lbl, fontSize: '9px', letterSpacing: '0.18em', color: C.red, fontWeight: 600 }}>{t('community.directory.badge')}</span>
             </div>
-            <div style={{ padding: '0 20px 4px', fontSize: '10px', color: C.muted }}>{totalCount} registered</div>
+            <div style={{ padding: '0 20px 4px', fontSize: '10px', color: C.muted }}>{t('community.directory.registered', { count: totalCount })}</div>
             <div style={{ padding: '8px 20px 12px', position: 'relative' }}>
               <div style={{ position: 'absolute', left: 28, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
                 <SearchIcon size={12} color={C.muted} />
               </div>
-              <input type="text" placeholder="Search members or locations..."
+              <input type="text" placeholder={t('community.directory.searchPlaceholder')}
                 value={memberSearch} onChange={e => setMemberSearch(e.target.value)}
                 style={{
                   width: '100%', padding: '8px 10px 8px 28px', border: bdr, fontSize: '11px',
@@ -1225,7 +1235,7 @@ const Community: React.FC = () => {
             </div>
             <div style={{ borderTop: bdr }}>
               {pagedMembers.length === 0 ? (
-                <div style={{ padding: '20px', textAlign: 'center', fontSize: '11px', color: C.muted }}>No members found</div>
+                <div style={{ padding: '20px', textAlign: 'center', fontSize: '11px', color: C.muted }}>{t('community.directory.empty')}</div>
               ) : (
                 pagedMembers.map((m, idx) => {
                   const globalIdx = (memberPage - 1) * MEMBERS_PER_PAGE + idx;
@@ -1251,7 +1261,7 @@ const Community: React.FC = () => {
                             <span style={{
                               fontSize: '7px', padding: '1px 4px', letterSpacing: '0.1em', textTransform: 'uppercase',
                               background: 'rgba(200,16,46,0.08)', color: C.red, fontWeight: 600, flexShrink: 0,
-                            }}>blocked</span>
+                            }}>{t('community.directory.blockedBadge')}</span>
                           )}
                         </div>
                         <div style={{
@@ -1267,12 +1277,12 @@ const Community: React.FC = () => {
                           {m.isBlocked ? (
                             <button onClick={() => unblockMember(m.id)}
                               style={{ fontSize: '8px', padding: '2px 5px', background: C.surface, color: C.gray, border: bdr, cursor: 'pointer', fontFamily: "'Inter',sans-serif", borderRadius: 2 }}>
-                              Unblock
+                              {t('community.directory.unblock')}
                             </button>
                           ) : (
                             <button onClick={() => blockMember(m.id, m.name)}
                               style={{ fontSize: '8px', padding: '2px 5px', background: 'rgba(200,16,46,0.05)', color: C.red, border: '1px solid rgba(200,16,46,0.12)', cursor: 'pointer', fontFamily: "'Inter',sans-serif", borderRadius: 2 }}>
-                              Block
+                              {t('community.directory.block')}
                             </button>
                           )}
                         </div>
@@ -1290,28 +1300,28 @@ const Community: React.FC = () => {
                 style={{
                   background: 'none', border: 'none', fontSize: '10px', color: memberPage <= 1 ? C.border : C.muted,
                   cursor: memberPage <= 1 ? 'default' : 'pointer', fontFamily: "'Inter',sans-serif", letterSpacing: '0.05em',
-                }}>‹ PREV</button>
-              <span style={{ fontSize: '10px', color: C.muted }}>Page {memberPage} of {totalMemberPages}</span>
+                }}>{t('community.directory.prev')}</button>
+              <span style={{ fontSize: '10px', color: C.muted }}>{t('community.directory.page', { current: memberPage, total: totalMemberPages })}</span>
               <button onClick={() => setMemberPage(p => Math.min(totalMemberPages, p + 1))} disabled={memberPage >= totalMemberPages}
                 style={{
                   background: 'none', border: 'none', fontSize: '10px',
                   color: memberPage >= totalMemberPages ? C.border : C.muted,
                   cursor: memberPage >= totalMemberPages ? 'default' : 'pointer',
                   fontFamily: "'Inter',sans-serif", letterSpacing: '0.05em',
-                }}>NEXT ›</button>
+                }}>{t('community.directory.next')}</button>
             </div>
           </div>
 
           {/* FOLLOW ZAI */}
           <div style={{ border: bdr, background: C.pureWhite, padding: '20px', borderRadius: 6 }}>
             <div style={{ ...lbl, fontSize: '9px', letterSpacing: '0.22em', marginBottom: 2, color: C.muted, fontWeight: 400 }}>
-              FOLLOW ZAI
+              {t('community.follow.eyebrow')}
             </div>
             <div style={{ ...lbl, fontSize: '10px', letterSpacing: '0.22em', marginBottom: 12, color: C.gray, fontWeight: 600 }}>
-              STAY IN THE LOOP
+              {t('community.follow.heading')}
             </div>
             <p style={{ fontSize: '11px', color: C.muted, lineHeight: 1.55, margin: '0 0 16px', fontWeight: 300 }}>
-              Follow our WhatsApp channel for event announcements, new model drops, and exclusive stories from the Davos manufactory.
+              {t('community.follow.desc')}
             </p>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
               <div style={{
@@ -1324,8 +1334,8 @@ const Community: React.FC = () => {
                 </svg>
               </div>
               <div>
-                <div style={{ fontSize: '12px', fontWeight: 500, color: C.black }}>zai Experience Club</div>
-                <div style={{ fontSize: '9px', color: C.muted }}>1,843 followers · Updated weekly</div>
+                <div style={{ fontSize: '12px', fontWeight: 500, color: C.black }}>{t('community.follow.brand')}</div>
+                <div style={{ fontSize: '9px', color: C.muted }}>{t('community.follow.followers')}</div>
               </div>
             </div>
             <a href="https://whatsapp.com/channel/YOUR_CHANNEL_ID" target="_blank" rel="noopener noreferrer"
@@ -1342,10 +1352,10 @@ const Community: React.FC = () => {
                 <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
                 <path d="M12 0C5.373 0 0 5.373 0 12c0 2.126.553 4.122 1.523 5.86L0 24l6.335-1.652A11.943 11.943 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.82c-1.977 0-3.865-.527-5.518-1.523l-.396-.234-3.763.982.998-3.648-.257-.41A9.794 9.794 0 012.18 12C2.18 6.583 6.583 2.18 12 2.18S21.82 6.583 21.82 12 17.417 21.82 12 21.82z"/>
               </svg>
-              FOLLOW WHATSAPP CHANNEL
+              {t('community.follow.cta')}
             </a>
             <p style={{ fontSize: '9px', color: C.muted, margin: '10px 0 0', textAlign: 'center', fontWeight: 300 }}>
-              You will be redirected to WhatsApp. No personal data is shared.
+              {t('community.follow.note')}
             </p>
           </div>
         </div>
@@ -1363,7 +1373,7 @@ const Community: React.FC = () => {
           <div onClick={e => e.stopPropagation()}
             style={{ background: C.white, maxWidth: 520, width: '100%', boxShadow: '0 24px 80px rgba(0,0,0,0.4)', borderRadius: 6 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: bdr }}>
-              <span style={{ ...lbl, fontSize: '11px', letterSpacing: '0.22em', color: C.gray, fontWeight: 600 }}>UPLOAD & SHARE</span>
+              <span style={{ ...lbl, fontSize: '11px', letterSpacing: '0.22em', color: C.gray, fontWeight: 600 }}>{t('community.upload.heading')}</span>
               <button onClick={() => { setShowUpload(false); setUploadFile(null); setUploadPreview(null); setUploadCaption(''); }}
                 style={{ background: 'none', border: 'none', fontSize: '18px', color: C.muted, cursor: 'pointer' }}>×</button>
             </div>
@@ -1379,13 +1389,13 @@ const Community: React.FC = () => {
                     <circle cx="8.5" cy="8.5" r="1.5"/>
                     <polyline points="21 15 16 10 5 21"/>
                   </svg>
-                  Click to select an image
-                  <span style={{ fontSize: '10px', marginTop: 4 }}>JPG, PNG, or TIFF · Max 4 MB</span>
+                  {t('community.upload.dropzone')}
+                  <span style={{ fontSize: '10px', marginTop: 4 }}>{t('community.upload.dropzoneHint')}</span>
                   <input type="file" accept="image/jpeg,image/png,image/tiff" onChange={handleFileChange} style={{ display: 'none' }} />
                 </label>
               ) : (
                 <div style={{ position: 'relative', marginBottom: 16 }}>
-                  <img src={uploadPreview} alt="Preview" style={{ width: '100%', maxHeight: 300, objectFit: 'contain', display: 'block', background: C.black, borderRadius: 4 }} />
+                  <img src={uploadPreview} alt={t('community.upload.previewAlt')} style={{ width: '100%', maxHeight: 300, objectFit: 'contain', display: 'block', background: C.black, borderRadius: 4 }} />
                   <button onClick={() => { setUploadFile(null); setUploadPreview(null); }}
                     style={{
                       position: 'absolute', top: 8, right: 8, background: 'rgba(10,10,10,0.7)', color: '#fff',
@@ -1396,8 +1406,8 @@ const Community: React.FC = () => {
               )}
               {uploadPreview && (
                 <>
-                  <div style={{ ...lbl, marginBottom: 6, marginTop: 4 }}>CAPTION</div>
-                  <textarea placeholder="Tell us about this moment..." value={uploadCaption}
+                  <div style={{ ...lbl, marginBottom: 6, marginTop: 4 }}>{t('community.upload.captionLabel')}</div>
+                  <textarea placeholder={t('community.upload.captionPlaceholder')} value={uploadCaption}
                     onChange={e => setUploadCaption(e.target.value)} rows={3}
                     style={{
                       width: '100%', padding: '10px 12px', border: bdr, fontSize: '13px',
@@ -1417,7 +1427,7 @@ const Community: React.FC = () => {
                       <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
                       <circle cx="12" cy="13" r="4"/>
                     </svg>
-                    {uploading ? 'UPLOADING TO IPFS...' : 'UPLOAD & SHARE'}
+                    {uploading ? t('community.upload.submitting') : t('community.upload.submit')}
                   </button>
                 </>
               )}
@@ -1448,6 +1458,7 @@ const Community: React.FC = () => {
             addComment={addComment}
             C={C}
             bdr={bdr}
+            t={t}
           />
         </div>
       )}
