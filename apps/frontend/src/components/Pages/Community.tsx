@@ -211,7 +211,8 @@ const PhotoZoomContent: React.FC<{
   C: any;
   bdr: string;
   t: (key: string, opts?: any) => string;
-}> = ({ selectedPhoto, user, isAdmin, deletePhoto, fmtFullDate, ReactionBar, timeAgo, deleteComment, newComment, setNewComment, addComment, C, bdr, t }) => {
+  onClose: () => void;
+}> = ({ selectedPhoto, user, isAdmin, deletePhoto, fmtFullDate, ReactionBar, timeAgo, deleteComment, newComment, setNewComment, addComment, C, bdr, t, onClose }) => {
   const [imgSize, setImgSize] = React.useState<{ w: number; h: number } | null>(null);
   const [isSmallScreen, setIsSmallScreen] = React.useState(false);
 
@@ -355,6 +356,7 @@ const PhotoZoomContent: React.FC<{
         background: C.white,
         width: getPopupWidth(),
         maxHeight: '92vh',
+        position: 'relative',
         // ── KEY CHANGE: always grid (side-by-side) unless small screen
         display: imgSize === null ? 'flex' : (useVerticalLayout ? 'flex' : 'grid'),
         flexDirection: useVerticalLayout ? 'column' : undefined,
@@ -366,6 +368,19 @@ const PhotoZoomContent: React.FC<{
         alignItems: imgSize === null ? 'center' : undefined,
         justifyContent: imgSize === null ? 'center' : undefined,
       }}>
+      {/* Close button — on mobile this popup fills nearly the whole
+          screen, so tapping the (nonexistent) empty backdrop can't
+          close it; without this an explicit control is the only way out. */}
+      <button
+        onClick={onClose}
+        aria-label={t('community.photo.close')}
+        style={{
+          position: 'absolute', top: 12, right: 12, zIndex: 2,
+          width: 32, height: 32, borderRadius: '50%', border: 'none',
+          background: 'rgba(0,0,0,0.6)', color: '#fff', fontSize: 16, cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}
+      >✕</button>
 
       {/* Loading placeholder */}
       {imgSize === null && (
@@ -1459,6 +1474,7 @@ const Community: React.FC = () => {
             C={C}
             bdr={bdr}
             t={t}
+            onClose={() => { setSelectedPhoto(null); setEmojiPickerPhotoId(null); setEmojiPickerPos(null); }}
           />
         </div>
       )}

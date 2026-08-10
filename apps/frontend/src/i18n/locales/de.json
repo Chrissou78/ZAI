@@ -941,7 +941,8 @@
       "cancelRegistration": "Anmeldung stornieren",
       "registerAndPay": "Anmelden & bezahlen",
       "register": "Anmelden",
-      "processing": "Wird bearbeitet…"
+      "processing": "Wird bearbeitet…",
+      "close": "Schließen"
     },
     "payment": {
       "loading": "Wird geladen…",
@@ -1049,7 +1050,8 @@
         "deletePhoto": "Löschen fehlgeschlagen",
         "deleteComment": "Kommentar konnte nicht gelöscht werden",
         "react": "Reaktion fehlgeschlagen"
-      }
+      },
+      "close": "Schließen"
     },
     "members": {
       "confirmBlock": "\"{{name}}\" sperren? Grund eingeben (optional):",

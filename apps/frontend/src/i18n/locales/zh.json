@@ -941,7 +941,8 @@
       "cancelRegistration": "取消报名",
       "registerAndPay": "报名并支付",
       "register": "立即报名",
-      "processing": "处理中…"
+      "processing": "处理中…",
+      "close": "关闭"
     },
     "payment": {
       "loading": "加载中…",
@@ -1046,7 +1047,8 @@
         "deletePhoto": "删除失败",
         "deleteComment": "评论删除失败",
         "react": "表情回应失败"
-      }
+      },
+      "close": "关闭"
     },
     "members": {
       "confirmBlock": "屏蔽 \"{{name}}\"?请输入原因(可选):",

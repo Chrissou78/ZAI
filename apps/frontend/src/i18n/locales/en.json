@@ -941,7 +941,8 @@
       "cancelRegistration": "Cancel Registration",
       "registerAndPay": "Register & Pay",
       "register": "Register",
-      "processing": "Processing…"
+      "processing": "Processing…",
+      "close": "Close"
     },
     "payment": {
       "loading": "Loading…",
@@ -1049,7 +1050,8 @@
         "deletePhoto": "Failed to delete",
         "deleteComment": "Failed to delete comment",
         "react": "Failed to react"
-      }
+      },
+      "close": "Close"
     },
     "members": {
       "confirmBlock": "Block \"{{name}}\"? Enter a reason (optional):",

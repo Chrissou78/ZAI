@@ -928,8 +928,21 @@ const Events: React.FC = () => {
           <div onClick={e => e.stopPropagation()}
             style={{
               background: C.white, maxWidth: 640, width: '100%', maxHeight: '90vh', overflowY: 'auto',
-              boxShadow: '0 24px 80px rgba(0,0,0,0.5)', borderRadius: 8,
+              boxShadow: '0 24px 80px rgba(0,0,0,0.5)', borderRadius: 8, position: 'relative',
             }}>
+            {/* Close button — this modal fills nearly the whole screen on
+                mobile, so tapping the (nonexistent) empty backdrop can't
+                close it; without this an explicit control is the only way out. */}
+            <button
+              onClick={() => { setSelectedEvent(null); setPaymentData(null); }}
+              aria-label={t('events.modal.close')}
+              style={{
+                position: 'absolute', top: 12, right: 12, zIndex: 2,
+                width: 32, height: 32, borderRadius: '50%', border: 'none',
+                background: 'rgba(0,0,0,0.6)', color: '#fff', fontSize: 16, cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}
+            >✕</button>
 
             {/* Cover */}
             {selectedEvent.coverImage && (
