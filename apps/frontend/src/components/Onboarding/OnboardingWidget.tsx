@@ -47,7 +47,7 @@ const PAGE_TOURS: Record<string, PageTour> = {
     stops: [
       { title: 'Product Carousel', description: 'Browse all your claimed zai products here. Each card shows the product image, name, and insurance status.', icon: '🎿' },
       { title: 'Claim a Product', description: 'Click "+ Claim Product" or the "+" card to register a new product by uploading your purchase invoice and submitting it to the zai team for confirmation.', icon: '📦' },
-      { title: 'Activate Insurance', description: 'For skis purchased within the last two years, you can activate your complimentary ski insurance in just a few clicks.', icon: '🛡️' },
+      { title: 'Activate Insurance', description: 'For skis purchased within the last 2 months, you can activate your complimentary ski insurance in just a few clicks.', icon: '🛡️' },
     ],
   },
   '/dashboard': {
@@ -63,8 +63,7 @@ const PAGE_TOURS: Record<string, PageTour> = {
     pageTitle: 'Community',
     stops: [
       { title: 'Photo Feed', description: 'Browse and share photos from the zai community. Upload images, add captions, and tag members.', icon: '📸' },
-      { title: 'Members', description: 'See all club members and start direct conversations with them.', icon: '👥' },
-      { title: 'Chat', description: 'Join the general chat or send private messages to other members.', icon: '💬' },
+      { title: 'Members', description: 'See all club members in the directory and discover fellow zai owners.', icon: '👥' },
     ],
   },
 };
