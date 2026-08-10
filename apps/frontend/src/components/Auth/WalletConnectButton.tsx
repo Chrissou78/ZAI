@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useAppContext } from '../../context/AppContext';
 import { useNavigate } from 'react-router-dom';
 import { apiService } from '../../services/api';
@@ -8,6 +8,13 @@ export function WalletConnectButton() {
   const navigate = useNavigate();
   const [showModal, setShowModal] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 480);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 480);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   React.useEffect(() => {
     if (!showModal) return;
@@ -136,17 +143,18 @@ export function WalletConnectButton() {
           background: '#7A222E',
           color: '#fff',
           border: 'none',
-          padding: '10px 20px',
-          fontSize: '12px',
+          padding: isMobile ? '7px 10px' : '10px 20px',
+          fontSize: isMobile ? '9px' : '12px',
           fontWeight: 500,
-          letterSpacing: '0.1em',
+          letterSpacing: isMobile ? '0.04em' : '0.1em',
           textTransform: 'uppercase',
           borderRadius: '4px',
           cursor: 'pointer',
+          whiteSpace: 'nowrap',
           transition: 'all 0.2s',
         }}
       >
-        Sign Up / Log In
+        {isMobile ? 'Log In' : 'Sign Up / Log In'}
       </button>
 
       {showModal && (
