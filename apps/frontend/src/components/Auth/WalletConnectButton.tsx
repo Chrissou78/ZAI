@@ -97,6 +97,13 @@ export function WalletConnectButton() {
 
   if (user) {
     const initials = `${user.givenName?.[0] ?? ''}${user.familyName?.[0] ?? ''}`.toUpperCase();
+    // Falls back to the email when no name is set yet (e.g. right after a
+    // fresh WalletTwo connect, before a profile has been filled in) — that
+    // fallback text has no natural length limit, so on mobile it collided
+    // with the hero's centered logo. Show the avatar only on mobile instead
+    // of trying to guess a safe truncation width for arbitrary name/email
+    // lengths; the name/email still shows on desktop, where there's room.
+    const label = user.givenName || user.email || '';
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
         <div
@@ -112,13 +119,18 @@ export function WalletConnectButton() {
             color: '#f5f4f0',
             fontSize: '12px',
             fontWeight: 500,
+            flexShrink: 0,
           }}
         >
           {initials}
         </div>
-        <div style={{ fontSize: '12px' }}>
-          <div style={{ fontWeight: 500, color: '#fff' }}>{user.givenName}</div>
-        </div>
+        {!isMobile && label && (
+          <div style={{ fontSize: '12px', maxWidth: '160px', overflow: 'hidden' }}>
+            <div style={{ fontWeight: 500, color: '#fff', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
+              {label}
+            </div>
+          </div>
+        )}
       </div>
     );
   }
