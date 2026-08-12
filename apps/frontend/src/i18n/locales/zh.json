@@ -1074,6 +1074,13 @@
         "photo": "照片",
         "article": "文章",
         "product_launch": "新品发布"
+      },
+      "categories": {
+        "editorial": "专题",
+        "behindTheScenes": "幕后花絮",
+        "tech": "技术",
+        "lifestyle": "生活方式",
+        "product": "产品"
       }
     },
     "time": {

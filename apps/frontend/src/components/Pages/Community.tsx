@@ -452,6 +452,24 @@ function getEmbedUrl(url: string): string | null {
   return null;
 }
 
+/* ── Story category label ──
+   `story.category` is a raw admin-entered slug (e.g. "behind_the_scenes",
+   see the AdminStore media form's category options) — displaying it as-is
+   left underscores visible to members. Look up the same translated labels
+   the admin form already has; unknown/future slugs still degrade
+   gracefully to "Behind The Scenes"-style text instead of raw underscores. */
+function categoryLabel(category: string, t: (key: string, opts?: any) => string): string {
+  if (!category) return '';
+  const camelKey = category.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
+  const translated = t(`community.insights.categories.${camelKey}`, { defaultValue: '' });
+  if (translated) return translated;
+  return category
+    .split('_')
+    .filter(Boolean)
+    .map(word => word[0].toUpperCase() + word.slice(1))
+    .join(' ');
+}
+
 function ZaiInsights({ stories, fmtDate, C, t }: { stories: any[]; fmtDate: (d: string) => string; C: any; t: (key: string, opts?: any) => string }) {
   const RED_LABEL: React.CSSProperties = {
     fontSize: 11, letterSpacing: '0.3em', textTransform: 'uppercase', color: C.red, fontWeight: 500,
@@ -504,7 +522,7 @@ function ZaiInsights({ stories, fmtDate, C, t }: { stories: any[]; fmtDate: (d: 
                 </div>
               )}
               <div style={{ fontSize: 10, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#999', marginBottom: 8 }}>
-                {t('community.insights.exclusiveTag', { category: featuredStory.category })}
+                {t('community.insights.exclusiveTag', { category: categoryLabel(featuredStory.category, t) })}
               </div>
               <h2 style={{ fontSize: 'clamp(18px, 2.5vw, 26px)', fontWeight: 400, margin: '0 0 6px' }}>{featuredStory.title}</h2>
               <div style={{ fontSize: 13, color: '#aaa' }}>{featuredStory.description}</div>
@@ -541,7 +559,7 @@ function ZaiInsights({ stories, fmtDate, C, t }: { stories: any[]; fmtDate: (d: 
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: C.red, fontWeight: 500, marginBottom: 3 }}>
-                {story.media_type === 'video' ? '▶ ' : ''}{t(`community.insights.mediaType.${story.media_type}`, { defaultValue: story.media_type })} · {story.category}
+                {story.media_type === 'video' ? '▶ ' : ''}{t(`community.insights.mediaType.${story.media_type}`, { defaultValue: story.media_type })} · {categoryLabel(story.category, t)}
                 {story.media_type === 'product_launch' && ' ●'}
               </div>
               <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 2, color: C.black }}>{story.title}</div>
@@ -597,7 +615,7 @@ function ZaiInsights({ stories, fmtDate, C, t }: { stories: any[]; fmtDate: (d: 
 
             <div style={{ padding: 'clamp(16px, 5vw, 24px) clamp(16px, 6vw, 28px) clamp(20px, 6vw, 32px)' }}>
               <div style={{ fontSize: 10, letterSpacing: '0.15em', textTransform: 'uppercase', color: '#999', marginBottom: 8 }}>
-                {viewer.category} {viewer.exclusive && `· ${t('community.insights.exclusive')}`}
+                {categoryLabel(viewer.category, t)} {viewer.exclusive && `· ${t('community.insights.exclusive')}`}
               </div>
               <h2 style={{ fontSize: 'clamp(20px, 2.8vw, 28px)', fontWeight: 400, margin: '0 0 8px' }}>{viewer.title}</h2>
               <div style={{ fontSize: 12, color: '#888', marginBottom: 20 }}>{fmtDate(viewer.published_at)}</div>
