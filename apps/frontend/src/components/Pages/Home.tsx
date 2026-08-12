@@ -169,7 +169,16 @@ const Home: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user } = useAppContext();
-  const [hasExperienceCard, setHasExperienceCard] = useState(false);
+  // Seed from the same localStorage cache Dashboard/Sidebar/Products already
+  // read and write (see ExclusiveRoute in Router.tsx) instead of defaulting
+  // to "locked" and always waiting on a fresh network round-trip. Without
+  // this, the hero's exclusive buttons flashed locked-then-unlocked on
+  // every single visit, even for members who'd already been confirmed
+  // exclusive in this same browser.
+  const [hasExperienceCard, setHasExperienceCard] = useState(() => {
+    const stored = localStorage.getItem('zai_experience_card');
+    return !!stored && stored !== 'null' && stored !== 'undefined';
+  });
   const isAdmin = user?.role === 'admin' || user?.role === 'owner';
 
   /* ── Referral capture ── */
@@ -180,7 +189,23 @@ const Home: React.FC = () => {
     }
   }, [searchParams]);
 
-  /* ── Experience card check ── */
+  /* ── Experience card check ──
+     Stay in sync with whatever Dashboard/Products/Sidebar last confirmed
+     (same event Dashboard dispatches after its own check), so if another
+     tab/page resolves this first, the hero updates without a refetch. */
+  useEffect(() => {
+    const syncFromStorage = () => {
+      const stored = localStorage.getItem('zai_experience_card');
+      setHasExperienceCard(!!stored && stored !== 'null' && stored !== 'undefined');
+    };
+    window.addEventListener('zai:experience-card-updated', syncFromStorage);
+    window.addEventListener('storage', syncFromStorage);
+    return () => {
+      window.removeEventListener('zai:experience-card-updated', syncFromStorage);
+      window.removeEventListener('storage', syncFromStorage);
+    };
+  }, []);
+
   useEffect(() => {
     if (!user?.id || isAdmin) return;
     let cancelled = false;
@@ -189,7 +214,16 @@ const Home: React.FC = () => {
         const res = await apiService.get(`/products/user/${user.id}`);
         if (!cancelled && res.data?.success) {
           const d = res.data as any;
-          setHasExperienceCard(!!d.experienceCard || !!d.stats?.hasExperienceCard);
+          const ecFound = !!d.experienceCard || !!d.stats?.hasExperienceCard;
+          setHasExperienceCard(ecFound);
+          // Refresh the shared cache so Dashboard/Sidebar/Products (and this
+          // page on the next visit) don't have to wait on their own fetch.
+          if (ecFound) {
+            localStorage.setItem('zai_experience_card', d.experienceCard ? JSON.stringify(d.experienceCard) : 'true');
+          } else {
+            localStorage.removeItem('zai_experience_card');
+          }
+          window.dispatchEvent(new Event('zai:experience-card-updated'));
         }
       } catch {
         /* ignore */
