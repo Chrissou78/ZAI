@@ -861,6 +861,16 @@ const Products: React.FC = () => {
   const hasProof = !!(receiptImage || receiptCid);
   const hasProduct = !!(receiptProductId.trim() || receiptProductName.trim());
 
+  /* ── Claim notification: only the single latest claim, never a pile-up ──
+     This used to show one banner per claim ever made (pending/minting had
+     no dismiss control at all), so every claim attempt left a permanent
+     banner until individually dismissed — testing a few products left
+     several stacked forever, reappearing on every visit. The API already
+     returns claims ORDER BY created_at DESC, so the first non-dismissed
+     entry is the latest; showing only that one means a new claim
+     naturally replaces whatever was shown before. */
+  const latestClaim = allClaims.find(c => !dismissedClaimIds.has(c.id));
+
   /* ───── Render ───── */
 
   return (
@@ -901,13 +911,12 @@ const Products: React.FC = () => {
           </button>
         </div>
 
-        {/* ══════ CLAIM NOTIFICATIONS ══════ */}
-        {allClaims.filter(c => !dismissedClaimIds.has(c.id)).length > 0 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 24 }}>
+        {/* ══════ CLAIM NOTIFICATION — latest only ══════ */}
+        {latestClaim && (
+          <div style={{ marginBottom: 24 }}>
 
-            {/* Pending */}
-            {allClaims.filter(c => c.status === 'pending' && !dismissedClaimIds.has(c.id)).map(c => (
-              <div key={c.id} style={{
+            {latestClaim.status === 'pending' && (
+              <div style={{
                 display: 'flex', alignItems: 'center', gap: 12,
                 padding: '14px 20px',
                 background: 'rgba(255,180,0,0.10)', border: '1px solid rgba(255,180,0,0.25)', borderRadius: 10,
@@ -919,17 +928,16 @@ const Products: React.FC = () => {
                   </div>
                   <div style={{ fontSize: 11, color: C.gray, marginTop: 2 }}>
                     {t('products.notifications.pending.detail', {
-                      item: c.productName || getItemLabelCap(t, c.productName),
-                      date: formatClaimedDate(t, c.createdAt),
+                      item: latestClaim.productName || getItemLabelCap(t, latestClaim.productName),
+                      date: formatClaimedDate(t, latestClaim.createdAt),
                     })}
                   </div>
                 </div>
               </div>
-            ))}
+            )}
 
-            {/* Minting */}
-            {allClaims.filter(c => c.status === 'minting' && !dismissedClaimIds.has(c.id)).map(c => (
-              <div key={c.id} style={{
+            {latestClaim.status === 'minting' && (
+              <div style={{
                 display: 'flex', alignItems: 'center', gap: 12,
                 padding: '14px 20px',
                 background: 'rgba(100,160,255,0.10)', border: '1px solid rgba(100,160,255,0.25)', borderRadius: 10,
@@ -937,18 +945,17 @@ const Products: React.FC = () => {
                 <span style={{ fontSize: 18, flexShrink: 0 }}>⛏️</span>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: C.black }}>
-                    {t('products.notifications.minting.title', { item: getItemLabel(t, c.productName) })}
+                    {t('products.notifications.minting.title', { item: getItemLabel(t, latestClaim.productName) })}
                   </div>
                   <div style={{ fontSize: 11, color: C.gray, marginTop: 2 }}>
-                    {t('products.notifications.minting.detail', { item: c.productName || getItemLabelCap(t, c.productName) })}
+                    {t('products.notifications.minting.detail', { item: latestClaim.productName || getItemLabelCap(t, latestClaim.productName) })}
                   </div>
                 </div>
               </div>
-            ))}
+            )}
 
-            {/* Validated */}
-            {allClaims.filter(c => c.status === 'validated' && !dismissedClaimIds.has(c.id)).map(c => (
-              <div key={c.id} style={{
+            {latestClaim.status === 'validated' && (
+              <div style={{
                 display: 'flex', alignItems: 'center', gap: 12,
                 padding: '14px 20px',
                 background: 'rgba(76,175,125,0.10)', border: '1px solid rgba(76,175,125,0.25)', borderRadius: 10,
@@ -957,32 +964,31 @@ const Products: React.FC = () => {
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: C.green }}>
                     {t('products.notifications.validated.title', {
-                      item: getItemLabelCap(t, c.productName),
-                      destination: isExperienceCard(c.productName)
+                      item: getItemLabelCap(t, latestClaim.productName),
+                      destination: isExperienceCard(latestClaim.productName)
                         ? t('products.notifications.validated.destinationAccount')
                         : t('products.notifications.validated.destinationCollection'),
                     })}
                   </div>
                   <div style={{ fontSize: 11, color: C.gray, marginTop: 2 }}>
                     {t('products.notifications.validated.detail', {
-                      item: c.productName || getItemLabelCap(t, c.productName),
-                      date: c.reviewedAt ? new Date(c.reviewedAt).toLocaleDateString() : '',
+                      item: latestClaim.productName || getItemLabelCap(t, latestClaim.productName),
+                      date: latestClaim.reviewedAt ? new Date(latestClaim.reviewedAt).toLocaleDateString() : '',
                     })}
                   </div>
                 </div>
                 <button
-                  onClick={() => setDismissedClaimIds(prev => new Set([...prev, c.id]))}
+                  onClick={() => setDismissedClaimIds(prev => new Set([...prev, latestClaim.id]))}
                   style={{
                     background: 'none', border: 'none', color: '#999', cursor: 'pointer',
                     fontSize: 16, padding: '4px 8px', flexShrink: 0,
                   }}
                 >✕</button>
               </div>
-            ))}
+            )}
 
-            {/* Rejected */}
-            {allClaims.filter(c => c.status === 'rejected' && !dismissedClaimIds.has(c.id)).map(c => (
-              <div key={c.id} style={{
+            {latestClaim.status === 'rejected' && (
+              <div style={{
                 display: 'flex', alignItems: 'center', gap: 12,
                 padding: '14px 20px',
                 background: 'rgba(122,34,46,0.10)', border: '1px solid rgba(122,34,46,0.25)', borderRadius: 10,
@@ -993,24 +999,23 @@ const Products: React.FC = () => {
                     {t('products.notifications.rejected.title')}
                   </div>
                   <div style={{ fontSize: 11, color: C.gray, marginTop: 2 }}>
-                    {c.adminNote
-                      ? t('products.notifications.rejected.detailWithNote', { item: c.productName || getItemLabelCap(t, c.productName), note: c.adminNote })
-                      : t('products.notifications.rejected.detailNoNote', { item: c.productName || getItemLabelCap(t, c.productName) })}
+                    {latestClaim.adminNote
+                      ? t('products.notifications.rejected.detailWithNote', { item: latestClaim.productName || getItemLabelCap(t, latestClaim.productName), note: latestClaim.adminNote })
+                      : t('products.notifications.rejected.detailNoNote', { item: latestClaim.productName || getItemLabelCap(t, latestClaim.productName) })}
                   </div>
                 </div>
                 <button
-                  onClick={() => setDismissedClaimIds(prev => new Set([...prev, c.id]))}
+                  onClick={() => setDismissedClaimIds(prev => new Set([...prev, latestClaim.id]))}
                   style={{
                     background: 'none', border: 'none', color: '#999', cursor: 'pointer',
                     fontSize: 16, padding: '4px 8px', flexShrink: 0,
                   }}
                 >✕</button>
               </div>
-            ))}
+            )}
 
-            {/* Error */}
-            {allClaims.filter(c => c.status === 'error' && !dismissedClaimIds.has(c.id)).map(c => (
-              <div key={c.id} style={{
+            {latestClaim.status === 'error' && (
+              <div style={{
                 display: 'flex', alignItems: 'center', gap: 12,
                 padding: '14px 20px',
                 background: 'rgba(255,100,0,0.10)', border: '1px solid rgba(255,100,0,0.25)', borderRadius: 10,
@@ -1022,20 +1027,20 @@ const Products: React.FC = () => {
                   </div>
                   <div style={{ fontSize: 11, color: C.gray, marginTop: 2 }}>
                     {t('products.notifications.error.detail', {
-                      item: c.productName || getItemLabelCap(t, c.productName),
-                      note: c.adminNote || t('products.notifications.error.defaultNote'),
+                      item: latestClaim.productName || getItemLabelCap(t, latestClaim.productName),
+                      note: latestClaim.adminNote || t('products.notifications.error.defaultNote'),
                     })}
                   </div>
                 </div>
                 <button
-                  onClick={() => setDismissedClaimIds(prev => new Set([...prev, c.id]))}
+                  onClick={() => setDismissedClaimIds(prev => new Set([...prev, latestClaim.id]))}
                   style={{
                     background: 'none', border: 'none', color: '#999', cursor: 'pointer',
                     fontSize: 16, padding: '4px 8px', flexShrink: 0,
                   }}
                 >✕</button>
               </div>
-            ))}
+            )}
 
           </div>
         )}
