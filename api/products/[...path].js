@@ -440,8 +440,14 @@ async function callSasApi(payload) {
     body: JSON.stringify(payload),
   });
   const data = await response.json();
-  if (!response.ok || data.status === 'error') {
-    const detail = (data.errors || []).map(e => e.detail || e.description).join('; ');
+  // Per API Documentation V0.4 §5, the response envelope is
+  // { success: boolean, errors: [{ code, field, description }] } — there
+  // is no "status" field and error objects have no "detail" field; both
+  // were being checked here for a shape the API never actually returns.
+  if (!response.ok || data.success === false) {
+    const detail = (data.errors || [])
+      .map(e => (e.field ? `${e.field}: ${e.description}` : e.description))
+      .join('; ');
     throw new Error(detail || `SAS API error (HTTP ${response.status})`);
   }
   return data;
@@ -866,15 +872,22 @@ export default async function handler(req, res) {
       const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
 
       const partnerId = Number(process.env.SAS_PARTNER_ID);
-      const allowedProductIds = (process.env.SAS_PRODUCT_IDS || '')
-        .split(',').map(s => s.trim()).filter(Boolean).map(Number);
 
-      const partner = {
-        ID: partnerId,
-        reference: 'zai Experience Club',
-        storename: 'zai Experience Club',
-        storelocation: 'Online',
-      };
+      // API Documentation V0.4 §4.4: "products must be a JSON array
+      // containing exactly one object. Its ID must be the integer 14."
+      // This is a fixed, non-negotiable part of the contract — it was
+      // previously built from a comma-separated env var, which meant a
+      // config typo/drift (extra id, wrong id) would silently produce a
+      // payload the API is documented to reject.
+      const products = [{ ID: 14 }];
+
+      // API Documentation V0.4 §4.2: language must be DE, FR or IT — this
+      // insurer has no English option. The frontend form no longer offers
+      // "en" as a choice, but normalize defensively here too in case any
+      // other caller (or a stale client) still sends it.
+      const SAS_LANGUAGES = ['DE', 'FR', 'IT'];
+      const requestedLanguage = sanitizeString(body.language || '').toUpperCase();
+      const language = SAS_LANGUAGES.includes(requestedLanguage) ? requestedLanguage : 'DE';
 
       const customer = {
         salutation: Number(body.salutation) || 1,
@@ -883,8 +896,9 @@ export default async function handler(req, res) {
         address1: sanitizeString(body.address1 || ''),
         zip: Number(body.zip) || 0,
         city: sanitizeString(body.city || ''),
-        country: sanitizeString(body.country || 'CH'),
-        language: sanitizeString(body.language || 'en'),
+        // §4.2: "Uppercase two-letter ISO code"
+        country: sanitizeString(body.country || 'CH').toUpperCase(),
+        language,
         email: sanitizeString(body.email || ''),
         phone: sanitizeString(body.phone || ''),
       };
@@ -898,10 +912,6 @@ export default async function handler(req, res) {
         purchasingdate: sanitizeString(body.purchasingdate || ''),
       };
       if (body.length) device.length = Number(body.length);
-
-      const products = allowedProductIds.map(id => ({ ID: id }));
-
-      const sasPayload = { partner, customer, device, products };
 
       const existing = await pool.query(
         `SELECT id, sas_status FROM insurance_registrations
@@ -928,6 +938,19 @@ export default async function handler(req, res) {
         );
         registrationId = insId;
       }
+
+      // §4.1: "reference: ZAI reference for this registration" — the
+      // example shows a unique per-order value; sending the same static
+      // string for every registration would defeat its purpose if SAS
+      // support ever needs to look one up.
+      const partner = {
+        ID: partnerId,
+        reference: `ZAI-${registrationId}`,
+        storename: 'zai Experience Club',
+        storelocation: 'Online',
+      };
+
+      const sasPayload = { partner, customer, device, products };
 
       try {
         const sasResult = await callSasApi(sasPayload);

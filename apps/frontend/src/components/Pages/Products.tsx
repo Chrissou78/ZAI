@@ -412,7 +412,7 @@ const Products: React.FC = () => {
   const [insuranceError, setInsuranceError] = useState<string | null>(null);
   const [insuranceResult, setInsuranceResult] = useState<{ certificateId: number; transactionId: number } | null>(null);
   const [insuranceForm, setInsuranceForm] = useState<InsuranceFormData>({
-    salutation: 1, firstname: '', lastname: '', address1: '', zip: '', city: '', country: 'CH', language: 'en', email: '', phone: '',
+    salutation: 1, firstname: '', lastname: '', address1: '', zip: '', city: '', country: 'CH', language: 'de', email: '', phone: '',
     deviceType: 1, makeName: 'zai', makeId: 1, model: '', serial: '', price: '', length: '', purchasingdate: new Date().toISOString().split('T')[0],
   });
 
@@ -1657,8 +1657,10 @@ const Products: React.FC = () => {
                 </div>
                 <div>
                   <label style={labelStyle}>{t('products.insuranceModal.labels.language')}</label>
+                  {/* The insurer's API only accepts DE/FR/IT (no English) —
+                      offering "English" here would let a user submit a
+                      value that's guaranteed to be rejected downstream. */}
                   <select value={insuranceForm.language} onChange={e => updateInsuranceField('language', e.target.value)} style={inputStyle}>
-                    <option value="en">English</option>
                     <option value="de">Deutsch</option>
                     <option value="fr">Fran&ccedil;ais</option>
                     <option value="it">Italiano</option>
