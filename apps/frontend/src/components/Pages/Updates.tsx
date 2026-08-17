@@ -607,7 +607,16 @@ export default function Updates() {
                   <span style={{ fontSize: 12, color: C.gray, cursor: 'pointer', whiteSpace: 'nowrap' }}>{t('updates.regular.viewAllDeals')}</span>
                 </div>
                 <div style={{
-                  display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+                  // auto-fit stretches existing cards to fill any leftover
+                  // row space (via the 1fr track), which is exactly what
+                  // made a single remaining deal blow up to the full grid
+                  // width once expired ones got filtered out. auto-fill
+                  // keeps the empty tracks in place instead of collapsing
+                  // them, so leftover space goes to invisible phantom
+                  // columns rather than stretching real cards — and the
+                  // maxWidth on each card below is a second guarantee of
+                  // the same fixed size regardless of how many are listed.
+                  display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
                   gap: 24,
                 }}>
                   {regularDeals.map(deal => (
@@ -619,6 +628,7 @@ export default function Updates() {
                         background: C.pureWhite, position: 'relative',
                         display: 'flex', flexDirection: 'row', cursor: 'pointer',
                         transition: 'background 0.2s',
+                        maxWidth: 480,
                       }}
                       onMouseEnter={e => (e.currentTarget.style.background = C.surface)}
                       onMouseLeave={e => (e.currentTarget.style.background = C.pureWhite)}
