@@ -178,7 +178,7 @@ const Sidebar: React.FC = () => {
       }}
     >
       {/* Logo — text only "zai", left-aligned */}
-      <div style={{ padding: '1.5rem', borderBottom: '1px solid #2a2a2a' }}>
+      <div style={{ padding: '1.1rem 1.5rem', borderBottom: '1px solid #2a2a2a', flexShrink: 0 }}>
         <svg width="60" height="28" viewBox="48 0 62 35" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M63.7822 31.2694H52.0256C51.5457 31.2694 51.2758 31.1395 50.9259 30.7796C50.4461 30.2497 50.3961 29.5499 50.746 28.9701L60.9631 13.6445H52.0256C51.1858 13.6445 50.526 12.9447 50.576 12.1049C50.576 11.3151 51.2358 10.6953 52.0256 10.6953H63.7822C64.2221 10.6953 64.482 10.7853 64.8419 11.1352C65.3718 11.625 65.4118 12.3648 65.0219 12.9847L54.6748 28.3103H63.7922C64.582 28.3103 65.2418 29.0201 65.2418 29.8099C65.2418 30.5996 64.582 31.2594 63.7922 31.2594" fill="#f5f4f0"/>
           <path d="M86.1055 22.4627H78.7476C77.468 22.4627 77.298 24.1322 77.298 25.4119C77.298 26.6915 77.478 28.321 78.7476 28.321H86.1055V22.4627ZM88.7048 30.7803C88.3949 31.1302 88.045 31.2702 87.5551 31.2702H78.7476C75.8884 31.2702 74.3489 28.281 74.3489 25.4119C74.3489 22.5427 75.8884 19.5135 78.7476 19.5135H86.1055V16.6044C86.1055 15.7246 85.8456 15.1048 85.2258 14.495C84.6059 13.8751 84.0361 13.6552 83.1564 13.6552H77.298C76.5083 13.6552 75.7985 12.9954 75.7985 12.2056C75.7985 11.4159 76.5083 10.7061 77.298 10.7061H83.1564C84.8759 10.7061 86.1055 11.1459 87.3452 12.3756C88.5748 13.6052 89.0147 14.8449 89.0147 16.6044V29.8106C89.0147 30.1605 88.9247 30.4704 88.7048 30.7803Z" fill="#f5f4f0"/>
@@ -198,11 +198,12 @@ const Sidebar: React.FC = () => {
       {/* User Profile */}
       {user && (
         <div style={{
-          padding: '0.6rem 1.5rem',
+          padding: '0.5rem 1.5rem',
           borderBottom: '1px solid #2a2a2a',
           display: 'flex',
           alignItems: 'center',
           gap: '10px',
+          flexShrink: 0,
         }}>
           <UserAvatar
             firstName={first}
@@ -230,16 +231,16 @@ const Sidebar: React.FC = () => {
       )}
 
       {/* Navigation */}
-      <div style={{ flex: 1, padding: '0.75rem 0' }}>
+      <div style={{ flex: 1, padding: '0.4rem 0', minHeight: 0 }}>
         {navSections.map((section, idx) => (
-          <div key={idx} style={{ marginBottom: idx < navSections.length - 1 ? '1rem' : '0' }}>
+          <div key={idx} style={{ marginBottom: idx < navSections.length - 1 ? '0.5rem' : '0' }}>
             <div style={{
-              padding: '0.7rem 1.5rem',
+              padding: '0.45rem 1.5rem 0.25rem',
               fontSize: '12px',
               letterSpacing: '0.3em',
               textTransform: 'uppercase',
               color: '#555',
-              marginBottom: '1rem',
+              marginBottom: '0.3rem',
             }}>
               {section.section}
             </div>
@@ -253,7 +254,7 @@ const Sidebar: React.FC = () => {
                     display: 'flex',
                     alignItems: 'center',
                     gap: '1rem',
-                    padding: '0.5rem 1.5rem',
+                    padding: '0.4rem 1.5rem',
                     cursor: 'pointer',
                     transition: 'all 0.25s ease',
                     color: active ? '#f5f4f0' : '#6a6a6a',
@@ -331,13 +332,13 @@ const Sidebar: React.FC = () => {
       </div>
 
       {/* Logout Button */}
-      <div style={{ padding: '1rem', borderTop: '1px solid #2a2a2a', marginTop: 'auto', flexShrink: 0 }}>
+      <div style={{ padding: '0.6rem 1rem', borderTop: '1px solid #2a2a2a', marginTop: 'auto', flexShrink: 0 }}>
         <LogoutButton />
       </div>
 
       {/* Footer */}
-      <div style={{ padding: '1rem 1rem', borderTop: '1px solid #2a2a2a', textAlign: 'center', flexShrink: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', marginBottom: '0.5rem' }}>
+      <div style={{ padding: '0.6rem 1rem', borderTop: '1px solid #2a2a2a', textAlign: 'center', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', marginBottom: '0.3rem' }}>
           <svg width="13" height="13" viewBox="0 0 24 20" fill="none" style={{ flexShrink: 0 }}>
             <polyline points="1,19 7,7 12,13 16,5 23,19" stroke="#555" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
           </svg>
