@@ -239,7 +239,12 @@ function DealsManager() {
     setLoading(true);
     try {
       const r = await apiService.get('/store/deals');
-      if (r.data?.success) setDeals(r.data.data || []);
+      // As an admin this endpoint intentionally also returns deactivated
+      // ("deleted") deals for audit purposes — but this list's own Remove
+      // button calls the same soft-delete, so without filtering these out,
+      // clicking Remove appeared to do nothing: the deal never actually
+      // disappeared from view even though the deactivation succeeded.
+      if (r.data?.success) setDeals((r.data.data || []).filter((d: any) => d.active !== false));
     } catch {} finally { setLoading(false); }
   }, []);
 
@@ -277,7 +282,9 @@ function DealsManager() {
     try {
       await apiService.delete(`/store/deals/admin/${id}`);
       load();
-    } catch {}
+    } catch (e: any) {
+      alert(e?.response?.data?.error || t('adminStore.common.saveFailed'));
+    }
   };
 
   const set = (key: string, val: any) => setEditing((p: any) => ({ ...p, [key]: val }));
@@ -288,11 +295,18 @@ function DealsManager() {
       set('contract_address', '');
       return;
     }
+    // Follow the newly selected product for every auto-filled field,
+    // including title/description — these previously only filled in when
+    // empty, so re-picking a different product after an initial selection
+    // (e.g. correcting a wrong pick) left the OLD product's title/description
+    // behind while image/category/contract_address correctly updated to the
+    // new one. That mismatch is exactly how several unrelated deals ended up
+    // titled after one particular product.
     setEditing((prev: any) => ({
       ...prev,
       product_id: product.id,
-      title: prev.title || product.name,
-      description: prev.description || product.description || `Exclusive deal on ${product.name}`,
+      title: product.name,
+      description: product.description || `Exclusive deal on ${product.name}`,
       category: inferCategory(product.name),
       image_url: product.image || '',
       price_chf: product.price ? product.price.replace(/'/g, '') : prev.price_chf,

@@ -19,6 +19,18 @@ const RED_LABEL: React.CSSProperties = {
 const token = () => localStorage.getItem('zai_token') || '';
 const authHeaders = () => ({ Authorization: `Bearer ${token()}`, 'Content-Type': 'application/json' });
 
+// GET /api/store/deals returns every deal (including expired/archived ones)
+// to admin accounts, so their own admin oversight view stays intact — but
+// this page is the member-facing storefront, and an admin previewing it
+// should see exactly what a real member would: a still-active "Apply
+// Points" button on an already-expired deal just leads straight to the
+// "Deal has expired" error at checkout. Filter client-side regardless of
+// which branch the API took, rather than change that shared endpoint's
+// admin behavior.
+const isDealLive = (d: any) =>
+  d.active !== false && (!d.ends_at || new Date(d.ends_at) > new Date());
+const filterLiveDeals = (deals: any[]) => (deals || []).filter(isDealLive);
+
 // ─── Inline Payment Form ───
 // Stripe confirming the payment client-side is NOT the same as your points
 // being deducted and your product being minted — that fulfillment used to
@@ -414,7 +426,7 @@ export default function Updates() {
       fetch('/api/store/deals', { headers: h }).then(r => r.json()),
       fetch('/api/store/collectibles/series', { headers: h }).then(r => r.json()),
     ]).then(([dRes, cRes]) => {
-      if (dRes.success) setDeals(dRes.data);
+      if (dRes.success) setDeals(filterLiveDeals(dRes.data));
       if (cRes.success) setSeries(cRes.data);
     }).finally(() => setLoading(false));
   }, []);
@@ -425,7 +437,7 @@ export default function Updates() {
   const refreshDeals = () => {
     const h = authHeaders();
     fetch('/api/store/deals', { headers: h }).then(r => r.json()).then(d => {
-      if (d.success) setDeals(d.data);
+      if (d.success) setDeals(filterLiveDeals(d.data));
     });
   };
 
