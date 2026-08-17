@@ -544,6 +544,10 @@ export default function Updates() {
                 color: C.white, marginBottom: 40, position: 'relative', overflow: 'hidden',
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 gap: 32, flexWrap: 'wrap', boxSizing: 'border-box',
+                // Same fixed-size intent as the regular deals grid below —
+                // this banner previously always stretched to the full
+                // 1100px container regardless of how many deals existed.
+                maxWidth: 350,
               }}>
                 <div style={{ position: 'absolute', bottom: 0, right: 0, width: '50%', height: '100%', opacity: 0.15, background: 'linear-gradient(135deg, transparent 40%, #7A222E 100%)' }} />
 
@@ -614,10 +618,13 @@ export default function Updates() {
                   // keeps the empty tracks in place instead of collapsing
                   // them, so leftover space goes to invisible phantom
                   // columns rather than stretching real cards — and the
-                  // maxWidth on each card below is a second guarantee of
-                  // the same fixed size regardless of how many are listed.
+                  // maxWidth on each card below (this section's own 1100px
+                  // container, minus two 24px gaps, split three ways) is a
+                  // second, exact guarantee of the same fixed size a card
+                  // would have in a full 3-per-row layout, regardless of
+                  // how many deals are actually listed.
                   display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
-                  gap: 24,
+                  gap: 24, justifyContent: 'start',
                 }}>
                   {regularDeals.map(deal => (
                     <div
@@ -628,7 +635,7 @@ export default function Updates() {
                         background: C.pureWhite, position: 'relative',
                         display: 'flex', flexDirection: 'row', cursor: 'pointer',
                         transition: 'background 0.2s',
-                        maxWidth: 480,
+                        width: '100%', maxWidth: 350,
                       }}
                       onMouseEnter={e => (e.currentTarget.style.background = C.surface)}
                       onMouseLeave={e => (e.currentTarget.style.background = C.pureWhite)}
