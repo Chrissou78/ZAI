@@ -413,7 +413,11 @@ const Products: React.FC = () => {
   const [insuranceResult, setInsuranceResult] = useState<{ certificateId: number; transactionId: number } | null>(null);
   const [insuranceForm, setInsuranceForm] = useState<InsuranceFormData>({
     salutation: 1, firstname: '', lastname: '', address1: '', zip: '', city: '', country: 'CH', language: 'de', email: '', phone: '',
-    deviceType: 1, makeName: 'zai', makeId: 1, model: '', serial: '', price: '', length: '', purchasingdate: new Date().toISOString().split('T')[0],
+    // makeId 118 is ZAI's real registered make ID in SAS's catalog
+    // (confirmed via a live GET /getMakes call) — this was previously
+    // hardcoded to 1, which is "4FRNT-SKIS", an unrelated brand. Every
+    // insurance registration submitted so far sent the wrong make.
+    deviceType: 1, makeName: 'ZAI', makeId: 118, model: '', serial: '', price: '', length: '', purchasingdate: new Date().toISOString().split('T')[0],
   });
 
   const [zoomImage, setZoomImage] = useState<{ src: string; alt: string } | null>(null);
