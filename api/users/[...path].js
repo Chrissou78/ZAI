@@ -205,13 +205,46 @@ export default async function handler(req, res) {
       const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
       const sanitizedBody = sanitizeObject(body, ['name','givenName','familyName','address','city','country']);
       const updatableFields = ['name','givenName','familyName','email','phoneNumber','address','city','country','postalCode','birthdate','isPublic','salutation','language','image'];
-      const updatedUser = { id: decoded.userId, userId: decoded.userId, wallet: decoded.wallet };
-      for (const field of updatableFields) {
-        updatedUser[field] = sanitizedBody[field] !== undefined ? sanitizedBody[field] : (decoded[field] || '');
-      }
 
       await initDB();
       await ensureProfile(decoded);
+
+      // ── Merge omitted fields against the DB row, NOT the JWT ──
+      // This UPDATE always writes all 14 columns, so whatever we resolve
+      // here for an omitted field is what gets persisted. The JWT only
+      // carries userId/wallet/name/givenName/familyName, so falling back to
+      // it (the previous behaviour) resolved every other field to '' and
+      // silently wiped the user's saved address/city/country/postalCode/
+      // birthdate/phone/isPublic/salutation/image whenever a caller sent a
+      // partial body. That is how changing the language in Settings — which
+      // resends only the fields the client happens to hold — could blank out
+      // a profile, and it's the same root cause behind two profile-picture
+      // wipes fixed earlier. Reading current values first makes partial
+      // updates safe for every caller instead of requiring each one to
+      // remember to resend all 14 fields.
+      const currentRow = (await getPool().query(
+        'SELECT * FROM user_profiles WHERE user_id = $1', [decoded.userId]
+      )).rows[0] || {};
+      const COLUMN_FOR_FIELD = {
+        name: 'name', givenName: 'given_name', familyName: 'family_name',
+        email: 'email', phoneNumber: 'phone_number', address: 'address',
+        city: 'city', country: 'country', postalCode: 'postal_code',
+        birthdate: 'birthdate', isPublic: 'is_public', salutation: 'salutation',
+        language: 'language', image: 'image',
+      };
+
+      const updatedUser = { id: decoded.userId, userId: decoded.userId, wallet: decoded.wallet };
+      for (const field of updatableFields) {
+        if (sanitizedBody[field] !== undefined) {
+          updatedUser[field] = sanitizedBody[field];
+        } else {
+          const existing = currentRow[COLUMN_FOR_FIELD[field]];
+          updatedUser[field] = existing !== undefined && existing !== null
+            ? existing
+            : (decoded[field] || '');
+        }
+      }
+
       await getPool().query(
         `UPDATE user_profiles SET
            name=$2, given_name=$3, family_name=$4, email=$5, phone_number=$6,
