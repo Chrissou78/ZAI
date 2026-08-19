@@ -544,10 +544,6 @@ export default function Updates() {
                 color: C.white, marginBottom: 40, position: 'relative', overflow: 'hidden',
                 display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 gap: 32, flexWrap: 'wrap', boxSizing: 'border-box',
-                // Same fixed-size intent as the regular deals grid below —
-                // this banner previously always stretched to the full
-                // 1100px container regardless of how many deals existed.
-                maxWidth: 350,
               }}>
                 <div style={{ position: 'absolute', bottom: 0, right: 0, width: '50%', height: '100%', opacity: 0.15, background: 'linear-gradient(135deg, transparent 40%, #7A222E 100%)' }} />
 
