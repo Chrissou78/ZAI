@@ -432,7 +432,11 @@ export default function Updates() {
   }, []);
 
   const featuredDeal = deals.find(d => d.featured) || deals[0];
-  const regularDeals = deals.filter(d => d !== featuredDeal);
+  // The featured deal is deliberately NOT excluded here — it gets the hero
+  // banner treatment above AND still appears as a normal card in the grid
+  // below, so members browsing the card list don't have to notice the banner
+  // to find it (and it isn't silently missing from "all" the deals).
+  const regularDeals = deals;
 
   const refreshDeals = () => {
     const h = authHeaders();
