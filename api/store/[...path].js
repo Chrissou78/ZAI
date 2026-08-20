@@ -797,6 +797,17 @@ async function handleStripe(req, res, segments) {
       return res.status(400).json({ error: 'Invalid signature' });
     }
 
+    // Fulfillment can genuinely throw — spendPoints() raises
+    // INSUFFICIENT_POINTS, and every DB write here can fail. handleStripe is
+    // invoked BEFORE the outer try/catch in the main handler, so any throw
+    // used to escape as an unhandled rejection: the function crashed with no
+    // context logged, Stripe saw a 5xx, and retried a blind failure. Catch it
+    // here so the cause is always logged. We still answer non-2xx so Stripe
+    // retries (fulfillDealRedemption is idempotent — guarded on
+    // status === 'paid' — so a retry is safe, and a genuinely stuck
+    // paid-but-unfulfilled order SHOULD keep alerting rather than be silently
+    // swallowed with a 200).
+    try {
     // ── Handle PaymentIntent succeeded (embedded payment flow) ──
     // Fulfillment logic lives in the shared fulfillDealRedemption() helper —
     // the exact same function the client-triggered /redemptions/:id/confirm
@@ -835,6 +846,17 @@ async function handleStripe(req, res, segments) {
     }
 
     return res.json({ received: true });
+    } catch (fulfillErr) {
+      console.error(
+        `[stripe] Fulfillment failed for event ${event.id} (${event.type}):`,
+        fulfillErr && fulfillErr.stack ? fulfillErr.stack : fulfillErr
+      );
+      return res.status(500).json({
+        error: 'Fulfillment failed',
+        eventId: event.id,
+        detail: fulfillErr && fulfillErr.message ? fulfillErr.message : String(fulfillErr),
+      });
+    }
   }
 
   return res.status(404).json({ error: 'Not found' });

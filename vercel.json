@@ -3,7 +3,8 @@
   "buildCommand": "pnpm install --prod=false --no-frozen-lockfile && cd apps/frontend && pnpm exec vite build",
   "outputDirectory": "apps/frontend/dist",
   "functions": {
-    "api/products/[...path].js": { "maxDuration": 60 }
+    "api/products/[...path].js": { "maxDuration": 60 },
+    "api/store/[...path].js": { "maxDuration": 60 }
   },
   "routes": [
     { "src": "/api/auth/(.*)", "dest": "/api/auth/[...path]" },
