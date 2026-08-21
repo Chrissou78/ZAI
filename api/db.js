@@ -333,6 +333,30 @@ export async function initDB() {
       CREATE INDEX IF NOT EXISTS idx_redemptions_stripe ON deal_redemptions(stripe_session_id);
       ALTER TABLE deals ADD COLUMN IF NOT EXISTS contract_address TEXT DEFAULT '';
 
+      -- Points-only redemptions. Rather than a parallel table, a deal can be
+      -- flagged points_only: it is then bought with points alone and has no
+      -- money path at all (price_chf stays 0 and Stripe is never involved).
+      -- Reuses the whole existing deals admin/listing pipeline.
+      ALTER TABLE deals ADD COLUMN IF NOT EXISTS points_only BOOLEAN DEFAULT false;
+      ALTER TABLE deals ADD COLUMN IF NOT EXISTS points_price INT DEFAULT 0;
+
+      -- One event voucher per member per tier, unlocked by reaching that
+      -- tier's point threshold. The code is generated on claim (not up
+      -- front) so unclaimed tiers hold no dormant codes. UNIQUE(user,tier)
+      -- is what makes claiming idempotent and prevents double-issue.
+      CREATE TABLE IF NOT EXISTS tier_vouchers (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        tier_key TEXT NOT NULL,
+        amount_chf INT NOT NULL,
+        code TEXT NOT NULL UNIQUE,
+        claimed_at TIMESTAMPTZ DEFAULT NOW(),
+        expires_at TIMESTAMPTZ NOT NULL,
+        redeemed_at TIMESTAMPTZ,
+        redeemed_event_id TEXT,
+        UNIQUE(user_id, tier_key)
+      );
+
       -- ── Collectible drops (metadata; NFT itself lives on Engage) ──
       CREATE TABLE IF NOT EXISTS collectible_series (
         id TEXT PRIMARY KEY,

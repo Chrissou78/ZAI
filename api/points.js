@@ -4,19 +4,20 @@
 // Mirrored on the frontend in apps/frontend/src/config/rewards.ts.
 // Keep the two in sync; if you change a number here, change it there.
 //
-// The scheme replaced an earlier "2.7 points per CHF, 100 points = CHF 1"
-// model. The effective value is deliberately identical (1 × 0.027 = 2.7%),
-// it is just expressed in units members can reason about:
+// The scheme replaces an earlier "2.7 points per CHF" model:
 //   • EARN:   1 point per 1 unit of currency spent — 1 CHF, 1 EUR and
 //             1 USD all award 1 point. No FX conversion, by design.
-//   • REDEEM: 1 point is worth CHF 0.027 against a purchase.
+//   • REDEEM: 1 point is worth 1 centime, i.e. CHF 0.01.
+// Net effective rate is therefore 1% (1 point per unit × CHF 0.01). The
+// old scheme earned 2.7 points per CHF and redeemed at CHF 0.01, i.e. 2.7%
+// — so the redemption rate is unchanged and only the earn rate moved.
 // ══════════════════════════════════════════════════════════════════════
 
 /** Points awarded per unit of currency spent (currency-agnostic). */
 export const POINTS_PER_CURRENCY_UNIT = 1;
 
-/** Monetary value of a single point when redeemed, in CHF. */
-export const CHF_PER_POINT = 0.027;
+/** Monetary value of a single point when redeemed, in CHF (1 centime). */
+export const CHF_PER_POINT = 0.01;
 
 // ── Which purchases earn points ───────────────────────────────────────
 // Only physical zai goods earn points. Events, services and digital

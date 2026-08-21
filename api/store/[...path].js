@@ -1,25 +1,30 @@
 import { randomUUID } from 'crypto';
 import { getPool, initDB, requireAdmin, isAdmin } from '../db.js';
-import { pointsForAmount, chfForPoints, categoryEarnsPoints } from '../points.js';
+import { pointsForAmount, chfForPoints, categoryEarnsPoints, TIERS, VOUCHER_VALID_YEARS, tierForPoints } from '../points.js';
 import { authenticate } from '../middleware.js';
 
 // ══════════════════════════════════════════════════════════
-// TIER DEFINITIONS
+// TIERS — the table lives in api/points.js (single source of truth,
+// shared with the vouchers logic). These shims keep the existing
+// rewards-balance response shape working against the new 5-tier scheme.
+// Note there is now no tier below the first threshold, so tierFor() can
+// return null and callers must handle it.
 // ══════════════════════════════════════════════════════════
-const TIERS = [
-  { name: 'Blue',    floor: 0,     ceiling: 14999 },
-  { name: 'Red',     floor: 15000, ceiling: 29999 },
-  { name: 'Black',   floor: 30000, ceiling: 49999 },
-  { name: 'Diamond', floor: 50000, ceiling: Infinity },
-];
-
 function tierFor(points) {
-  return TIERS.find(t => points >= t.floor && points <= t.ceiling) || TIERS[0];
+  return tierForPoints(points);
+}
+
+/** Upper bound of a tier = one below the next tier's floor, or null. */
+function tierCeiling(tier) {
+  if (!tier) return TIERS[0] ? TIERS[0].min - 1 : null;
+  const idx = TIERS.findIndex(t => t.key === tier.key);
+  return idx >= 0 && idx < TIERS.length - 1 ? TIERS[idx + 1].min - 1 : null;
 }
 
 function nextTier(current) {
-  const idx = TIERS.findIndex(t => t.name === current.name);
-  return idx < TIERS.length - 1 ? TIERS[idx + 1] : null;
+  if (!current) return TIERS[0] || null;
+  const idx = TIERS.findIndex(t => t.key === current.key);
+  return idx >= 0 && idx < TIERS.length - 1 ? TIERS[idx + 1] : null;
 }
 
 // ══════════════════════════════════════════════════════════
@@ -89,16 +94,20 @@ async function handleRewards(req, res, segments, method, userId) {
     const balance = await getBalance(userId);
     const tier = tierFor(balance);
     const next = nextTier(tier);
+    // `tier` is null below the first threshold — there is no entry tier in
+    // the new scheme, so callers get nulls rather than a fabricated "Blue".
     return res.json({
       success: true,
       data: {
         balance,
-        tier: tier.name,
-        tierFloor: tier.floor,
-        tierCeiling: tier.ceiling === Infinity ? null : tier.ceiling,
+        tier: tier ? tier.name : null,
+        tierKey: tier ? tier.key : null,
+        tierFloor: tier ? tier.min : null,
+        tierCeiling: tierCeiling(tier),
+        voucherCHF: tier ? tier.voucherCHF : null,
         nextTier: next ? next.name : null,
-        nextTierFloor: next ? next.floor : null,
-        pointsToNext: next ? next.floor - balance : 0,
+        nextTierFloor: next ? next.min : null,
+        pointsToNext: next ? Math.max(0, next.min - balance) : 0,
       },
     });
   }
@@ -136,9 +145,11 @@ async function handleRewards(req, res, segments, method, userId) {
     return res.json({
       success: true,
       data: TIERS.map(t => ({
+        key: t.key,
         name: t.name,
-        floor: t.floor,
-        ceiling: t.ceiling === Infinity ? null : t.ceiling,
+        floor: t.min,
+        ceiling: tierCeiling(t),
+        voucherCHF: t.voucherCHF,
       })),
     });
   }
@@ -297,6 +308,107 @@ async function fulfillDealRedemption({ redemptionId, dealId, userId, pointsUsed,
   return { ok: true, alreadyProcessed: false, pointsDeducted: pts, pointsEarned: earnedPts, minted };
 }
 
+// ── TIER EVENT VOUCHERS ───────────────────────────────────
+// One voucher per member per tier, unlocked by reaching that tier's point
+// threshold. Codes are minted on claim rather than up front, so unclaimed
+// tiers hold no dormant codes. The UNIQUE(user_id, tier_key) constraint —
+// not an application-level check — is what makes claiming idempotent under
+// concurrent requests.
+const VOUCHER_CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no I/O/0/1
+
+function makeVoucherCode(tierKey, amountCHF) {
+  let block = '';
+  for (let i = 0; i < 4; i++) {
+    block += VOUCHER_CODE_ALPHABET[Math.floor(Math.random() * VOUCHER_CODE_ALPHABET.length)];
+  }
+  return `ZAI-${tierKey.slice(0, 3).toUpperCase()}${amountCHF}-${block}`;
+}
+
+async function handleVouchers(req, res, segments, method, userId) {
+  // GET /api/store/vouchers
+  if (method === 'GET' && segments.length === 0) {
+    const balance = await getBalance(userId);
+    const rows = (await getPool().query(
+      'SELECT tier_key, amount_chf, code, expires_at, redeemed_at FROM tier_vouchers WHERE user_id = $1',
+      [userId]
+    )).rows;
+    const byTier = Object.fromEntries(rows.map(r => [r.tier_key, r]));
+    const current = tierForPoints(balance);
+
+    return res.json({
+      success: true,
+      data: {
+        balance,
+        currentTier: current ? current.key : null,
+        tiers: TIERS.map(t => {
+          const claimed = byTier[t.key];
+          return {
+            key: t.key,
+            name: t.name,
+            minPoints: t.min,
+            amountCHF: t.voucherCHF,
+            unlocked: balance >= t.min,
+            claimed: !!claimed,
+            code: claimed ? claimed.code : null,
+            expiresAt: claimed ? claimed.expires_at : null,
+            redeemedAt: claimed ? claimed.redeemed_at : null,
+          };
+        }),
+      },
+    });
+  }
+
+  // POST /api/store/vouchers/:tierKey/claim
+  if (method === 'POST' && segments.length === 2 && segments[1] === 'claim') {
+    const tierKey = segments[0];
+    const tier = TIERS.find(t => t.key === tierKey);
+    if (!tier) return res.status(404).json({ error: 'Unknown tier' });
+
+    const balance = await getBalance(userId);
+    if (balance < tier.min) {
+      return res.status(403).json({
+        error: 'Tier not reached',
+        required: tier.min,
+        balance,
+      });
+    }
+
+    const expires = new Date();
+    expires.setFullYear(expires.getFullYear() + VOUCHER_VALID_YEARS);
+
+    // Let the UNIQUE(user_id, tier_key) constraint arbitrate rather than
+    // pre-checking, so two simultaneous claims can't both succeed.
+    try {
+      const code = makeVoucherCode(tier.key, tier.voucherCHF);
+      const r = await getPool().query(
+        `INSERT INTO tier_vouchers (id, user_id, tier_key, amount_chf, code, expires_at)
+         VALUES ($1,$2,$3,$4,$5,$6) RETURNING code, expires_at`,
+        [randomUUID(), userId, tier.key, tier.voucherCHF, code, expires.toISOString()]
+      );
+      return res.json({
+        success: true,
+        data: { tierKey: tier.key, amountCHF: tier.voucherCHF, code: r.rows[0].code, expiresAt: r.rows[0].expires_at },
+      });
+    } catch (e) {
+      if (e && e.code === '23505') { // unique_violation
+        const existing = (await getPool().query(
+          'SELECT code, expires_at FROM tier_vouchers WHERE user_id = $1 AND tier_key = $2',
+          [userId, tier.key]
+        )).rows[0];
+        // Idempotent: hand back the code they already hold.
+        return res.json({
+          success: true,
+          alreadyClaimed: true,
+          data: { tierKey: tier.key, amountCHF: tier.voucherCHF, code: existing?.code || null, expiresAt: existing?.expires_at || null },
+        });
+      }
+      throw e;
+    }
+  }
+
+  return res.status(404).json({ error: 'Not found' });
+}
+
 async function handleDeals(req, res, segments, method, userId, decoded) {
 
   // GET /api/store/deals
@@ -307,6 +419,7 @@ async function handleDeals(req, res, segments, method, userId, decoded) {
       const r = await getPool().query(
         `SELECT id, title, description, category, price_chf, max_points_discount,
                 image_url, ends_at, spots_total, spots_left, members_only, featured, active,
+                points_only, points_price,
                 created_at,
                 CASE
                   WHEN active = false THEN 'archived'
@@ -323,7 +436,8 @@ async function handleDeals(req, res, segments, method, userId, decoded) {
     } else {
       const r = await getPool().query(
         `SELECT id, title, description, category, price_chf, max_points_discount,
-                image_url, ends_at, spots_total, spots_left, members_only, featured
+                image_url, ends_at, spots_total, spots_left, members_only, featured,
+                points_only, points_price
          FROM deals
          WHERE active = true
            AND (ends_at IS NULL OR ends_at > NOW())
@@ -475,21 +589,99 @@ async function handleDeals(req, res, segments, method, userId, decoded) {
 
   // ── ADMIN CRUD ──
 
+  // POST /api/store/deals/:id/redeem-points
+  // Points-only redemption. Deliberately shares nothing with the Stripe
+  // path: there is no PaymentIntent, no redemption-confirm round trip and
+  // no money, so the whole thing settles in one request. spendPoints()
+  // throws INSUFFICIENT_POINTS, which is caught below and surfaced as a
+  // 400 rather than a 500.
+  if (method === 'POST' && segments.length === 2 && segments[1] === 'redeem-points') {
+    const dealId = segments[0];
+    const dRes = await getPool().query('SELECT * FROM deals WHERE id = $1 AND active = true', [dealId]);
+    const deal = dRes.rows[0];
+    if (!deal) return res.status(404).json({ error: 'Deal not found' });
+    if (!deal.points_only) {
+      return res.status(400).json({ error: 'This item is not a points-only redemption' });
+    }
+    if (deal.ends_at && new Date(deal.ends_at) < new Date()) {
+      return res.status(400).json({ error: 'Deal has expired' });
+    }
+    if (deal.spots_total > 0 && deal.spots_left <= 0) {
+      return res.status(400).json({ error: 'Sold out' });
+    }
+
+    const cost = parseInt(deal.points_price) || 0;
+    if (cost <= 0) return res.status(400).json({ error: 'Item has no points price set' });
+
+    const balance = await getBalance(userId);
+    if (balance < cost) {
+      return res.status(400).json({
+        error: 'Not enough points',
+        required: cost,
+        balance,
+        shortfall: cost - balance,
+      });
+    }
+
+    const redemptionId = randomUUID();
+    try {
+      await spendPoints(userId, cost, 'redeem', `Points redemption: ${deal.title}`, redemptionId);
+    } catch (e) {
+      if (String(e.message) === 'INSUFFICIENT_POINTS') {
+        return res.status(400).json({ error: 'Not enough points', required: cost, balance });
+      }
+      throw e;
+    }
+
+    await getPool().query(
+      `INSERT INTO deal_redemptions (id, deal_id, user_id, points_used, amount_chf, stripe_session_id, status)
+       VALUES ($1,$2,$3,$4,0,'',$5)`,
+      [redemptionId, dealId, userId, cost, 'paid']
+    );
+    await getPool().query(
+      `UPDATE deals SET spots_left = GREATEST(0, spots_left - 1), updated_at = NOW()
+       WHERE id = $1 AND spots_total > 0`, [dealId]
+    );
+
+    try {
+      // pointsEarned is 0 by design: spending points does not earn points.
+      await logPurchase(userId, {
+        source: 'points_redemption', itemId: dealId, itemTitle: deal.title,
+        itemImage: deal.image_url, category: deal.category,
+        amountCHF: 0, pointsUsed: cost, pointsEarned: 0,
+      });
+    } catch (logErr) {
+      console.error('[points-redeem] purchase history log failed (non-fatal):', logErr.message);
+    }
+
+    return res.json({
+      success: true,
+      data: { redemptionId, pointsSpent: cost, balance: await getBalance(userId) },
+    });
+  }
+
   // POST /api/store/deals/admin
   if (method === 'POST' && segments[0] === 'admin' && segments.length === 1) {
     await requireAdmin(decoded);
     const { title, description, category, price_chf, max_points_discount,
-            image_url, ends_at, spots_total, members_only, featured, contract_address } = req.body;
+            image_url, ends_at, spots_total, members_only, featured, contract_address,
+            points_only, points_price } = req.body;
     const id = randomUUID();
     const spotsVal = parseInt(spots_total) || 0;
+    // A points-only item has no money path: force price_chf to 0 and ignore
+    // any money-discount cap, so it can never accidentally be charged for.
+    const isPointsOnly = points_only === true;
+    const ptsPrice = isPointsOnly ? Math.max(0, parseInt(points_price) || 0) : 0;
     await getPool().query(
       `INSERT INTO deals (id, title, description, category, price_chf, max_points_discount,
-                          image_url, ends_at, spots_total, spots_left, members_only, featured, contract_address)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
+                          image_url, ends_at, spots_total, spots_left, members_only, featured, contract_address,
+                          points_only, points_price)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)`,
       [id, title, description || '', category || 'accessories',
-       price_chf, max_points_discount || 0, image_url || '',
+       isPointsOnly ? 0 : price_chf, isPointsOnly ? 0 : (max_points_discount || 0), image_url || '',
        ends_at || null, spotsVal, spotsVal,
-       members_only !== false, featured === true, contract_address || '']
+       members_only !== false, featured === true, contract_address || '',
+       isPointsOnly, ptsPrice]
     );
     return res.json({ success: true, data: { id } });
   }
@@ -516,6 +708,8 @@ async function handleDeals(req, res, segments, method, userId, decoded) {
     set('category', b.category);
     set('price_chf', b.price_chf);
     set('max_points_discount', b.max_points_discount);
+    set('points_only', b.points_only);
+    set('points_price', b.points_price);
     set('image_url', b.image_url);
     set('spots_total', b.spots_total);
     set('spots_left', b.spots_left);
@@ -941,6 +1135,7 @@ export default async function handler(req, res) {
       case 'purchases':    return await handlePurchases(req, res, segments, method, userId);
       case 'media':        return await handleMedia(req, res, segments, method, decoded);
       case 'referrals':    return await handleReferrals(req, res, segments, method, userId, decoded);
+      case 'vouchers':     return await handleVouchers(req, res, segments, method, userId);
       default:             return res.status(404).json({ error: 'Not found', path: fullPath });
     }
   } catch (err) {
