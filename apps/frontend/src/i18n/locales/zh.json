@@ -206,7 +206,7 @@
     "rewardsSection": {
       "label": "忠诚计划",
       "heading": "奖励与等级",
-      "description": "每消费 1 瑞士法郎即可赢取 2.7 积分。晋升四大专属等级，解锁愈加尊贵的奖励、优惠与体验。",
+      "description": "在 zai 产品上每消费 1 瑞士法郎、欧元或美元即可获得 1 积分。跨越五个尊享等级，解锁愈加珍稀的礼遇、优惠与体验。",
       "startingTier": "起始等级",
       "ptsSuffix": "+ 积分",
       "cta": "查看我的奖励",
@@ -874,6 +874,10 @@
         "length": "长度（厘米）",
         "purchaseDate": "购买日期"
       },
+      "purchaseDateHint": "仅最近 {{days}} 天内的购买可享受保险。",
+      "errors": {
+        "purchaseDateOutOfWindow": "请填写最近 {{days}} 天内的购买日期。更早的购买不符合免费保险资格。"
+      },
       "cancel": "取消",
       "activateInsurance": "激活保险",
       "loading": {
@@ -1438,6 +1442,26 @@
       "publishedAt": "发布时间",
       "exclusive": "会员专享",
       "confirmRemove": "确定要移除此报道吗？"
+    }
+  },
+  "onboarding": {
+    "giftPromo": {
+      "eyebrow": "入会礼物",
+      "title": "感谢您加入 zai",
+      "body": "在本次启动活动的首三个月内注册的每位会员，均可获得 zai 送出的专属礼物。",
+      "profileNote": "请完善您的个人资料——姓名、电话与地址——以便我们为您寄送。",
+      "cta": "完善个人资料",
+      "dismiss": "隐藏此消息"
+    }
+  },
+  "langSwitcher": {
+    "label": "语言",
+    "changeLanguage": "切换语言",
+    "activeOption": "已选择",
+    "languages": {
+      "en": "English",
+      "de": "Deutsch",
+      "zh": "中文"
     }
   }
 }

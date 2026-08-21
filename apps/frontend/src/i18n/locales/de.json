@@ -206,7 +206,7 @@
     "rewardsSection": {
       "label": "treueprogramm",
       "heading": "Prämien & Stufen",
-      "description": "Sammeln Sie 2,7 Punkte für jeden ausgegebenen CHF bei zai Produkten. Steigen Sie durch vier exklusive Stufen auf und schalten Sie zunehmend hochwertigere Prämien, Angebote und Erlebnisse frei.",
+      "description": "Sammeln Sie 1 Punkt für jeden ausgegebenen CHF, EUR oder USD für zai Produkte. Erreichen Sie fünf exklusive Stufen und schalten Sie immer hochwertigere Vorteile, Angebote und Erlebnisse frei.",
       "startingTier": "Einstiegsstufe",
       "ptsSuffix": "+ Punkte",
       "cta": "Meine Prämien ansehen",
@@ -874,6 +874,10 @@
         "length": "Länge (cm)",
         "purchaseDate": "Kaufdatum"
       },
+      "purchaseDateHint": "Nur Käufe der letzten {{days}} Tage sind versicherbar.",
+      "errors": {
+        "purchaseDateOutOfWindow": "Bitte geben Sie ein Kaufdatum innerhalb der letzten {{days}} Tage an. Ältere Käufe sind nicht für die kostenlose Versicherung berechtigt."
+      },
       "cancel": "Abbrechen",
       "activateInsurance": "Versicherung aktivieren",
       "loading": {
@@ -1442,6 +1446,26 @@
       "publishedAt": "Veröffentlicht am",
       "exclusive": "Exklusiv",
       "confirmRemove": "Diesen Beitrag entfernen?"
+    }
+  },
+  "onboarding": {
+    "giftPromo": {
+      "eyebrow": "Willkommensgeschenk",
+      "title": "Danke, dass Sie zu zai gehören",
+      "body": "Jedes Mitglied, das sich in den ersten drei Monaten unserer Aktion registriert, erhält ein Geschenk von zai.",
+      "profileNote": "Vervollständigen Sie Ihr Profil – Name, Telefonnummer und Adresse –, damit wir es Ihnen zusenden können.",
+      "cta": "Profil vervollständigen",
+      "dismiss": "Diese Nachricht ausblenden"
+    }
+  },
+  "langSwitcher": {
+    "label": "Sprache",
+    "changeLanguage": "Sprache wechseln",
+    "activeOption": "Ausgewählt",
+    "languages": {
+      "en": "English",
+      "de": "Deutsch",
+      "zh": "中文"
     }
   }
 }

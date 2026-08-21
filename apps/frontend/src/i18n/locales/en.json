@@ -206,7 +206,7 @@
     "rewardsSection": {
       "label": "loyalty program",
       "heading": "Rewards & Tiers",
-      "description": "Earn 2.7 points for every CHF spent on zai products. Climb through four exclusive tiers to unlock increasingly premium rewards, deals, and experiences.",
+      "description": "Earn 1 point for every CHF, EUR or USD spent on zai products. Climb through five exclusive tiers to unlock increasingly premium rewards, deals, and experiences.",
       "startingTier": "Starting tier",
       "ptsSuffix": "+ pts",
       "cta": "View My Rewards",
@@ -874,6 +874,10 @@
         "length": "Length (cm)",
         "purchaseDate": "Purchase Date"
       },
+      "purchaseDateHint": "Only purchases from the last {{days}} days are eligible.",
+      "errors": {
+        "purchaseDateOutOfWindow": "Enter a purchase date within the last {{days}} days. Older purchases are not eligible for complimentary insurance."
+      },
       "cancel": "Cancel",
       "activateInsurance": "Activate Insurance",
       "loading": {
@@ -1442,6 +1446,26 @@
       "publishedAt": "Published At",
       "exclusive": "Exclusive",
       "confirmRemove": "Remove this story?"
+    }
+  },
+  "onboarding": {
+    "giftPromo": {
+      "eyebrow": "Welcome gift",
+      "title": "Thank you for joining zai",
+      "body": "Every member who registers during the first three months of our launch promotion receives a complimentary gift from zai.",
+      "profileNote": "Complete your profile — name, phone and address — so we can send it to you.",
+      "cta": "Complete your profile",
+      "dismiss": "Dismiss this message"
+    }
+  },
+  "langSwitcher": {
+    "label": "Language",
+    "changeLanguage": "Change language",
+    "activeOption": "Selected",
+    "languages": {
+      "en": "English",
+      "de": "Deutsch",
+      "zh": "中文"
     }
   }
 }

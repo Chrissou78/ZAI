@@ -96,6 +96,55 @@ const SALUTATIONS = [
   { id: 2, key: 'ms' },
 ];
 
+/* ───── Insurance eligibility window ─────
+   Complimentary insurance is only available for products purchased within
+   the last 30 days. The accepted window is [today - 30 days … today],
+   both ends inclusive — keep this identical to the server-side check in
+   api/products/[...path].js, which is the authoritative one.
+
+   Everything below works on LOCAL calendar parts on purpose. Calling
+   `toISOString()` on a Date converts to UTC first, which rolls the day
+   over for anyone east of UTC in the evening (and back for anyone west of
+   UTC in the early morning) — that would hand the user a window that is
+   off by one relative to the date their own date picker shows.
+
+   Note: this is a UI guard only. The window is also enforced server-side;
+   nothing here should be treated as the authoritative check. */
+const INSURANCE_WINDOW_DAYS = 30;
+
+/** Formats a Date as `YYYY-MM-DD` from its local parts (no UTC shift). */
+const toLocalDateInputValue = (d: Date): string => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+
+/** The single source of truth for the window bounds, as `YYYY-MM-DD`. */
+const getInsuranceDateWindow = (): { min: string; max: string } => {
+  const now = new Date();
+  // Rebuild at local midnight so the day arithmetic can't be nudged by the
+  // time-of-day component, then step back INSURANCE_WINDOW_DAYS. Date's
+  // setDate handles month/year underflow and DST for us.
+  const earliest = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  earliest.setDate(earliest.getDate() - INSURANCE_WINDOW_DAYS);
+  return { min: toLocalDateInputValue(earliest), max: toLocalDateInputValue(now) };
+};
+
+/** True when `value` is a real `YYYY-MM-DD` date inside the eligibility window. */
+const isInsuranceDateEligible = (value: string): boolean => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const [y, m, d] = value.split('-').map(Number);
+  // Local-time construction, and a round-trip check so rubbish that parses
+  // (e.g. 2026-02-31 → 3 March) is rejected rather than silently shifted.
+  const parsed = new Date(y, m - 1, d);
+  if (parsed.getFullYear() !== y || parsed.getMonth() !== m - 1 || parsed.getDate() !== d) return false;
+  const { min, max } = getInsuranceDateWindow();
+  // All three strings are zero-padded `YYYY-MM-DD`, so a lexicographic
+  // compare is a chronological compare — no re-parsing needed.
+  return value >= min && value <= max;
+};
+
 /* Minimal translate-function shape used by module-scope helpers below
    (avoids depending on react-i18next's exact TFunction generic signature). */
 type TFn = (key: string, opts?: Record<string, any>) => string;
@@ -417,7 +466,11 @@ const Products: React.FC = () => {
     // (confirmed via a live GET /getMakes call) — this was previously
     // hardcoded to 1, which is "4FRNT-SKIS", an unrelated brand. Every
     // insurance registration submitted so far sent the wrong make.
-    deviceType: 1, makeName: 'ZAI', makeId: 118, model: '', serial: '', price: '', length: '', purchasingdate: new Date().toISOString().split('T')[0],
+    // purchasingdate still defaults to today, but from LOCAL date parts:
+    // `new Date().toISOString()` is UTC, so for users west of UTC in the
+    // afternoon it produced tomorrow's date — which now sits outside the
+    // eligibility window and would fail its own max= bound.
+    deviceType: 1, makeName: 'ZAI', makeId: 118, model: '', serial: '', price: '', length: '', purchasingdate: toLocalDateInputValue(new Date()),
   });
 
   const [zoomImage, setZoomImage] = useState<{ src: string; alt: string } | null>(null);
@@ -803,11 +856,22 @@ const Products: React.FC = () => {
       model: product.name || '',
       serial: product.serialNumber || '',
       price: product.priceRaw || '',
+      // Re-seed with today: the modal keeps its state between openings, so a
+      // tab left open past midnight could otherwise carry a stale date.
+      purchasingdate: toLocalDateInputValue(new Date()),
     }));
   };
 
   const handleInsuranceSubmit = async () => {
     if (!insuranceProduct) return;
+
+    // Purchases older than the eligibility window can't be insured. Blocked
+    // here for a fast, clear message — the server re-checks independently.
+    if (!isInsuranceDateEligible(insuranceForm.purchasingdate)) {
+      setInsuranceError(t('products.insuranceModal.errors.purchaseDateOutOfWindow', { days: INSURANCE_WINDOW_DAYS }));
+      return;
+    }
+
     setInsuranceStep('loading');
     setInsuranceError(null);
     try {
@@ -826,6 +890,10 @@ const Products: React.FC = () => {
   const updateInsuranceField = (field: keyof InsuranceFormData, value: string | number) => {
     setInsuranceForm(prev => ({ ...prev, [field]: value }));
   };
+
+  // Bounds for the purchase-date picker. Derived from the same helper the
+  // submit-time check uses, so the two can't drift apart.
+  const insuranceDateWindow = getInsuranceDateWindow();
 
   const totalClaimed = products.length;
   const activeInsurances = products.filter(p => p.insurance?.active).length;
@@ -1745,9 +1813,28 @@ const Products: React.FC = () => {
                 </div>
                 <div>
                   <label style={labelStyle}>{t('products.insuranceModal.labels.purchaseDate')}</label>
-                  <input style={inputStyle} type="date" value={insuranceForm.purchasingdate} onChange={e => updateInsuranceField('purchasingdate', e.target.value)} />
+                  <input
+                    style={inputStyle}
+                    type="date"
+                    value={insuranceForm.purchasingdate}
+                    min={insuranceDateWindow.min}
+                    max={insuranceDateWindow.max}
+                    onChange={e => {
+                      updateInsuranceField('purchasingdate', e.target.value);
+                      // Drop a stale eligibility complaint as soon as the user edits.
+                      if (insuranceError) setInsuranceError(null);
+                    }}
+                  />
+                  <div style={{ fontSize: 11, color: C.gray, marginTop: 6, lineHeight: 1.4 }}>
+                    {t('products.insuranceModal.purchaseDateHint', { days: INSURANCE_WINDOW_DAYS })}
+                  </div>
                 </div>
               </div>
+
+              {insuranceError && (
+                <div style={{ color: C.red, fontSize: 13 }}>{insuranceError}</div>
+              )}
+
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 8 }}>
                 <Button onClick={() => setShowInsuranceModal(false)}>{t('products.insuranceModal.cancel')}</Button>
                 <Button onClick={handleInsuranceSubmit}>{t('products.insuranceModal.activateInsurance')}</Button>
@@ -1786,7 +1873,7 @@ const Products: React.FC = () => {
               <div style={{ fontSize: 48, marginBottom: 12 }}>&#x2715;</div>
               <p style={{ color: C.red, fontSize: 14, marginBottom: 16 }}>{insuranceError}</p>
               <div style={{ display: 'flex', justifyContent: 'center', gap: 12 }}>
-                <Button onClick={() => setInsuranceStep('form')}>{t('products.insuranceModal.error.tryAgain')}</Button>
+                <Button onClick={() => { setInsuranceError(null); setInsuranceStep('form'); }}>{t('products.insuranceModal.error.tryAgain')}</Button>
                 <Button onClick={() => setShowInsuranceModal(false)}>{t('products.insuranceModal.error.close')}</Button>
               </div>
             </div>

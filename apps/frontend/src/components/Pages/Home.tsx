@@ -1,6 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import i18n, {
+  SUPPORTED_LANGUAGES,
+  mapToSupportedLanguage,
+  type SupportedLanguage,
+} from '../../i18n';
 import { StarIcon, CalendarIcon, LocationIcon, MountainIcon } from '../Icons/BenefitIcons';
 import { ZaiLogo, ZaiMark, InstagramIcon, FacebookIcon, LinkedInIcon, YouTubeIcon } from '../Icons/LogoIcons';
 import { WalletConnectButton } from '../Auth/WalletConnectButton';
@@ -155,6 +160,216 @@ const LockedTooltip: React.FC<{
               transform: 'rotate(45deg)',
             }}
           />
+        </div>
+      )}
+    </div>
+  );
+};
+
+/* ── Hero language switcher ──
+   Lets an anonymous visitor change language from the public hero, before any
+   account exists.
+
+   PERSISTENCE CONTRACT: the picked code ('en' | 'de' | 'zh') is written to
+   localStorage under the key `zai_lang`. Writing it here is only half the
+   round trip — for the choice to survive a reload, the bootstrap in
+   `src/i18n/index.ts` (getInitialLanguage) must also READ `zai_lang` in its
+   resolution order, i.e. logged-in user's saved language > zai_lang >
+   navigator.language > 'en'. That file is owned elsewhere; until it reads the
+   key, switching is instant but resets on refresh. */
+const LANG_STORAGE_KEY = 'zai_lang';
+const OFF_WHITE = '#f5f4f0';
+
+const GlobeIcon: React.FC<{ size?: number }> = ({ size = 14 }) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.6"
+    strokeLinecap="round"
+    aria-hidden="true"
+    style={{ flexShrink: 0, display: 'block' }}
+  >
+    <circle cx="12" cy="12" r="9" />
+    <path d="M3 12h18" />
+    <path d="M12 3c2.5 2.6 2.5 15.4 0 18-2.5-2.6-2.5-15.4 0-18Z" />
+  </svg>
+);
+
+const HeroLangSwitcher: React.FC = () => {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const [isPhone, setIsPhone] = useState(
+    () => typeof window !== 'undefined' && window.innerWidth < 480
+  );
+  const [hovered, setHovered] = useState<SupportedLanguage | null>(null);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const onResize = () => setIsPhone(window.innerWidth < 480);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
+  /* Close on outside click + Escape (same pattern as AdminStore's dropdown) */
+  useEffect(() => {
+    if (!open) return;
+    const onMouseDown = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('mousedown', onMouseDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', onMouseDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [open]);
+
+  const current = mapToSupportedLanguage(i18n.language);
+
+  const select = (code: SupportedLanguage) => {
+    setOpen(false);
+    if (code !== current) {
+      void i18n.changeLanguage(code);
+      try {
+        localStorage.setItem(LANG_STORAGE_KEY, code);
+      } catch {
+        /* private mode / storage disabled — the in-memory switch still works */
+      }
+    }
+  };
+
+  return (
+    <div ref={ref} style={{ position: 'relative', flexShrink: 0 }}>
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        aria-label={t('langSwitcher.changeLanguage')}
+        title={t('langSwitcher.changeLanguage')}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: isPhone ? 4 : 6,
+          padding: isPhone ? '7px 8px' : '10px 12px',
+          background: open ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.08)',
+          border: '1px solid rgba(245,244,240,0.35)',
+          borderRadius: 4,
+          color: OFF_WHITE,
+          fontFamily: 'Inter, sans-serif',
+          fontSize: isPhone ? '9px' : '11px',
+          fontWeight: 500,
+          letterSpacing: isPhone ? '0.04em' : '0.12em',
+          textTransform: 'uppercase',
+          lineHeight: 1,
+          cursor: 'pointer',
+          whiteSpace: 'nowrap',
+          backdropFilter: 'blur(4px)',
+          transition: 'all 0.2s',
+        }}
+      >
+        <GlobeIcon size={isPhone ? 12 : 14} />
+        <span>{current.toUpperCase()}</span>
+        {/* chevron is dropped on phones so the pill stays narrow enough not to
+            collide with the absolutely-centred hero logo mark */}
+        {!isPhone && (
+          <svg
+            width="9"
+            height="9"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+            style={{
+              display: 'block',
+              transform: open ? 'rotate(180deg)' : 'none',
+              transition: 'transform 0.2s',
+            }}
+          >
+            <path d="M5 8.5 12 15.5 19 8.5" />
+          </svg>
+        )}
+      </button>
+
+      {open && (
+        <div
+          role="listbox"
+          aria-label={t('langSwitcher.label')}
+          style={{
+            position: 'absolute',
+            top: 'calc(100% + 6px)',
+            /* anchored to the right edge so it can never push past the
+               viewport on narrow screens */
+            right: 0,
+            minWidth: isPhone ? 130 : 150,
+            maxWidth: 'calc(100vw - 2rem)',
+            background: 'rgba(10,10,10,0.94)',
+            border: '1px solid rgba(245,244,240,0.22)',
+            borderRadius: 4,
+            boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
+            backdropFilter: 'blur(8px)',
+            overflow: 'hidden',
+            zIndex: 50,
+          }}
+        >
+          {SUPPORTED_LANGUAGES.map((code, idx) => {
+            const active = code === current;
+            return (
+              <button
+                key={code}
+                type="button"
+                role="option"
+                aria-selected={active}
+                onClick={() => select(code)}
+                onMouseEnter={() => setHovered(code)}
+                onMouseLeave={() => setHovered(null)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 10,
+                  width: '100%',
+                  padding: '10px 12px',
+                  background:
+                    active
+                      ? 'rgba(122,34,46,0.55)'
+                      : hovered === code
+                      ? 'rgba(255,255,255,0.08)'
+                      : 'transparent',
+                  border: 'none',
+                  borderTop: idx === 0 ? 'none' : '1px solid rgba(245,244,240,0.12)',
+                  color: OFF_WHITE,
+                  fontFamily: 'Inter, sans-serif',
+                  fontSize: '12px',
+                  fontWeight: active ? 600 : 400,
+                  textAlign: 'left',
+                  cursor: 'pointer',
+                  transition: 'background 0.15s',
+                }}
+              >
+                <span>{t(`langSwitcher.languages.${code}`)}</span>
+                <span
+                  style={{
+                    fontSize: '9px',
+                    letterSpacing: '0.12em',
+                    color: active ? OFF_WHITE : 'rgba(245,244,240,0.45)',
+                  }}
+                  title={active ? t('langSwitcher.activeOption') : undefined}
+                >
+                  {active ? '●' : code.toUpperCase()}
+                </span>
+              </button>
+            );
+          })}
         </div>
       )}
     </div>
@@ -324,7 +539,15 @@ const Home: React.FC = () => {
               />
             </svg>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'flex-end',
+              alignItems: 'center',
+              gap: 'clamp(6px, 1.5vw, 12px)',
+            }}
+          >
+            <HeroLangSwitcher />
             <WalletConnectButton />
           </div>
         </div>

@@ -1,10 +1,31 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 
 // ── Keys for localStorage persistence ──
 const STORAGE_KEY_STEPS = 'zai_onboarding_completed';
 const STORAGE_KEY_DISMISSED = 'zai_onboarding_dismissed';
 const STORAGE_KEY_TOURS = 'zai_page_tours_seen';
+const STORAGE_KEY_GIFT_PROMO_DISMISSED = 'zai_gift_promo_dismissed';
+
+// ── Free-gift campaign window ──
+// The client gifts a free item to every member who registers during the first
+// three months of the promotional period. Both bounds are FIXED ISO instants
+// (never derived from Date.now() on first render), so the promo panel stops
+// showing by itself once the campaign is over — it is evaluated against the
+// current time on every render of the widget, no manual cleanup needed.
+// To extend or end the campaign, change these two constants only.
+const GIFT_PROMO_START_ISO = '2026-08-01T00:00:00Z';
+const GIFT_PROMO_END_ISO = '2026-11-01T00:00:00Z'; // exclusive — 3 months after start
+
+/** True only while "now" sits inside the fixed free-gift campaign window. */
+const isGiftPromoWindowOpen = (now: number = Date.now()): boolean => {
+  const start = Date.parse(GIFT_PROMO_START_ISO);
+  const end = Date.parse(GIFT_PROMO_END_ISO);
+  // Malformed constants must never keep the promo visible forever.
+  if (Number.isNaN(start) || Number.isNaN(end)) return false;
+  return now >= start && now < end;
+};
 
 interface OnboardingStep {
   id: number;
@@ -47,7 +68,7 @@ const PAGE_TOURS: Record<string, PageTour> = {
     stops: [
       { title: 'Product Carousel', description: 'Browse all your claimed zai products here. Each card shows the product image, name, and insurance status.', icon: '🎿' },
       { title: 'Claim a Product', description: 'Click "+ Claim Product" or the "+" card to register a new product by uploading your purchase invoice and submitting it to the zai team for confirmation.', icon: '📦' },
-      { title: 'Activate Insurance', description: 'For skis purchased within the last 2 months, you can activate your complimentary ski insurance in just a few clicks.', icon: '🛡️' },
+      { title: 'Activate Insurance', description: 'For skis purchased within the last 30 days, you can activate your complimentary ski insurance in just a few clicks.', icon: '🛡️' },
     ],
   },
   '/dashboard': {
@@ -71,6 +92,7 @@ const PAGE_TOURS: Record<string, PageTour> = {
 const OnboardingWidget: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { t } = useTranslation();
 
   const [isOpen, setIsOpen] = useState(false);
   const [completedSteps, setCompletedSteps] = useState<number[]>(() => {
@@ -81,6 +103,14 @@ const OnboardingWidget: React.FC = () => {
   });
   const [dismissed, setDismissed] = useState<boolean>(() => {
     try { return localStorage.getItem(STORAGE_KEY_DISMISSED) === 'true'; } catch { return false; }
+  });
+
+  // Free-gift promo panel — dismissed independently of the checklist itself
+  const [giftPromoDismissed, setGiftPromoDismissed] = useState<boolean>(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY_GIFT_PROMO_DISMISSED);
+      return stored ? JSON.parse(stored) === true : false;
+    } catch { return false; }
   });
 
   // Page tour state
@@ -103,6 +133,13 @@ const OnboardingWidget: React.FC = () => {
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY_DISMISSED, String(dismissed));
   }, [dismissed]);
+
+  // Persist gift promo dismissal
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY_GIFT_PROMO_DISMISSED, JSON.stringify(giftPromoDismissed));
+    } catch { /* storage unavailable — panel simply reappears next session */ }
+  }, [giftPromoDismissed]);
 
   // Persist seen tours
   useEffect(() => {
@@ -233,11 +270,22 @@ const OnboardingWidget: React.FC = () => {
     setIsOpen(false);
   };
 
+  // ── Free-gift promo handlers ──
+  const handleGiftPromoDismiss = () => setGiftPromoDismissed(true);
+
+  const handleGiftPromoCta = () => {
+    // The gift can only be shipped once name / phone / address are on file.
+    navigate('/profile');
+    setIsOpen(false);
+  };
+
   // ── Computed ──
   const progress = (completedSteps.length / STEPS.length) * 100;
   const circumference = 2 * Math.PI * 13;
   const strokeDashoffset = circumference - (completedSteps.length / STEPS.length) * circumference;
   const allDone = completedSteps.length === STEPS.length;
+  // Evaluated on every render: once the fixed window closes the panel is gone.
+  const showGiftPromo = !giftPromoDismissed && isGiftPromoWindowOpen();
 
   if (dismissed && !showTour) return null;
 
@@ -459,6 +507,86 @@ const OnboardingWidget: React.FC = () => {
               <div style={{ height: '2px', background: '#f0f0f0', position: 'relative' }}>
                 <div style={{ height: '100%', background: '#7D1E2C', width: `${progress}%`, transition: 'width 0.6s cubic-bezier(0.4,0,0.2,1)' }} />
               </div>
+
+              {/* ── Free-gift campaign panel (promo, not a task) ── */}
+              {showGiftPromo && (
+                <div
+                  style={{
+                    position: 'relative',
+                    background: '#1a1a1a',
+                    borderBottom: '1px solid #f0f0f0',
+                    padding: '14px 16px 14px',
+                  }}
+                >
+                  {/* Dismiss */}
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    aria-label={t('onboarding.giftPromo.dismiss')}
+                    title={t('onboarding.giftPromo.dismiss')}
+                    onClick={handleGiftPromoDismiss}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleGiftPromoDismiss(); }}
+                    style={{
+                      position: 'absolute',
+                      top: '8px',
+                      right: '10px',
+                      width: '16px',
+                      height: '16px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '14px',
+                      lineHeight: 1,
+                      color: '#6a6a6a',
+                      cursor: 'pointer',
+                      transition: 'color 0.2s',
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.color = '#b8a06a')}
+                    onMouseLeave={(e) => (e.currentTarget.style.color = '#6a6a6a')}
+                  >
+                    ×
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', paddingRight: '16px' }}>
+                    <div style={{ fontSize: '16px', lineHeight: 1.1, flexShrink: 0 }}>🎁</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: '8px', letterSpacing: '0.28em', textTransform: 'uppercase', color: '#b8a06a', marginBottom: '5px' }}>
+                        {t('onboarding.giftPromo.eyebrow')}
+                      </div>
+                      <div style={{ fontSize: '12px', fontWeight: 400, color: '#f5f4f0', letterSpacing: '0.02em', marginBottom: '6px' }}>
+                        {t('onboarding.giftPromo.title')}
+                      </div>
+                      <div style={{ fontSize: '10px', lineHeight: 1.65, color: '#9a9a9a', letterSpacing: '0.02em' }}>
+                        {t('onboarding.giftPromo.body')}
+                      </div>
+                      <div style={{ fontSize: '10px', lineHeight: 1.65, color: '#c9c4b8', letterSpacing: '0.02em', marginTop: '5px' }}>
+                        {t('onboarding.giftPromo.profileNote')}
+                      </div>
+                      <button
+                        onClick={handleGiftPromoCta}
+                        style={{
+                          marginTop: '11px',
+                          width: '100%',
+                          padding: '9px',
+                          fontSize: '9px',
+                          letterSpacing: '0.18em',
+                          textTransform: 'uppercase',
+                          background: '#7D1E2C',
+                          border: 'none',
+                          color: '#f5f4f0',
+                          cursor: 'pointer',
+                          fontFamily: "'Inter', sans-serif",
+                          transition: 'background 0.2s',
+                        }}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = '#9a2535')}
+                        onMouseLeave={(e) => (e.currentTarget.style.background = '#7D1E2C')}
+                      >
+                        {t('onboarding.giftPromo.cta')}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Steps */}
               <div style={{ maxHeight: '400px', overflowY: 'auto' }}>

@@ -32,12 +32,22 @@ function getInitialLanguage(): SupportedLanguage {
     /* ignore malformed storage */
   }
 
-  // 2) Browser language
+  // 2) Explicit choice made by a NOT-logged-in visitor via the language
+  //    switcher in the public Home hero. A logged-in user's DB-backed
+  //    preference above deliberately wins over this.
+  try {
+    const anon = localStorage.getItem('zai_lang');
+    if (anon) return mapToSupportedLanguage(anon);
+  } catch {
+    /* ignore blocked/malformed storage */
+  }
+
+  // 3) Browser language
   if (typeof navigator !== 'undefined' && navigator.language) {
     return mapToSupportedLanguage(navigator.language);
   }
 
-  // 3) Fallback
+  // 4) Fallback
   return 'en';
 }
 
