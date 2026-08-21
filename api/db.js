@@ -344,6 +344,20 @@ export async function initDB() {
       -- tier's point threshold. The code is generated on claim (not up
       -- front) so unclaimed tiers hold no dormant codes. UNIQUE(user,tier)
       -- is what makes claiming idempotent and prevents double-issue.
+      -- Auto-granted Experience Club cards. Membership is no longer gated,
+      -- so every registered user gets a card without applying or supplying
+      -- proof. user_id as PRIMARY KEY is what makes the grant idempotent:
+      -- concurrent calls can't double-mint, since the second insert loses.
+      CREATE TABLE IF NOT EXISTS experience_card_grants (
+        user_id TEXT PRIMARY KEY,
+        rwa_id TEXT,
+        wallet TEXT,
+        mint_queued BOOLEAN DEFAULT false,
+        error_detail TEXT,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      );
+
       CREATE TABLE IF NOT EXISTS tier_vouchers (
         id TEXT PRIMARY KEY,
         user_id TEXT NOT NULL,

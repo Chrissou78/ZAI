@@ -838,13 +838,34 @@ export default async function handler(req, res) {
         ? products.filter(p => p.id !== experienceCard.id)
         : products;
 
+      // Membership is no longer gated, and the auto-granted card is minted
+      // asynchronously — the blockchain tx settles minutes later via
+      // /mint-webhook. Deciding access purely on the on-chain NFT would
+      // therefore lock a brand-new member out of the club they were just
+      // granted, for as long as the tx takes. So a recorded grant counts as
+      // holding a card: access is immediate, the NFT catches up when it
+      // settles. `experienceCard` itself stays strictly on-chain so the UI
+      // never renders a card object that doesn't exist yet.
+      let cardGranted = !!experienceCard;
+      if (!cardGranted && dbReady && pool) {
+        try {
+          const g = await pool.query(
+            'SELECT 1 FROM experience_card_grants WHERE user_id = $1', [decoded.userId]
+          );
+          cardGranted = g.rows.length > 0;
+        } catch (grantErr) {
+          console.error('[PRODUCTS] grant lookup failed (non-fatal):', grantErr.message);
+        }
+      }
+
       return res.json({
         success: true,
         data: collection,
         experienceCard,
         stats: {
           totalProducts: collection.length,
-          hasExperienceCard: !!experienceCard,
+          hasExperienceCard: cardGranted,
+          cardMintPending: cardGranted && !experienceCard,
         },
       });
     } catch (err) {
@@ -1139,6 +1160,121 @@ export default async function handler(req, res) {
   }
 
   // ══════════════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════════════
+  // POST /api/products/ensure-experience-card
+  // ══════════════════════════════════════════════════════════════
+  // Club membership is no longer gated: every registered user is entitled to
+  // an Experience Club Card with no application and no proof of purchase.
+  //
+  // This is deliberately NOT wired into the login handler. Minting is an
+  // external call to the RWA service that can be slow or down, and login is
+  // the critical auth path — a failure there must never block sign-in. As a
+  // separate idempotent endpoint the grant is instead safely retryable: the
+  // client can call it after login and on every dashboard load.
+  //
+  // Idempotency comes from the experience_card_grants PRIMARY KEY on
+  // user_id, not from a read-then-write check, so two concurrent calls
+  // cannot both queue a mint.
+  if (fullPath === 'ensure-experience-card' && req.method === 'POST') {
+    const decoded = authenticate(req);
+    if (!decoded) return res.status(401).json({ error: 'Unauthorized' });
+    if (applyRateLimit(req, res, 'products:ensure-card', 10, 60000)) return;
+
+    try {
+      const db = await getDB();
+      if (!db) return res.status(503).json({ error: 'Database not available' });
+      await db.initDB();
+      const pool = db.getPool();
+
+      // Claim the grant slot first. If the row already exists this user has
+      // been granted a card before and there is nothing to do.
+      const claimed = await pool.query(
+        `INSERT INTO experience_card_grants (user_id) VALUES ($1)
+         ON CONFLICT (user_id) DO NOTHING
+         RETURNING user_id`,
+        [decoded.userId]
+      );
+      if (claimed.rows.length === 0) {
+        const existing = await pool.query(
+          'SELECT rwa_id, mint_queued, error_detail FROM experience_card_grants WHERE user_id = $1',
+          [decoded.userId]
+        );
+        return res.json({
+          success: true,
+          alreadyGranted: true,
+          data: existing.rows[0] || null,
+        });
+      }
+
+      // Resolve the member's wallet.
+      let wallet = decoded.wallet;
+      if (!wallet) {
+        const w = await pool.query('SELECT wallet FROM user_profiles WHERE user_id = $1', [decoded.userId]);
+        wallet = w.rows[0]?.wallet;
+      }
+
+      // Locate the Experience Card RWA in the zai catalogue.
+      let cardRwaId = null;
+      try {
+        const rwaMap = await getZaiRwaMap();
+        for (const [, rwa] of rwaMap) {
+          if (isExperienceCardName(rwa.name)) { cardRwaId = rwa.id; break; }
+        }
+      } catch (lookupErr) {
+        console.error('[ensure-card] RWA lookup failed:', lookupErr.message);
+      }
+
+      if (!wallet || !cardRwaId) {
+        const detail = !wallet ? 'No wallet on file for this user' : 'Experience Card RWA not found in catalogue';
+        // Release the slot so a later call can retry rather than the user
+        // being permanently marked granted with nothing minted.
+        await pool.query('DELETE FROM experience_card_grants WHERE user_id = $1', [decoded.userId]);
+        return res.status(409).json({ success: false, error: 'Cannot grant card yet', detail });
+      }
+
+      let queued = false;
+      let errorDetail = null;
+      try {
+        // async: true — the blockchain tx outlives this function; wt-rwa
+        // settles it via /mint-webhook, same as the claim-validate path.
+        const { status, data } = await apiFetch(RWA_BASE, `/rwa/${cardRwaId}/mint`, {
+          method: 'POST',
+          body: JSON.stringify({ wallet, address: wallet, async: true }),
+        });
+        queued = status >= 200 && status < 300 && data?.success !== false;
+        if (!queued) errorDetail = data?.message || data?.error || `Mint request failed (HTTP ${status})`;
+
+        await logMintAttempt(pool, {
+          source: 'auto-grant', userId: decoded.userId, rwaId: cardRwaId,
+          productName: 'zai Experience Club Card', requestedWallet: wallet,
+          httpStatus: status, ok: queued, errorDetail,
+          nftSnapshot: data?.nft || null,
+        });
+      } catch (mintErr) {
+        errorDetail = mintErr.message;
+        console.error('[ensure-card] mint failed:', mintErr.message);
+      }
+
+      if (!queued) {
+        // Failed to queue — free the slot so the next call retries.
+        await pool.query('DELETE FROM experience_card_grants WHERE user_id = $1', [decoded.userId]);
+        return res.status(502).json({ success: false, error: 'Card mint could not be queued', detail: errorDetail });
+      }
+
+      await pool.query(
+        `UPDATE experience_card_grants
+         SET rwa_id = $2, wallet = $3, mint_queued = true, error_detail = NULL, updated_at = NOW()
+         WHERE user_id = $1`,
+        [decoded.userId, cardRwaId, wallet]
+      );
+
+      return res.json({ success: true, granted: true, data: { rwaId: cardRwaId, wallet, mintQueued: true } });
+    } catch (err) {
+      console.error('[PRODUCTS] ensure-experience-card error:', err);
+      return res.status(500).json({ error: 'Internal error', detail: err.message });
+    }
+  }
+
   // GET /api/products/experience-card
   // ══════════════════════════════════════════════════════════════
   if (fullPath === 'experience-card' && req.method === 'GET') {
