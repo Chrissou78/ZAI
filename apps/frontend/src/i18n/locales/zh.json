@@ -18,7 +18,8 @@
       "profile": "个人资料",
       "settings": "设置",
       "claimRequests": "认领申请",
-      "storeContent": "商店与内容"
+      "storeContent": "商店与内容",
+      "redeemPoints": "积分兑换"
     },
     "member": "会员",
     "exclusiveMember": "尊享会员",
@@ -1103,9 +1104,12 @@
       "description": "通过登记产品和累积体验积分逐级晋升。"
     },
     "loading": "正在加载积分信息…",
+    "loadError": "积分与等级信息加载失败，请刷新页面。",
     "banner": {
       "label": "您当前的等级",
-      "tierWord": "等级"
+      "tierWord": "等级",
+      "noTier": "尚未达到任何等级",
+      "noTierHint": "再获得 {{points}} 积分即可达到{{tier}}等级。"
     },
     "yourTierBadge": "您的等级",
     "tierRange": {
@@ -1113,6 +1117,14 @@
       "noCeiling": "{{floor}}+ 积分"
     },
     "tiers": {
+      "white": {
+        "name": "白金",
+        "perks": [
+          "数字保修与产品注册",
+          "当季资讯订阅",
+          "会员活动邀请"
+        ]
+      },
       "blue": {
         "name": "蓝金",
         "perks": [
@@ -1162,6 +1174,7 @@
     },
     "highlights": {
       "sectionTitle": "您的{{tier}}等级专属权益",
+      "sectionTitleNoTier": "会员权益",
       "insurance": {
         "title": "免费滑雪保险",
         "description": "每购买一副新款 zai 雪板，即可享受免费保险。"
@@ -1177,6 +1190,30 @@
     },
     "activity": {
       "sectionTitle": "近期动态"
+    },
+    "vouchers": {
+      "sectionTitle": "等级活动礼券",
+      "intro": "每个等级均可解锁一张一次性活动礼券，可用于抵扣任意 zai 雪板活动消费。每张礼券自领取之日起两年内有效 — 每位会员每个等级限领一张。",
+      "blockLabel": "活动礼券",
+      "amount": "CHF {{amount}}",
+      "locked": "未解锁",
+      "lockedHint": "再获得 {{points}} 积分即可解锁",
+      "claim": "领取礼券",
+      "claiming": "正在领取…",
+      "claimedConfirmation": "礼券已领取",
+      "codeLabel": "礼券编号",
+      "validityNote": "自领取之日起两年内有效。",
+      "validUntil": "有效期至 {{date}}",
+      "redeemed": "已于 {{date}} 使用",
+      "copy": "复制编号",
+      "copied": "已复制",
+      "selectHint": "编号已选中 — 请按 Ctrl/Cmd + C 复制。",
+      "loadError": "礼券信息加载失败，请刷新页面查看状态。",
+      "errors": {
+        "notReached": "尚未达到该等级 — 需要 {{required}} 积分。",
+        "network": "礼券领取失败，请检查网络连接后重试。",
+        "generic": "礼券领取失败，请稍后重试。"
+      }
     },
     "units": {
       "pointsValue": "{{value}} 积分"
@@ -1378,7 +1415,9 @@
       "noStories": "暂无报道。创建您的第一篇报道。",
       "nft": "NFT",
       "endsOn": "截止于 {{date}}",
-      "spotsLeft": "{{left}}/{{total}} 个名额"
+      "spotsLeft": "{{left}}/{{total}} 个名额",
+      "pointsOnly": "仅限积分",
+      "pointsCost": "{{points}} 积分"
     },
     "dealForm": {
       "editTitle": "编辑优惠",
@@ -1398,6 +1437,11 @@
         "experience": "体验"
       },
       "price": "价格（瑞士法郎）",
+      "pointsOnly": "仅限积分兑换",
+      "pointsOnlyOffHint": "关闭：会员以瑞士法郎付款，并可使用积分抵扣。",
+      "pointsOnlyOnHint": "会员只能使用积分兑换此优惠。价格（瑞士法郎）和最高积分抵扣将保存为 0，且无法编辑。",
+      "pointsPrice": "积分价格",
+      "pointsPriceRequired": "仅限积分兑换的优惠必须填写大于 0 的积分价格。",
       "maxPointsDiscount": "最高积分抵扣",
       "totalSpots": "名额总数（0 表示不限）",
       "imageUrl": "图片链接",
@@ -1462,6 +1506,65 @@
       "en": "English",
       "de": "Deutsch",
       "zh": "中文"
+    }
+  },
+  "pointsStore": {
+    "header": {
+      "label": "仅限积分兑换",
+      "title": "以积分兑换",
+      "description": "这些单品与体验不对外销售，只能凭您累积的积分兑换，无法用金钱购买。",
+      "balanceLabel": "您的积分余额"
+    },
+    "loading": "正在载入积分典藏…",
+    "footnote": "兑换不可撤销。确认后积分将立即扣除，且无法恢复。",
+    "units": {
+      "points_one": "{{count, number}} 积分",
+      "points_other": "{{count, number}} 积分"
+    },
+    "empty": {
+      "title": "暂无可用的积分兑换奖励",
+      "body": "新的单品与体验将于本季陆续开放。继续累积积分，它们会最先出现在这里。"
+    },
+    "card": {
+      "pointsOnlyBadge": "仅限积分",
+      "redeemedBadge": "已兑换",
+      "costLabel": "兑换所需积分",
+      "spotsLeft_one": "剩余 {{count}} 份",
+      "spotsLeft_other": "剩余 {{count}} 份",
+      "until": "截至 {{date}}",
+      "redeem": "立即兑换",
+      "locked": "积分不足",
+      "soldOut": "已全部兑换",
+      "expired": "已停止兑换",
+      "shortfall_one": "还需 {{count, number}} 积分",
+      "shortfall_other": "还需 {{count, number}} 积分",
+      "redeemedNote": "已兑换 — 专属顾问将与您联系"
+    },
+    "confirm": {
+      "label": "确认兑换",
+      "body": "将从您的余额中扣除 {{points}}。此操作无法撤销。",
+      "balanceAfter": "兑换后余额：{{points}}",
+      "cancel": "取消",
+      "confirm": "确认",
+      "submitting": "正在兑换…"
+    },
+    "success": {
+      "title": "{{title}} 已归您所有",
+      "body": "已扣除 {{points}}。我们的专属顾问将在两个工作日内通过电子邮件与您联系，安排于蓬特雷西纳取货或为您配送。",
+      "dismiss": "关闭",
+      "cardTitle": "兑换已确认",
+      "cardBody": "已扣除 {{points}}。请留意邮箱，我们将发送后续安排详情。"
+    },
+    "errors": {
+      "notEnoughPoints_one": "积分不足 — 还需 {{count, number}} 积分。",
+      "notEnoughPoints_other": "积分不足 — 还需 {{count, number}} 积分。",
+      "soldOut": "该奖励刚刚已被全部兑换。",
+      "expired": "该兑换窗口已关闭。",
+      "notPointsOnly": "该商品不属于积分兑换项目。",
+      "generic": "兑换未能完成，未扣除任何积分，请重试。",
+      "network": "无法连接服务器，兑换状态尚未确认。请重新载入页面后再试。",
+      "loadFailed": "无法载入积分典藏。",
+      "retry": "重试"
     }
   }
 }

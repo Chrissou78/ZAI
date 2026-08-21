@@ -18,7 +18,8 @@
       "profile": "Profile",
       "settings": "Settings",
       "claimRequests": "Claim Requests",
-      "storeContent": "Store & Content"
+      "storeContent": "Store & Content",
+      "redeemPoints": "Redeem with Points"
     },
     "member": "member",
     "exclusiveMember": "exclusive member",
@@ -1106,9 +1107,12 @@
       "description": "Progress through tiers by claiming products and accumulating experience points."
     },
     "loading": "Loading rewards…",
+    "loadError": "Your points and tiers could not be loaded. Please refresh the page.",
     "banner": {
       "label": "Your current standing",
-      "tierWord": "Tier"
+      "tierWord": "Tier",
+      "noTier": "No tier yet",
+      "noTierHint": "{{points}} more points to reach {{tier}}."
     },
     "yourTierBadge": "Your tier",
     "tierRange": {
@@ -1116,6 +1120,14 @@
       "noCeiling": "{{floor}}+ points"
     },
     "tiers": {
+      "white": {
+        "name": "White",
+        "perks": [
+          "Digital warranty & registration",
+          "Season newsletter",
+          "Member event invitations"
+        ]
+      },
       "blue": {
         "name": "Blue",
         "perks": [
@@ -1165,6 +1177,7 @@
     },
     "highlights": {
       "sectionTitle": "Your {{tier}} benefits",
+      "sectionTitleNoTier": "Membership benefits",
       "insurance": {
         "title": "Free Ski Insurance",
         "description": "Complimentary insurance on every new zai ski purchase."
@@ -1180,6 +1193,30 @@
     },
     "activity": {
       "sectionTitle": "Recent activity"
+    },
+    "vouchers": {
+      "sectionTitle": "Tier event vouchers",
+      "intro": "Every tier unlocks a one-time event voucher, redeemable against any zai ski event purchase. Each voucher is valid for two years from the day you claim it — one per member, per tier.",
+      "blockLabel": "Event voucher",
+      "amount": "CHF {{amount}}",
+      "locked": "Locked",
+      "lockedHint": "{{points}} more points to unlock",
+      "claim": "Claim voucher",
+      "claiming": "Claiming…",
+      "claimedConfirmation": "Voucher claimed",
+      "codeLabel": "Voucher code",
+      "validityNote": "Valid two years from the day you claim it.",
+      "validUntil": "Valid until {{date}}",
+      "redeemed": "Redeemed on {{date}}",
+      "copy": "Copy code",
+      "copied": "Copied",
+      "selectHint": "Code selected — press Ctrl/Cmd + C to copy.",
+      "loadError": "Your vouchers could not be loaded. Please refresh the page to see their status.",
+      "errors": {
+        "notReached": "This tier is not reached yet — {{required}} points required.",
+        "network": "The voucher could not be claimed. Please check your connection and try again.",
+        "generic": "The voucher could not be claimed. Please try again in a moment."
+      }
     },
     "units": {
       "pointsValue": "{{value}} pts"
@@ -1382,7 +1419,9 @@
       "noStories": "No stories yet. Create your first story.",
       "nft": "NFT",
       "endsOn": "Ends {{date}}",
-      "spotsLeft": "{{left}}/{{total}} spots"
+      "spotsLeft": "{{left}}/{{total}} spots",
+      "pointsOnly": "Points only",
+      "pointsCost": "{{points}} points"
     },
     "dealForm": {
       "editTitle": "Edit Deal",
@@ -1402,6 +1441,11 @@
         "experience": "Experience"
       },
       "price": "Price (CHF)",
+      "pointsOnly": "Points-only redemption",
+      "pointsOnlyOffHint": "Off: members pay in CHF and can apply a points discount.",
+      "pointsOnlyOnHint": "Members redeem this deal with points only. The CHF price and max points discount are saved as 0 and are not editable.",
+      "pointsPrice": "Points Price",
+      "pointsPriceRequired": "Enter a points price above 0 for a points-only deal.",
       "maxPointsDiscount": "Max Points Discount",
       "totalSpots": "Total Spots (0 = unlimited)",
       "imageUrl": "Image URL",
@@ -1466,6 +1510,65 @@
       "en": "English",
       "de": "Deutsch",
       "zh": "中文"
+    }
+  },
+  "pointsStore": {
+    "header": {
+      "label": "Points only",
+      "title": "Redeem with points",
+      "description": "These pieces and experiences are not for sale. They are released against your accumulated points alone — never against money.",
+      "balanceLabel": "Your balance"
+    },
+    "loading": "Loading the points collection…",
+    "footnote": "Redemptions are final. Points are deducted the moment you confirm and cannot be reinstated.",
+    "units": {
+      "points_one": "{{count, number}} pt",
+      "points_other": "{{count, number}} pts"
+    },
+    "empty": {
+      "title": "No points-only rewards available yet",
+      "body": "New pieces and experiences are released through the season. Keep earning — they appear here first."
+    },
+    "card": {
+      "pointsOnlyBadge": "Points only",
+      "redeemedBadge": "Redeemed",
+      "costLabel": "Redemption cost",
+      "spotsLeft_one": "{{count}} remaining",
+      "spotsLeft_other": "{{count}} remaining",
+      "until": "Until {{date}}",
+      "redeem": "Redeem",
+      "locked": "Not enough points",
+      "soldOut": "Fully redeemed",
+      "expired": "No longer available",
+      "shortfall_one": "Need {{count, number}} more pt",
+      "shortfall_other": "Need {{count, number}} more pts",
+      "redeemedNote": "Redeemed — our concierge is in touch"
+    },
+    "confirm": {
+      "label": "Confirm redemption",
+      "body": "{{points}} will be deducted from your balance. This cannot be undone.",
+      "balanceAfter": "Balance afterwards: {{points}}",
+      "cancel": "Cancel",
+      "confirm": "Confirm",
+      "submitting": "Redeeming…"
+    },
+    "success": {
+      "title": "{{title}} is yours",
+      "body": "{{points}} deducted. Our concierge will write to you within two working days to arrange collection in Pontresina or delivery.",
+      "dismiss": "Dismiss",
+      "cardTitle": "Redemption confirmed",
+      "cardBody": "{{points}} deducted. Watch your inbox for the arrangement details."
+    },
+    "errors": {
+      "notEnoughPoints_one": "Not enough points — you need {{count, number}} more pt.",
+      "notEnoughPoints_other": "Not enough points — you need {{count, number}} more pts.",
+      "soldOut": "This reward has just been fully redeemed.",
+      "expired": "This redemption window has now closed.",
+      "notPointsOnly": "This item is not a points-only redemption.",
+      "generic": "The redemption could not be completed. No points were deducted — please try again.",
+      "network": "We could not reach the server, so the redemption is unconfirmed. Please reload the page before trying again.",
+      "loadFailed": "We could not load the points collection.",
+      "retry": "Try again"
     }
   }
 }

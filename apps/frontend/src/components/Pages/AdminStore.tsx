@@ -234,6 +234,7 @@ function DealsManager() {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<any>(null);
   const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -263,12 +264,25 @@ function DealsManager() {
   useEffect(() => { load(); loadProducts(); }, [load, loadProducts]);
 
   const save = async () => {
+    // A points-only deal has no money path at all: the server forces
+    // price_chf and max_points_discount to 0 and only keeps points_price.
+    // Mirror that here so what we send is exactly what gets stored.
+    const pointsOnly = editing.points_only === true;
+    const pointsPrice = Math.trunc(Number(editing.points_price));
+    if (pointsOnly && (!Number.isFinite(pointsPrice) || pointsPrice <= 0)) {
+      setFormError(t('adminStore.dealForm.pointsPriceRequired'));
+      return;
+    }
+    setFormError(null);
+    const payload = pointsOnly
+      ? { ...editing, points_only: true, points_price: pointsPrice, price_chf: 0, max_points_discount: 0 }
+      : { ...editing, points_only: false, points_price: 0 };
     setSaving(true);
     try {
       if (editing.id) {
-        await apiService.put(`/store/deals/admin/${editing.id}`, editing);
+        await apiService.put(`/store/deals/admin/${editing.id}`, payload);
       } else {
-        await apiService.post('/store/deals/admin', editing);
+        await apiService.post('/store/deals/admin', payload);
       }
       setEditing(null);
       load();
@@ -287,7 +301,12 @@ function DealsManager() {
     }
   };
 
-  const set = (key: string, val: any) => setEditing((p: any) => ({ ...p, [key]: val }));
+  const set = (key: string, val: any) => {
+    setFormError(null);
+    setEditing((p: any) => ({ ...p, [key]: val }));
+  };
+
+  const closeForm = () => { setEditing(null); setFormError(null); };
 
   const handleProductSelect = (product: Product | null) => {
     if (!product) {
@@ -318,11 +337,12 @@ function DealsManager() {
     <div>
       <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 20 }}>
         <div style={{ fontSize: 13, color: C.gray }}>{t('adminStore.list.dealsCount', { count: deals.length })}</div>
-        <button style={BTN_PRIMARY} onClick={() => setEditing({
+        <button style={BTN_PRIMARY} onClick={() => { setFormError(null); setEditing({
           title: '', description: '', category: 'accessories', price_chf: '',
           max_points_discount: 0, image_url: '', ends_at: '', spots_total: 0,
           featured: false, product_id: null, contract_address: '',
-        })}>{t('adminStore.list.newDeal')}</button>
+          points_only: false, points_price: '',
+        }); }}>{t('adminStore.list.newDeal')}</button>
       </div>
 
       {loading && <div style={{ textAlign: 'center', padding: 32, color: C.gray, fontSize: 13 }}>{t('adminStore.common.loading')}</div>}
@@ -346,23 +366,36 @@ function DealsManager() {
                 <span style={{ fontSize: 14, fontWeight: 600, wordBreak: 'break-word' }}>{d.title}</span>
                 {d.featured && <span style={{ fontSize: 8, fontWeight: 700, padding: '2px 6px', background: C.red, color: '#fff', borderRadius: 2, textTransform: 'uppercase', letterSpacing: '0.1em' }}>{t('adminStore.common.featured')}</span>}
                 {d.contract_address && <span style={{ fontSize: 8, fontWeight: 700, padding: '2px 6px', background: C.green, color: '#fff', borderRadius: 2, textTransform: 'uppercase', letterSpacing: '0.1em' }}>{t('adminStore.list.nft')}</span>}
+                {d.points_only && <span style={{ fontSize: 8, fontWeight: 700, padding: '2px 6px', background: C.mid, color: '#fff', borderRadius: 2, textTransform: 'uppercase', letterSpacing: '0.1em' }}>{t('adminStore.list.pointsOnly')}</span>}
               </div>
               <div style={{ fontSize: 12, color: C.gray }}>
-                CHF {parseFloat(d.price_chf).toLocaleString('de-CH')} · {d.category}
+                {/* A points-only deal is stored with price_chf = 0, so showing
+                    "CHF 0" here would read as a free item. Show its points cost. */}
+                {d.points_only
+                  ? t('adminStore.list.pointsCost', { points: (parseInt(d.points_price, 10) || 0).toLocaleString('de-CH') })
+                  : `CHF ${parseFloat(d.price_chf).toLocaleString('de-CH')}`} · {d.category}
                 {d.ends_at && ` · ${t('adminStore.list.endsOn', { date: new Date(d.ends_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) })}`}
                 {d.spots_total > 0 && ` · ${t('adminStore.list.spotsLeft', { left: d.spots_left, total: d.spots_total })}`}
               </div>
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-            <button style={BTN_SECONDARY} onClick={() => setEditing({ ...d, price_chf: String(d.price_chf) })}>{t('adminStore.common.edit')}</button>
+            <button style={BTN_SECONDARY} onClick={() => { setFormError(null); setEditing({
+              ...d,
+              price_chf: String(d.price_chf),
+              points_only: d.points_only === true,
+              // The form binds points_price as a string like price_chf, so the
+              // number coming back from the API is normalised on the way in and
+              // parsed again on save.
+              points_price: d.points_price == null ? '' : String(d.points_price),
+            }); }}>{t('adminStore.common.edit')}</button>
             <button style={BTN_DANGER} onClick={() => remove(d.id)}>{t('adminStore.common.remove')}</button>
           </div>
         </div>
       ))}
 
       {editing && (
-        <Modal title={editing.id ? t('adminStore.dealForm.editTitle') : t('adminStore.dealForm.newTitle')} onClose={() => setEditing(null)}>
+        <Modal title={editing.id ? t('adminStore.dealForm.editTitle') : t('adminStore.dealForm.newTitle')} onClose={closeForm}>
           {/* ── Product selection ── */}
           <Field label={t('adminStore.dealForm.linkProduct')}>
             <ProductDropdown
@@ -387,7 +420,9 @@ function DealsManager() {
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: 11, color: C.gray, marginBottom: 2 }}>{t('adminStore.dealForm.inheritedFrom')}</div>
                 <div style={{ fontSize: 13, fontWeight: 500 }}>
-                  {editing.title} — CHF {editing.price_chf}
+                  {editing.title} — {editing.points_only === true
+                    ? t('adminStore.list.pointsCost', { points: (parseInt(editing.points_price, 10) || 0).toLocaleString('de-CH') })
+                    : `CHF ${editing.price_chf}`}
                 </div>
                 <div style={{ fontSize: 11, color: C.gray }}>
                   {editing.category}
@@ -403,6 +438,26 @@ function DealsManager() {
           <Field label={t('adminStore.dealForm.description')}>
             <textarea style={{ ...INPUT, minHeight: 60, resize: 'vertical' }} value={editing.description || ''} onChange={e => set('description', e.target.value)} />
           </Field>
+          {/* ── Redemption mode ──
+              Points-only deals have no money path: the server zeroes price_chf
+              and max_points_discount, so those two inputs are removed from the
+              form while the toggle is on instead of accepting a value that
+              would silently be discarded on save. */}
+          <div style={{
+            padding: '12px 14px', border: BR, borderRadius: 8,
+            background: editing.points_only === true ? C.surface : C.pureWhite, marginBottom: 16,
+          }}>
+            <label style={{ fontSize: 13, display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+              <input type="checkbox" checked={editing.points_only === true} onChange={e => set('points_only', e.target.checked)} />
+              {t('adminStore.dealForm.pointsOnly')}
+            </label>
+            <div style={{ fontSize: 11, color: C.gray, marginTop: 6, lineHeight: 1.5 }}>
+              {editing.points_only === true
+                ? t('adminStore.dealForm.pointsOnlyOnHint')
+                : t('adminStore.dealForm.pointsOnlyOffHint')}
+            </div>
+          </div>
+
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
             <Field label={t('adminStore.dealForm.category')}>
               <select style={INPUT} value={editing.category || 'accessories'} onChange={e => set('category', e.target.value)}>
@@ -413,14 +468,22 @@ function DealsManager() {
                 <option value="experience">{t('adminStore.dealForm.categoryOptions.experience')}</option>
               </select>
             </Field>
-            <Field label={t('adminStore.dealForm.price')}>
-              <input style={INPUT} type="number" step="0.01" value={editing.price_chf || ''} onChange={e => set('price_chf', e.target.value)} />
-            </Field>
+            {editing.points_only === true ? (
+              <Field label={t('adminStore.dealForm.pointsPrice')}>
+                <input style={INPUT} type="number" min="1" step="1" value={editing.points_price ?? ''} onChange={e => set('points_price', e.target.value)} placeholder="500" />
+              </Field>
+            ) : (
+              <Field label={t('adminStore.dealForm.price')}>
+                <input style={INPUT} type="number" step="0.01" value={editing.price_chf || ''} onChange={e => set('price_chf', e.target.value)} />
+              </Field>
+            )}
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
-            <Field label={t('adminStore.dealForm.maxPointsDiscount')}>
-              <input style={INPUT} type="number" value={editing.max_points_discount || 0} onChange={e => set('max_points_discount', parseInt(e.target.value) || 0)} />
-            </Field>
+            {editing.points_only !== true && (
+              <Field label={t('adminStore.dealForm.maxPointsDiscount')}>
+                <input style={INPUT} type="number" value={editing.max_points_discount || 0} onChange={e => set('max_points_discount', parseInt(e.target.value) || 0)} />
+              </Field>
+            )}
             <Field label={t('adminStore.dealForm.totalSpots')}>
               <input style={INPUT} type="number" value={editing.spots_total || 0} onChange={e => set('spots_total', parseInt(e.target.value) || 0)} />
             </Field>
@@ -437,9 +500,17 @@ function DealsManager() {
               {t('adminStore.common.featured')}
             </label>
           </div>
+          {formError && (
+            <div style={{ fontSize: 12, color: C.red, marginBottom: 12, textAlign: 'right', lineHeight: 1.5 }}>
+              {formError}
+            </div>
+          )}
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-            <button style={BTN_SECONDARY} onClick={() => setEditing(null)}>{t('adminStore.common.cancel')}</button>
-            <button style={{ ...BTN_PRIMARY, opacity: saving ? 0.6 : 1 }} onClick={save} disabled={saving || !editing.title || !editing.price_chf}>
+            <button style={BTN_SECONDARY} onClick={closeForm}>{t('adminStore.common.cancel')}</button>
+            {/* A points-only deal has no CHF price to require; its points price
+                is validated in save() so the admin gets a reason, not a
+                permanently greyed-out button. */}
+            <button style={{ ...BTN_PRIMARY, opacity: saving ? 0.6 : 1 }} onClick={save} disabled={saving || !editing.title || (editing.points_only !== true && !editing.price_chf)}>
               {saving ? t('adminStore.common.saving') : editing.id ? t('adminStore.common.update') : t('adminStore.common.create')}
             </button>
           </div>

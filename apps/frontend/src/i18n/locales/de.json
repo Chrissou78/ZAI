@@ -18,7 +18,8 @@
       "profile": "Profil",
       "settings": "Einstellungen",
       "claimRequests": "Anfragen",
-      "storeContent": "Shop & Inhalte"
+      "storeContent": "Shop & Inhalte",
+      "redeemPoints": "Mit Punkten einlösen"
     },
     "member": "Mitglied",
     "exclusiveMember": "Exklusivmitglied",
@@ -1106,9 +1107,12 @@
       "description": "Steigen Sie durch Produktregistrierungen und gesammelte Erfahrungspunkte in höhere Stufen auf."
     },
     "loading": "Prämien werden geladen…",
+    "loadError": "Ihre Punkte und Stufen konnten nicht geladen werden. Bitte laden Sie die Seite neu.",
     "banner": {
       "label": "Ihr aktueller Status",
-      "tierWord": "Stufe"
+      "tierWord": "Stufe",
+      "noTier": "Noch keine Stufe",
+      "noTierHint": "Noch {{points}} Punkte bis zur Stufe {{tier}}."
     },
     "yourTierBadge": "Ihre Stufe",
     "tierRange": {
@@ -1116,6 +1120,14 @@
       "noCeiling": "{{floor}}+ Punkte"
     },
     "tiers": {
+      "white": {
+        "name": "Weiss",
+        "perks": [
+          "Digitale Garantie & Registrierung",
+          "Saison-Newsletter",
+          "Einladungen zu Mitglieder-Events"
+        ]
+      },
       "blue": {
         "name": "Blau",
         "perks": [
@@ -1165,6 +1177,7 @@
     },
     "highlights": {
       "sectionTitle": "Ihre Vorteile der Stufe {{tier}}",
+      "sectionTitleNoTier": "Mitgliedervorteile",
       "insurance": {
         "title": "Kostenlose Skiversicherung",
         "description": "Kostenlose Versicherung bei jedem neuen zai Ski-Kauf."
@@ -1180,6 +1193,30 @@
     },
     "activity": {
       "sectionTitle": "Letzte Aktivitäten"
+    },
+    "vouchers": {
+      "sectionTitle": "Event-Gutscheine der Stufen",
+      "intro": "Jede Stufe schaltet einen einmaligen Event-Gutschein frei, einlösbar bei jedem zai Ski Event-Kauf. Jeder Gutschein ist zwei Jahre ab Anforderung gültig — einer pro Mitglied und Stufe.",
+      "blockLabel": "Event-Gutschein",
+      "amount": "CHF {{amount}}",
+      "locked": "Gesperrt",
+      "lockedHint": "Noch {{points}} Punkte zum Freischalten",
+      "claim": "Gutschein anfordern",
+      "claiming": "Wird angefordert…",
+      "claimedConfirmation": "Gutschein gesichert",
+      "codeLabel": "Gutscheincode",
+      "validityNote": "Zwei Jahre ab Anforderung gültig.",
+      "validUntil": "Gültig bis {{date}}",
+      "redeemed": "Eingelöst am {{date}}",
+      "copy": "Code kopieren",
+      "copied": "Kopiert",
+      "selectHint": "Code markiert — mit Strg/Cmd + C kopieren.",
+      "loadError": "Ihre Gutscheine konnten nicht geladen werden. Bitte laden Sie die Seite neu, um den Status zu sehen.",
+      "errors": {
+        "notReached": "Diese Stufe ist noch nicht erreicht — erforderlich sind {{required}} Punkte.",
+        "network": "Der Gutschein konnte nicht angefordert werden. Bitte prüfen Sie Ihre Verbindung und versuchen Sie es erneut.",
+        "generic": "Der Gutschein konnte nicht angefordert werden. Bitte versuchen Sie es in Kürze erneut."
+      }
     },
     "units": {
       "pointsValue": "{{value}} Pkt."
@@ -1382,7 +1419,9 @@
       "noStories": "Noch keine Beiträge. Erstellen Sie Ihren ersten Beitrag.",
       "nft": "NFT",
       "endsOn": "Endet am {{date}}",
-      "spotsLeft": "{{left}}/{{total}} Plätze"
+      "spotsLeft": "{{left}}/{{total}} Plätze",
+      "pointsOnly": "Nur Punkte",
+      "pointsCost": "{{points}} Punkte"
     },
     "dealForm": {
       "editTitle": "Angebot bearbeiten",
@@ -1402,6 +1441,11 @@
         "experience": "Erlebnis"
       },
       "price": "Preis (CHF)",
+      "pointsOnly": "Einlösung nur mit Punkten",
+      "pointsOnlyOffHint": "Aus: Mitglieder zahlen in CHF und können einen Punkterabatt anwenden.",
+      "pointsOnlyOnHint": "Mitglieder lösen dieses Angebot ausschliesslich mit Punkten ein. CHF-Preis und maximaler Punkterabatt werden als 0 gespeichert und sind nicht bearbeitbar.",
+      "pointsPrice": "Punktepreis",
+      "pointsPriceRequired": "Geben Sie für ein Angebot nur mit Punkten einen Punktepreis über 0 ein.",
       "maxPointsDiscount": "Maximaler Punkterabatt",
       "totalSpots": "Plätze gesamt (0 = unbegrenzt)",
       "imageUrl": "Bild-URL",
@@ -1466,6 +1510,65 @@
       "en": "English",
       "de": "Deutsch",
       "zh": "中文"
+    }
+  },
+  "pointsStore": {
+    "header": {
+      "label": "Nur gegen Punkte",
+      "title": "Mit Punkten einlösen",
+      "description": "Diese Stücke und Erlebnisse sind nicht käuflich. Sie werden ausschliesslich gegen Ihre gesammelten Punkte freigegeben – niemals gegen Geld.",
+      "balanceLabel": "Ihr Punktestand"
+    },
+    "loading": "Punkte-Kollektion wird geladen…",
+    "footnote": "Einlösungen sind endgültig. Die Punkte werden mit der Bestätigung abgezogen und können nicht zurückgebucht werden.",
+    "units": {
+      "points_one": "{{count, number}} Pkt.",
+      "points_other": "{{count, number}} Pkt."
+    },
+    "empty": {
+      "title": "Noch keine Prämien gegen Punkte verfügbar",
+      "body": "Neue Stücke und Erlebnisse erscheinen im Laufe der Saison. Sammeln Sie weiter – hier werden sie zuerst freigegeben."
+    },
+    "card": {
+      "pointsOnlyBadge": "Nur Punkte",
+      "redeemedBadge": "Eingelöst",
+      "costLabel": "Punktepreis",
+      "spotsLeft_one": "Noch {{count}} verfügbar",
+      "spotsLeft_other": "Noch {{count}} verfügbar",
+      "until": "Bis {{date}}",
+      "redeem": "Einlösen",
+      "locked": "Zu wenig Punkte",
+      "soldOut": "Vollständig eingelöst",
+      "expired": "Nicht mehr verfügbar",
+      "shortfall_one": "Noch {{count, number}} Pkt. nötig",
+      "shortfall_other": "Noch {{count, number}} Pkt. nötig",
+      "redeemedNote": "Eingelöst – unser Concierge meldet sich"
+    },
+    "confirm": {
+      "label": "Einlösung bestätigen",
+      "body": "{{points}} werden von Ihrem Guthaben abgezogen. Dies kann nicht rückgängig gemacht werden.",
+      "balanceAfter": "Guthaben danach: {{points}}",
+      "cancel": "Abbrechen",
+      "confirm": "Bestätigen",
+      "submitting": "Wird eingelöst…"
+    },
+    "success": {
+      "title": "{{title}} gehört Ihnen",
+      "body": "{{points}} abgezogen. Unser Concierge schreibt Ihnen innerhalb von zwei Arbeitstagen, um die Abholung in Pontresina oder den Versand zu vereinbaren.",
+      "dismiss": "Schliessen",
+      "cardTitle": "Einlösung bestätigt",
+      "cardBody": "{{points}} abgezogen. Die Details erhalten Sie per E-Mail."
+    },
+    "errors": {
+      "notEnoughPoints_one": "Zu wenig Punkte – Ihnen fehlt noch {{count, number}} Pkt.",
+      "notEnoughPoints_other": "Zu wenig Punkte – Ihnen fehlen noch {{count, number}} Pkt.",
+      "soldOut": "Diese Prämie wurde soeben vollständig eingelöst.",
+      "expired": "Das Einlösefenster ist inzwischen geschlossen.",
+      "notPointsOnly": "Dieser Artikel ist keine Einlösung gegen Punkte.",
+      "generic": "Die Einlösung konnte nicht abgeschlossen werden. Es wurden keine Punkte abgezogen – bitte versuchen Sie es erneut.",
+      "network": "Der Server war nicht erreichbar, die Einlösung ist unbestätigt. Bitte laden Sie die Seite neu, bevor Sie es erneut versuchen.",
+      "loadFailed": "Die Punkte-Kollektion konnte nicht geladen werden.",
+      "retry": "Erneut versuchen"
     }
   }
 }
