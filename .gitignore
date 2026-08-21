@@ -37,3 +37,7 @@ pnpm-debug.log*
 # OS
 Thumbs.db
 .DS_Store
+
+# TypeScript incremental build cache (regenerated on every tsc run)
+tsconfig.tsbuildinfo
+*.tsbuildinfo
