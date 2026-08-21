@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useAppContext } from '../../context/AppContext';
 import { apiService } from '../../services/api';
 import UserAvatar from '../Common/UserAvatar';
+import ProductImageFallback from '../Common/ProductImageFallback';
 
 /* ── Design tokens ── */
 const C = {
@@ -1571,7 +1572,7 @@ const PurchaseHistorySection: React.FC = () => {
           }}>
             {p.item_image
               ? <img src={p.item_image} alt={p.item_title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              : <span style={{ color: '#555', fontSize: 20 }}>⬡</span>}
+              : <ProductImageFallback size="sm" />}
           </div>
 
           <div style={{ flex: 1, minWidth: 0 }}>

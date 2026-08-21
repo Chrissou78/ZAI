@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { apiService } from '../../services/api';
+import ProductImageFallback from '../Common/ProductImageFallback';
 
 /* ── House tokens (mirrors Updates.tsx / Rewards.tsx) ── */
 const C = {
@@ -148,13 +149,7 @@ function RewardCard({
             }}
           />
         ) : (
-          <div style={{
-            width: '100%', height: '100%',
-            background: 'linear-gradient(135deg, #1a1a1a 0%, #2e2e2e 100%)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-          }}>
-            <span style={{ color: '#555', fontSize: 32 }}>⬡</span>
-          </div>
+          <ProductImageFallback />
         )}
         <div style={{
           position: 'absolute', top: 10, left: 10,

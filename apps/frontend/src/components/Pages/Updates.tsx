@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { useTranslation } from 'react-i18next';
 import { stripePromise } from '../../lib/stripe';
+import ProductImageFallback from '../Common/ProductImageFallback';
 
 const C = {
   black: '#0a0a0a', white: '#f5f4f0', red: '#7A222E',
@@ -366,7 +367,7 @@ function CollectibleCard({ card, onClaim }: { card: any; onClaim: (id: string) =
       }}>
         {card.imageUrl
           ? <img src={card.imageUrl} alt={card.name} style={{ width: '100%', height: '100%', objectFit: 'cover', filter: isLocked ? 'grayscale(1) brightness(0.7)' : 'none' }} />
-          : <div style={{ color: '#555', fontSize: 40 }}>⬡</div>
+          : <ProductImageFallback size="lg" />
         }
         {isLocked && (
           <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', fontSize: 28 }}>🔒</div>
@@ -568,38 +569,35 @@ export default function Updates() {
                   </button>
                 </div>
 
-                {featuredDeal.image_url ? (
-                  <div style={{
-                    position: 'relative', zIndex: 1, flexShrink: 0,
-                    width: 220, maxWidth: '100%', height: 'auto', aspectRatio: '1 / 1',
-                    borderRadius: 8, overflow: 'hidden',
-                    background: 'rgba(255,255,255,0.04)',
-                  }}>
+                {/* One square box either way. Previously a featured deal with
+                    no photo rendered no image area at all and floated the
+                    badge over the card corner, which made the banner's layout
+                    jump between deals — and the badge is kept scoped inside
+                    the box because that corner position used to overlap the
+                    text column. */}
+                <div style={{
+                  position: 'relative', zIndex: 1, flexShrink: 0,
+                  width: 220, maxWidth: '100%', height: 'auto', aspectRatio: '1 / 1',
+                  borderRadius: 8, overflow: 'hidden',
+                  background: 'rgba(255,255,255,0.04)',
+                }}>
+                  {featuredDeal.image_url ? (
                     <img
                       src={featuredDeal.image_url}
                       alt={featuredDeal.title}
                       style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                     />
-                    {/* Scoped to the photo itself so it can't stray onto the
-                        text column — the old card-corner position overlapped
-                        this box since both used similar top/right offsets. */}
-                    <div style={{
-                      position: 'absolute', top: 10, right: 10, zIndex: 2,
-                      fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase',
-                      padding: '5px 12px', borderRadius: 4, color: '#fff',
-                      background: 'rgba(122,34,46,0.9)', border: '1px solid rgba(122,34,46,0.5)',
-                      backdropFilter: 'blur(8px)',
-                    }}>{t('updates.featured.newDeal')}</div>
-                  </div>
-                ) : (
+                  ) : (
+                    <ProductImageFallback size="lg" />
+                  )}
                   <div style={{
-                    position: 'absolute', top: 20, right: 32, zIndex: 2,
+                    position: 'absolute', top: 10, right: 10, zIndex: 2,
                     fontSize: 9, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase',
-                    padding: '6px 14px', borderRadius: 4, color: '#fff',
+                    padding: '5px 12px', borderRadius: 4, color: '#fff',
                     background: 'rgba(122,34,46,0.9)', border: '1px solid rgba(122,34,46,0.5)',
                     backdropFilter: 'blur(8px)',
                   }}>{t('updates.featured.newDeal')}</div>
-                )}
+                </div>
               </div>
             )}
 
@@ -659,13 +657,7 @@ export default function Updates() {
                         {deal.image_url ? (
                           <img src={deal.image_url} alt={deal.title} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                         ) : (
-                          <div style={{
-                            width: '100%', height: '100%', minHeight: 180,
-                            background: 'linear-gradient(135deg, #1a1a1a 0%, #2e2e2e 100%)',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          }}>
-                            <span style={{ color: '#555', fontSize: 32 }}>⬡</span>
-                          </div>
+                          <ProductImageFallback minHeight={180} />
                         )}
                       </div>
 
