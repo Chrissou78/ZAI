@@ -361,6 +361,40 @@ const Dashboard: React.FC = () => {
     }
   }, [user?.id]);
 
+  // ── Auto-grant the Experience Club Card ──
+  // Membership is no longer gated, so every registered member is entitled to
+  // a card with no application and no proof of purchase. The grant lives
+  // behind its own endpoint rather than the login handler so a slow or
+  // failing RWA mint can never block sign-in — which means something has to
+  // call it, and the dashboard is where members land after logging in.
+  //
+  // The endpoint is idempotent (PRIMARY KEY on user_id), so calling it on
+  // every dashboard visit is intentional: it doubles as a retry for anyone
+  // whose first attempt failed while the mint service was down. Only
+  // re-fetch on the call that actually granted, to avoid a pointless second
+  // round trip on every later visit.
+  const cardGrantAttempted = useRef(false);
+  useEffect(() => {
+    if (!user?.id || cardGrantAttempted.current) return;
+    cardGrantAttempted.current = true;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await apiService.post('/products/ensure-experience-card', {});
+        const data = res.data as any;
+        if (!cancelled && data?.granted) {
+          // Newly granted — refresh so the unlocked state and the
+          // zai_experience_card cache other pages read are up to date.
+          fetchDashboardData();
+        }
+      } catch {
+        // Non-fatal by design: a 409 (no wallet yet) or 502 (mint service
+        // down) just means the next dashboard visit retries.
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [user?.id]);
+
   // ── Phone upload polling ──
   useEffect(() => {
     if (!ecQrPolling || !ecUploadToken) return;
