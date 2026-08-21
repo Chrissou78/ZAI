@@ -11,6 +11,10 @@ import {
   JWT_SECRET,
 } from '../middleware.js';
 
+// Complimentary ski insurance is only available for recent purchases.
+// Client-confirmed window; mirrored in the Products UI date picker.
+export const INSURANCE_ELIGIBILITY_DAYS = 30;
+
 let dbModule = null;
 async function getDB() {
   if (!dbModule) {
@@ -870,6 +874,41 @@ export default async function handler(req, res) {
       const pool = db.getPool();
 
       const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+
+      // ── Eligibility: purchase must be within the last 30 days ──
+      // Enforced here as well as in the UI date picker, because the client
+      // check is trivially bypassable and this call creates a real insurance
+      // policy with the external provider. Compared on calendar days in UTC
+      // so the boundary can't drift with the caller's timezone.
+      const DAY_MS = 24 * 60 * 60 * 1000;
+      const rawDate = String(body.purchasingdate || '').trim();
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(rawDate)) {
+        return res.status(400).json({
+          error: 'Invalid purchase date',
+          detail: 'purchasingdate is required in YYYY-MM-DD format',
+        });
+      }
+      const purchased = Date.parse(rawDate + 'T00:00:00Z');
+      if (!isFinite(purchased)) {
+        return res.status(400).json({ error: 'Invalid purchase date', detail: rawDate });
+      }
+      const now = new Date();
+      const todayUTC = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+      const ageDays = Math.floor((todayUTC - purchased) / DAY_MS);
+      if (ageDays < 0) {
+        return res.status(400).json({
+          error: 'Purchase date is in the future',
+          detail: `purchasingdate ${rawDate} is after today`,
+        });
+      }
+      if (ageDays > INSURANCE_ELIGIBILITY_DAYS) {
+        return res.status(400).json({
+          error: 'Not eligible for insurance',
+          detail: `Only purchases from the last ${INSURANCE_ELIGIBILITY_DAYS} days are eligible; this purchase is ${ageDays} days old.`,
+          eligibilityDays: INSURANCE_ELIGIBILITY_DAYS,
+          purchaseAgeDays: ageDays,
+        });
+      }
 
       const partnerId = Number(process.env.SAS_PARTNER_ID);
 

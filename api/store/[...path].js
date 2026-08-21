@@ -1,5 +1,6 @@
 import { randomUUID } from 'crypto';
 import { getPool, initDB, requireAdmin, isAdmin } from '../db.js';
+import { pointsForAmount, chfForPoints, categoryEarnsPoints } from '../points.js';
 import { authenticate } from '../middleware.js';
 
 // ══════════════════════════════════════════════════════════
@@ -48,8 +49,10 @@ export async function spendPoints(userId, amount, type, description, relatedId) 
   return addPoints(userId, -amount, type, description, relatedId);
 }
 
+// Kept as a named export because api/products imports it. Delegates to the
+// shared economics module so the earn rate lives in exactly one place.
 export function pointsFromCHF(priceCHF) {
-  return Math.round(parseFloat(priceCHF || 0) * 2.7);
+  return pointsForAmount(priceCHF);
 }
 
 export async function logPurchase(userId, { source, itemId, itemTitle, itemImage, category, amountCHF, pointsUsed, pointsEarned }) {
@@ -191,16 +194,24 @@ async function fulfillDealRedemption({ redemptionId, dealId, userId, pointsUsed,
     [dealId]
   );
 
-  // Award loyalty points (2.7× CHF amount actually paid)
-  const earnedPts = Math.round((amountCHF || 0) * 2.7);
-  if (earnedPts > 0) {
-    await addPoints(userId, earnedPts, 'purchase', `Deal purchase: ${dealId}`, redemptionId);
-  }
-
+  // The deal row is loaded BEFORE awarding points because the award now
+  // depends on its category: only physical zai goods earn. Events,
+  // services and anything not on the allowlist earn nothing.
   const dealRes = await getPool().query(
     'SELECT title, contract_address, image_url, category FROM deals WHERE id = $1', [dealId]
   );
   const deal = dealRes.rows[0];
+
+  // Award loyalty points — 1 point per unit of currency spent, physical only.
+  let earnedPts = 0;
+  if (categoryEarnsPoints(deal?.category)) {
+    earnedPts = pointsForAmount(amountCHF);
+    if (earnedPts > 0) {
+      await addPoints(userId, earnedPts, 'purchase', `Deal purchase: ${dealId}`, redemptionId);
+    }
+  } else {
+    console.log(`[deal-fulfill] No points awarded for deal ${dealId} — category "${deal?.category || 'unknown'}" is not point-earning`);
+  }
 
   try {
     await logPurchase(userId, {
@@ -349,7 +360,9 @@ async function handleDeals(req, res, segments, method, userId, decoded) {
       return res.status(400).json({ error: 'Deal has expired' });
 
     const pts = Math.max(0, Math.min(parseInt(pointsToUse) || 0, deal.max_points_discount));
-    const discountCHF = pts / 100;
+    // 1 point = CHF 0.027 (see api/points.js). Previously hardcoded as
+    // pts/100, i.e. CHF 0.01 per point.
+    const discountCHF = chfForPoints(pts);
     const finalCHF = Math.max(0, parseFloat(deal.price_chf) - discountCHF);
 
     const bal = await getBalance(userId);
@@ -678,21 +691,22 @@ async function handleCollectibles(req, res, segments, method, userId) {
     );
     if (existing.rows.length) return res.status(400).json({ error: 'Already claimed' });
 
+    // Digital collectibles no longer award points — only physical zai goods
+    // do (see EARNING_CATEGORIES in api/points.js). The card's points_reward
+    // column and admin field are left intact so existing data and the admin
+    // UI keep working, but nothing is credited to the member's balance and
+    // the claim is recorded as earning zero.
     const claimId = randomUUID();
     await getPool().query(
       `INSERT INTO collectible_claims (id, card_id, user_id, points_earned)
        VALUES ($1, $2, $3, $4)`,
-      [claimId, cardId, userId, card.points_reward]
+      [claimId, cardId, userId, 0]
     );
-
-    if (card.points_reward > 0) {
-      await addPoints(userId, card.points_reward, 'collectible', `Claimed: ${card.name}`, cardId);
-    }
 
     try {
       await logPurchase(userId, {
         source: 'collectible', itemId: cardId, itemTitle: card.name, itemImage: card.image_url,
-        category: card.rarity, amountCHF: 0, pointsUsed: 0, pointsEarned: card.points_reward,
+        category: card.rarity, amountCHF: 0, pointsUsed: 0, pointsEarned: 0,
       });
     } catch (logErr) {
       console.error('[collectible-claim] Failed to log purchase history (non-fatal):', logErr.message);
@@ -700,7 +714,7 @@ async function handleCollectibles(req, res, segments, method, userId) {
 
     return res.json({
       success: true,
-      data: { claimId, pointsEarned: card.points_reward },
+      data: { claimId, pointsEarned: 0 },
     });
   }
 
