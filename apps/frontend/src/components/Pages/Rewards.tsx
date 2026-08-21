@@ -1,7 +1,8 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAppContext  } from '../../context/AppContext';
+import { apiService } from '../../services/api';
 
 // ── Design tokens — restricted to the brand's actual color scheme: Ochsen Blut
 // burgundy (RGB 122/34/46), white, black, 40% grey, 70% grey. No blue, no gold. ──
@@ -10,20 +11,27 @@ const C = {
   grey40: '#B2B2B2', grey70: '#706F6F',
   gray: '#6a6a6a', border: '#e0ddd6', borderDark: '#2a2a2a', surface: '#f0ede6',
   green: '#4caf7d', pureWhite: '#ffffff', font: "'Inter', sans-serif",
+  // Lightened burgundy — the one accent legible on the black "current tier" card.
+  burgundyLight: '#b84055', burgundyTint: '#e0a3ac',
 };
 const LABEL: React.CSSProperties = {
   fontSize: 10, letterSpacing: '0.2em', textTransform: 'uppercase',
   color: C.gray, fontWeight: 500,
 };
+// Voucher codes must be unambiguous (O vs 0, I vs 1) — a system mono stack, no webfont.
+const MONO = "ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace";
 
-// ── Tier meta — icon colors follow the allowed palette: Red is the app's one
-// burgundy, Blue and Diamond use the two greys (no blue or gold is permitted).
-// Names/perks are translated at render time via the `key` below. ──
+// ── Tier meta for the five-tier scheme. Thresholds and voucher values mirror the
+// backend (White 500 / Blue 2 500 / Red 5 000 / Black 10 000 / Diamond 15 000);
+// `voucherCHF` is only a fallback — the live amount comes from /store/vouchers.
+// `icon` is the accent on a light card, `iconOnDark` the one on the black
+// "your tier" card. Names/perks are translated at render time via the `key`. ──
 const TIERS = [
-  { key: 'blue',    num: '01', floor: 0,     ceiling: 14999,  icon: C.grey40 },
-  { key: 'red',     num: '02', floor: 15000, ceiling: 29999,  icon: C.burgundy },
-  { key: 'black',   num: '03', floor: 30000, ceiling: 49999,  icon: '#f5f4f0' },
-  { key: 'diamond', num: '04', floor: 50000, ceiling: null,   icon: C.grey70 },
+  { key: 'white',   num: '01', floor: 500,   ceiling: 2499,  voucherCHF: 25,  icon: C.grey70,   iconOnDark: C.grey40, solid: false },
+  { key: 'blue',    num: '02', floor: 2500,  ceiling: 4999,  voucherCHF: 50,  icon: C.grey70,   iconOnDark: C.grey40, solid: false },
+  { key: 'red',     num: '03', floor: 5000,  ceiling: 9999,  voucherCHF: 100, icon: C.burgundy, iconOnDark: C.burgundyLight, solid: false },
+  { key: 'black',   num: '04', floor: 10000, ceiling: 14999, voucherCHF: 200, icon: C.black,    iconOnDark: C.white,  solid: false },
+  { key: 'diamond', num: '05', floor: 15000, ceiling: null,  voucherCHF: 300, icon: C.black,    iconOnDark: C.white,  solid: true },
 ];
 
 // Highlighted perks shown for whichever tier the member currently holds.
@@ -43,7 +51,33 @@ const TIER_HIGHLIGHTS = [
   },
 ];
 
-function tierIndex(name: string) {
+interface BalanceData {
+  balance: number;
+  /** null below 500 points — a member holds no tier at all until White. */
+  tier: string | null;
+  tierKey: string | null;
+  tierFloor: number | null;
+  /** null for Diamond, the top tier. */
+  tierCeiling: number | null;
+  voucherCHF: number | null;
+  nextTier: string | null;
+  nextTierFloor: number | null;
+  pointsToNext: number | null;
+}
+
+interface VoucherTier {
+  key: string;
+  name: string;
+  minPoints: number;
+  amountCHF: number;
+  unlocked: boolean;
+  claimed: boolean;
+  code: string | null;
+  expiresAt: string | null;
+  redeemedAt: string | null;
+}
+
+function tierIndex(name: string | null | undefined) {
   return TIERS.findIndex(t => t.key === (name || '').toLowerCase());
 }
 
@@ -51,10 +85,18 @@ export default function Rewards() {
   const { t, i18n } = useTranslation();
   const { user } = useAppContext();
   const navigate = useNavigate();
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<BalanceData | null>(null);
   const [history, setHistory] = useState<any[]>([]);
+  const [vouchers, setVouchers] = useState<VoucherTier[] | null>(null);
+  const [voucherLoadError, setVoucherLoadError] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  // Per-tier voucher interaction state, keyed by tier key.
+  const [claiming, setClaiming] = useState<string | null>(null);
+  const [claimErrors, setClaimErrors] = useState<Record<string, string>>({});
+  const [claimedKey, setClaimedKey] = useState<string | null>(null);
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const [selectHintKey, setSelectHintKey] = useState<string | null>(null);
   // Progress section switches from a 2-column (content + progress bar)
   // layout to a stacked one below 768px — not achievable with CSS alone
   // since the two columns have very different content types/widths.
@@ -65,28 +107,47 @@ export default function Rewards() {
     return () => window.removeEventListener('resize', h);
   }, []);
 
+  // Code <div>s, so the clipboard fallback can select the text it cannot copy.
+  const codeRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const timers = useRef<number[]>([]);
+  useEffect(() => () => { timers.current.forEach(id => window.clearTimeout(id)); }, []);
+
+  /** Shows a transient per-tier confirmation without leaving it on screen forever. */
+  const flash = (setter: (v: string | null) => void, key: string, ms = 3000) => {
+    setter(key);
+    const id = window.setTimeout(() => setter(null), ms);
+    timers.current.push(id);
+  };
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      try {
-        const [balRes, histRes] = await Promise.all([
-          fetch('/api/store/rewards/balance', { headers: { Authorization: `Bearer ${localStorage.getItem('zai_token')}` } }),
-          fetch('/api/store/rewards/history?limit=10', { headers: { Authorization: `Bearer ${localStorage.getItem('zai_token')}` } }),
-        ]);
-        if (!cancelled) {
-          const balJson = await balRes.json();
-          const histJson = await histRes.json();
-          if (balJson.success) setData(balJson.data);
-          if (histJson.success) setHistory(histJson.data);
-        }
-      } catch (e: any) {
-        if (!cancelled) setError(e.message);
-      } finally {
-        if (!cancelled) setLoading(false);
+      // Settled, not all-or-nothing: a failing history or voucher call must not
+      // blank out the tier display, and vice versa.
+      const [balRes, histRes, vouRes] = await Promise.allSettled([
+        apiService.get<BalanceData>('/store/rewards/balance'),
+        apiService.get<any[]>('/store/rewards/history?limit=10'),
+        apiService.get<{ balance: number; currentTier: string | null; tiers: VoucherTier[] }>('/store/vouchers'),
+      ]);
+      if (cancelled) return;
+
+      if (balRes.status === 'fulfilled' && balRes.value.data?.success) {
+        setData(balRes.value.data.data as BalanceData);
+      } else {
+        setError(t('rewards.loadError'));
       }
+      if (histRes.status === 'fulfilled' && histRes.value.data?.success) {
+        setHistory((histRes.value.data.data as any[]) || []);
+      }
+      if (vouRes.status === 'fulfilled' && vouRes.value.data?.success) {
+        setVouchers((vouRes.value.data.data as any)?.tiers || []);
+      } else {
+        setVoucherLoadError(true);
+      }
+      setLoading(false);
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [t]);
 
   // Translated tier copy (name + perks) — the numeric/color meta above stays
   // static and is merged with the localized strings for rendering.
@@ -96,17 +157,116 @@ export default function Rewards() {
     perks: t(`rewards.tiers.${tier.key}.perks`, { returnObjects: true }) as string[],
   })), [t, i18n.language]);
 
-  const currentTierIdx = data ? tierIndex(data.tier) : 0;
-  const currentTier = localizedTiers[currentTierIdx] || localizedTiers[0];
-  const nextTier = currentTierIdx < localizedTiers.length - 1 ? localizedTiers[currentTierIdx + 1] : null;
+  const balance = data?.balance || 0;
+
+  // Below 500 points the API returns tier: null and the member holds NO tier —
+  // currentTierIdx stays -1 so no card is marked and the banner says so.
+  const currentTierIdx = data ? tierIndex(data.tierKey || data.tier) : -1;
+  const hasTier = currentTierIdx >= 0;
+  const currentTier = hasTier ? localizedTiers[currentTierIdx] : null;
+  const nextTier = hasTier
+    ? (currentTierIdx < localizedTiers.length - 1 ? localizedTiers[currentTierIdx + 1] : null)
+    : localizedTiers[0];
 
   const progress = useMemo(() => {
     if (!data || !nextTier) return 100;
-    const range = nextTier.floor - currentTier.floor;
-    return Math.min(100, Math.max(0, ((data.balance - currentTier.floor) / range) * 100));
-  }, [data, currentTier, nextTier]);
+    const floor = currentTier ? currentTier.floor : 0;
+    const range = nextTier.floor - floor;
+    if (range <= 0) return 100;
+    return Math.min(100, Math.max(0, ((balance - floor) / range) * 100));
+  }, [data, balance, currentTier, nextTier]);
 
   const dateLocale = i18n.language === 'de' ? 'de-CH' : i18n.language === 'zh' ? 'zh-CN' : 'en-GB';
+  const fmtDate = (iso?: string | null) => {
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return '';
+    return d.toLocaleDateString(dateLocale, { day: 'numeric', month: 'short', year: 'numeric' });
+  };
+  const num = (n: number) => n.toLocaleString('de-CH');
+
+  const voucherByKey = useMemo(() => {
+    const map: Record<string, VoucherTier> = {};
+    (vouchers || []).forEach(v => { if (v && v.key) map[String(v.key).toLowerCase()] = v; });
+    return map;
+  }, [vouchers]);
+
+  /** Claims the event voucher for a tier and patches it into state in place. */
+  const claimVoucher = async (tierKey: string) => {
+    setClaiming(tierKey);
+    setClaimErrors(prev => ({ ...prev, [tierKey]: '' }));
+    try {
+      const res = await apiService.post<any>(`/store/vouchers/${tierKey}/claim`);
+      const payload: any = res.data?.data;
+      // `alreadyClaimed: true` comes back with the existing code — same happy path.
+      if (res.data?.success && payload?.code) {
+        setVouchers(prev => (prev || []).map(v => v.key === tierKey ? {
+          ...v,
+          claimed: true,
+          code: payload.code,
+          expiresAt: payload.expiresAt ?? v.expiresAt,
+          amountCHF: payload.amountCHF ?? v.amountCHF,
+        } : v));
+        flash(setClaimedKey, tierKey, 5000);
+      } else {
+        setClaimErrors(prev => ({ ...prev, [tierKey]: t('rewards.vouchers.errors.generic') }));
+      }
+    } catch (e: any) {
+      const status = e?.response?.status;
+      const body = e?.response?.data;
+      if (status === 403) {
+        const required = typeof body?.required === 'number' ? body.required : (TIERS.find(x => x.key === tierKey)?.floor ?? 0);
+        setClaimErrors(prev => ({ ...prev, [tierKey]: t('rewards.vouchers.errors.notReached', { required: num(required) }) }));
+      } else if (!e?.response) {
+        setClaimErrors(prev => ({ ...prev, [tierKey]: t('rewards.vouchers.errors.network') }));
+      } else {
+        setClaimErrors(prev => ({ ...prev, [tierKey]: t('rewards.vouchers.errors.generic') }));
+      }
+    } finally {
+      setClaiming(null);
+    }
+  };
+
+  /** Fallback for non-secure origins: select the code so the member can copy it. */
+  const selectCode = (tierKey: string) => {
+    const el = codeRefs.current[tierKey];
+    if (!el) return false;
+    try {
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      const sel = window.getSelection();
+      if (!sel) return false;
+      sel.removeAllRanges();
+      sel.addRange(range);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const copyCode = async (tierKey: string, code: string) => {
+    let ok = false;
+    // navigator.clipboard is undefined on non-secure origins — never assume it.
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+        await navigator.clipboard.writeText(code);
+        ok = true;
+      }
+    } catch {
+      ok = false;
+    }
+    if (!ok) {
+      const selected = selectCode(tierKey);
+      try {
+        const legacy = (document as any).execCommand;
+        if (selected && typeof legacy === 'function') ok = legacy.call(document, 'copy') === true;
+      } catch {
+        ok = false;
+      }
+      if (!ok) { flash(setSelectHintKey, tierKey, 6000); return; }
+    }
+    flash(setCopiedKey, tierKey);
+  };
 
   if (loading) {
     return (
@@ -116,8 +276,6 @@ export default function Rewards() {
       </div>
     );
   }
-
-  const balance = data?.balance || 0;
 
   return (
     <div style={{ maxWidth: 1100, margin: '0 auto', padding: isMobile ? '32px 16px 56px' : '48px 40px 80px', fontFamily: C.font, color: C.gray, width: '100%', boxSizing: 'border-box' }}>
@@ -135,33 +293,69 @@ export default function Rewards() {
         </p>
       </div>
 
-      {/* ── Current tier banner ── */}
+      {error && (
+        <div style={{
+          border: `1px solid ${C.burgundy}`, background: 'rgba(122,34,46,0.06)',
+          color: C.burgundy, fontSize: 12, padding: '12px 16px', marginBottom: 24,
+        }}>{error}</div>
+      )}
+
+      {/* ── Current tier banner — a member below 500 points holds no tier ── */}
       <div style={{
         background: C.black, border: `1px solid ${C.borderDark}`, color: C.pureWhite,
         padding: isMobile ? '1.5rem' : '2rem',
         marginBottom: 1,
       }}>
         <div style={{ ...LABEL, color: '#666', marginBottom: 8 }}>{t('rewards.banner.label')}</div>
-        <div style={{ fontSize: 'clamp(24px, 8vw, 36px)', fontWeight: 200 }}>
-          {currentTier.name} <em style={{ fontStyle: 'normal', color: C.white }}>{t('rewards.banner.tierWord')}</em>
-        </div>
+        {hasTier && currentTier ? (
+          <div style={{ fontSize: 'clamp(24px, 8vw, 36px)', fontWeight: 200 }}>
+            {currentTier.name} <em style={{ fontStyle: 'normal', color: C.white }}>{t('rewards.banner.tierWord')}</em>
+          </div>
+        ) : (
+          <>
+            <div style={{ fontSize: 'clamp(24px, 8vw, 36px)', fontWeight: 200, color: C.grey40 }}>
+              {t('rewards.banner.noTier')}
+            </div>
+            <div style={{ fontSize: 12, color: '#8c8c8c', marginTop: 6, fontWeight: 300 }}>
+              {t('rewards.banner.noTierHint', {
+                points: num(Math.max(0, localizedTiers[0].floor - balance)),
+                tier: localizedTiers[0].name,
+              })}
+            </div>
+          </>
+        )}
       </div>
 
-      {/* ── Tier cards ── */}
+      {/* ── Tier cards — all five tiers, each with its event voucher ── */}
       <div style={{
-        display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+        display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))',
         gap: 1, background: '#ddd', border: '1px solid #ddd', marginBottom: 1,
       }}>
         {localizedTiers.map((tier, i) => {
           const isCurrent = i === currentTierIdx;
-          // The Black tier's icon color (near-white) is designed for its own
-          // dark "current" card; on a plain white card it would be invisible.
-          const iconColor = tier.key === 'black' && !isCurrent ? C.black : tier.icon;
+          // Each tier carries a light-card and a dark-card accent, since the
+          // "your tier" card inverts to black and would swallow the light ones.
+          const iconColor = isCurrent ? tier.iconOnDark : tier.icon;
+          const muted = isCurrent ? '#999' : C.gray;
+          const hairline = isCurrent ? C.borderDark : C.border;
+          const errColor = isCurrent ? C.burgundyTint : C.burgundy;
+
+          const v = voucherByKey[tier.key];
+          const amount = typeof v?.amountCHF === 'number' ? v.amountCHF : tier.voucherCHF;
+          // Derived from the live balance rather than the (cacheable) voucher
+          // payload, so an unlock never lags behind the points total shown above.
+          const unlocked = balance >= tier.floor;
+          const claimed = !!(v && v.claimed && v.code);
+          const redeemed = !!(v && v.redeemedAt);
+          const needed = Math.max(0, tier.floor - balance);
+          const claimError = claimErrors[tier.key];
+
           return (
             <div key={tier.key} style={{
               padding: isMobile ? '1.5rem 1.25rem' : '2rem 1.5rem', position: 'relative',
               background: isCurrent ? C.black : C.white,
               color: isCurrent ? C.pureWhite : C.black,
+              display: 'flex', flexDirection: 'column',
             }}>
               {isCurrent && (
                 <div style={{
@@ -174,8 +368,9 @@ export default function Rewards() {
                 width: 44, height: 44, borderRadius: '50%',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: 11, fontWeight: 500, marginBottom: 20,
-                background: `${iconColor}1a`, border: `1px solid ${iconColor}`,
-                color: iconColor,
+                background: tier.solid ? iconColor : `${iconColor}1a`,
+                border: `1px solid ${iconColor}`,
+                color: tier.solid ? (isCurrent ? C.black : C.white) : iconColor,
               }}>
                 {tier.num}
               </div>
@@ -184,13 +379,13 @@ export default function Rewards() {
               }}>
                 {tier.name}
               </div>
-              <div style={{ fontSize: 11, color: isCurrent ? '#999' : C.gray, marginBottom: '1.5rem' }}>
+              <div style={{ fontSize: 11, color: muted, marginBottom: '1.5rem' }}>
                 {tier.ceiling
-                  ? t('rewards.tierRange.withCeiling', { floor: tier.floor.toLocaleString('de-CH'), ceiling: tier.ceiling.toLocaleString('de-CH') })
-                  : t('rewards.tierRange.noCeiling', { floor: tier.floor.toLocaleString('de-CH') })}
+                  ? t('rewards.tierRange.withCeiling', { floor: num(tier.floor), ceiling: num(tier.ceiling) })
+                  : t('rewards.tierRange.noCeiling', { floor: num(tier.floor) })}
               </div>
               <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {tier.perks.map(b => (
+                {(tier.perks || []).map(b => (
                   <li key={b} style={{
                     fontSize: 11, lineHeight: 1.4,
                     color: isCurrent ? '#aaa' : '#555',
@@ -204,9 +399,153 @@ export default function Rewards() {
                   </li>
                 ))}
               </ul>
+
+              {/* ── Event voucher: locked → claimable → claimed (→ redeemed) ──
+                  The 20px spacer guarantees a gap above the rule while
+                  `marginTop: auto` soaks up the slack, so the voucher blocks of
+                  all five cards align even with different perk-list lengths. */}
+              <div style={{ height: 20, flexShrink: 0 }} />
+              <div style={{
+                marginTop: 'auto', paddingTop: '1.25rem',
+                borderTop: `1px solid ${hairline}`,
+              }}>
+                <div style={{ ...LABEL, color: muted, fontSize: 9, marginBottom: 6 }}>
+                  {t('rewards.vouchers.blockLabel')}
+                </div>
+                <div style={{
+                  fontSize: 20, fontWeight: 200, lineHeight: 1.1, marginBottom: 8,
+                  color: unlocked ? (isCurrent ? C.pureWhite : C.black) : C.grey40,
+                  opacity: redeemed ? 0.55 : 1,
+                }}>
+                  {t('rewards.vouchers.amount', { amount: num(amount) })}
+                </div>
+
+                {!unlocked && (
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 3 }}>
+                      <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke={C.grey40} strokeWidth="1.5" aria-hidden="true">
+                        <rect x="3" y="7" width="10" height="7" rx="1" />
+                        <path d="M5.5 7V5a2.5 2.5 0 015 0v2" />
+                      </svg>
+                      <span style={{ ...LABEL, color: C.grey40, fontSize: 9 }}>{t('rewards.vouchers.locked')}</span>
+                    </div>
+                    <div style={{ fontSize: 10, color: muted, lineHeight: 1.5 }}>
+                      {t('rewards.vouchers.lockedHint', { points: num(needed) })}
+                    </div>
+                  </div>
+                )}
+
+                {unlocked && !claimed && v && (
+                  <>
+                    <button
+                      onClick={() => claimVoucher(tier.key)}
+                      disabled={claiming === tier.key}
+                      style={{
+                        width: '100%', padding: '10px 12px',
+                        background: 'transparent', color: isCurrent ? C.pureWhite : C.burgundy,
+                        border: `1px solid ${isCurrent ? C.burgundyLight : C.burgundy}`,
+                        fontSize: 10, fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase',
+                        cursor: claiming === tier.key ? 'wait' : 'pointer',
+                        fontFamily: C.font, opacity: claiming === tier.key ? 0.6 : 1,
+                        transition: 'background 0.2s, color 0.2s',
+                      }}
+                      onMouseEnter={e => { if (claiming !== tier.key) { e.currentTarget.style.background = C.burgundy; e.currentTarget.style.color = '#fff'; } }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = isCurrent ? C.pureWhite : C.burgundy; }}
+                    >
+                      {claiming === tier.key ? t('rewards.vouchers.claiming') : t('rewards.vouchers.claim')}
+                    </button>
+                    <div style={{ fontSize: 10, color: muted, marginTop: 6, lineHeight: 1.5 }}>
+                      {t('rewards.vouchers.validityNote')}
+                    </div>
+                  </>
+                )}
+
+                {claimed && v && (
+                  <div>
+                    {claimedKey === tier.key && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginBottom: 8 }}>
+                        <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke={C.green} strokeWidth="2" aria-hidden="true">
+                          <path d="M3 8.5l3.5 3.5L13 5" />
+                        </svg>
+                        <span style={{ fontSize: 10, color: C.green, fontWeight: 500 }}>{t('rewards.vouchers.claimedConfirmation')}</span>
+                      </div>
+                    )}
+                    <div style={{ ...LABEL, color: muted, fontSize: 9, marginBottom: 4 }}>
+                      {t('rewards.vouchers.codeLabel')}
+                    </div>
+                    <div
+                      ref={el => { codeRefs.current[tier.key] = el; }}
+                      style={{
+                        fontFamily: MONO, fontSize: 12, letterSpacing: '0.06em',
+                        padding: '8px 10px', wordBreak: 'break-all', userSelect: 'all',
+                        background: isCurrent ? '#161616' : C.surface,
+                        border: `1px solid ${hairline}`,
+                        color: isCurrent ? C.white : C.black,
+                        opacity: redeemed ? 0.55 : 1,
+                        textDecoration: redeemed ? 'line-through' : 'none',
+                      }}
+                    >
+                      {v.code}
+                    </div>
+                    {redeemed ? (
+                      <div style={{ fontSize: 10, color: muted, marginTop: 6, lineHeight: 1.5 }}>
+                        {t('rewards.vouchers.redeemed', { date: fmtDate(v.redeemedAt) })}
+                      </div>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => copyCode(tier.key, v.code || '')}
+                          style={{
+                            marginTop: 6, width: '100%', padding: '7px 10px',
+                            background: 'transparent',
+                            color: copiedKey === tier.key ? C.green : (isCurrent ? C.grey40 : C.gray),
+                            border: `1px solid ${copiedKey === tier.key ? C.green : hairline}`,
+                            fontSize: 9, fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase',
+                            cursor: 'pointer', fontFamily: C.font, transition: 'color 0.2s, border-color 0.2s',
+                          }}
+                        >
+                          {copiedKey === tier.key ? t('rewards.vouchers.copied') : t('rewards.vouchers.copy')}
+                        </button>
+                        {selectHintKey === tier.key && (
+                          <div style={{ fontSize: 10, color: muted, marginTop: 5, lineHeight: 1.5 }}>
+                            {t('rewards.vouchers.selectHint')}
+                          </div>
+                        )}
+                        <div style={{ fontSize: 10, color: muted, marginTop: 6, lineHeight: 1.5 }}>
+                          {t('rewards.vouchers.validUntil', { date: fmtDate(v.expiresAt) })}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+
+                {claimError && (
+                  <div role="alert" style={{
+                    fontSize: 10, lineHeight: 1.5, marginTop: 8, padding: '7px 9px',
+                    color: errColor, border: `1px solid ${errColor}`,
+                    background: isCurrent ? 'transparent' : 'rgba(122,34,46,0.06)',
+                  }}>{claimError}</div>
+                )}
+              </div>
             </div>
           );
         })}
+      </div>
+
+      {/* ── Voucher terms — continues the stacked block between cards and progress ── */}
+      <div style={{
+        background: C.white, border: '1px solid #ddd', borderTop: 0,
+        padding: isMobile ? '1.25rem 1.25rem' : '1.25rem 1.5rem', marginBottom: 1,
+      }}>
+        <div style={{ ...LABEL, marginBottom: 6 }}>{t('rewards.vouchers.sectionTitle')}</div>
+        <p style={{ fontSize: 11, color: C.gray, lineHeight: 1.7, margin: 0, maxWidth: 760 }}>
+          {t('rewards.vouchers.intro')}
+        </p>
+        {voucherLoadError && (
+          <div role="alert" style={{ fontSize: 11, color: C.burgundy, marginTop: 8 }}>
+            {t('rewards.vouchers.loadError')}
+          </div>
+        )}
       </div>
 
       {/* ── Progress section — bar and CTA stay visible at max tier (100%
@@ -224,9 +563,9 @@ export default function Rewards() {
             {nextTier ? t('rewards.progress.toNextTier', { tier: nextTier.name.toUpperCase() }) : t('rewards.progress.maxTierReached')}
           </div>
           <div style={{ fontSize: 22, fontWeight: 200, color: C.black, lineHeight: 1.2 }}>
-            {balance.toLocaleString('de-CH')}
+            {num(balance)}
             {nextTier && (
-              <span style={{ color: C.gray, fontWeight: 300 }}> / <em style={{ fontStyle: 'normal', color: C.burgundy }}>{t('rewards.units.pointsValue', { value: nextTier.floor.toLocaleString('de-CH') })}</em></span>
+              <span style={{ color: C.gray, fontWeight: 300 }}> / <em style={{ fontStyle: 'normal', color: C.burgundy }}>{t('rewards.units.pointsValue', { value: num(nextTier.floor) })}</em></span>
             )}
           </div>
           <div style={{ fontSize: 11, color: C.gray, marginTop: 4 }}>
@@ -241,11 +580,11 @@ export default function Rewards() {
             <span>{t('rewards.progress.current')}</span><span>{nextTier ? nextTier.name : t('rewards.progress.max')}</span>
           </div>
           <div style={{ height: 4, background: C.border, borderRadius: 2, overflow: 'hidden' }}>
-            <div style={{ height: '100%', width: `${progress}%`, background: `linear-gradient(90deg,${C.burgundy},#b84055)`, borderRadius: 2, transition: 'width 0.6s ease' }} />
+            <div style={{ height: '100%', width: `${progress}%`, background: `linear-gradient(90deg,${C.burgundy},${C.burgundyLight})`, borderRadius: 2, transition: 'width 0.6s ease' }} />
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, marginTop: 6 }}>
-            <span style={{ color: C.burgundy }}>{t('rewards.units.pointsValue', { value: balance.toLocaleString('de-CH') })}</span>
-            {nextTier && <span style={{ color: C.gray }}>{t('rewards.units.pointsValue', { value: nextTier.floor.toLocaleString('de-CH') })}</span>}
+            <span style={{ color: C.burgundy }}>{t('rewards.units.pointsValue', { value: num(balance) })}</span>
+            {nextTier && <span style={{ color: C.gray }}>{t('rewards.units.pointsValue', { value: num(nextTier.floor) })}</span>}
           </div>
           <button
             onClick={() => navigate('/products')}
@@ -268,7 +607,9 @@ export default function Rewards() {
         <div style={{
           ...LABEL, marginBottom: '1rem', paddingBottom: '0.75rem',
           borderBottom: `1px solid ${C.border}`,
-        }}>{t('rewards.highlights.sectionTitle', { tier: currentTier.name })}</div>
+        }}>{hasTier && currentTier
+          ? t('rewards.highlights.sectionTitle', { tier: currentTier.name })
+          : t('rewards.highlights.sectionTitleNoTier')}</div>
         <div style={{
           display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
           gap: 1, background: C.border, border: `1px solid ${C.border}`,
@@ -308,7 +649,7 @@ export default function Rewards() {
                 fontSize: 14, fontWeight: 600, flexShrink: 0,
                 color: h.amount > 0 ? C.green : C.burgundy,
               }}>
-                {t('rewards.units.pointsValue', { value: `${h.amount > 0 ? '+' : ''}${h.amount.toLocaleString('de-CH')}` })}
+                {t('rewards.units.pointsValue', { value: `${h.amount > 0 ? '+' : ''}${num(h.amount)}` })}
               </div>
             </div>
           ))}
