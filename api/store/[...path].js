@@ -522,19 +522,54 @@ async function handleDeals(req, res, segments, method, userId, decoded) {
     // members here even though the UI offered more.
     const maxPts = pointsToCoverCHF(deal.price_chf);
     const pts = Math.max(0, Math.min(parseInt(pointsToUse) || 0, maxPts));
-    // 1 point = CHF 0.027 (see api/points.js). Previously hardcoded as
-    // pts/100, i.e. CHF 0.01 per point.
+    // 1 point = CHF 0.01 (see api/points.js).
     const discountCHF = chfForPoints(pts);
     const finalCHF = Math.max(0, parseFloat(deal.price_chf) - discountCHF);
 
     const bal = await getBalance(userId);
     if (pts > bal) return res.status(400).json({ error: 'Insufficient points' });
 
+    const redemptionId = randomUUID();
+
+    // ── Fully covered by points: settle without Stripe ──
+    // Points may now cover 100% of a price, which leaves nothing to charge.
+    // Stripe rejects a zero-amount PaymentIntent, so routing this through the
+    // card flow would hard-fail on exactly the most attractive path. Settle it
+    // here instead and reuse the shared fulfilment helper, so a points-only
+    // settlement deducts points, marks the redemption paid, decrements spots,
+    // logs history and mints identically to a paid one — and stays idempotent.
+    if (finalCHF <= 0) {
+      await getPool().query(
+        `INSERT INTO deal_redemptions (id, deal_id, user_id, points_used, amount_chf, stripe_session_id, status)
+         VALUES ($1, $2, $3, $4, 0, '', 'pending')`,
+        [redemptionId, dealId, userId, pts]
+      );
+
+      const result = await fulfillDealRedemption({
+        redemptionId, dealId, userId, pointsUsed: pts,
+        amountCHF: 0, stripePaymentIntentId: null,
+      });
+
+      if (!result.ok) {
+        return res.status(500).json({ error: 'Could not complete points redemption', detail: result.reason });
+      }
+
+      return res.json({
+        success: true,
+        data: {
+          clientSecret: null,
+          redemptionId,
+          amount: 0,
+          pointsUsed: pts,
+          fullyCoveredByPoints: true,
+          balance: await getBalance(userId),
+        },
+      });
+    }
+
     const Stripe = (await import('stripe')).default;
     const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
     const PLATFORM_FEE_PERCENT = parseFloat(process.env.PLATFORM_FEE_PERCENT || '5');
-
-    const redemptionId = randomUUID();
 
     // ── Create a PaymentIntent (embedded payment, no redirect) ──
     const piConfig = {

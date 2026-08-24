@@ -206,7 +206,16 @@ function DealModal({ deal, onClose, onSuccess }: {
         body: JSON.stringify({ pointsToUse: points }),
       });
       const json = await r.json();
-      if (json.success && json.data.clientSecret) {
+      // Points covered the whole price, so there is nothing to charge and the
+      // server has already settled the redemption — no clientSecret comes
+      // back. Without this branch the falsy clientSecret fell through to the
+      // error alert below, telling the member it failed after their points had
+      // been spent and the item fulfilled.
+      if (json.success && json.data?.fullyCoveredByPoints) {
+        localStorage.removeItem('zai_pending_redemption');
+        onClose();
+        onSuccess();
+      } else if (json.success && json.data?.clientSecret) {
         setPaymentData({ clientSecret: json.data.clientSecret, amount: json.data.amount, redemptionId: json.data.redemptionId });
         // Survives a 3D-Secure/local-payment-method redirect so Updates can
         // finish confirmation on return, even though this component unmounts.
