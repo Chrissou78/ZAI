@@ -949,6 +949,32 @@
       "processing": "Wird bearbeitet…",
       "close": "Schließen"
     },
+    "voucher": {
+      "toggle": "Event-Gutschein vorhanden?",
+      "codeLabel": "Event-Gutscheincode",
+      "placeholder": "ZAI-XXXXXX-XXXX",
+      "apply": "Einlösen",
+      "checking": "Wird geprüft…",
+      "hint": "Ihre Event-Gutscheincodes finden Sie unter Prämien.",
+      "remove": "Gutschein entfernen",
+      "appliedAmount": "CHF {{amount}} auf diese Anmeldung angerechnet",
+      "coversFullPrice": "Dieser Gutschein deckt den vollen Preis — es bleibt nichts zu bezahlen.",
+      "coveredConfirmed": "Gutschein {{code}} hat den vollen Preis gedeckt. Es wurde keine Zahlung ausgeführt und Ihr Platz ist bestätigt.",
+      "coveredRegistrationFailed": "Gutschein {{code}} wurde eingelöst, Ihr Platz konnte jedoch nicht bestätigt werden. Bitte wenden Sie sich unter Angabe dieses Codes an unseren Member-Concierge — versuchen Sie es nicht erneut, ein Gutschein ist nur einmal einlösbar.",
+      "breakdown": {
+        "original": "Event-Preis",
+        "discount": "Event-Gutschein",
+        "discountWithCode": "Event-Gutschein {{code}}"
+      },
+      "errors": {
+        "notFound": "Dieser Gutscheincode ist uns nicht bekannt. Bitte überprüfen Sie ihn und versuchen Sie es erneut.",
+        "alreadyUsed": "Dieser Gutschein wurde bereits eingelöst.",
+        "expired": "Dieser Gutschein ist abgelaufen.",
+        "invalid": "Bitte geben Sie Ihren Event-Gutscheincode ein.",
+        "network": "Der Gutschein konnte nicht geprüft werden. Bitte prüfen Sie Ihre Verbindung und versuchen Sie es erneut.",
+        "generic": "Der Gutschein konnte nicht geprüft werden. Bitte versuchen Sie es in Kürze erneut."
+      }
+    },
     "payment": {
       "loading": "Wird geladen…",
       "back": "Zurück",
@@ -1121,49 +1147,19 @@
     },
     "tiers": {
       "white": {
-        "name": "Weiss",
-        "perks": [
-          "Digitale Garantie & Registrierung",
-          "Saison-Newsletter",
-          "Einladungen zu Mitglieder-Events"
-        ]
+        "name": "Weiss"
       },
       "blue": {
-        "name": "Blau",
-        "perks": [
-          "Produktregistrierung",
-          "Event-Newsletter",
-          "Digitale Garantie"
-        ]
+        "name": "Blau"
       },
       "red": {
-        "name": "Rot",
-        "perks": [
-          "Bevorzugter Event-Zugang",
-          "Rabatt auf Wartung",
-          "Partnervorteile",
-          "Persönlicher Support"
-        ]
+        "name": "Rot"
       },
       "black": {
-        "name": "Schwarz",
-        "perks": [
-          "VIP-Einladungen zu Events",
-          "Frühzeitige Produkteinführungen",
-          "Individueller Anpassungsservice",
-          "Exklusiver Partnerzugang",
-          "Empfehlungsprämien"
-        ]
+        "name": "Schwarz"
       },
       "diamond": {
-        "name": "Diamant",
-        "perks": [
-          "Werksbesuche in Pontresina",
-          "Massgefertigte Sonderanfertigung",
-          "Persönlicher zai Botschafter",
-          "Alle exklusiven Partnervorteile",
-          "Jährliches zai Retreat"
-        ]
+        "name": "Diamant"
       }
     },
     "progress": {
@@ -1174,22 +1170,6 @@
       "current": "Aktuell",
       "max": "Maximum",
       "claimButton": "Produkt registrieren · +500 Pkt."
-    },
-    "highlights": {
-      "sectionTitle": "Ihre Vorteile der Stufe {{tier}}",
-      "sectionTitleNoTier": "Mitgliedervorteile",
-      "insurance": {
-        "title": "Kostenlose Skiversicherung",
-        "description": "Kostenlose Versicherung bei jedem neuen zai Ski-Kauf."
-      },
-      "vipEvents": {
-        "title": "VIP-Event-Zugang",
-        "description": "Bevorzugte Einladungen zu Ski-Testtagen, Werksbesichtigungen und exklusiven Erlebnissen."
-      },
-      "partnerElite": {
-        "title": "Exklusiver Partnerzugang",
-        "description": "Premium-Vorteile bei Revolut, Ikon Pass, Epic Pass und Engadin."
-      }
     },
     "activity": {
       "sectionTitle": "Letzte Aktivitäten"
@@ -1252,7 +1232,7 @@
       "upToPtsMax_other": "Bis zu {{count}} Pkt. einlösbar",
       "saveChf": "CHF {{amount}} sparen",
       "endsOn": "Endet am",
-      "applyPoints": "Punkte einlösen →"
+      "applyPoints": "Angebot sichern →"
     },
     "emptyStates": {
       "noDeals": "Derzeit keine Angebote verfügbar. Schauen Sie bald wieder vorbei.",

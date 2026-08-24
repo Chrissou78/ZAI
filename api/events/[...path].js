@@ -343,11 +343,60 @@ export default async function handler(req, res) {
       }
       const evtRaw = evtData.event || evtData;
 
-      const amount = parseFloat(evtRaw.discountPrice ?? evtRaw.price ?? 0) || 0;
-      if (amount <= 0) {
+      const listAmount = parseFloat(evtRaw.discountPrice ?? evtRaw.price ?? 0) || 0;
+      if (listAmount <= 0) {
         return res.status(400).json({ success: false, error: 'This event is free — register directly.' });
       }
       const currency = (evtRaw.currency || 'CHF').toLowerCase();
+
+      // ── Optional tier event voucher ──
+      // Validated here (not trusted from the client) but NOT marked used —
+      // that happens on confirm, so abandoning checkout doesn't burn it.
+      // Scoped to this user so a valid code belonging to someone else is
+      // indistinguishable from one that doesn't exist.
+      let voucherCode = null;
+      let voucherDiscount = 0;
+      const rawVoucher = req.body && req.body.voucherCode;
+      if (rawVoucher) {
+        const code = String(rawVoucher).trim().toUpperCase();
+        const v = (await getPool().query(
+          `SELECT amount_chf, expires_at, redeemed_at FROM tier_vouchers
+            WHERE user_id = $1 AND code = $2`,
+          [userId, code]
+        )).rows[0];
+        if (!v) return res.status(404).json({ success: false, error: 'Voucher code not found' });
+        if (v.redeemed_at) return res.status(409).json({ success: false, error: 'Voucher has already been used' });
+        if (v.expires_at && new Date(v.expires_at) < new Date()) {
+          return res.status(410).json({ success: false, error: 'Voucher has expired' });
+        }
+        voucherCode = code;
+        // Never discount below zero; a CHF 300 voucher on a CHF 200 event
+        // covers the event and the remainder is simply not carried over.
+        voucherDiscount = Math.min(Number(v.amount_chf) || 0, listAmount);
+      }
+
+      const amount = Math.max(0, listAmount - voucherDiscount);
+
+      // A voucher worth at least the full price leaves nothing to charge, and
+      // Stripe rejects a zero-amount PaymentIntent. Redeem the voucher now and
+      // tell the client to register via the free path instead.
+      if (amount <= 0) {
+        const burn = await getPool().query(
+          `UPDATE tier_vouchers SET redeemed_at = NOW(), redeemed_event_id = $3
+            WHERE user_id = $1 AND code = $2 AND redeemed_at IS NULL`,
+          [userId, voucherCode, eventId]
+        );
+        if (burn.rowCount === 0) {
+          return res.status(409).json({ success: false, error: 'Voucher has already been used' });
+        }
+        return res.status(200).json({
+          success: true,
+          data: {
+            clientSecret: null, paymentId: null, amount: 0, currency,
+            listAmount, voucherCode, voucherDiscount, fullyCoveredByVoucher: true,
+          },
+        });
+      }
 
       const Stripe = (await import('stripe')).default;
       const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
@@ -370,14 +419,17 @@ export default async function handler(req, res) {
       const paymentIntent = await stripe.paymentIntents.create(piConfig);
 
       await getPool().query(
-        `INSERT INTO event_payments (id, event_id, user_id, event_title, amount_chf, currency, stripe_payment_intent, status)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending')`,
-        [paymentId, eventId, userId, evtRaw.name || '', amount, currency, paymentIntent.id]
+        `INSERT INTO event_payments (id, event_id, user_id, event_title, amount_chf, currency, stripe_payment_intent, status, voucher_code, voucher_discount_chf)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending', $8, $9)`,
+        [paymentId, eventId, userId, evtRaw.name || '', amount, currency, paymentIntent.id, voucherCode, voucherDiscount]
       );
 
       return res.status(200).json({
         success: true,
-        data: { clientSecret: paymentIntent.client_secret, paymentId, amount, currency },
+        data: {
+          clientSecret: paymentIntent.client_secret, paymentId, amount, currency,
+          listAmount, voucherCode, voucherDiscount,
+        },
       });
     }
 
@@ -413,6 +465,26 @@ export default async function handler(req, res) {
 
       if (pi.status !== 'succeeded') {
         return res.status(400).json({ success: false, error: `Payment not completed yet (status: ${pi.status})` });
+      }
+
+      // Burn the voucher now that the payment has actually succeeded. The
+      // conditional `redeemed_at IS NULL` is what makes this safe against a
+      // voucher being applied to two checkouts at once: only one UPDATE can
+      // match. A lost race is logged rather than failing the confirm — the
+      // member has already paid the discounted amount, so refusing to
+      // register them here would be the worse outcome.
+      if (payment.voucher_code) {
+        const burn = await getPool().query(
+          `UPDATE tier_vouchers SET redeemed_at = NOW(), redeemed_event_id = $3
+            WHERE user_id = $1 AND code = $2 AND redeemed_at IS NULL`,
+          [userId, payment.voucher_code, payment.event_id]
+        );
+        if (burn.rowCount === 0) {
+          console.error(
+            `[events] Voucher ${payment.voucher_code} was already redeemed when confirming payment ${paymentId} — ` +
+            `the discount was granted twice and needs manual review.`
+          );
+        }
       }
 
       const { status: regStatus, data: regData } = await registerAttendee(payment.event_id, userId);

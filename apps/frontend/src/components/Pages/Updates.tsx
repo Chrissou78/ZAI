@@ -4,6 +4,7 @@ import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-
 import { useTranslation } from 'react-i18next';
 import { stripePromise } from '../../lib/stripe';
 import ProductImageFallback from '../Common/ProductImageFallback';
+import PointsStore from './PointsStore';
 
 const C = {
   black: '#0a0a0a', white: '#f5f4f0', red: '#7A222E',
@@ -30,7 +31,14 @@ const authHeaders = () => ({ Authorization: `Bearer ${token()}`, 'Content-Type':
 // admin behavior.
 const isDealLive = (d: any) =>
   d.active !== false && (!d.ends_at || new Date(d.ends_at) > new Date());
-const filterLiveDeals = (deals: any[]) => (deals || []).filter(isDealLive);
+// Points-only rewards share this same feed but carry `price_chf` 0 and are
+// redeemed with points, never bought — left in, they rendered as a "CHF 0"
+// money card with a Claim Deal button straight into the Stripe flow. They
+// belong exclusively to the embedded <PointsStore /> section further down the
+// page, which selects on `points_only === true`; these two sets never overlap.
+const isMoneyDeal = (d: any) => d.points_only !== true;
+const filterLiveDeals = (deals: any[]) =>
+  (deals || []).filter(d => isDealLive(d) && isMoneyDeal(d));
 
 // ─── Inline Payment Form ───
 // Stripe confirming the payment client-side is NOT the same as your points
@@ -732,6 +740,12 @@ export default function Updates() {
                 {t('updates.emptyStates.noDeals')}
               </div>
             )}
+
+            {/* Points-only rewards. Same page, separate catalogue: this owns
+                its own fetch, balance and redeem flow (it is the very same
+                component the /redeem route renders), and only ever lists
+                `points_only` items — the money grid above excludes them. */}
+            <PointsStore embedded />
           </>
         )}
 

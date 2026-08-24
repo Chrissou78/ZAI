@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto';
 import { getPool, initDB, requireAdmin, isAdmin } from '../db.js';
-import { pointsForAmount, chfForPoints, categoryEarnsPoints, TIERS, VOUCHER_VALID_YEARS, tierForPoints } from '../points.js';
+import { pointsForAmount, chfForPoints, categoryEarnsPoints, pointsToCoverCHF, TIERS, VOUCHER_VALID_YEARS, tierForPoints } from '../points.js';
 import { authenticate } from '../middleware.js';
 
 // ══════════════════════════════════════════════════════════
@@ -358,6 +358,38 @@ async function handleVouchers(req, res, segments, method, userId) {
     });
   }
 
+  // POST /api/store/vouchers/validate  { code }
+  // Read-only check used by checkout UIs before taking payment. It never
+  // marks the voucher as used — redemption happens only once a payment is
+  // actually confirmed, so an abandoned checkout can't burn a voucher.
+  if (method === 'POST' && segments.length === 1 && segments[0] === 'validate') {
+    const raw = (req.body && req.body.code) || '';
+    const code = String(raw).trim().toUpperCase();
+    if (!code) return res.status(400).json({ success: false, error: 'Voucher code is required' });
+
+    // Scoped to this user: a valid code belonging to someone else must look
+    // exactly like a code that does not exist, or the endpoint becomes an
+    // oracle for guessing other members' vouchers.
+    const v = (await getPool().query(
+      `SELECT tier_key, amount_chf, expires_at, redeemed_at
+         FROM tier_vouchers WHERE user_id = $1 AND code = $2`,
+      [userId, code]
+    )).rows[0];
+
+    if (!v) return res.status(404).json({ success: false, error: 'Voucher code not found' });
+    if (v.redeemed_at) {
+      return res.status(409).json({ success: false, error: 'Voucher has already been used', redeemedAt: v.redeemed_at });
+    }
+    if (v.expires_at && new Date(v.expires_at) < new Date()) {
+      return res.status(410).json({ success: false, error: 'Voucher has expired', expiresAt: v.expires_at });
+    }
+
+    return res.json({
+      success: true,
+      data: { code, tierKey: v.tier_key, amountCHF: Number(v.amount_chf), expiresAt: v.expires_at },
+    });
+  }
+
   // POST /api/store/vouchers/:tierKey/claim
   if (method === 'POST' && segments.length === 2 && segments[1] === 'claim') {
     const tierKey = segments[0];
@@ -409,6 +441,17 @@ async function handleVouchers(req, res, segments, method, userId) {
   return res.status(404).json({ error: 'Not found' });
 }
 
+// Points may cover a deal's full price, so the redeemable cap is derived from
+// the price at read time rather than trusted from max_points_discount. Keeping
+// the stored column authoritative was what made points look broken: values
+// like 1,000 (CHF 10) sat against a CHF 1,950 ski. Points-only items are left
+// alone — they are priced in points already.
+function withDerivedPointsCap(rows) {
+  return rows.map(d => d.points_only
+    ? d
+    : { ...d, max_points_discount: pointsToCoverCHF(d.price_chf) });
+}
+
 async function handleDeals(req, res, segments, method, userId, decoded) {
 
   // GET /api/store/deals
@@ -432,7 +475,7 @@ async function handleDeals(req, res, segments, method, userId, decoded) {
            CASE WHEN active = true AND (ends_at IS NULL OR ends_at > NOW()) THEN 0 ELSE 1 END,
            featured DESC, created_at DESC`
       );
-      return res.json({ success: true, data: r.rows });
+      return res.json({ success: true, data: withDerivedPointsCap(r.rows) });
     } else {
       const r = await getPool().query(
         `SELECT id, title, description, category, price_chf, max_points_discount,
@@ -444,7 +487,7 @@ async function handleDeals(req, res, segments, method, userId, decoded) {
            AND (spots_total = 0 OR spots_left > 0)
          ORDER BY featured DESC, created_at DESC`
       );
-      return res.json({ success: true, data: r.rows });
+      return res.json({ success: true, data: withDerivedPointsCap(r.rows) });
     }
   }
 
@@ -454,7 +497,7 @@ async function handleDeals(req, res, segments, method, userId, decoded) {
       'SELECT * FROM deals WHERE id = $1 AND active = true', [segments[0]]
     );
     if (!r.rows.length) return res.status(404).json({ error: 'Deal not found' });
-    return res.json({ success: true, data: r.rows[0] });
+    return res.json({ success: true, data: withDerivedPointsCap(r.rows)[0] });
   }
 
   // POST /api/store/deals/:id/redeem
@@ -473,7 +516,12 @@ async function handleDeals(req, res, segments, method, userId, decoded) {
     if (deal.ends_at && new Date(deal.ends_at) < new Date())
       return res.status(400).json({ error: 'Deal has expired' });
 
-    const pts = Math.max(0, Math.min(parseInt(pointsToUse) || 0, deal.max_points_discount));
+    // Points may cover the entire price, so the cap is derived from the price
+    // rather than read from max_points_discount — those stored values had
+    // drifted badly (CHF 10 off a CHF 1,950 ski) and would silently re-cap
+    // members here even though the UI offered more.
+    const maxPts = pointsToCoverCHF(deal.price_chf);
+    const pts = Math.max(0, Math.min(parseInt(pointsToUse) || 0, maxPts));
     // 1 point = CHF 0.027 (see api/points.js). Previously hardcoded as
     // pts/100, i.e. CHF 0.01 per point.
     const discountCHF = chfForPoints(pts);

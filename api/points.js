@@ -39,6 +39,22 @@ export function pointsForAmount(amount) {
   return Math.round(n * POINTS_PER_CURRENCY_UNIT);
 }
 
+/**
+ * Points needed to cover a given CHF amount outright.
+ *
+ * Points may cover 100% of a deal's price, so the redemption cap is always
+ * derivable from the price and is computed rather than stored. The deals
+ * table still has a max_points_discount column, but its values drifted into
+ * nonsense (1,000 points — CHF 10 — against a CHF 1,950 ski) precisely
+ * because they were maintained by hand. Deriving it means the cap cannot go
+ * stale when a price changes.
+ */
+export function pointsToCoverCHF(priceCHF) {
+  const n = parseFloat(priceCHF || 0);
+  if (!isFinite(n) || n <= 0) return 0;
+  return Math.round(n / CHF_PER_POINT);
+}
+
 /** CHF discount that a given number of points is worth. */
 export function chfForPoints(points) {
   const n = parseInt(points, 10);

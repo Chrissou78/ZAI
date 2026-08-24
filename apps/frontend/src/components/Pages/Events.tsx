@@ -279,6 +279,26 @@ function DescriptionBlock({ value, style, clamp }: { value: string; style?: Reac
   );
 }
 
+/* ── Price-summary line (original price / voucher discount / total) ── */
+
+const SummaryRow: React.FC<{ label: string; value: string; accent?: boolean; strong?: boolean }> = ({
+  label, value, accent, strong,
+}) => (
+  <div style={{
+    display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
+    gap: 12, padding: '3px 0',
+  }}>
+    <span style={{
+      fontSize: strong ? 13 : 12, color: strong ? C.black : C.muted,
+      fontWeight: strong ? 600 : 400, minWidth: 0, overflowWrap: 'anywhere',
+    }}>{label}</span>
+    <span style={{
+      fontSize: strong ? 17 : 12, fontWeight: strong ? 600 : 500,
+      color: accent ? C.red : (strong ? C.black : C.mid), whiteSpace: 'nowrap',
+    }}>{value}</span>
+  </div>
+);
+
 const parseProgramLines = (program: any): string[] => {
   if (!program) return [];
   if (Array.isArray(program)) return program.filter(Boolean);
@@ -434,7 +454,26 @@ const Events: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [registering, setRegistering] = useState(false);
-  const [paymentData, setPaymentData] = useState<{ clientSecret: string; amount: number; currency: string; paymentId: string } | null>(null);
+  const [paymentData, setPaymentData] = useState<{
+    clientSecret: string; amount: number; currency: string; paymentId: string;
+    listAmount?: number; voucherCode?: string | null; voucherDiscount?: number;
+  } | null>(null);
+
+  // ─── Tier event voucher (see Rewards → "Tier event vouchers") ───
+  // The applied voucher is only ever a *pre-check*: the server re-validates the
+  // code when the payment intent is created and its numbers win over anything
+  // computed here.
+  const [voucherOpen, setVoucherOpen] = useState(false);
+  const [voucherInput, setVoucherInput] = useState('');
+  const [voucherChecking, setVoucherChecking] = useState(false);
+  const [voucherError, setVoucherError] = useState('');
+  const [appliedVoucher, setAppliedVoucher] = useState<{ code: string; amountCHF: number } | null>(null);
+  // Set when a voucher covered the whole price: registration went through the
+  // free path, no Stripe step at all.
+  const [voucherCovered, setVoucherCovered] = useState<{ code: string; discount: number; currency: string } | null>(null);
+  // Set when the voucher was already burned server-side but registration then
+  // failed — retrying is pointless, so this says "contact support" instead.
+  const [voucherFatal, setVoucherFatal] = useState('');
 
   // Mobile width tracking — content-area layout branches on this below
   // (sidebar/hamburger switch itself is handled by MainLayout, not here).
@@ -457,6 +496,19 @@ const Events: React.FC = () => {
 
   useEffect(() => { ensureShimmer(); ensureDescStyles(); }, []);
   useEffect(() => { fetchEvents(); }, []);
+
+  // Voucher state belongs to one checkout only. Keyed on the event id so it is
+  // wiped both when the modal closes (id → undefined) and when a different
+  // event is opened — a code must never leak from one checkout into the next.
+  useEffect(() => {
+    setVoucherOpen(false);
+    setVoucherInput('');
+    setVoucherError('');
+    setVoucherChecking(false);
+    setAppliedVoucher(null);
+    setVoucherCovered(null);
+    setVoucherFatal('');
+  }, [selectedEvent?.id]);
 
   // Finish confirmation after a 3D-Secure/redirect payment method — the
   // EventPaymentForm instance that started the payment is gone after the
@@ -555,23 +607,125 @@ const Events: React.FC = () => {
     setSelectedEvent(prev => prev && prev.id === eventId ? { ...prev, registered: true, totalAttendees: (prev.totalAttendees || 0) + 1 } : prev);
   };
 
+  // The voucher endpoints answer with a distinct status per failure mode; map
+  // each one to its own inline message rather than a single generic string.
+  const voucherErrorFor = (err: any): string | null => {
+    const status = err?.response?.status;
+    if (status === 404) return t('events.voucher.errors.notFound');
+    if (status === 409) return t('events.voucher.errors.alreadyUsed');
+    if (status === 410) return t('events.voucher.errors.expired');
+    if (status === 400) return t('events.voucher.errors.invalid');
+    return null;
+  };
+
+  const clearVoucher = () => {
+    setAppliedVoucher(null);
+    setVoucherError('');
+    setVoucherInput('');
+  };
+
+  const handleApplyVoucher = async () => {
+    const code = voucherInput.trim().toUpperCase();
+    if (!code || voucherChecking) {
+      if (!code) setVoucherError(t('events.voucher.errors.invalid'));
+      return;
+    }
+    setVoucherChecking(true);
+    setVoucherError('');
+    try {
+      const res = await apiService.post('/store/vouchers/validate', { code });
+      const data: any = res.data?.data;
+      if (res.data?.success && data) {
+        setAppliedVoucher({ code: data.code || code, amountCHF: Number(data.amountCHF) || 0 });
+        setVoucherInput('');
+      } else {
+        setVoucherError(t('events.voucher.errors.generic'));
+      }
+    } catch (err: any) {
+      setVoucherError(
+        voucherErrorFor(err) ||
+        (err?.response ? t('events.voucher.errors.generic') : t('events.voucher.errors.network'))
+      );
+    } finally {
+      setVoucherChecking(false);
+    }
+  };
+
+  // The voucher paid for the whole ticket: the server has ALREADY burned it and
+  // returned no client secret (Stripe rejects a zero-amount intent), so there
+  // is no payment step — finish through the plain registration endpoint.
+  const registerFullyCovered = async (eventId: string, data: any) => {
+    const covered = {
+      code: String(data.voucherCode || appliedVoucher?.code || ''),
+      discount: Number(data.voucherDiscount) || 0,
+      currency: String(data.currency || selectedEvent?.currency || 'CHF').toUpperCase(),
+    };
+    try {
+      const res = await apiService.post(`/events/${eventId}/register`);
+      if (res.data?.success) {
+        markRegistered(eventId);
+        setAppliedVoucher(null);
+        setVoucherOpen(false);
+        setVoucherCovered(covered);
+      } else {
+        // Voucher already spent — do NOT invite a retry, it would come back
+        // as "already used".
+        setVoucherFatal(t('events.voucher.coveredRegistrationFailed', { code: covered.code }));
+      }
+    } catch {
+      setVoucherFatal(t('events.voucher.coveredRegistrationFailed', { code: covered.code }));
+    }
+  };
+
   const handleRegister = async () => {
     if (!selectedEvent || !user?.id) return;
 
     const amount = selectedEvent.discountPrice ?? selectedEvent.price ?? 0;
     if (amount > 0) {
       // Payable event — start Stripe checkout instead of registering directly.
+      const eventId = selectedEvent.id;
       setRegistering(true);
+      setVoucherError('');
+      setVoucherFatal('');
       try {
-        const response = await apiService.post(`/events/${selectedEvent.id}/payment-intent`);
+        const response = await apiService.post(
+          `/events/${eventId}/payment-intent`,
+          appliedVoucher ? { voucherCode: appliedVoucher.code } : undefined
+        );
         if (response.data?.success) {
-          const { clientSecret, amount: amt, currency, paymentId } = response.data.data;
-          setPaymentData({ clientSecret, amount: amt, currency, paymentId });
+          const data: any = response.data.data;
+          if (data?.fullyCoveredByVoucher) {
+            await registerFullyCovered(eventId, data);
+            return;
+          }
+          const { clientSecret, amount: amt, currency, paymentId, listAmount, voucherCode, voucherDiscount } = data || {};
+          if (!clientSecret) {
+            // Never mount Stripe Elements without a client secret.
+            alert(response.data?.error || t('events.errors.startCheckoutFailed'));
+            return;
+          }
+          setPaymentData({
+            clientSecret, amount: amt, currency, paymentId,
+            listAmount: listAmount != null ? Number(listAmount) : undefined,
+            voucherCode: voucherCode ?? null,
+            voucherDiscount: voucherDiscount != null ? Number(voucherDiscount) : 0,
+          });
           localStorage.setItem('zai_pending_event_payment', paymentId);
         } else {
           alert(response.data?.error || t('events.errors.startCheckoutFailed'));
         }
-      } catch (err: any) { alert(err.response?.data?.error || t('events.errors.startCheckoutFailed')); }
+      } catch (err: any) {
+        // The server re-validates the code, so a stale voucher surfaces here
+        // too — show it against the voucher field, not as a checkout failure.
+        const voucherMsg = appliedVoucher ? voucherErrorFor(err) : null;
+        if (voucherMsg) {
+          setAppliedVoucher(null);
+          setVoucherOpen(true);
+          setVoucherError(voucherMsg);
+        } else {
+          alert(err.response?.data?.error || t('events.errors.startCheckoutFailed'));
+        }
+      }
       finally { setRegistering(false); }
       return;
     }
@@ -589,6 +743,8 @@ const Events: React.FC = () => {
   const handlePaymentSuccess = () => {
     if (selectedEvent) markRegistered(selectedEvent.id);
     setPaymentData(null);
+    setAppliedVoucher(null);
+    setVoucherOpen(false);
     alert(t('events.alerts.paymentSuccessful'));
   };
 
@@ -1002,39 +1158,219 @@ const Events: React.FC = () => {
               })()}
 
               {/* Price section */}
-              {selectedEvent.price != null && selectedEvent.price > 0 && (
+              {selectedEvent.price != null && selectedEvent.price > 0 && (() => {
+                const cur = (selectedEvent.currency || 'CHF').toUpperCase();
+                const listAmount = selectedEvent.discountPrice ?? selectedEvent.price ?? 0;
+                // Pre-checkout estimate only — the payment intent's figures below
+                // replace these once the server has re-validated the code.
+                const estDiscount = appliedVoucher ? Math.min(appliedVoucher.amountCHF, listAmount) : 0;
+                const estTotal = Math.max(0, listAmount - estDiscount);
+
+                return (
                 <div style={{
                   padding: '16px 20px', background: C.surface, borderRadius: 6, marginBottom: 20,
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  flexWrap: 'wrap', gap: 10,
                 }}>
-                  <div>
-                    <div style={lbl}>{t('events.modal.price')}</div>
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginTop: 4 }}>
-                      {selectedEvent.discountPrice != null ? (
-                        <>
-                          <span style={{ fontSize: 18, fontWeight: 600, color: C.red }}>
-                            {selectedEvent.currency || 'CHF'} {selectedEvent.discountPrice}
-                          </span>
-                          <span style={{ fontSize: 13, color: C.muted, textDecoration: 'line-through' }}>
+                  <div style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    flexWrap: 'wrap', gap: 10,
+                  }}>
+                    <div>
+                      <div style={lbl}>{t('events.modal.price')}</div>
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginTop: 4 }}>
+                        {selectedEvent.discountPrice != null ? (
+                          <>
+                            <span style={{ fontSize: 18, fontWeight: 600, color: C.red }}>
+                              {selectedEvent.currency || 'CHF'} {selectedEvent.discountPrice}
+                            </span>
+                            <span style={{ fontSize: 13, color: C.muted, textDecoration: 'line-through' }}>
+                              {selectedEvent.currency || 'CHF'} {selectedEvent.price}
+                            </span>
+                          </>
+                        ) : (
+                          <span style={{ fontSize: 18, fontWeight: 600, color: C.black }}>
                             {selectedEvent.currency || 'CHF'} {selectedEvent.price}
                           </span>
+                        )}
+                      </div>
+                    </div>
+                    {selectedEvent.discountPercentage != null && (
+                      <div style={{
+                        background: C.red, color: '#fff', padding: '4px 10px',
+                        fontSize: 11, fontWeight: 600, borderRadius: 4,
+                      }}>
+                        -{selectedEvent.discountPercentage}%
+                      </div>
+                    )}
+                  </div>
+
+                  {/* ── Tier event voucher ──
+                      Hidden once the payment intent exists: from that point the
+                      server's own breakdown (below) is the single source of
+                      truth and the code can no longer be changed in place. */}
+                  {!selectedEvent.registered && !paymentData && !voucherCovered && (
+                    <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${C.border}` }}>
+                      {appliedVoucher ? (
+                        <>
+                          {/* Applied voucher chip */}
+                          <div style={{
+                            display: 'flex', alignItems: 'center', gap: 10,
+                            background: C.pureWhite, border: bdr, borderRadius: 6, padding: '10px 12px',
+                          }}>
+                            <span style={{
+                              width: 18, height: 18, borderRadius: '50%', background: C.red, color: '#fff',
+                              fontSize: 10, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              flexShrink: 0,
+                            }}>✓</span>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{
+                                fontSize: 12, fontWeight: 600, color: C.black,
+                                letterSpacing: '0.06em', overflowWrap: 'anywhere',
+                              }}>{appliedVoucher.code}</div>
+                              <div style={{ fontSize: 11, color: C.muted, marginTop: 2 }}>
+                                {t('events.voucher.appliedAmount', { amount: appliedVoucher.amountCHF })}
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={clearVoucher}
+                              aria-label={t('events.voucher.remove')}
+                              title={t('events.voucher.remove')}
+                              style={{
+                                border: 'none', background: 'transparent', color: C.muted,
+                                cursor: 'pointer', fontSize: 13, padding: '4px 6px', flexShrink: 0,
+                              }}
+                            >✕</button>
+                          </div>
+
+                          {/* Breakdown: original price → voucher → total */}
+                          <div style={{ marginTop: 12 }}>
+                            <SummaryRow
+                              label={t('events.voucher.breakdown.original')}
+                              value={`${cur} ${listAmount.toFixed(2)}`}
+                            />
+                            <SummaryRow
+                              label={t('events.voucher.breakdown.discount')}
+                              value={`− ${cur} ${estDiscount.toFixed(2)}`}
+                              accent
+                            />
+                            <div style={{ borderTop: `1px solid ${C.border}`, marginTop: 8, paddingTop: 8 }}>
+                              <SummaryRow
+                                label={t('events.modal.totalToPay')}
+                                value={`${cur} ${estTotal.toFixed(2)}`}
+                                strong
+                              />
+                            </div>
+                            {estTotal <= 0 && (
+                              <div style={{ fontSize: 11, color: C.red, marginTop: 8, lineHeight: 1.5 }}>
+                                {t('events.voucher.coversFullPrice')}
+                              </div>
+                            )}
+                          </div>
                         </>
+                      ) : voucherOpen ? (
+                        <div>
+                          <div style={{ ...lbl, marginBottom: 8 }}>{t('events.voucher.codeLabel')}</div>
+                          <div style={{ display: 'flex', gap: 8, flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
+                            <input
+                              value={voucherInput}
+                              onChange={e => { setVoucherInput(e.target.value.toUpperCase()); setVoucherError(''); }}
+                              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleApplyVoucher(); } }}
+                              placeholder={t('events.voucher.placeholder')}
+                              autoComplete="off"
+                              spellCheck={false}
+                              aria-label={t('events.voucher.codeLabel')}
+                              style={{
+                                flex: isMobile ? '1 1 100%' : 1, minWidth: 0,
+                                padding: '11px 12px', border: voucherError ? '1px solid #e53935' : bdr,
+                                borderRadius: 4, background: C.pureWhite, color: C.black,
+                                fontSize: 13, letterSpacing: '0.08em', fontFamily: "'Inter',sans-serif",
+                                textTransform: 'uppercase', outline: 'none',
+                              }}
+                            />
+                            <button
+                              type="button"
+                              onClick={handleApplyVoucher}
+                              disabled={voucherChecking || !voucherInput.trim()}
+                              style={{
+                                flex: isMobile ? '1 1 100%' : '0 0 auto',
+                                padding: '11px 18px', border: 'none', borderRadius: 4,
+                                background: (voucherChecking || !voucherInput.trim()) ? '#999' : C.black,
+                                color: '#fff', fontSize: 11, fontWeight: 600, letterSpacing: '0.1em',
+                                textTransform: 'uppercase', fontFamily: "'Inter',sans-serif",
+                                cursor: (voucherChecking || !voucherInput.trim()) ? 'default' : 'pointer',
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              {voucherChecking ? t('events.voucher.checking') : t('events.voucher.apply')}
+                            </button>
+                          </div>
+                          {voucherError ? (
+                            <div style={{ fontSize: 11.5, color: '#e53935', marginTop: 8, lineHeight: 1.5 }}>
+                              {voucherError}
+                            </div>
+                          ) : (
+                            <div style={{ fontSize: 11, color: C.muted, marginTop: 8, lineHeight: 1.5 }}>
+                              {t('events.voucher.hint')}
+                            </div>
+                          )}
+                        </div>
                       ) : (
-                        <span style={{ fontSize: 18, fontWeight: 600, color: C.black }}>
-                          {selectedEvent.currency || 'CHF'} {selectedEvent.price}
-                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setVoucherOpen(true)}
+                          style={{
+                            border: 'none', background: 'transparent', padding: 0,
+                            color: C.red, fontSize: 12, fontWeight: 500, cursor: 'pointer',
+                            fontFamily: "'Inter',sans-serif", textDecoration: 'underline',
+                            textUnderlineOffset: 3,
+                          }}
+                        >
+                          {t('events.voucher.toggle')}
+                        </button>
                       )}
                     </div>
-                  </div>
-                  {selectedEvent.discountPercentage != null && (
-                    <div style={{
-                      background: C.red, color: '#fff', padding: '4px 10px',
-                      fontSize: 11, fontWeight: 600, borderRadius: 4,
-                    }}>
-                      -{selectedEvent.discountPercentage}%
+                  )}
+
+                  {/* Voucher covered the whole ticket — no payment took place */}
+                  {voucherCovered && (
+                    <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${C.border}` }}>
+                      <SummaryRow
+                        label={t('events.voucher.breakdown.original')}
+                        value={`${voucherCovered.currency} ${listAmount.toFixed(2)}`}
+                      />
+                      <SummaryRow
+                        label={t('events.voucher.breakdown.discount')}
+                        value={`− ${voucherCovered.currency} ${voucherCovered.discount.toFixed(2)}`}
+                        accent
+                      />
+                      <div style={{ borderTop: `1px solid ${C.border}`, marginTop: 8, paddingTop: 8 }}>
+                        <SummaryRow
+                          label={t('events.modal.totalToPay')}
+                          value={`${voucherCovered.currency} 0.00`}
+                          strong
+                        />
+                      </div>
+                      <div style={{
+                        marginTop: 10, fontSize: 11.5, lineHeight: 1.55, color: C.mid,
+                        background: 'rgba(42,157,78,0.08)', borderRadius: 4, padding: '9px 11px',
+                      }}>
+                        {t('events.voucher.coveredConfirmed', { code: voucherCovered.code })}
+                      </div>
                     </div>
                   )}
+                </div>
+                );
+              })()}
+
+              {/* Voucher was consumed but registration did not complete —
+                  retrying would only report the voucher as already used. */}
+              {voucherFatal && (
+                <div style={{
+                  padding: '12px 16px', marginBottom: 20, borderRadius: 6,
+                  background: 'rgba(229,57,53,0.08)', border: '1px solid rgba(229,57,53,0.2)',
+                  fontSize: 12, lineHeight: 1.6, color: '#b3261e',
+                }}>
+                  {voucherFatal}
                 </div>
               )}
 
@@ -1048,13 +1384,31 @@ const Events: React.FC = () => {
               {/* Register / Unregister / Payment */}
               {paymentData && elementsOptions ? (
                 <div style={{ borderTop: bdr, paddingTop: 20 }}>
-                  <div style={{
-                    border: bdr, borderRadius: 6, padding: '12px 16px', marginBottom: 16,
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    flexWrap: 'wrap', gap: 8,
-                  }}>
-                    <span style={{ fontSize: 13, color: C.muted }}>{t('events.modal.totalToPay')}</span>
-                    <span style={{ fontSize: 18, fontWeight: 600 }}>{paymentData.currency.toUpperCase()} {paymentData.amount.toFixed(2)}</span>
+                  {/* Totals come straight from the payment intent — the server
+                      re-validates the voucher and its amount is authoritative. */}
+                  <div style={{ border: bdr, borderRadius: 6, padding: '12px 16px', marginBottom: 16 }}>
+                    {(paymentData.voucherDiscount ?? 0) > 0 && (
+                      <div style={{ marginBottom: 8, paddingBottom: 8, borderBottom: bdr }}>
+                        <SummaryRow
+                          label={t('events.voucher.breakdown.original')}
+                          value={`${paymentData.currency.toUpperCase()} ${(paymentData.listAmount ?? paymentData.amount).toFixed(2)}`}
+                        />
+                        <SummaryRow
+                          label={paymentData.voucherCode
+                            ? t('events.voucher.breakdown.discountWithCode', { code: paymentData.voucherCode })
+                            : t('events.voucher.breakdown.discount')}
+                          value={`− ${paymentData.currency.toUpperCase()} ${(paymentData.voucherDiscount ?? 0).toFixed(2)}`}
+                          accent
+                        />
+                      </div>
+                    )}
+                    <div style={{
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                      flexWrap: 'wrap', gap: 8,
+                    }}>
+                      <span style={{ fontSize: 13, color: C.muted }}>{t('events.modal.totalToPay')}</span>
+                      <span style={{ fontSize: 18, fontWeight: 600 }}>{paymentData.currency.toUpperCase()} {paymentData.amount.toFixed(2)}</span>
+                    </div>
                   </div>
                   <Elements stripe={stripePromise} options={elementsOptions}>
                     <EventPaymentForm
@@ -1084,17 +1438,24 @@ const Events: React.FC = () => {
                   ) : (
                     <button
                       onClick={handleRegister}
-                      disabled={registering}
+                      disabled={registering || !!voucherFatal}
                       style={{
-                        flex: 1, padding: '14px 24px', background: C.red, color: '#fff', border: 'none',
-                        fontSize: 12, fontWeight: 600, cursor: registering ? 'wait' : 'pointer',
+                        flex: 1, padding: '14px 24px', background: voucherFatal ? '#999' : C.red, color: '#fff', border: 'none',
+                        fontSize: 12, fontWeight: 600,
+                        cursor: voucherFatal ? 'default' : (registering ? 'wait' : 'pointer'),
                         fontFamily: "'Inter',sans-serif", letterSpacing: '0.1em', textTransform: 'uppercase',
                         borderRadius: 4, transition: 'background .15s',
                       }}
-                      onMouseEnter={e => (e.currentTarget.style.background = C.burgundy)}
-                      onMouseLeave={e => (e.currentTarget.style.background = C.red)}
+                      onMouseEnter={e => { if (!voucherFatal) e.currentTarget.style.background = C.burgundy; }}
+                      onMouseLeave={e => { if (!voucherFatal) e.currentTarget.style.background = C.red; }}
                     >
-                      {registering ? t('events.modal.processing') : ((selectedEvent.discountPrice ?? selectedEvent.price ?? 0) > 0 ? t('events.modal.registerAndPay') : t('events.modal.register'))}
+                      {registering ? t('events.modal.processing') : (() => {
+                        const list = selectedEvent.discountPrice ?? selectedEvent.price ?? 0;
+                        // A voucher that swallows the whole price means there is
+                        // nothing left to pay — don't promise a payment step.
+                        const due = appliedVoucher ? Math.max(0, list - appliedVoucher.amountCHF) : list;
+                        return due > 0 ? t('events.modal.registerAndPay') : t('events.modal.register');
+                      })()}
                     </button>
                   )}
                 </div>

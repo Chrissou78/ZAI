@@ -949,6 +949,32 @@
       "processing": "处理中…",
       "close": "关闭"
     },
+    "voucher": {
+      "toggle": "持有活动礼券？",
+      "codeLabel": "活动礼券编号",
+      "placeholder": "ZAI-XXXXXX-XXXX",
+      "apply": "使用",
+      "checking": "正在校验…",
+      "hint": "您的活动礼券编号可在「奖励」页面查看。",
+      "remove": "移除礼券",
+      "appliedAmount": "已抵扣本次报名 CHF {{amount}}",
+      "coversFullPrice": "此礼券可全额抵扣该活动费用 · 无需再支付。",
+      "coveredConfirmed": "礼券 {{code}} 已全额抵扣活动费用，未发生任何支付，您的席位已确认。",
+      "coveredRegistrationFailed": "礼券 {{code}} 已扣除，但您的席位未能确认。请凭此编号联系会员管家服务 · 请勿重试，每张礼券仅可使用一次。",
+      "breakdown": {
+        "original": "活动费用",
+        "discount": "活动礼券",
+        "discountWithCode": "活动礼券 {{code}}"
+      },
+      "errors": {
+        "notFound": "未找到该礼券编号，请核对后重试。",
+        "alreadyUsed": "该礼券已使用。",
+        "expired": "该礼券已过期。",
+        "invalid": "请输入您的活动礼券编号。",
+        "network": "礼券校验失败，请检查网络连接后重试。",
+        "generic": "礼券校验失败，请稍后重试。"
+      }
+    },
     "payment": {
       "loading": "加载中…",
       "back": "返回",
@@ -1118,49 +1144,19 @@
     },
     "tiers": {
       "white": {
-        "name": "白金",
-        "perks": [
-          "数字保修与产品注册",
-          "当季资讯订阅",
-          "会员活动邀请"
-        ]
+        "name": "白金"
       },
       "blue": {
-        "name": "蓝金",
-        "perks": [
-          "产品注册",
-          "活动资讯订阅",
-          "数字保修凭证"
-        ]
+        "name": "蓝金"
       },
       "red": {
-        "name": "红金",
-        "perks": [
-          "活动优先预订",
-          "维护保养折扣",
-          "合作品牌权益",
-          "专属客户支持"
-        ]
+        "name": "红金"
       },
       "black": {
-        "name": "黑金",
-        "perks": [
-          "VIP 活动邀请",
-          "新品优先发售",
-          "定制适配服务",
-          "尊享合作品牌权益",
-          "推荐好友奖励"
-        ]
+        "name": "黑金"
       },
       "diamond": {
-        "name": "钻石",
-        "perks": [
-          "彭特雷西纳工厂之旅",
-          "专属定制委托",
-          "专属 zai 大使服务",
-          "全部尊享合作品牌权益",
-          "年度 zai 静修体验"
-        ]
+        "name": "钻石"
       }
     },
     "progress": {
@@ -1171,22 +1167,6 @@
       "current": "当前",
       "max": "最高",
       "claimButton": "登记产品 · +500 积分"
-    },
-    "highlights": {
-      "sectionTitle": "您的{{tier}}等级专属权益",
-      "sectionTitleNoTier": "会员权益",
-      "insurance": {
-        "title": "免费滑雪保险",
-        "description": "每购买一副新款 zai 雪板，即可享受免费保险。"
-      },
-      "vipEvents": {
-        "title": "VIP 活动礼遇",
-        "description": "优先获邀参加滑雪试用、工厂参观及专属体验活动。"
-      },
-      "partnerElite": {
-        "title": "尊享合作品牌权益",
-        "description": "尊享 Revolut、Ikon Pass、Epic Pass 及 Engadin 的专属礼遇。"
-      }
     },
     "activity": {
       "sectionTitle": "近期动态"
@@ -1249,7 +1229,7 @@
       "upToPtsMax_other": "最高可用 {{count}} 积分",
       "saveChf": "节省 CHF {{amount}}",
       "endsOn": "截止",
-      "applyPoints": "使用积分 →"
+      "applyPoints": "立即领取 →"
     },
     "emptyStates": {
       "noDeals": "暂无可用优惠，敬请期待。",

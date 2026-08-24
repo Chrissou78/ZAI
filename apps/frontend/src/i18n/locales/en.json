@@ -949,6 +949,32 @@
       "processing": "Processing…",
       "close": "Close"
     },
+    "voucher": {
+      "toggle": "Have an event voucher?",
+      "codeLabel": "Event voucher code",
+      "placeholder": "ZAI-XXXXXX-XXXX",
+      "apply": "Apply",
+      "checking": "Checking…",
+      "hint": "Find your event voucher codes under Rewards.",
+      "remove": "Remove voucher",
+      "appliedAmount": "CHF {{amount}} applied to this registration",
+      "coversFullPrice": "This voucher covers the full price — nothing left to pay.",
+      "coveredConfirmed": "Voucher {{code}} covered the full price. No payment was taken and your place is confirmed.",
+      "coveredRegistrationFailed": "Voucher {{code}} has been redeemed, but we could not confirm your place. Please contact our member concierge quoting this code — do not try again, a voucher can only be used once.",
+      "breakdown": {
+        "original": "Event price",
+        "discount": "Event voucher",
+        "discountWithCode": "Event voucher {{code}}"
+      },
+      "errors": {
+        "notFound": "We do not recognise this voucher code. Please check it and try again.",
+        "alreadyUsed": "This voucher has already been used.",
+        "expired": "This voucher has expired.",
+        "invalid": "Please enter your event voucher code.",
+        "network": "The voucher could not be checked. Please check your connection and try again.",
+        "generic": "The voucher could not be checked. Please try again in a moment."
+      }
+    },
     "payment": {
       "loading": "Loading…",
       "back": "Back",
@@ -1121,49 +1147,19 @@
     },
     "tiers": {
       "white": {
-        "name": "White",
-        "perks": [
-          "Digital warranty & registration",
-          "Season newsletter",
-          "Member event invitations"
-        ]
+        "name": "White"
       },
       "blue": {
-        "name": "Blue",
-        "perks": [
-          "Product registration",
-          "Event newsletter",
-          "Digital warranty"
-        ]
+        "name": "Blue"
       },
       "red": {
-        "name": "Red",
-        "perks": [
-          "Priority event access",
-          "Maintenance discount",
-          "Partner benefits",
-          "Dedicated support"
-        ]
+        "name": "Red"
       },
       "black": {
-        "name": "Black",
-        "perks": [
-          "VIP event invitations",
-          "Early product launches",
-          "Custom fitting service",
-          "Partner elite access",
-          "Referral bonuses"
-        ]
+        "name": "Black"
       },
       "diamond": {
-        "name": "Diamond",
-        "perks": [
-          "Factory visits, Pontresina",
-          "Bespoke commission",
-          "Personal zai ambassador",
-          "All partner elite benefits",
-          "Annual zai retreat"
-        ]
+        "name": "Diamond"
       }
     },
     "progress": {
@@ -1174,22 +1170,6 @@
       "current": "Current",
       "max": "Max",
       "claimButton": "Claim product · +500 pts"
-    },
-    "highlights": {
-      "sectionTitle": "Your {{tier}} benefits",
-      "sectionTitleNoTier": "Membership benefits",
-      "insurance": {
-        "title": "Free Ski Insurance",
-        "description": "Complimentary insurance on every new zai ski purchase."
-      },
-      "vipEvents": {
-        "title": "VIP Event Access",
-        "description": "Priority invitations to ski demos, factory tours, and exclusive experiences."
-      },
-      "partnerElite": {
-        "title": "Partner Elite Access",
-        "description": "Premium perks with Revolut, Ikon Pass, Epic Pass and Engadin."
-      }
     },
     "activity": {
       "sectionTitle": "Recent activity"
@@ -1252,7 +1232,7 @@
       "upToPtsMax_other": "Up to {{count}} pts max",
       "saveChf": "save CHF {{amount}}",
       "endsOn": "Ends",
-      "applyPoints": "Apply Points →"
+      "applyPoints": "Claim Deal →"
     },
     "emptyStates": {
       "noDeals": "No deals available yet. Check back soon.",

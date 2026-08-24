@@ -25,30 +25,13 @@ const MONO = "ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', 
 // backend (White 500 / Blue 2 500 / Red 5 000 / Black 10 000 / Diamond 15 000);
 // `voucherCHF` is only a fallback — the live amount comes from /store/vouchers.
 // `icon` is the accent on a light card, `iconOnDark` the one on the black
-// "your tier" card. Names/perks are translated at render time via the `key`. ──
+// "your tier" card. Names are translated at render time via the `key`. ──
 const TIERS = [
   { key: 'white',   num: '01', floor: 500,   ceiling: 2499,  voucherCHF: 25,  icon: C.grey70,   iconOnDark: C.grey40, solid: false },
   { key: 'blue',    num: '02', floor: 2500,  ceiling: 4999,  voucherCHF: 50,  icon: C.grey70,   iconOnDark: C.grey40, solid: false },
   { key: 'red',     num: '03', floor: 5000,  ceiling: 9999,  voucherCHF: 100, icon: C.burgundy, iconOnDark: C.burgundyLight, solid: false },
   { key: 'black',   num: '04', floor: 10000, ceiling: 14999, voucherCHF: 200, icon: C.black,    iconOnDark: C.white,  solid: false },
   { key: 'diamond', num: '05', floor: 15000, ceiling: null,  voucherCHF: 300, icon: C.black,    iconOnDark: C.white,  solid: true },
-];
-
-// Highlighted perks shown for whichever tier the member currently holds.
-// Titles/descriptions are translated at render time via the `key` below.
-const TIER_HIGHLIGHTS = [
-  {
-    key: 'insurance',
-    icon: <path d="M8 1l2 4h4l-3 3 1 4-4-2-4 2 1-4-3-3h4z" />,
-  },
-  {
-    key: 'vipEvents',
-    icon: <><rect x="2" y="3" width="12" height="11" rx="1" /><path d="M5 1v3M11 1v3M2 7h12" /></>,
-  },
-  {
-    key: 'partnerElite',
-    icon: <path d="M13 6c0 4-5 8-5 8S3 10 3 6a5 5 0 0110 0z" />,
-  },
 ];
 
 interface BalanceData {
@@ -149,12 +132,11 @@ export default function Rewards() {
     return () => { cancelled = true; };
   }, [t]);
 
-  // Translated tier copy (name + perks) — the numeric/color meta above stays
-  // static and is merged with the localized strings for rendering.
+  // Translated tier names — the numeric/color meta above stays static and is
+  // merged with the localized name for rendering.
   const localizedTiers = useMemo(() => TIERS.map(tier => ({
     ...tier,
     name: t(`rewards.tiers.${tier.key}.name`),
-    perks: t(`rewards.tiers.${tier.key}.perks`, { returnObjects: true }) as string[],
   })), [t, i18n.language]);
 
   const balance = data?.balance || 0;
@@ -355,7 +337,6 @@ export default function Rewards() {
               padding: isMobile ? '1.5rem 1.25rem' : '2rem 1.5rem', position: 'relative',
               background: isCurrent ? C.black : C.white,
               color: isCurrent ? C.pureWhite : C.black,
-              display: 'flex', flexDirection: 'column',
             }}>
               {isCurrent && (
                 <div style={{
@@ -384,29 +365,12 @@ export default function Rewards() {
                   ? t('rewards.tierRange.withCeiling', { floor: num(tier.floor), ceiling: num(tier.ceiling) })
                   : t('rewards.tierRange.noCeiling', { floor: num(tier.floor) })}
               </div>
-              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {(tier.perks || []).map(b => (
-                  <li key={b} style={{
-                    fontSize: 11, lineHeight: 1.4,
-                    color: isCurrent ? '#aaa' : '#555',
-                    display: 'flex', alignItems: 'flex-start', gap: 7,
-                  }}>
-                    <span style={{
-                      width: 4, height: 4, marginTop: 5, borderRadius: '50%',
-                      background: iconColor, flexShrink: 0,
-                    }} />
-                    {b}
-                  </li>
-                ))}
-              </ul>
-
               {/* ── Event voucher: locked → claimable → claimed (→ redeemed) ──
-                  The 20px spacer guarantees a gap above the rule while
-                  `marginTop: auto` soaks up the slack, so the voucher blocks of
-                  all five cards align even with different perk-list lengths. */}
-              <div style={{ height: 20, flexShrink: 0 }} />
+                  The voucher is now the tier's only benefit, so it follows the
+                  point range directly — the cards are top-aligned and the grid
+                  stretches their backgrounds to a common height by itself. */}
               <div style={{
-                marginTop: 'auto', paddingTop: '1.25rem',
+                paddingTop: '1.25rem',
                 borderTop: `1px solid ${hairline}`,
               }}>
                 <div style={{ ...LABEL, color: muted, fontSize: 9, marginBottom: 6 }}>
@@ -599,33 +563,6 @@ export default function Rewards() {
           >
             {t('rewards.progress.claimButton')}
           </button>
-        </div>
-      </div>
-
-      {/* ── Your {tier} benefits ── */}
-      <div style={{ marginBottom: '2.5rem' }}>
-        <div style={{
-          ...LABEL, marginBottom: '1rem', paddingBottom: '0.75rem',
-          borderBottom: `1px solid ${C.border}`,
-        }}>{hasTier && currentTier
-          ? t('rewards.highlights.sectionTitle', { tier: currentTier.name })
-          : t('rewards.highlights.sectionTitleNoTier')}</div>
-        <div style={{
-          display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-          gap: 1, background: C.border, border: `1px solid ${C.border}`,
-        }}>
-          {TIER_HIGHLIGHTS.map(h => (
-            <div key={h.key} style={{ background: C.white, padding: '1.5rem' }}>
-              <div style={{
-                width: 32, height: 32, border: `1px solid ${C.border}`,
-                display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '0.75rem',
-              }}>
-                <svg width="14" height="14" viewBox="0 0 16 16" fill={C.burgundy}>{h.icon}</svg>
-              </div>
-              <div style={{ fontSize: 12, fontWeight: 500, color: C.black, marginBottom: 4 }}>{t(`rewards.highlights.${h.key}.title`)}</div>
-              <div style={{ fontSize: 11, color: C.gray, lineHeight: 1.6 }}>{t(`rewards.highlights.${h.key}.description`)}</div>
-            </div>
-          ))}
         </div>
       </div>
 

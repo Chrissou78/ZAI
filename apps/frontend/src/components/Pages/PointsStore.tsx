@@ -321,7 +321,15 @@ function RewardCard({
 }
 
 /* ── Page ── */
-export default function PointsStore() {
+/**
+ * `embedded` renders this as a *section* of another page (the deals page)
+ * rather than a standalone route: the page-level padding and the 1100px
+ * centring wrapper are dropped so it inherits the host page's container, and
+ * the header uses an <h2> because that page already owns the <h1>. Everything
+ * else — data loading, balance, redeem flow, errors — is identical, so the
+ * `/redeem` route keeps working untouched when the prop is absent.
+ */
+export default function PointsStore({ embedded = false }: { embedded?: boolean } = {}) {
   const { t } = useTranslation();
   const [deals, setDeals] = useState<PointsDeal[]>([]);
   const [balance, setBalance] = useState(0);
@@ -442,14 +450,20 @@ export default function PointsStore() {
     );
   }
 
+  // Embedded: no page padding (the host page's container already supplies it)
+  // and no centring wrapper, so the grid lines up with the sections above it.
+  const Heading = embedded ? 'h2' : 'h1';
+
   return (
-    <div style={{
+    <div style={embedded ? {
+      fontFamily: C.font, color: C.black, boxSizing: 'border-box', marginBottom: 48,
+    } : {
       fontFamily: C.font, color: C.black,
       paddingTop: 'clamp(24px, 5vw, 48px)', paddingBottom: 'clamp(32px, 6vw, 64px)',
       paddingLeft: 'clamp(16px, 4vw, 48px)', paddingRight: 'clamp(16px, 4vw, 48px)',
       boxSizing: 'border-box',
     }}>
-      <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+      <div style={embedded ? undefined : { maxWidth: 1100, margin: '0 auto' }}>
         {/* Header */}
         <div style={{
           display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end',
@@ -458,9 +472,11 @@ export default function PointsStore() {
         }}>
           <div style={{ flex: '1 1 320px', minWidth: 0 }}>
             <div style={RED_LABEL}>{t('pointsStore.header.label')}</div>
-            <h1 style={{
+            <Heading style={embedded ? {
+              fontSize: 'clamp(22px, 2.5vw, 30px)', fontWeight: 300, margin: '6px 0 8px', lineHeight: 1.15,
+            } : {
               fontSize: 'clamp(28px, 3vw, 36px)', fontWeight: 300, margin: '8px 0 8px', lineHeight: 1.15,
-            }}>{t('pointsStore.header.title')}</h1>
+            }}>{t('pointsStore.header.title')}</Heading>
             <p style={{ fontSize: 13, color: C.gray, lineHeight: 1.65, margin: 0, maxWidth: 620 }}>
               {t('pointsStore.header.description')}
             </p>

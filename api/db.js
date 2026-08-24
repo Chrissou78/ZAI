@@ -481,6 +481,11 @@ export async function initDB() {
         created_at TIMESTAMPTZ DEFAULT NOW(),
         updated_at TIMESTAMPTZ DEFAULT NOW()
       );
+      -- A tier voucher applied to this checkout. Recorded here rather than
+      -- marking the voucher used at PaymentIntent creation, so abandoning
+      -- checkout does not burn it — redemption happens on confirm.
+      ALTER TABLE event_payments ADD COLUMN IF NOT EXISTS voucher_code TEXT;
+      ALTER TABLE event_payments ADD COLUMN IF NOT EXISTS voucher_discount_chf NUMERIC(10,2) DEFAULT 0;
       CREATE INDEX IF NOT EXISTS idx_event_payments_user ON event_payments(user_id);
       CREATE INDEX IF NOT EXISTS idx_event_payments_event ON event_payments(event_id);
     `);
