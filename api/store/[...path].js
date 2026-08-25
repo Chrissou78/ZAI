@@ -731,20 +731,36 @@ async function handleDeals(req, res, segments, method, userId, decoded) {
     }
 
     const redemptionId = randomUUID();
+
+    // Claim the redemption row BEFORE spending points, so the unique index
+    // (idx_redemptions_points_once) is what arbitrates concurrency rather than
+    // the check above. The previous order spent the points first, which meant a
+    // row rejected by the index would have already debited the member.
+    try {
+      await getPool().query(
+        `INSERT INTO deal_redemptions (id, deal_id, user_id, points_used, amount_chf, stripe_session_id, status, points_only)
+         VALUES ($1,$2,$3,$4,0,'',$5,true)`,
+        [redemptionId, dealId, userId, cost, 'paid']
+      );
+    } catch (e) {
+      if (e && e.code === '23505') { // unique_violation — lost the race
+        return res.status(409).json({ error: 'You have already redeemed this reward', alreadyRedeemed: true });
+      }
+      throw e;
+    }
+
+    // Now debit. If this fails the claim is released, so the member is neither
+    // charged nor left holding a reward they didn't pay for.
     try {
       await spendPoints(userId, cost, 'redeem', `Points redemption: ${deal.title}`, redemptionId);
     } catch (e) {
+      await getPool().query('DELETE FROM deal_redemptions WHERE id = $1', [redemptionId]).catch(() => {});
       if (String(e.message) === 'INSUFFICIENT_POINTS') {
         return res.status(400).json({ error: 'Not enough points', required: cost, balance });
       }
       throw e;
     }
 
-    await getPool().query(
-      `INSERT INTO deal_redemptions (id, deal_id, user_id, points_used, amount_chf, stripe_session_id, status)
-       VALUES ($1,$2,$3,$4,0,'',$5)`,
-      [redemptionId, dealId, userId, cost, 'paid']
-    );
     await getPool().query(
       `UPDATE deals SET spots_left = GREATEST(0, spots_left - 1), updated_at = NOW()
        WHERE id = $1 AND spots_total > 0`, [dealId]

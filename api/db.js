@@ -331,6 +331,19 @@ export async function initDB() {
       CREATE INDEX IF NOT EXISTS idx_redemptions_user ON deal_redemptions(user_id);
       CREATE INDEX IF NOT EXISTS idx_redemptions_deal ON deal_redemptions(deal_id);
       CREATE INDEX IF NOT EXISTS idx_redemptions_stripe ON deal_redemptions(stripe_session_id);
+
+      -- Marks a redemption as having been settled with points alone. Recorded
+      -- on the redemption itself so a unique index can single these out: a
+      -- points reward is once-per-member, whereas a money deal may legitimately
+      -- be bought more than once, and an index over (user_id, deal_id) cannot
+      -- tell the two apart without this flag.
+      ALTER TABLE deal_redemptions ADD COLUMN IF NOT EXISTS points_only BOOLEAN DEFAULT false;
+
+      -- Backfill for rows written before the flag existed.
+      UPDATE deal_redemptions r SET points_only = true
+        FROM deals d
+       WHERE d.id = r.deal_id AND d.points_only = true
+         AND r.points_only IS DISTINCT FROM true;
       ALTER TABLE deals ADD COLUMN IF NOT EXISTS contract_address TEXT DEFAULT '';
 
       -- Points-only redemptions. Rather than a parallel table, a deal can be
@@ -491,6 +504,29 @@ export async function initDB() {
     `);
 
     await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_product_claims_user_product ON product_claims(user_id, product_id)`);
+
+    // Enforces one points redemption per member per reward at the database
+    // level, closing the race an application-side check-then-insert leaves
+    // open. Partial, so money deals are untouched and can still be bought
+    // repeatedly.
+    //
+    // Guarded separately because this is the one statement here that can fail
+    // on existing data: if duplicates predate it, CREATE UNIQUE INDEX errors,
+    // and initDB() throwing would make every store request 500. Better to log
+    // loudly and keep serving with the application-level check still in place.
+    try {
+      await pool.query(`
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_redemptions_points_once
+          ON deal_redemptions(user_id, deal_id)
+          WHERE points_only = true AND status = 'paid'
+      `);
+    } catch (idxErr) {
+      console.error(
+        '[DB] Could not create idx_redemptions_points_once — duplicate paid points ' +
+        'redemptions likely already exist and need deduplicating. Falling back to ' +
+        'the application-level check only. Detail:', idxErr.message
+      );
+    }
 
     // ── Seed owner role from env var (no hardcoded ID) ──
     const OWNER_USER_ID = process.env.ZAI_OWNER_USER_ID;
