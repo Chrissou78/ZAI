@@ -487,7 +487,17 @@ async function handleDeals(req, res, segments, method, userId, decoded) {
            AND (spots_total = 0 OR spots_left > 0)
          ORDER BY featured DESC, created_at DESC`
       );
-      return res.json({ success: true, data: withDerivedPointsCap(r.rows) });
+      // Flag what this member has already redeemed so the catalogue can show
+      // it as claimed instead of offering it again.
+      const mine = await getPool().query(
+        `SELECT DISTINCT deal_id FROM deal_redemptions WHERE user_id = $1 AND status = 'paid'`,
+        [userId]
+      );
+      const redeemed = new Set(mine.rows.map(x => x.deal_id));
+      return res.json({
+        success: true,
+        data: withDerivedPointsCap(r.rows).map(d => ({ ...d, alreadyRedeemed: redeemed.has(d.id) })),
+      });
     }
   }
 
@@ -695,6 +705,20 @@ async function handleDeals(req, res, segments, method, userId, decoded) {
 
     const cost = parseInt(deal.points_price) || 0;
     if (cost <= 0) return res.status(400).json({ error: 'Item has no points price set' });
+
+    // One per member. Without this a points reward could be redeemed
+    // repeatedly — the seeded items have spots_total 0, so the spots
+    // decrement is a no-op and nothing else stopped a second claim. It also
+    // reappeared as available after a re-login because the catalogue never
+    // consulted the member's own redemption history.
+    const prior = await getPool().query(
+      `SELECT 1 FROM deal_redemptions
+        WHERE user_id = $1 AND deal_id = $2 AND status = 'paid' LIMIT 1`,
+      [userId, dealId]
+    );
+    if (prior.rows.length) {
+      return res.status(409).json({ error: 'You have already redeemed this reward', alreadyRedeemed: true });
+    }
 
     const balance = await getBalance(userId);
     if (balance < cost) {

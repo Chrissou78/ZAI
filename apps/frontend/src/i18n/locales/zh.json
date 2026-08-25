@@ -18,8 +18,7 @@
       "profile": "个人资料",
       "settings": "设置",
       "claimRequests": "认领申请",
-      "storeContent": "商店与内容",
-      "redeemPoints": "积分兑换"
+      "storeContent": "商店与内容"
     },
     "member": "会员",
     "exclusiveMember": "尊享会员",
@@ -1518,7 +1517,8 @@
       "expired": "已停止兑换",
       "shortfall_one": "还需 {{count, number}} 积分",
       "shortfall_other": "还需 {{count, number}} 积分",
-      "redeemedNote": "已兑换 — 专属顾问将与您联系"
+      "redeemedNote": "已兑换 — 专属顾问将与您联系",
+      "redeemed": "已兑换"
     },
     "confirm": {
       "label": "确认兑换",

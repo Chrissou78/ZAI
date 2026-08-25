@@ -18,8 +18,7 @@
       "profile": "Profil",
       "settings": "Einstellungen",
       "claimRequests": "Anfragen",
-      "storeContent": "Shop & Inhalte",
-      "redeemPoints": "Mit Punkten einlösen"
+      "storeContent": "Shop & Inhalte"
     },
     "member": "Mitglied",
     "exclusiveMember": "Exklusivmitglied",
@@ -1522,7 +1521,8 @@
       "expired": "Nicht mehr verfügbar",
       "shortfall_one": "Noch {{count, number}} Pkt. nötig",
       "shortfall_other": "Noch {{count, number}} Pkt. nötig",
-      "redeemedNote": "Eingelöst – unser Concierge meldet sich"
+      "redeemedNote": "Eingelöst – unser Concierge meldet sich",
+      "redeemed": "Bereits eingelöst"
     },
     "confirm": {
       "label": "Einlösung bestätigen",

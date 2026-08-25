@@ -14,7 +14,6 @@ import Admin from './components/Pages/Admin';
 import AdminStore from './components/Pages/AdminStore';
 import Rewards from './components/Pages/Rewards';
 import Updates from './components/Pages/Updates';
-import PointsStore from './components/Pages/PointsStore';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -68,7 +67,6 @@ const Router: React.FC = () => {
             <Route path="/community" element={<ExclusiveRoute><Community /></ExclusiveRoute>} />
             <Route path="/rewards" element={<ExclusiveRoute><Rewards /></ExclusiveRoute>} />
             <Route path="/updates" element={<ExclusiveRoute><Updates /></ExclusiveRoute>} />
-            <Route path="/redeem" element={<ExclusiveRoute><PointsStore /></ExclusiveRoute>} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/admin" element={<Admin />} />
@@ -99,7 +97,6 @@ const Router: React.FC = () => {
           <Route path="/community" element={<ExclusiveRoute><Community /></ExclusiveRoute>} />
           <Route path="/rewards" element={<ExclusiveRoute><Rewards /></ExclusiveRoute>} />
           <Route path="/updates" element={<ExclusiveRoute><Updates /></ExclusiveRoute>} />
-          <Route path="/redeem" element={<ExclusiveRoute><PointsStore /></ExclusiveRoute>} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/admin" element={<Admin />} />

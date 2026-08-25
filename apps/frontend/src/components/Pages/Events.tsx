@@ -123,6 +123,16 @@ const Sk: React.FC<{w?:string;h?:string;s?:React.CSSProperties}> = ({w='100%',h=
 
 // ─── Helpers ───
 
+// The event API returns prices as strings ("1800.00") even though the Event
+// interface types them as number — TS types don't validate a response body. Any
+// arithmetic coerced silently, but `.toFixed()` did not: applying a voucher
+// rendered the price breakdown and crashed the page white with
+// "toFixed is not a function". Coerce at every read instead of trusting the type.
+function toNum(v: unknown): number {
+  const n = typeof v === 'number' ? v : parseFloat(String(v ?? ''));
+  return Number.isFinite(n) ? n : 0;
+}
+
 function parseDate(dateStr: string) {
   try {
     const date = new Date(dateStr);
@@ -1160,7 +1170,7 @@ const Events: React.FC = () => {
               {/* Price section */}
               {selectedEvent.price != null && selectedEvent.price > 0 && (() => {
                 const cur = (selectedEvent.currency || 'CHF').toUpperCase();
-                const listAmount = selectedEvent.discountPrice ?? selectedEvent.price ?? 0;
+                const listAmount = toNum(selectedEvent.discountPrice ?? selectedEvent.price);
                 // Pre-checkout estimate only — the payment intent's figures below
                 // replace these once the server has re-validated the code.
                 const estDiscount = appliedVoucher ? Math.min(appliedVoucher.amountCHF, listAmount) : 0;
@@ -1336,11 +1346,11 @@ const Events: React.FC = () => {
                     <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${C.border}` }}>
                       <SummaryRow
                         label={t('events.voucher.breakdown.original')}
-                        value={`${voucherCovered.currency} ${listAmount.toFixed(2)}`}
+                        value={`${voucherCovered.currency} ${toNum(listAmount).toFixed(2)}`}
                       />
                       <SummaryRow
                         label={t('events.voucher.breakdown.discount')}
-                        value={`− ${voucherCovered.currency} ${voucherCovered.discount.toFixed(2)}`}
+                        value={`− ${voucherCovered.currency} ${toNum(voucherCovered.discount).toFixed(2)}`}
                         accent
                       />
                       <div style={{ borderTop: `1px solid ${C.border}`, marginTop: 8, paddingTop: 8 }}>
@@ -1391,13 +1401,13 @@ const Events: React.FC = () => {
                       <div style={{ marginBottom: 8, paddingBottom: 8, borderBottom: bdr }}>
                         <SummaryRow
                           label={t('events.voucher.breakdown.original')}
-                          value={`${paymentData.currency.toUpperCase()} ${(paymentData.listAmount ?? paymentData.amount).toFixed(2)}`}
+                          value={`${paymentData.currency.toUpperCase()} ${toNum(paymentData.listAmount ?? paymentData.amount).toFixed(2)}`}
                         />
                         <SummaryRow
                           label={paymentData.voucherCode
                             ? t('events.voucher.breakdown.discountWithCode', { code: paymentData.voucherCode })
                             : t('events.voucher.breakdown.discount')}
-                          value={`− ${paymentData.currency.toUpperCase()} ${(paymentData.voucherDiscount ?? 0).toFixed(2)}`}
+                          value={`− ${paymentData.currency.toUpperCase()} ${toNum(paymentData.voucherDiscount).toFixed(2)}`}
                           accent
                         />
                       </div>
@@ -1407,7 +1417,7 @@ const Events: React.FC = () => {
                       flexWrap: 'wrap', gap: 8,
                     }}>
                       <span style={{ fontSize: 13, color: C.muted }}>{t('events.modal.totalToPay')}</span>
-                      <span style={{ fontSize: 18, fontWeight: 600 }}>{paymentData.currency.toUpperCase()} {paymentData.amount.toFixed(2)}</span>
+                      <span style={{ fontSize: 18, fontWeight: 600 }}>{paymentData.currency.toUpperCase()} {toNum(paymentData.amount).toFixed(2)}</span>
                     </div>
                   </div>
                   <Elements stripe={stripePromise} options={elementsOptions}>
@@ -1450,7 +1460,7 @@ const Events: React.FC = () => {
                       onMouseLeave={e => { if (!voucherFatal) e.currentTarget.style.background = C.red; }}
                     >
                       {registering ? t('events.modal.processing') : (() => {
-                        const list = selectedEvent.discountPrice ?? selectedEvent.price ?? 0;
+                        const list = toNum(selectedEvent.discountPrice ?? selectedEvent.price);
                         // A voucher that swallows the whole price means there is
                         // nothing left to pay — don't promise a payment step.
                         const due = appliedVoucher ? Math.max(0, list - appliedVoucher.amountCHF) : list;

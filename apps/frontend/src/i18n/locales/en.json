@@ -18,8 +18,7 @@
       "profile": "Profile",
       "settings": "Settings",
       "claimRequests": "Claim Requests",
-      "storeContent": "Store & Content",
-      "redeemPoints": "Redeem with Points"
+      "storeContent": "Store & Content"
     },
     "member": "member",
     "exclusiveMember": "exclusive member",
@@ -1522,7 +1521,8 @@
       "expired": "No longer available",
       "shortfall_one": "Need {{count, number}} more pt",
       "shortfall_other": "Need {{count, number}} more pts",
-      "redeemedNote": "Redeemed — our concierge is in touch"
+      "redeemedNote": "Redeemed — our concierge is in touch",
+      "redeemed": "Already redeemed"
     },
     "confirm": {
       "label": "Confirm redemption",

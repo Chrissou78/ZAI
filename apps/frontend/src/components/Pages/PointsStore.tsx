@@ -33,6 +33,8 @@ interface PointsDeal {
   active?: boolean;
   points_only?: boolean;
   points_price?: string | number | null;
+  /** Set by the API when this member has already redeemed this reward. */
+  alreadyRedeemed?: boolean;
 }
 
 interface RedeemedInfo {
@@ -45,6 +47,7 @@ type CardError = { key: string; shortfall?: number };
 /** Reason a card cannot be actioned right now — drives the muted/disabled UI. */
 type Availability =
   | { kind: 'affordable' }
+  | { kind: 'redeemed' }
   | { kind: 'short'; shortfall: number }
   | { kind: 'soldOut' }
   | { kind: 'expired' };
@@ -66,6 +69,9 @@ const isSoldOut = (d: PointsDeal): boolean =>
   num(d.spots_total) > 0 && num(d.spots_left) <= 0;
 
 function availabilityOf(deal: PointsDeal, balance: number): Availability {
+  // Checked before everything else: a reward the member already claimed is
+  // theirs, and must not read as "sold out" or "need more points".
+  if (deal.alreadyRedeemed) return { kind: 'redeemed' };
   if (isExpired(deal)) return { kind: 'expired' };
   if (isSoldOut(deal)) return { kind: 'soldOut' };
   const cost = num(deal.points_price);
@@ -120,6 +126,7 @@ function RewardCard({
     if (avail.kind === 'short') {
       return { text: t('pointsStore.card.shortfall', { count: Math.ceil(avail.shortfall) }), color: C.red };
     }
+    if (avail.kind === 'redeemed') return { text: t('pointsStore.card.redeemed'), color: C.green };
     if (avail.kind === 'soldOut') return { text: t('pointsStore.card.soldOut'), color: C.gray };
     if (avail.kind === 'expired') return { text: t('pointsStore.card.expired'), color: C.gray };
     return null;
@@ -295,7 +302,9 @@ function RewardCard({
               cursor: 'not-allowed',
             }}
           >
-            {avail.kind === 'soldOut'
+            {avail.kind === 'redeemed'
+              ? t('pointsStore.card.redeemed')
+              : avail.kind === 'soldOut'
               ? t('pointsStore.card.soldOut')
               : avail.kind === 'expired'
                 ? t('pointsStore.card.expired')

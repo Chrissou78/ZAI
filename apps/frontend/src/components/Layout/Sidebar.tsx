@@ -141,7 +141,6 @@ const Sidebar: React.FC = () => {
         { path: '/events', label: t('nav.items.events'), icon: <EventsIcon /> },
         { path: '/community', label: t('nav.items.community'), icon: <CommunityIcon />, badge: communityNewCount },
         { path: '/rewards', label: t('nav.items.pointsTiers'), icon: <RewardsIcon /> },
-        { path: '/redeem', label: t('nav.items.redeemPoints'), icon: <RewardsIcon /> },
         { path: '/updates', label: t('nav.items.dealsCollectibles'), icon: <UpdatesIcon /> },
       ],
     }] : []),
