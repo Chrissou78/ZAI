@@ -1479,9 +1479,19 @@
     "body": "Sie gehören zu den ersten Mitgliedern. Als Dankeschön schenken wir Ihnen {{item}} – mit unseren besten Grüssen. Hinterlegen Sie Ihre persönlichen Angaben, damit wir wissen, wohin wir es senden dürfen.",
     "step1": "Vervollständigen Sie Name, Adresse und Telefonnummer in Ihrem Profil",
     "step2": "Wir versenden Ihr Geschenk innerhalb von fünf Werktagen",
-    "cta": "Profil vervollständigen",
-    "later": "Später",
-    "close": "Schliessen"
+    "cta": "Profil vervollständigen"
+  },
+  "onboarding": {
+    "title": "Erste Schritte",
+    "pillTitle": "Erste Schritte",
+    "dismiss": "Ausblenden",
+    "stepsRemaining_one": "{{count}} Schritt offen",
+    "stepsRemaining_other": "{{count}} Schritte offen",
+    "allDone": "Alles erledigt!",
+    "giftWaiting": "Ihr Willkommensgeschenk wartet",
+    "allSetLead": "Alles bereit —",
+    "allSetHighlight": "willkommen bei zai",
+    "hide": "Widget ausblenden"
   },
   "langSwitcher": {
     "label": "Sprache",

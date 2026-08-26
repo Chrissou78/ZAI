@@ -5,7 +5,6 @@ import { useAppContext } from '../../context/AppContext';
 import { apiService } from '../../services/api';
 import { QRCodeSVG } from 'qrcode.react';
 import { CameraIcon, UploadIcon, SmartphoneIcon } from '../Icons/ClaimIcons';
-import WelcomeGiftModal from '../Onboarding/WelcomeGiftModal';
 
 interface DashboardStats {
   productsClaimed: number;
@@ -1259,14 +1258,11 @@ const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* ══════ One-time welcome-gift modal ══════
-          Self-gating: it decides for itself whether to appear (campaign window
-          open + account-level `welcomeGiftSeen` still false) and marks itself
-          seen on every exit, so it adds nothing to the effects above. */}
-      <WelcomeGiftModal
-        userId={user?.id}
-        onCompleteProfile={() => navigate('/profile')}
-      />
+      {/* NOTE: the welcome-gift modal that used to live here is gone. Its
+          full-screen backdrop (z-index 10002) covered the OnboardingWidget
+          (z-index 9999) for precisely the new members it was aimed at, so the
+          offer was merged into that widget's "Complete your profile" step —
+          see components/Onboarding/OnboardingWidget.tsx. */}
 
       {/* ══════ Experience Card Claim Modal (proof-of-purchase flow) ══════ */}
       {showECModal && (

@@ -1479,9 +1479,19 @@
     "body": "You are among the first to join. As a thank you, we are sending you a {{item}}, on us. Add your personal details so we know where to ship it.",
     "step1": "Complete your name, address, and phone number in your profile",
     "step2": "We ship your gift within five working days",
-    "cta": "Complete your profile",
-    "later": "Maybe later",
-    "close": "Close"
+    "cta": "Complete your profile"
+  },
+  "onboarding": {
+    "title": "Getting Started",
+    "pillTitle": "Getting started",
+    "dismiss": "Dismiss",
+    "stepsRemaining_one": "{{count}} step remaining",
+    "stepsRemaining_other": "{{count}} steps remaining",
+    "allDone": "All done!",
+    "giftWaiting": "Your welcome gift awaits",
+    "allSetLead": "You're all set —",
+    "allSetHighlight": "welcome to zai",
+    "hide": "Hide this widget"
   },
   "langSwitcher": {
     "label": "Language",

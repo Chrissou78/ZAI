@@ -1,15 +1,60 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import { ZaiMark } from '../Icons/LogoIcons';
 
 // ── Keys for localStorage persistence ──
 const STORAGE_KEY_STEPS = 'zai_onboarding_completed';
 const STORAGE_KEY_DISMISSED = 'zai_onboarding_dismissed';
 const STORAGE_KEY_TOURS = 'zai_page_tours_seen';
 
-// NOTE: the free-gift campaign panel that used to live in this widget was
-// removed — WelcomeGiftModal now carries that message, and it owns the single
-// definition of the campaign window (GIFT_PROMO_* / isGiftPromoWindowOpen in
-// ./WelcomeGiftModal.tsx).
+/* ══════════════════════════════════════════════════════════════════════════
+   Welcome-gift campaign window — SINGLE SOURCE OF TRUTH
+   ─────────────────────────────────────────────────────────────────────────
+   The client gifts a physical item to every member who registers during the
+   first three months of the promotional period. Both bounds are FIXED ISO
+   instants (never derived from Date.now()), so the campaign stops by itself
+   once the window closes — it is re-evaluated on every render, no manual
+   cleanup needed. To extend or end the campaign, change these two constants
+   only.
+
+   The gift used to be pitched by a standalone WelcomeGiftModal mounted on the
+   dashboard. That modal is gone: its full-screen backdrop (z-index 10002) sat
+   on top of this widget (z-index 9999) for exactly the new members who were
+   supposed to be working through this checklist, so the two competed. The
+   offer now lives inside step 0 ("Complete your profile") below, and this file
+   is the only definition of the campaign window and the gift name.
+   ══════════════════════════════════════════════════════════════════════════ */
+export const GIFT_PROMO_START_ISO = '2026-08-01T00:00:00Z';
+export const GIFT_PROMO_END_ISO = '2026-11-01T00:00:00Z'; // exclusive — 3 months after start
+
+/** True only while "now" sits inside the fixed welcome-gift campaign window. */
+export const isGiftPromoWindowOpen = (now: number = Date.now()): boolean => {
+  const start = Date.parse(GIFT_PROMO_START_ISO);
+  const end = Date.parse(GIFT_PROMO_END_ISO);
+  // Malformed constants must never keep the campaign running forever.
+  if (Number.isNaN(start) || Number.isNaN(end)) return false;
+  return now >= start && now < end;
+};
+
+/* The gift on offer. The client changes this between campaigns, so it is
+   named once here and interpolated into every string that mentions it. */
+export const WELCOME_GIFT_ITEM = 'zai lip balm';
+
+/* ── Gift design tokens (carried over from the retired modal) ── */
+const BURGUNDY = '#7D1E2C';
+const BURGUNDY_DEEP = '#7A222E';
+const BURGUNDY_HOVER = '#9a2535';
+const GIFT_CALLOUT_BG = '#f2efe9';
+const GIFT_PANEL_BG = '#faf9f6';
+const MUTED = '#6a6a6a';
+const BLACK = '#0a0a0a';
+const BORDER = '#e0ddd6';
+const FONT = "'Inter', sans-serif";
+const DISPLAY_FONT = "'Georgia', 'Times New Roman', serif";
+
+/** The checklist step the welcome gift is attached to ("Complete your profile"). */
+const PROFILE_STEP_ID = 0;
 
 interface OnboardingStep {
   id: number;
@@ -76,8 +121,10 @@ const PAGE_TOURS: Record<string, PageTour> = {
 const OnboardingWidget: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { t } = useTranslation();
 
   const [isOpen, setIsOpen] = useState(false);
+  const [giftCtaHover, setGiftCtaHover] = useState(false);
   const [completedSteps, setCompletedSteps] = useState<number[]>(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY_STEPS);
@@ -235,6 +282,18 @@ const OnboardingWidget: React.FC = () => {
   // ── Dismiss permanently ──
   const handleDismiss = () => {
     setDismissed(true);
+    setIsOpen(false);
+  };
+
+  // ── Welcome gift ──
+  // The gift is not a second system: it is the reward for finishing step 0, so
+  // it shows only while the campaign window is open AND that step is still
+  // outstanding. The moment the profile step completes it stops being pitched.
+  const giftActive = isGiftPromoWindowOpen() && !completedSteps.includes(PROFILE_STEP_ID);
+  const giftItem = { item: WELCOME_GIFT_ITEM };
+
+  const handleGiftCta = () => {
+    navigate(STEPS[PROFILE_STEP_ID].route);
     setIsOpen(false);
   };
 
@@ -430,34 +489,64 @@ const OnboardingWidget: React.FC = () => {
                 transition: 'opacity 0.25s, transform 0.25s',
               }}
             >
-              {/* Header */}
+              {/* Header — turns burgundy and carries the welcome-gift framing
+                  while the gift is still on the table, so the offer and the
+                  checklist read as one flow rather than two systems. */}
               <div
                 style={{
-                  padding: '16px 18px 14px',
-                  borderBottom: '1px solid #f0f0f0',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
+                  padding: giftActive ? '14px 18px 13px' : '16px 18px 14px',
+                  borderBottom: giftActive ? 'none' : '1px solid #f0f0f0',
+                  background: giftActive
+                    ? `linear-gradient(135deg, ${BURGUNDY} 0%, #641622 70%, #4d101a 100%)`
+                    : 'transparent',
                 }}
               >
-                <div style={{ fontSize: '11px', letterSpacing: '0.25em', textTransform: 'uppercase', color: '#1a1a1a' }}>
-                  Getting Started
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div
+                    style={{
+                      fontSize: '11px',
+                      letterSpacing: '0.25em',
+                      textTransform: 'uppercase',
+                      color: giftActive ? '#ffffff' : '#1a1a1a',
+                    }}
+                  >
+                    {t('onboarding.title')}
+                  </div>
+                  <div
+                    onClick={handleDismiss}
+                    style={{
+                      fontSize: '10px',
+                      color: giftActive ? 'rgba(255,255,255,0.6)' : '#bbb',
+                      cursor: 'pointer',
+                      letterSpacing: '0.1em',
+                      textTransform: 'uppercase',
+                      transition: 'color 0.2s',
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.color = giftActive ? '#ffffff' : '#555')}
+                    onMouseLeave={(e) => (e.currentTarget.style.color = giftActive ? 'rgba(255,255,255,0.6)' : '#bbb')}
+                  >
+                    {t('onboarding.dismiss')}
+                  </div>
                 </div>
-                <div
-                  onClick={handleDismiss}
-                  style={{
-                    fontSize: '10px',
-                    color: '#bbb',
-                    cursor: 'pointer',
-                    letterSpacing: '0.1em',
-                    textTransform: 'uppercase',
-                    transition: 'color 0.2s',
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.color = '#555')}
-                  onMouseLeave={(e) => (e.currentTarget.style.color = '#bbb')}
-                >
-                  Dismiss
-                </div>
+
+                {giftActive && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '9px', marginTop: '11px' }}>
+                    <ZaiMark size={17} color="#ffffff" />
+                    <div
+                      style={{
+                        fontFamily: DISPLAY_FONT,
+                        fontSize: '13px',
+                        fontWeight: 300,
+                        lineHeight: 1.35,
+                        color: '#ffffff',
+                        minWidth: 0,
+                        overflowWrap: 'break-word',
+                      }}
+                    >
+                      {t('welcomeGift.headerLine1')} {t('welcomeGift.headerLine2')}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Progress Bar */}
@@ -465,13 +554,17 @@ const OnboardingWidget: React.FC = () => {
                 <div style={{ height: '100%', background: '#7D1E2C', width: `${progress}%`, transition: 'width 0.6s cubic-bezier(0.4,0,0.2,1)' }} />
               </div>
 
-              {/* Steps */}
-              <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+              {/* Steps — the gift panel is rendered inside this scroller,
+                  directly under the step it belongs to. `maxHeight` also
+                  tracks the viewport so the taller gift composition can never
+                  push the card off the top of a short screen. */}
+              <div style={{ maxHeight: 'min(420px, calc(100vh - 250px))', overflowY: 'auto' }}>
                 {STEPS.map((step) => {
                   const isDone = completedSteps.includes(step.id);
+                  const carriesGift = giftActive && step.id === PROFILE_STEP_ID;
                   return (
+                    <React.Fragment key={step.id}>
                     <div
-                      key={step.id}
                       onClick={() => handleStepClick(step)}
                       style={{
                         display: 'flex',
@@ -525,6 +618,14 @@ const OnboardingWidget: React.FC = () => {
                           }}
                         >
                           {step.name}
+                          {carriesGift && (
+                            <span
+                              aria-hidden="true"
+                              style={{ marginLeft: '6px', fontSize: '11px', lineHeight: 1 }}
+                            >
+                              🎁
+                            </span>
+                          )}
                         </div>
                         <div style={{ fontSize: '10px', color: '#aaa', letterSpacing: '0.03em' }}>{step.hint}</div>
                       </div>
@@ -532,6 +633,154 @@ const OnboardingWidget: React.FC = () => {
                       {/* Arrow */}
                       <div style={{ fontSize: '14px', color: isDone ? '#ddd' : '#999', transition: 'all 0.2s', flexShrink: 0 }}>›</div>
                     </div>
+
+                    {/* ── Welcome-gift panel — the reward for finishing this
+                        step, shown inline beneath it while it is outstanding.
+                        Composed tight to survive the 300px card. ── */}
+                    {carriesGift && (
+                      <div
+                        style={{
+                          padding: '0 18px 16px',
+                          background: GIFT_PANEL_BG,
+                          borderBottom: '1px solid #f4f4f4',
+                        }}
+                      >
+                        {/* Gift callout */}
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'flex-start',
+                            gap: '10px',
+                            background: GIFT_CALLOUT_BG,
+                            borderLeft: `3px solid ${BURGUNDY}`,
+                            padding: '11px 11px 11px 9px',
+                            marginTop: '14px',
+                          }}
+                        >
+                          <div
+                            aria-hidden="true"
+                            style={{
+                              width: '32px',
+                              height: '32px',
+                              flexShrink: 0,
+                              background: '#ffffff',
+                              border: `1px solid ${BORDER}`,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: '16px',
+                              lineHeight: 1,
+                            }}
+                          >
+                            🎁
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div
+                              style={{
+                                fontSize: '8px',
+                                letterSpacing: '0.24em',
+                                textTransform: 'uppercase',
+                                color: BURGUNDY,
+                                fontWeight: 600,
+                                marginBottom: '4px',
+                              }}
+                            >
+                              {t('welcomeGift.eyebrow')}
+                            </div>
+                            <div
+                              style={{
+                                fontSize: '13.5px',
+                                fontWeight: 500,
+                                color: BLACK,
+                                lineHeight: 1.25,
+                                marginBottom: '3px',
+                                overflowWrap: 'break-word',
+                              }}
+                            >
+                              {t('welcomeGift.giftName', giftItem)}
+                            </div>
+                            <div style={{ fontSize: '9.5px', color: MUTED, lineHeight: 1.45, overflowWrap: 'break-word' }}>
+                              {t('welcomeGift.giftSubline')}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Explanation */}
+                        <p
+                          style={{
+                            fontSize: '11px',
+                            lineHeight: 1.7,
+                            color: MUTED,
+                            margin: '12px 0 0',
+                            overflowWrap: 'break-word',
+                          }}
+                        >
+                          {t('welcomeGift.body', giftItem)}
+                        </p>
+
+                        {/* Numbered steps */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '9px', margin: '12px 0 14px' }}>
+                          {[t('welcomeGift.step1'), t('welcomeGift.step2')].map((label, i) => (
+                            <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '9px' }}>
+                              <div
+                                style={{
+                                  width: '18px',
+                                  height: '18px',
+                                  flexShrink: 0,
+                                  borderRadius: '50%',
+                                  border: `1px solid ${BURGUNDY}`,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  fontSize: '9px',
+                                  fontWeight: 600,
+                                  color: BURGUNDY,
+                                }}
+                              >
+                                {i + 1}
+                              </div>
+                              <div
+                                style={{
+                                  fontSize: '10.5px',
+                                  color: BLACK,
+                                  lineHeight: 1.5,
+                                  paddingTop: '2px',
+                                  minWidth: 0,
+                                  overflowWrap: 'break-word',
+                                }}
+                              >
+                                {label}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Primary CTA — same destination as the step row */}
+                        <button
+                          type="button"
+                          onClick={handleGiftCta}
+                          onMouseEnter={() => setGiftCtaHover(true)}
+                          onMouseLeave={() => setGiftCtaHover(false)}
+                          style={{
+                            width: '100%',
+                            padding: '12px 8px',
+                            background: giftCtaHover ? BURGUNDY_HOVER : BURGUNDY_DEEP,
+                            border: 'none',
+                            color: '#f5f4f0',
+                            fontSize: '10px',
+                            fontWeight: 600,
+                            letterSpacing: '0.16em',
+                            textTransform: 'uppercase',
+                            cursor: 'pointer',
+                            fontFamily: FONT,
+                            transition: 'background 0.2s',
+                          }}
+                        >
+                          {t('welcomeGift.cta')}
+                        </button>
+                      </div>
+                    )}
+                    </React.Fragment>
                   );
                 })}
               </div>
@@ -541,7 +790,7 @@ const OnboardingWidget: React.FC = () => {
                 <div style={{ padding: '16px 18px', textAlign: 'center', borderTop: '1px solid #f0f0f0' }}>
                   <div style={{ fontSize: '22px', marginBottom: '8px' }}>✨</div>
                   <p style={{ fontSize: '11px', color: '#666', letterSpacing: '0.1em', textTransform: 'uppercase', margin: 0 }}>
-                    You're all set — <span style={{ color: '#b8a06a' }}>welcome to zai</span>
+                    {t('onboarding.allSetLead')} <span style={{ color: '#b8a06a' }}>{t('onboarding.allSetHighlight')}</span>
                   </p>
                   <div
                     onClick={handleDismiss}
@@ -553,7 +802,7 @@ const OnboardingWidget: React.FC = () => {
                       textDecoration: 'underline',
                     }}
                   >
-                    Hide this widget
+                    {t('onboarding.hide')}
                   </div>
                 </div>
               )}
@@ -616,17 +865,46 @@ const OnboardingWidget: React.FC = () => {
               >
                 {completedSteps.length}/{STEPS.length}
               </div>
+
+              {/* Gift marker — absolutely positioned so advertising the gift on
+                  the collapsed pill costs the pill no extra width. */}
+              {giftActive && (
+                <div
+                  title={t('welcomeGift.eyebrow')}
+                  aria-label={t('welcomeGift.eyebrow')}
+                  style={{
+                    position: 'absolute',
+                    top: '-3px',
+                    right: '-4px',
+                    width: '15px',
+                    height: '15px',
+                    borderRadius: '50%',
+                    background: BURGUNDY_DEEP,
+                    color: '#ffffff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '8px',
+                    lineHeight: 1,
+                    boxShadow: '0 0 0 2px #ffffff',
+                  }}
+                >
+                  🎁
+                </div>
+              )}
             </div>
 
             {/* Text */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', minWidth: 0 }}>
               <div style={{ fontSize: '11px', letterSpacing: '0.15em', textTransform: 'uppercase', color: '#1a1a1a' }}>
-                Getting started
+                {t('onboarding.pillTitle')}
               </div>
-              <div style={{ fontSize: '10px', color: '#888', letterSpacing: '0.05em' }}>
-                {STEPS.length - completedSteps.length > 0
-                  ? `${STEPS.length - completedSteps.length} step${STEPS.length - completedSteps.length > 1 ? 's' : ''} remaining`
-                  : 'All done!'}
+              <div style={{ fontSize: '10px', color: giftActive ? BURGUNDY_DEEP : '#888', letterSpacing: '0.05em' }}>
+                {giftActive
+                  ? t('onboarding.giftWaiting')
+                  : STEPS.length - completedSteps.length > 0
+                    ? t('onboarding.stepsRemaining', { count: STEPS.length - completedSteps.length })
+                    : t('onboarding.allDone')}
               </div>
             </div>
 

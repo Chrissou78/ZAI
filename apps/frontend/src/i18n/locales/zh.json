@@ -1475,9 +1475,19 @@
     "body": "您是首批加入的会员之一。为表谢意，我们将为您送上 {{item}}，费用由我们承担。请完善您的个人资料，以便我们知晓寄送地址。",
     "step1": "在个人资料中填写姓名、地址与电话号码",
     "step2": "我们将在五个工作日内为您寄出礼物",
-    "cta": "完善个人资料",
-    "later": "稍后再说",
-    "close": "关闭"
+    "cta": "完善个人资料"
+  },
+  "onboarding": {
+    "title": "新手引导",
+    "pillTitle": "新手引导",
+    "dismiss": "不再显示",
+    "stepsRemaining_one": "还剩 {{count}} 项",
+    "stepsRemaining_other": "还剩 {{count}} 项",
+    "allDone": "全部完成！",
+    "giftWaiting": "您的入会礼物正在等您",
+    "allSetLead": "一切就绪 —",
+    "allSetHighlight": "欢迎加入 zai",
+    "hide": "隐藏此提示"
   },
   "langSwitcher": {
     "label": "语言",
