@@ -1548,7 +1548,8 @@
       "generic": "The redemption could not be completed. No points were deducted — please try again.",
       "network": "We could not reach the server, so the redemption is unconfirmed. Please reload the page before trying again.",
       "loadFailed": "We could not load the points collection.",
-      "retry": "Try again"
+      "retry": "Try again",
+      "alreadyRedeemed": "You have already redeemed this reward."
     }
   }
 }

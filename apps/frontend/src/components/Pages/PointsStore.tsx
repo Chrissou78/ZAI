@@ -96,6 +96,12 @@ function mapServerError(payload: any): CardError {
   if (raw === 'Sold out') return { key: 'soldOut' };
   if (raw === 'Deal has expired') return { key: 'expired' };
   if (raw === 'This item is not a points-only redemption') return { key: 'notPointsOnly' };
+  // Sent when the reward was already claimed (or lost a concurrent race). The
+  // generic "please try again" fallback was actively misleading here: retrying
+  // can never succeed.
+  if (payload?.alreadyRedeemed === true || raw === 'You have already redeemed this reward') {
+    return { key: 'alreadyRedeemed' };
+  }
   return { key: 'generic' };
 }
 
@@ -114,8 +120,15 @@ function RewardCard({
 }) {
   const { t } = useTranslation();
   const cost = num(deal.points_price);
-  const avail = availabilityOf(deal, balance);
-  const locked = !redeemed && avail.kind !== 'affordable';
+  // `redeemed` is what this session just claimed; `deal.alreadyRedeemed` is
+  // what the server says was claimed previously. Either one means claimed, so
+  // fold them together before deciding availability — relying on the server
+  // flag alone left the button live until the next refetch.
+  const claimed = !!redeemed || deal.alreadyRedeemed === true;
+  const avail = claimed
+    ? ({ kind: 'redeemed' } as Availability)
+    : availabilityOf(deal, balance);
+  const locked = avail.kind !== 'affordable';
   const submitting = phase === 'submitting';
 
   const fmtDate = (d: string) =>
@@ -434,6 +447,12 @@ export default function PointsStore({ embedded = false }: { embedded?: boolean }
       if (payload) {
         const mapped = mapServerError(payload);
         setCardErrors(prev => ({ ...prev, [deal.id]: mapped }));
+        // Already claimed: reflect it on the card straight away so the button
+        // greys out instead of inviting another click that can never succeed.
+        if (mapped.key === 'alreadyRedeemed') {
+          setDeals(prev => prev.map(d => (d.id === deal.id ? { ...d, alreadyRedeemed: true } : d)));
+          setConfirmingId(null);
+        }
         // 'Not enough points' carries the authoritative balance — adopt it so
         // the header and every other card stop disagreeing with the server.
         if (Number.isFinite(Number(payload.balance))) setBalance(num(payload.balance));

@@ -1548,7 +1548,8 @@
       "generic": "Die Einlösung konnte nicht abgeschlossen werden. Es wurden keine Punkte abgezogen – bitte versuchen Sie es erneut.",
       "network": "Der Server war nicht erreichbar, die Einlösung ist unbestätigt. Bitte laden Sie die Seite neu, bevor Sie es erneut versuchen.",
       "loadFailed": "Die Punkte-Kollektion konnte nicht geladen werden.",
-      "retry": "Erneut versuchen"
+      "retry": "Erneut versuchen",
+      "alreadyRedeemed": "Sie haben diese Belohnung bereits eingelöst."
     }
   }
 }

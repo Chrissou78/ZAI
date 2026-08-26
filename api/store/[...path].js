@@ -452,6 +452,20 @@ function withDerivedPointsCap(rows) {
     : { ...d, max_points_discount: pointsToCoverCHF(d.price_chf) });
 }
 
+// Which of these deals the caller has already redeemed. Applied to BOTH the
+// admin and member responses from one place: it previously decorated only the
+// member branch, so an admin — who takes the other branch — never saw claimed
+// state and could keep clicking Redeem until the database rejected them.
+async function decorateDeals(rows, userId) {
+  const withCap = withDerivedPointsCap(rows);
+  const mine = await getPool().query(
+    `SELECT DISTINCT deal_id FROM deal_redemptions WHERE user_id = $1 AND status = 'paid'`,
+    [userId]
+  );
+  const redeemed = new Set(mine.rows.map(x => x.deal_id));
+  return withCap.map(d => ({ ...d, alreadyRedeemed: redeemed.has(d.id) }));
+}
+
 async function handleDeals(req, res, segments, method, userId, decoded) {
 
   // GET /api/store/deals
@@ -475,7 +489,7 @@ async function handleDeals(req, res, segments, method, userId, decoded) {
            CASE WHEN active = true AND (ends_at IS NULL OR ends_at > NOW()) THEN 0 ELSE 1 END,
            featured DESC, created_at DESC`
       );
-      return res.json({ success: true, data: withDerivedPointsCap(r.rows) });
+      return res.json({ success: true, data: await decorateDeals(r.rows, userId) });
     } else {
       const r = await getPool().query(
         `SELECT id, title, description, category, price_chf, max_points_discount,
@@ -487,17 +501,7 @@ async function handleDeals(req, res, segments, method, userId, decoded) {
            AND (spots_total = 0 OR spots_left > 0)
          ORDER BY featured DESC, created_at DESC`
       );
-      // Flag what this member has already redeemed so the catalogue can show
-      // it as claimed instead of offering it again.
-      const mine = await getPool().query(
-        `SELECT DISTINCT deal_id FROM deal_redemptions WHERE user_id = $1 AND status = 'paid'`,
-        [userId]
-      );
-      const redeemed = new Set(mine.rows.map(x => x.deal_id));
-      return res.json({
-        success: true,
-        data: withDerivedPointsCap(r.rows).map(d => ({ ...d, alreadyRedeemed: redeemed.has(d.id) })),
-      });
+      return res.json({ success: true, data: await decorateDeals(r.rows, userId) });
     }
   }
 
@@ -507,7 +511,7 @@ async function handleDeals(req, res, segments, method, userId, decoded) {
       'SELECT * FROM deals WHERE id = $1 AND active = true', [segments[0]]
     );
     if (!r.rows.length) return res.status(404).json({ error: 'Deal not found' });
-    return res.json({ success: true, data: withDerivedPointsCap(r.rows)[0] });
+    return res.json({ success: true, data: (await decorateDeals(r.rows, userId))[0] });
   }
 
   // POST /api/store/deals/:id/redeem
