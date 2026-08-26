@@ -207,43 +207,42 @@
       "label": "treueprogramm",
       "heading": "Prämien & Stufen",
       "description": "Sammeln Sie 1 Punkt für jeden ausgegebenen CHF, EUR oder USD für zai Produkte. Erreichen Sie fünf exklusive Stufen und schalten Sie immer hochwertigere Vorteile, Angebote und Erlebnisse frei.",
-      "startingTier": "Einstiegsstufe",
       "ptsSuffix": "+ Punkte",
       "cta": "Meine Prämien ansehen",
       "tiers": {
+        "white": {
+          "name": "Weiss",
+          "perks": [
+            "zai Event-Gutschein über CHF 25",
+            "Zwei Jahre ab Einlösung gültig"
+          ]
+        },
         "blue": {
           "name": "Blau",
           "perks": [
-            "Produktregistrierung",
-            "Event-Newsletter",
-            "Digitale Garantie"
+            "zai Event-Gutschein über CHF 50",
+            "Zwei Jahre ab Einlösung gültig"
           ]
         },
         "red": {
           "name": "Rot",
           "perks": [
-            "Bevorzugter Event-Zugang",
-            "Rabatt auf Wartung",
-            "Partnervorteile",
-            "Persönlicher Support"
+            "zai Event-Gutschein über CHF 100",
+            "Zwei Jahre ab Einlösung gültig"
           ]
         },
         "black": {
           "name": "Schwarz",
           "perks": [
-            "VIP-Einladungen zu Events",
-            "Frühzeitige Produkteinführungen",
-            "Individueller Anpassungsservice",
-            "Empfehlungsprämien"
+            "zai Event-Gutschein über CHF 200",
+            "Zwei Jahre ab Einlösung gültig"
           ]
         },
         "diamond": {
           "name": "Diamant",
           "perks": [
-            "Werksbesuche in Pontresina",
-            "Massgefertigte Sonderanfertigung",
-            "Persönlicher zai Botschafter",
-            "Jährliches zai Retreat"
+            "zai Event-Gutschein über CHF 300",
+            "Zwei Jahre ab Einlösung gültig"
           ]
         }
       }

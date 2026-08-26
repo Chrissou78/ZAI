@@ -55,11 +55,15 @@ const BTN_BASE: React.CSSProperties = {
    color renders nothing at all. */
 const GREY_40 = '#B2B2B2';
 const GREY_70 = '#706F6F';
+// Thresholds mirror TIERS in api/points.js, which is the source of truth for
+// the scheme. Note there is no longer a 0-point starting tier: White begins at
+// 500, so every card shows a real threshold.
 const TIERS = [
-  { key: 'blue', color: GREY_40, minPoints: 0 },
-  { key: 'red', color: WINE, minPoints: 15000 },
-  { key: 'black', color: '#f5f4f0', minPoints: 30000 },
-  { key: 'diamond', color: GREY_70, minPoints: 50000 },
+  { key: 'white', color: GREY_40, minPoints: 500 },
+  { key: 'blue', color: GREY_40, minPoints: 2500 },
+  { key: 'red', color: WINE, minPoints: 5000 },
+  { key: 'black', color: '#f5f4f0', minPoints: 10000 },
+  { key: 'diamond', color: GREY_70, minPoints: 15000 },
 ];
 
 /* ── Locked-feature tooltip (hover) ── */
@@ -1070,7 +1074,9 @@ const Home: React.FC = () => {
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+              // 190px so all five tiers fit one desktop row; below that they wrap
+              // rather than squeezing.
+              gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))',
               gap: '1px',
               background: '#2a2a2a',
               border: '1px solid #2a2a2a',
@@ -1140,9 +1146,7 @@ const Home: React.FC = () => {
                     marginBottom: '1.25rem',
                   }}
                 >
-                  {tier.minPoints === 0
-                    ? t('home.rewardsSection.startingTier')
-                    : `${tier.minPoints.toLocaleString()}${t('home.rewardsSection.ptsSuffix')}`}
+                  {`${tier.minPoints.toLocaleString()}${t('home.rewardsSection.ptsSuffix')}`}
                 </div>
                 <div
                   style={{
