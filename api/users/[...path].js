@@ -178,6 +178,7 @@ export default async function handler(req, res) {
           address: row.address, city: row.city, country: row.country,
           postalCode: row.postal_code, birthdate: row.birthdate, isPublic: row.is_public,
           salutation: row.salutation, language: row.language, image: row.image || null,
+          welcomeGiftSeen: row.welcome_gift_seen === true,
         },
       });
     } catch (err) {
@@ -271,6 +272,28 @@ export default async function handler(req, res) {
       );
 
       return res.json({ success: true, message: 'Profile updated successfully', jwtToken: newToken, user: updatedUser });
+    } catch (err) {
+      return res.status(500).json({ success: false, error: err.message });
+    }
+  }
+
+  // ─── POST /api/users/me/welcome-gift-seen ───
+  // Marks the one-time welcome-gift modal as shown. Its own endpoint rather
+  // than a field on PUT /me: that handler rewrites all 14 profile columns and
+  // has already caused two field-wipe bugs, so a fire-and-forget UI flag has
+  // no business going through it.
+  if (path === 'me/welcome-gift-seen' && method === 'POST') {
+    if (applyRateLimit(req, res, 'users:welcome-gift', 10, 60_000)) return;
+    const decoded = authenticate(req);
+    if (!decoded) return res.status(401).json({ error: 'No token provided' });
+    try {
+      await initDB();
+      await ensureProfile(decoded);
+      await getPool().query(
+        'UPDATE user_profiles SET welcome_gift_seen = true, updated_at = NOW() WHERE user_id = $1',
+        [decoded.userId]
+      );
+      return res.json({ success: true });
     } catch (err) {
       return res.status(500).json({ success: false, error: err.message });
     }

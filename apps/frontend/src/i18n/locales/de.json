@@ -1471,15 +1471,18 @@
       "confirmRemove": "Diesen Beitrag entfernen?"
     }
   },
-  "onboarding": {
-    "giftPromo": {
-      "eyebrow": "Willkommensgeschenk",
-      "title": "Danke, dass Sie zu zai gehören",
-      "body": "Jedes Mitglied, das sich in den ersten drei Monaten unserer Aktion registriert, erhält ein Geschenk von zai.",
-      "profileNote": "Vervollständigen Sie Ihr Profil – Name, Telefonnummer und Adresse –, damit wir es Ihnen zusenden können.",
-      "cta": "Profil vervollständigen",
-      "dismiss": "Diese Nachricht ausblenden"
-    }
+  "welcomeGift": {
+    "headerLine1": "Willkommen im",
+    "headerLine2": "zai Experience Club",
+    "eyebrow": "Ihr Willkommensgeschenk",
+    "giftName": "{{item}}",
+    "giftSubline": "Reserviert für unsere ersten Mitglieder",
+    "body": "Sie gehören zu den ersten Mitgliedern. Als Dankeschön schenken wir Ihnen {{item}} – mit unseren besten Grüssen. Hinterlegen Sie Ihre persönlichen Angaben, damit wir wissen, wohin wir es senden dürfen.",
+    "step1": "Vervollständigen Sie Name, Adresse und Telefonnummer in Ihrem Profil",
+    "step2": "Wir versenden Ihr Geschenk innerhalb von fünf Werktagen",
+    "cta": "Profil vervollständigen",
+    "later": "Später",
+    "close": "Schliessen"
   },
   "langSwitcher": {
     "label": "Sprache",

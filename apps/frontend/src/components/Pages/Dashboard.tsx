@@ -5,6 +5,7 @@ import { useAppContext } from '../../context/AppContext';
 import { apiService } from '../../services/api';
 import { QRCodeSVG } from 'qrcode.react';
 import { CameraIcon, UploadIcon, SmartphoneIcon } from '../Icons/ClaimIcons';
+import WelcomeGiftModal from '../Onboarding/WelcomeGiftModal';
 
 interface DashboardStats {
   productsClaimed: number;
@@ -1257,6 +1258,15 @@ const Dashboard: React.FC = () => {
           ))}
         </div>
       </div>
+
+      {/* ══════ One-time welcome-gift modal ══════
+          Self-gating: it decides for itself whether to appear (campaign window
+          open + account-level `welcomeGiftSeen` still false) and marks itself
+          seen on every exit, so it adds nothing to the effects above. */}
+      <WelcomeGiftModal
+        userId={user?.id}
+        onCompleteProfile={() => navigate('/profile')}
+      />
 
       {/* ══════ Experience Card Claim Modal (proof-of-purchase flow) ══════ */}
       {showECModal && (

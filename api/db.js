@@ -269,6 +269,11 @@ export async function initDB() {
 
     await client.query(`
       ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS salutation INT DEFAULT 0;
+
+      -- One-time welcome-gift modal shown to new members on the dashboard.
+      -- Stored on the account rather than localStorage so it does not
+      -- reappear after a cache clear, in incognito, or on another device.
+      ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS welcome_gift_seen BOOLEAN DEFAULT false;
       ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS language TEXT DEFAULT 'en';
       ALTER TABLE product_claim_requests ADD COLUMN IF NOT EXISTS product_id TEXT;
       ALTER TABLE product_claim_requests ADD COLUMN IF NOT EXISTS encryption_key TEXT DEFAULT '';

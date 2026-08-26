@@ -1471,15 +1471,18 @@
       "confirmRemove": "Remove this story?"
     }
   },
-  "onboarding": {
-    "giftPromo": {
-      "eyebrow": "Welcome gift",
-      "title": "Thank you for joining zai",
-      "body": "Every member who registers during the first three months of our launch promotion receives a complimentary gift from zai.",
-      "profileNote": "Complete your profile — name, phone and address — so we can send it to you.",
-      "cta": "Complete your profile",
-      "dismiss": "Dismiss this message"
-    }
+  "welcomeGift": {
+    "headerLine1": "Welcome to the",
+    "headerLine2": "zai Experience Club",
+    "eyebrow": "Your welcome gift",
+    "giftName": "{{item}}",
+    "giftSubline": "Reserved for our first platform members",
+    "body": "You are among the first to join. As a thank you, we are sending you a {{item}}, on us. Add your personal details so we know where to ship it.",
+    "step1": "Complete your name, address, and phone number in your profile",
+    "step2": "We ship your gift within five working days",
+    "cta": "Complete your profile",
+    "later": "Maybe later",
+    "close": "Close"
   },
   "langSwitcher": {
     "label": "Language",
