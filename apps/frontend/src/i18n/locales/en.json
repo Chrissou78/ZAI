@@ -338,7 +338,9 @@
       "exclusiveMemberSince": "Exclusive Member since {{year}}",
       "membershipUnderReview": "Membership under review",
       "claimMembershipCta": "Claim Your zai Experience Club Membership",
-      "exclusiveMemberBadge": "Exclusive Member"
+      "exclusiveMemberBadge": "Exclusive Member",
+      "noTierBadge": "No tier yet",
+      "noTierShort": "No tier"
     },
     "welcome": {
       "greeting": "Good to see you",
@@ -480,7 +482,8 @@
     },
     "tier": {
       "label": "{{name}} Tier",
-      "ptsToNext": "{{count}} pts to {{tier}}"
+      "ptsToNext": "{{count}} pts to {{tier}}",
+      "none": "No tier yet"
     },
     "tiers": {
       "blue": "Blue",

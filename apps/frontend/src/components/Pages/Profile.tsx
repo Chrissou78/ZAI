@@ -51,68 +51,32 @@ function clean(val: any): string {
   return String(val);
 }
 
-/* ── Tier definitions (matching the design) ── */
+/* ── Tier definitions (mirrors TIERS in api/points.js, the source of truth) ──
+   There is no entry tier: below White's 500 points a member has NO tier.
+   getTier() therefore returns null, where it used to fall back to TIERS[0] —
+   which is why a brand-new member with 0 points was shown as "Blue".
+   The old per-tier `benefits` arrays are gone: they were never rendered, and
+   the event voucher is now the only tier benefit. */
 const TIERS = [
-  {
-    name: 'Blue',
-    color: '#3B6B9E',
-    min: 0,
-    max: 14999,
-    benefits: [
-      'Product registration',
-      'Event newsletter',
-      'Digital warranty',
-    ],
-  },
-  {
-    name: 'Red',
-    color: '#7D1E2C',
-    min: 15000,
-    max: 29999,
-    benefits: [
-      'Priority event access',
-      'Maintenance discount',
-      'Partner benefits',
-      'Dedicated support',
-    ],
-  },
-  {
-    name: 'Black',
-    color: '#1a1a1a',
-    min: 30000,
-    max: 49999,
-    benefits: [
-      'VIP event invitations',
-      'Early product launches',
-      'Custom fitting service',
-      'Partner elite access',
-      'Referral bonuses',
-    ],
-  },
-  {
-    name: 'Diamond',
-    color: '#8B7D6B',
-    min: 50000,
-    max: Infinity,
-    benefits: [
-      'Factory visits, Pontresina',
-      'Bespoke commission',
-      'Personal zai ambassador',
-      'All partner elite benefits',
-      'Annual zai retreat',
-    ],
-  },
+  { name: 'White',   color: '#B2B2B2', min: 500,   max: 2499 },
+  { name: 'Blue',    color: '#3B6B9E', min: 2500,  max: 4999 },
+  { name: 'Red',     color: '#7D1E2C', min: 5000,  max: 9999 },
+  { name: 'Black',   color: '#1a1a1a', min: 10000, max: 14999 },
+  { name: 'Diamond', color: '#8B7D6B', min: 15000, max: Infinity },
 ];
 
+/** Highest tier reached, or null when the member is below the first threshold. */
 function getTier(points: number) {
   for (let i = TIERS.length - 1; i >= 0; i--) {
     if (points >= TIERS[i].min) return { ...TIERS[i], index: i };
   }
-  return { ...TIERS[0], index: 0 };
+  return null;
 }
 
+/** Next tier up — the first tier when the member has none yet. */
 function getNextTier(points: number) {
   const current = getTier(points);
+  if (!current) return TIERS[0];
   if (current.index >= TIERS.length - 1) return null;
   return TIERS[current.index + 1];
 }
@@ -230,10 +194,13 @@ const TierDisplay: React.FC<{ points: number }> = ({ points }) => {
   const tierName = (name: string) => t(`profile.tiers.${name.toLowerCase()}`, name);
   const tier = getTier(points);
   const next = getNextTier(points);
+  // No tier below 500 points: measure progress from 0 toward White, and fall
+  // back to a neutral accent rather than dereferencing a null tier.
+  const tierFloor = tier ? tier.min : 0;
   const progress = next
-    ? Math.min(100, Math.max(0, ((points - tier.min) / (next.min - tier.min)) * 100))
+    ? Math.min(100, Math.max(0, ((points - tierFloor) / (next.min - tierFloor)) * 100))
     : 100;
-  const barColor = tier.color === '#1a1a1a' ? C.red : tier.color;
+  const barColor = !tier ? C.red : (tier.color === '#1a1a1a' ? C.red : tier.color);
 
   return (
     <div>
@@ -1202,7 +1169,9 @@ const Profile: React.FC = () => {
           </div>
 
           {/* ── Tier badge in sidebar ── */}
-          {!loadingPoints && (
+          {/* Resolved once: below 500 points there is no tier, so this is null
+              and every read below must tolerate it. */}
+          {!loadingPoints && (() => { const badgeTier = getTier(points); return (
             <div style={{
               width: '100%', padding: '12px 0',
               borderBottom: `1px solid ${C.border}`, marginBottom: '1rem',
@@ -1211,16 +1180,18 @@ const Profile: React.FC = () => {
               <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
                 <div style={{
                   width: 24, height: 24, borderRadius: '50%',
-                  background: getTier(points).color,
+                  background: badgeTier ? badgeTier.color : C.border,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  border: getTier(points).name === 'Black' ? '1px solid #555' : 'none',
+                  border: badgeTier && badgeTier.name === 'Black' ? '1px solid #555' : 'none',
                 }}>
                   <span style={{ fontSize: 9, color: '#fff', fontWeight: 700 }}>
-                    {String(getTier(points).index + 1).padStart(2, '0')}
+                    {badgeTier ? String(badgeTier.index + 1).padStart(2, '0') : '—'}
                   </span>
                 </div>
                 <span style={{ fontSize: 13, fontWeight: 500, color: C.black }}>
-                  {t('profile.tier.label', { name: tierName(getTier(points).name) })}
+                  {badgeTier
+                    ? t('profile.tier.label', { name: tierName(badgeTier.name) })
+                    : t('profile.tier.none')}
                 </span>
               </div>
               <div style={{ fontSize: 11, color: C.gray, marginTop: 4 }}>
@@ -1231,8 +1202,8 @@ const Profile: React.FC = () => {
                   <div style={{ height: 3, background: C.border, borderRadius: 2, overflow: 'hidden' }}>
                     <div style={{
                       height: '100%',
-                      width: `${Math.min(((points - getTier(points).min) / (getNextTier(points)!.min - getTier(points).min)) * 100, 100)}%`,
-                      background: getTier(points).color === '#1a1a1a' ? C.red : getTier(points).color,
+                      width: `${Math.min(((points - (badgeTier ? badgeTier.min : 0)) / (getNextTier(points)!.min - (badgeTier ? badgeTier.min : 0))) * 100, 100)}%`,
+                      background: !badgeTier || badgeTier.color === '#1a1a1a' ? C.red : badgeTier.color,
                       borderRadius: 2, transition: 'width 0.6s ease',
                     }} />
                   </div>
@@ -1242,7 +1213,7 @@ const Profile: React.FC = () => {
                 </div>
               )}
             </div>
-          )}
+          ); })()}
 
           <div style={{ width: '100%' }}>
             {bulletItems.map((item, i) => (

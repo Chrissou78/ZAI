@@ -338,7 +338,9 @@
       "exclusiveMemberSince": "尊享会员始于 {{year}} 年",
       "membershipUnderReview": "会员资格审核中",
       "claimMembershipCta": "申请加入 zai 尊享俱乐部会员",
-      "exclusiveMemberBadge": "尊享会员"
+      "exclusiveMemberBadge": "尊享会员",
+      "noTierBadge": "尚无等级",
+      "noTierShort": "无等级"
     },
     "welcome": {
       "greeting": "欢迎回来",
@@ -480,7 +482,8 @@
     },
     "tier": {
       "label": "{{name}}等级",
-      "ptsToNext": "距{{tier}}还差 {{count}} 积分"
+      "ptsToNext": "距{{tier}}还差 {{count}} 积分",
+      "none": "尚无等级"
     },
     "tiers": {
       "blue": "蓝金",

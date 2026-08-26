@@ -83,6 +83,9 @@ interface PageTour {
   stops: TourStop[];
 }
 
+// NOTE: /dashboard deliberately has NO tour. It fired behind a full-viewport
+// backdrop above the onboarding widget, so a newcomer's first dashboard load
+// was the tour rather than the welcome gift. The gift takes priority there.
 const PAGE_TOURS: Record<string, PageTour> = {
   '/profile': {
     pageTitle: 'Your Profile',
@@ -98,15 +101,6 @@ const PAGE_TOURS: Record<string, PageTour> = {
       { title: 'Product Carousel', description: 'Browse all your claimed zai products here. Each card shows the product image, name, and insurance status.', icon: '🎿' },
       { title: 'Claim a Product', description: 'Click "+ Claim Product" or the "+" card to register a new product by uploading your purchase invoice and submitting it to the zai team for confirmation.', icon: '📦' },
       { title: 'Activate Insurance', description: 'For skis purchased within the last 30 days, you can activate your complimentary ski insurance in just a few clicks.', icon: '🛡️' },
-    ],
-  },
-  '/dashboard': {
-    pageTitle: 'Your Dashboard',
-    stops: [
-      { title: 'Welcome Section', description: 'See your profile summary, verification status, and a quick snapshot of your products and events.', icon: '👋' },
-      { title: 'Stats Overview', description: 'Track your total claimed products, upcoming events, and active insurance policies at a glance.', icon: '📊' },
-      { title: 'Recent Activity', description: 'Your latest claims, event registrations, and membership updates appear here.', icon: '🕒' },
-      { title: 'Quick Actions', description: 'Jump directly to claim a product or browse upcoming events.', icon: '⚡' },
     ],
   },
   '/community': {

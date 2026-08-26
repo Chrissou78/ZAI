@@ -22,19 +22,25 @@ interface Activity {
   points?: number;
 }
 
-/* ── Tier meta (mirrors the backend's tier floors in api/store/[...path].js) ── */
+/* ── Tier meta (mirrors TIERS in api/points.js, the source of truth) ──
+   There is no entry tier: below White's 500 points a member has NO tier, so
+   tierForBalance returns null. It previously fell back to TIERS[0], which is
+   why a brand-new member with 0 points was shown as "Blue Tier". */
 const TIERS = [
-  { name: 'Blue', floor: 0, ceiling: 14999 },
-  { name: 'Red', floor: 15000, ceiling: 29999 },
-  { name: 'Black', floor: 30000, ceiling: 49999 },
-  { name: 'Diamond', floor: 50000, ceiling: null as number | null },
+  { name: 'White', floor: 500, ceiling: 2499 },
+  { name: 'Blue', floor: 2500, ceiling: 4999 },
+  { name: 'Red', floor: 5000, ceiling: 9999 },
+  { name: 'Black', floor: 10000, ceiling: 14999 },
+  { name: 'Diamond', floor: 15000, ceiling: null as number | null },
 ];
 
 function tierForBalance(balance: number) {
-  return TIERS.find(t => balance >= t.floor && (t.ceiling === null || balance <= t.ceiling)) || TIERS[0];
+  return TIERS.find(t => balance >= t.floor && (t.ceiling === null || balance <= t.ceiling)) || null;
 }
 
-function nextTierFor(current: typeof TIERS[number]) {
+/** Next tier up, or the first tier when the member has none yet. */
+function nextTierFor(current: typeof TIERS[number] | null) {
+  if (!current) return TIERS[0];
   const idx = TIERS.findIndex(t => t.name === current.name);
   return idx < TIERS.length - 1 ? TIERS[idx + 1] : null;
 }
@@ -668,7 +674,7 @@ const Dashboard: React.FC = () => {
   const currentTier = tierForBalance(pointsBalance);
   const nextTier = nextTierFor(currentTier);
   const tierProgress = nextTier
-    ? Math.min(100, Math.max(0, ((pointsBalance - currentTier.floor) / (nextTier.floor - currentTier.floor)) * 100))
+    ? Math.min(100, Math.max(0, ((pointsBalance - (currentTier?.floor ?? 0)) / (nextTier.floor - (currentTier?.floor ?? 0))) * 100))
     : 100;
 
   return (
@@ -811,7 +817,9 @@ const Dashboard: React.FC = () => {
           >
             <div style={{ width: '4px', height: '4px', background: '#7A222E', borderRadius: '50%' }} />
             <span style={{ fontSize: '10px', letterSpacing: '0.15em', textTransform: 'uppercase', fontWeight: 600, color: '#7A222E' }}>
-              {t('dashboard.profile.tierBadge', { tier: currentTier.name })}
+              {currentTier
+                ? t('dashboard.profile.tierBadge', { tier: currentTier.name })
+                : t('dashboard.profile.noTierBadge')}
             </span>
           </div>
 
@@ -1196,8 +1204,8 @@ const Dashboard: React.FC = () => {
             {
               title: t('dashboard.quickActions.viewTier.title'),
               sub: nextTier
-                ? t('dashboard.quickActions.viewTier.subProgress', { tier: currentTier.name, points: Math.max(0, nextTier.floor - pointsBalance).toLocaleString('de-CH'), nextTier: nextTier.name })
-                : t('dashboard.quickActions.viewTier.subMax', { tier: currentTier.name }),
+                ? t('dashboard.quickActions.viewTier.subProgress', { tier: currentTier ? currentTier.name : t('dashboard.profile.noTierShort'), points: Math.max(0, nextTier.floor - pointsBalance).toLocaleString('de-CH'), nextTier: nextTier.name })
+                : t('dashboard.quickActions.viewTier.subMax', { tier: currentTier ? currentTier.name : t('dashboard.profile.noTierShort') }),
               page: '/rewards',
               icon: (
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a1a1a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

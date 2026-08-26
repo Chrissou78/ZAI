@@ -338,7 +338,9 @@
       "exclusiveMemberSince": "Exklusives Mitglied seit {{year}}",
       "membershipUnderReview": "Mitgliedschaft wird geprüft",
       "claimMembershipCta": "Zai Experience Club Mitgliedschaft beantragen",
-      "exclusiveMemberBadge": "Exklusives Mitglied"
+      "exclusiveMemberBadge": "Exklusives Mitglied",
+      "noTierBadge": "Noch keine Stufe",
+      "noTierShort": "Keine Stufe"
     },
     "welcome": {
       "greeting": "Schön, Sie zu sehen",
@@ -480,7 +482,8 @@
     },
     "tier": {
       "label": "Stufe {{name}}",
-      "ptsToNext": "Noch {{count}} Punkte bis {{tier}}"
+      "ptsToNext": "Noch {{count}} Punkte bis {{tier}}",
+      "none": "Noch keine Stufe"
     },
     "tiers": {
       "blue": "Blau",

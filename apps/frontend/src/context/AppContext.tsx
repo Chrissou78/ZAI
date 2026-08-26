@@ -14,32 +14,47 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
+/**
+ * Read the persisted session synchronously.
+ *
+ * This used to happen in a mount effect, which meant the FIRST render always
+ * had user === null while isLoading was already false — so ProtectedRoute
+ * redirected before the session was restored. Hard-loading /dashboard bounced
+ * to /, and worse, the transient mount at the requested path auto-completed
+ * that path's onboarding step: hard-loading /profile silently ticked
+ * "Complete your profile" (withdrawing the welcome gift) without the member
+ * ever seeing the page. Resolving it during initial state removes the
+ * null-first-render entirely.
+ */
+function readStoredSession(): { user: User | null; token: string | null } {
+  try {
+    const storedUser = localStorage.getItem('zai_user');
+    const storedToken = localStorage.getItem('zai_token');
+    if (storedUser && storedToken) {
+      return { user: JSON.parse(storedUser) as User, token: storedToken };
+    }
+  } catch {
+    // Malformed payload — drop it so we don't retry parsing it every load.
+    try {
+      localStorage.removeItem('zai_user');
+      localStorage.removeItem('zai_token');
+    } catch { /* storage unavailable */ }
+  }
+  return { user: null, token: null };
+}
+
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const stored = readStoredSession();
+  const [user, setUser] = useState<User | null>(stored.user);
   const [walletState, setWalletState] = useState<WalletState>({
-    isConnected: false,
+    isConnected: !!stored.token,
     address: undefined,
-    token: null,
+    token: stored.token,
     isLoading: false,
     error: null,
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  // Load persisted user on mount
-  useEffect(() => {
-    const storedUser = localStorage.getItem('zai_user');
-    const storedToken = localStorage.getItem('zai_token');
-    if (storedUser && storedToken) {
-      try {
-        setUser(JSON.parse(storedUser));
-        setWalletState((prev) => ({ ...prev, isConnected: true, token: storedToken }));
-      } catch {
-        localStorage.removeItem('zai_user');
-        localStorage.removeItem('zai_token');
-      }
-    }
-  }, []);
 
   // Keep the active i18n language in sync with the logged-in user's saved preference
   useEffect(() => {
