@@ -213,39 +213,35 @@
         "white": {
           "name": "White",
           "perks": [
-            "CHF 25 zai event voucher",
-            "Valid two years from claim"
+            "CHF 25 zai event voucher"
           ]
         },
         "blue": {
           "name": "Blue",
           "perks": [
-            "CHF 50 zai event voucher",
-            "Valid two years from claim"
+            "CHF 50 zai event voucher"
           ]
         },
         "red": {
           "name": "Red",
           "perks": [
-            "CHF 100 zai event voucher",
-            "Valid two years from claim"
+            "CHF 100 zai event voucher"
           ]
         },
         "black": {
           "name": "Black",
           "perks": [
-            "CHF 200 zai event voucher",
-            "Valid two years from claim"
+            "CHF 200 zai event voucher"
           ]
         },
         "diamond": {
           "name": "Diamond",
           "perks": [
-            "CHF 300 zai event voucher",
-            "Valid two years from claim"
+            "CHF 300 zai event voucher"
           ]
         }
-      }
+      },
+      "rewardLabel": "Tier Reward"
     },
     "updatesSection": {
       "label": "updates & deals",
@@ -961,7 +957,7 @@
       "appliedAmount": "CHF {{amount}} applied to this registration",
       "coversFullPrice": "This voucher covers the full price — nothing left to pay.",
       "coveredConfirmed": "Voucher {{code}} covered the full price. No payment was taken and your place is confirmed.",
-      "coveredRegistrationFailed": "Voucher {{code}} has been redeemed, but we could not confirm your place. Please contact our member concierge quoting this code — do not try again, a voucher can only be used once.",
+      "coveredRegistrationFailed": "Voucher {{code}} has been redeemed, but we could not confirm your place. Please contact us quoting this code — do not try again, a voucher can only be used once.",
       "breakdown": {
         "original": "Event price",
         "discount": "Event voucher",
@@ -1536,7 +1532,7 @@
       "expired": "No longer available",
       "shortfall_one": "Need {{count, number}} more pt",
       "shortfall_other": "Need {{count, number}} more pts",
-      "redeemedNote": "Redeemed — our concierge is in touch",
+      "redeemedNote": "Redeemed — our team will be in touch",
       "redeemed": "Already redeemed"
     },
     "confirm": {
@@ -1549,7 +1545,7 @@
     },
     "success": {
       "title": "{{title}} is yours",
-      "body": "{{points}} deducted. Our concierge will write to you within two working days to arrange collection in Pontresina or delivery.",
+      "body": "{{points}} deducted. Our team will contact you within two working days to arrange your delivery.",
       "dismiss": "Dismiss",
       "cardTitle": "Redemption confirmed",
       "cardBody": "{{points}} deducted. Watch your inbox for the arrangement details."

@@ -213,39 +213,35 @@
         "white": {
           "name": "白金",
           "perks": [
-            "25 瑞士法郎 zai 活动礼券",
-            "自领取起两年内有效"
+            "25 瑞士法郎 zai 活动礼券"
           ]
         },
         "blue": {
           "name": "蓝金",
           "perks": [
-            "50 瑞士法郎 zai 活动礼券",
-            "自领取起两年内有效"
+            "50 瑞士法郎 zai 活动礼券"
           ]
         },
         "red": {
           "name": "红金",
           "perks": [
-            "100 瑞士法郎 zai 活动礼券",
-            "自领取起两年内有效"
+            "100 瑞士法郎 zai 活动礼券"
           ]
         },
         "black": {
           "name": "黑金",
           "perks": [
-            "200 瑞士法郎 zai 活动礼券",
-            "自领取起两年内有效"
+            "200 瑞士法郎 zai 活动礼券"
           ]
         },
         "diamond": {
           "name": "钻石",
           "perks": [
-            "300 瑞士法郎 zai 活动礼券",
-            "自领取起两年内有效"
+            "300 瑞士法郎 zai 活动礼券"
           ]
         }
-      }
+      },
+      "rewardLabel": "等级礼遇"
     },
     "updatesSection": {
       "label": "优惠与动态",
@@ -961,7 +957,7 @@
       "appliedAmount": "已抵扣本次报名 CHF {{amount}}",
       "coversFullPrice": "此礼券可全额抵扣该活动费用 · 无需再支付。",
       "coveredConfirmed": "礼券 {{code}} 已全额抵扣活动费用，未发生任何支付，您的席位已确认。",
-      "coveredRegistrationFailed": "礼券 {{code}} 已扣除，但您的席位未能确认。请凭此编号联系会员管家服务 · 请勿重试，每张礼券仅可使用一次。",
+      "coveredRegistrationFailed": "礼券 {{code}} 已被兑换，但我们无法确认您的席位。请联系我们并提供此代码 — 请勿重试，礼券仅可使用一次。",
       "breakdown": {
         "original": "活动费用",
         "discount": "活动礼券",
@@ -1532,7 +1528,7 @@
       "expired": "已停止兑换",
       "shortfall_one": "还需 {{count, number}} 积分",
       "shortfall_other": "还需 {{count, number}} 积分",
-      "redeemedNote": "已兑换 — 专属顾问将与您联系",
+      "redeemedNote": "已兑换 — 我们的团队将与您联系",
       "redeemed": "已兑换"
     },
     "confirm": {
@@ -1545,7 +1541,7 @@
     },
     "success": {
       "title": "{{title}} 已归您所有",
-      "body": "已扣除 {{points}}。我们的专属顾问将在两个工作日内通过电子邮件与您联系，安排于蓬特雷西纳取货或为您配送。",
+      "body": "已扣除 {{points}}。我们的团队将在两个工作日内与您联系，安排配送。",
       "dismiss": "关闭",
       "cardTitle": "兑换已确认",
       "cardBody": "已扣除 {{points}}。请留意邮箱，我们将发送后续安排详情。"

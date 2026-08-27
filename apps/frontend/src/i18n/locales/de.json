@@ -213,39 +213,35 @@
         "white": {
           "name": "Weiss",
           "perks": [
-            "zai Event-Gutschein über CHF 25",
-            "Zwei Jahre ab Einlösung gültig"
+            "zai Event-Gutschein über CHF 25"
           ]
         },
         "blue": {
           "name": "Blau",
           "perks": [
-            "zai Event-Gutschein über CHF 50",
-            "Zwei Jahre ab Einlösung gültig"
+            "zai Event-Gutschein über CHF 50"
           ]
         },
         "red": {
           "name": "Rot",
           "perks": [
-            "zai Event-Gutschein über CHF 100",
-            "Zwei Jahre ab Einlösung gültig"
+            "zai Event-Gutschein über CHF 100"
           ]
         },
         "black": {
           "name": "Schwarz",
           "perks": [
-            "zai Event-Gutschein über CHF 200",
-            "Zwei Jahre ab Einlösung gültig"
+            "zai Event-Gutschein über CHF 200"
           ]
         },
         "diamond": {
           "name": "Diamant",
           "perks": [
-            "zai Event-Gutschein über CHF 300",
-            "Zwei Jahre ab Einlösung gültig"
+            "zai Event-Gutschein über CHF 300"
           ]
         }
-      }
+      },
+      "rewardLabel": "Stufen-Belohnung"
     },
     "updatesSection": {
       "label": "angebote & neuigkeiten",
@@ -961,7 +957,7 @@
       "appliedAmount": "CHF {{amount}} auf diese Anmeldung angerechnet",
       "coversFullPrice": "Dieser Gutschein deckt den vollen Preis — es bleibt nichts zu bezahlen.",
       "coveredConfirmed": "Gutschein {{code}} hat den vollen Preis gedeckt. Es wurde keine Zahlung ausgeführt und Ihr Platz ist bestätigt.",
-      "coveredRegistrationFailed": "Gutschein {{code}} wurde eingelöst, Ihr Platz konnte jedoch nicht bestätigt werden. Bitte wenden Sie sich unter Angabe dieses Codes an unseren Member-Concierge — versuchen Sie es nicht erneut, ein Gutschein ist nur einmal einlösbar.",
+      "coveredRegistrationFailed": "Gutschein {{code}} wurde eingelöst, aber wir konnten Ihren Platz nicht bestätigen. Bitte kontaktieren Sie uns unter Angabe dieses Codes — versuchen Sie es nicht erneut, ein Gutschein kann nur einmal verwendet werden.",
       "breakdown": {
         "original": "Event-Preis",
         "discount": "Event-Gutschein",
@@ -1536,7 +1532,7 @@
       "expired": "Nicht mehr verfügbar",
       "shortfall_one": "Noch {{count, number}} Pkt. nötig",
       "shortfall_other": "Noch {{count, number}} Pkt. nötig",
-      "redeemedNote": "Eingelöst – unser Concierge meldet sich",
+      "redeemedNote": "Eingelöst — unser Team meldet sich",
       "redeemed": "Bereits eingelöst"
     },
     "confirm": {
@@ -1549,7 +1545,7 @@
     },
     "success": {
       "title": "{{title}} gehört Ihnen",
-      "body": "{{points}} abgezogen. Unser Concierge schreibt Ihnen innerhalb von zwei Arbeitstagen, um die Abholung in Pontresina oder den Versand zu vereinbaren.",
+      "body": "{{points}} abgezogen. Unser Team meldet sich innerhalb von zwei Arbeitstagen bei Ihnen, um die Lieferung zu vereinbaren.",
       "dismiss": "Schliessen",
       "cardTitle": "Einlösung bestätigt",
       "cardBody": "{{points}} abgezogen. Die Details erhalten Sie per E-Mail."

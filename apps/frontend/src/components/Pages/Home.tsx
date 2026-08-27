@@ -1076,7 +1076,7 @@ const Home: React.FC = () => {
               display: 'grid',
               // 190px so all five tiers fit one desktop row; below that they wrap
               // rather than squeezing.
-              gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
               gap: '1px',
               background: '#2a2a2a',
               border: '1px solid #2a2a2a',
@@ -1147,6 +1147,17 @@ const Home: React.FC = () => {
                   }}
                 >
                   {`${tier.minPoints.toLocaleString()}${t('home.rewardsSection.ptsSuffix')}`}
+                </div>
+                <div
+                  style={{
+                    fontSize: '9px',
+                    letterSpacing: '0.18em',
+                    textTransform: 'uppercase',
+                    color: '#777',
+                    marginBottom: '0.5rem',
+                  }}
+                >
+                  {t('home.rewardsSection.rewardLabel')}
                 </div>
                 <div
                   style={{
