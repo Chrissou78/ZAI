@@ -51,7 +51,11 @@ const MUTED = '#6a6a6a';
 const BLACK = '#0a0a0a';
 const BORDER = '#e0ddd6';
 const FONT = "'Inter', sans-serif";
-const DISPLAY_FONT = "'Georgia', 'Times New Roman', serif";
+
+/* The burgundy header gradient. Shared with the progress track directly
+   below it so the two read as one surface instead of meeting at a seam. */
+const HEADER_GRADIENT =
+  `linear-gradient(135deg, ${BURGUNDY} 0%, #641622 70%, #4d101a 100%)`;
 
 /** The checklist step the welcome gift is attached to ("Complete your profile"). */
 const PROFILE_STEP_ID = 0;
@@ -490,9 +494,7 @@ const OnboardingWidget: React.FC = () => {
                 style={{
                   padding: giftActive ? '14px 18px 13px' : '16px 18px 14px',
                   borderBottom: giftActive ? 'none' : '1px solid #f0f0f0',
-                  background: giftActive
-                    ? `linear-gradient(135deg, ${BURGUNDY} 0%, #641622 70%, #4d101a 100%)`
-                    : 'transparent',
+                  background: giftActive ? HEADER_GRADIENT : 'transparent',
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -528,7 +530,7 @@ const OnboardingWidget: React.FC = () => {
                     <ZaiMark size={17} color="#ffffff" />
                     <div
                       style={{
-                        fontFamily: DISPLAY_FONT,
+                        fontFamily: FONT,
                         fontSize: '13px',
                         fontWeight: 300,
                         lineHeight: 1.35,
@@ -544,8 +546,24 @@ const OnboardingWidget: React.FC = () => {
               </div>
 
               {/* Progress Bar */}
-              <div style={{ height: '2px', background: '#f0f0f0', position: 'relative' }}>
-                <div style={{ height: '100%', background: '#7D1E2C', width: `${progress}%`, transition: 'width 0.6s cubic-bezier(0.4,0,0.2,1)' }} />
+              <div
+                style={{
+                  height: '2px',
+                  position: 'relative',
+                  // Against the white card this track is invisible; against the
+                  // burgundy header it showed as a white line cutting the
+                  // header off. Continue the gradient instead of breaking it.
+                  background: giftActive ? HEADER_GRADIENT : '#f0f0f0',
+                }}
+              >
+                <div
+                  style={{
+                    height: '100%',
+                    width: `${progress}%`,
+                    background: giftActive ? 'rgba(255,255,255,0.85)' : BURGUNDY,
+                    transition: 'width 0.6s cubic-bezier(0.4,0,0.2,1)',
+                  }}
+                />
               </div>
 
               {/* Steps — the gift panel is rendered inside this scroller,
