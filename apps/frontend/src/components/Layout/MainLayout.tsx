@@ -79,6 +79,8 @@ const MainLayout: React.FC = () => {
           >
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
+              aria-label={t(sidebarOpen ? 'layout.closeMenu' : 'layout.openMenu')}
+              aria-expanded={sidebarOpen}
               style={{
                 background: 'none',
                 border: 'none',

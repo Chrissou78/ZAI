@@ -25,7 +25,9 @@
     "footer": "Crafted in the Alps"
   },
   "layout": {
-    "brand": "zai"
+    "brand": "zai",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu"
   },
   "settings": {
     "eyebrow": "account",

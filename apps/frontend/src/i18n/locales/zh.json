@@ -25,7 +25,9 @@
     "footer": "匠心铸造于阿尔卑斯山"
   },
   "layout": {
-    "brand": "zai"
+    "brand": "zai",
+    "openMenu": "打开菜单",
+    "closeMenu": "关闭菜单"
   },
   "settings": {
     "eyebrow": "账户",

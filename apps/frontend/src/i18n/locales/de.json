@@ -25,7 +25,9 @@
     "footer": "Entwickelt in den Alpen"
   },
   "layout": {
-    "brand": "zai"
+    "brand": "zai",
+    "openMenu": "Menü öffnen",
+    "closeMenu": "Menü schließen"
   },
   "settings": {
     "eyebrow": "konto",
