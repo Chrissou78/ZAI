@@ -3,6 +3,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import Sidebar from './Sidebar';
 import OnboardingWidget from '../Onboarding/OnboardingWidget';
+import { ZaiWordmark } from '../Icons/LogoIcons';
 
 const MainLayout: React.FC = () => {
   const { t } = useTranslation();
@@ -88,7 +89,13 @@ const MainLayout: React.FC = () => {
             >
               ☰
             </button>
-            <span style={{ fontSize: '14px', fontWeight: 500, color: '#f5f4f0' }}>{t('layout.brand')}</span>
+            {/* The wordmark rather than the plain word, so the mobile bar
+                carries the same brand treatment as the sidebar it opens.
+                Sized to keep the bar's original height. aria-label preserves
+                the accessible name the text used to provide. */}
+            <span role="img" aria-label={t('layout.brand')} style={{ display: 'flex' }}>
+              <ZaiWordmark width={43} height={24} />
+            </span>
           </div>
         )}
 
