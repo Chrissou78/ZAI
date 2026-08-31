@@ -156,7 +156,12 @@ function RewardCard({
     }}>
       {/* Visual */}
       <div style={{
-        position: 'relative', height: 150, flexShrink: 0,
+        position: 'relative', flexShrink: 0,
+        // 4:3 rather than a flat height: the old 150px box grew more letterboxed
+        // as the card widened, cropping more of the product the bigger the card
+        // got. maxHeight guards the case where auto-fit leaves a single card
+        // stretched across the whole row.
+        aspectRatio: '4 / 3', maxHeight: 320,
         background: C.black, overflow: 'hidden',
       }}>
         {deal.image_url ? (
@@ -197,13 +202,11 @@ function RewardCard({
           {deal.title}
         </div>
 
-        {deal.description && (
-          <div style={{
-            fontSize: 11.5, color: C.gray, lineHeight: 1.6, marginBottom: 14, flex: 1,
-            display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden',
-          }}>{deal.description}</div>
-        )}
-        {!deal.description && <div style={{ flex: 1, minHeight: 8 }} />}
+        {/* The description is deliberately not rendered. Seeded copy just
+            restated the title ("Redeem with points: zai Pullover"), so it ate
+            vertical space that the product photo uses better. The spacer keeps
+            the cost block bottom-aligned across a row of uneven cards. */}
+        <div style={{ flex: 1, minHeight: 8 }} />
 
         {/* Cost */}
         <div style={{
