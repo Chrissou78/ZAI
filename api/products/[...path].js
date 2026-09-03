@@ -808,9 +808,12 @@ export default async function handler(req, res) {
           const productIds = products.map(p => p.id);
           if (productIds.length > 0) {
             const insResult = await pool.query(
-              `SELECT product_id, sas_status AS status, created_at FROM insurance_registrations
-               WHERE user_id = $1 AND product_id = ANY($2)
-               ORDER BY created_at DESC`,
+              `SELECT product_id, sas_status AS status,
+                      sas_certificate_id, sas_transaction_id,
+                      created_at, updated_at
+                 FROM insurance_registrations
+                WHERE user_id = $1 AND product_id = ANY($2)
+                ORDER BY updated_at DESC NULLS LAST, created_at DESC`,
               [decoded.userId, productIds]
             );
             const insMap = {};
@@ -818,9 +821,24 @@ export default async function handler(req, res) {
               if (!insMap[row.product_id]) insMap[row.product_id] = row;
             }
             for (const p of products) {
-              if (insMap[p.id]) {
-                p.insuranceStatus = insMap[p.id].status;
-                p.insuranceDate = insMap[p.id].created_at;
+              const row = insMap[p.id];
+              // The client reads a nested object — insurance.active and
+              // insurance.certificateId. Only the flat insuranceStatus /
+              // insuranceDate fields were ever set, and nothing reads those,
+              // so a genuinely activated policy (real SAS certificate stored
+              // and all) still rendered as "Not Active" with the active count
+              // stuck at 0. Always attach the object, so `active` is false
+              // rather than undefined for an uninsured product.
+              p.insurance = {
+                active: row ? row.status === 'active' : false,
+                status: row ? row.status : null,
+                certificateId: row ? row.sas_certificate_id : null,
+                transactionId: row ? row.sas_transaction_id : null,
+                activatedAt: row ? (row.updated_at || row.created_at) : null,
+              };
+              if (row) {
+                p.insuranceStatus = row.status;
+                p.insuranceDate = row.created_at;
               }
             }
 
