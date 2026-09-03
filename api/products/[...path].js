@@ -433,6 +433,17 @@ function parseNftToProduct(nft, currencyMap) {
 }
 
 // SAS helpers
+//
+// NOTE: SAS restricts access by source IP, allowlisted to the production app
+// server. A 401 from a developer machine therefore means "not on the
+// allowlist", NOT bad or expired credentials — the same credentials
+// authenticate fine from production. Test changes here from the server, or by
+// reading insurance_registrations.error_detail, rather than by calling the API
+// from a laptop and concluding the credentials are broken.
+//
+// It also makes the server's IP load-bearing: re-provisioning or migrating that
+// host breaks insurance activation until SAS adds the new address, so it needs
+// arranging with them in advance.
 async function callSasApi(payload) {
   const sasUrl = process.env.SAS_API_URL;
   const sasUser = process.env.SAS_USERNAME;
