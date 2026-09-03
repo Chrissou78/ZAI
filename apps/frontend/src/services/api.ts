@@ -1,7 +1,14 @@
 import axios, { AxiosInstance, AxiosResponse, AxiosRequestConfig } from 'axios';
 import { ApiResponse } from '../types';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || '';
+// Empty means same-origin, which is what every deployment should use: each one
+// serves its own /api, so pointing this at another hostname turns every call
+// into a cross-origin request for no benefit.
+//
+// The trailing slash is stripped deliberately. It is concatenated as
+// `${API_BASE_URL}/api`, so a value ending in "/" produced "//api" — the same
+// double slash that made Stripe's webhook return 308 and silently drop events.
+const API_BASE_URL = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '');
 
 /* ── Cache configuration ── */
 const CACHE_PREFIX = 'zai_cache_';

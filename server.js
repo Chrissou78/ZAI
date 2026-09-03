@@ -5,6 +5,8 @@ import { createRequire } from 'module';
 
 const require = createRequire(import.meta.url);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+import { applyCors } from './api/middleware.js';
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -167,8 +169,10 @@ app.all('/api/users/*', vercelToExpress(() => import('./api/users/[...path].js')
 app.all('/api/store/*', vercelToExpress(() => import('./api/store/[...path].js')));
 app.all('/api/wallettwo/*', vercelToExpress(() => import('./api/wallettwo/[...path].js')));
 
-// Health check
-app.get('/api/health', (req, res) => {
+// Health check. Defined inline here rather than delegating to api/health.js,
+// so it needs the CORS helper applied explicitly like every other route.
+app.all('/api/health', (req, res) => {
+  if (applyCors(req, res)) return;
   res.json({ success: true, timestamp: new Date().toISOString(), uptime: process.uptime() });
 });
 

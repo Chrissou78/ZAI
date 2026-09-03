@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import nodemailer from 'nodemailer';
 import {
+  applyCors,
   authenticate,
   applyRateLimit,
   signToken,
@@ -490,7 +491,19 @@ function getTransporter() {
 
 const EMAIL_FROM = '"zai Experience Club" <no-reply@zai.ch>';
 const ADMIN_INBOX = 'info@zai.ch';
-const FRONTEND = () => process.env.VITE_API_URL || 'https://zai-chi.vercel.app';
+// Base for links we put in outgoing email. This used to read VITE_API_URL,
+// which conflated two unrelated things: where the browser should send API
+// calls, and where a member should be sent when they click a link in an email.
+// Setting VITE_API_URL to empty is the correct fix for cross-origin API calls
+// (each deployment serves its own /api) — but that silently pointed every
+// email link at the Vercel fallback. PUBLIC_APP_URL names the canonical
+// public address on its own, with the trailing slash stripped so links never
+// come out with a double slash.
+const FRONTEND = () => (
+  process.env.PUBLIC_APP_URL
+  || process.env.VITE_APP_URL
+  || 'https://experience.zai.ch'
+).replace(/\/+$/, '');
 
 function emailWrap(title, body) {
   return `<!DOCTYPE html>
@@ -671,6 +684,10 @@ function resolveProofImageUrl(claimRow) {
 }
 
 export default async function handler(req, res) {
+  // Answers preflights and echoes an allowlisted origin. Must run before
+  // any auth check, since a preflight carries no Authorization header.
+  if (applyCors(req, res)) return;
+
   const fullPath = req.url.split('?')[0].replace(/^\/api\/products\/?/, '').replace(/\/$/, '');
 
   // ══════════════════════════════════════════════════════════════

@@ -18,7 +18,13 @@ function getTransporter(): nodemailer.Transporter {
 }
 
 const FROM = '"zai Experience Club" <no-reply@zai.ch>';
-const APP = () => process.env.VITE_API_URL || 'https://zai-chi.vercel.app';
+// Public address for links in email — deliberately NOT VITE_API_URL, which
+// says where API calls go and is empty for same-origin deployments.
+const APP = () => (
+  process.env.PUBLIC_APP_URL
+  || process.env.VITE_APP_URL
+  || 'https://experience.zai.ch'
+).replace(/\/+$/, '');
 
 const RED = '#7A222E';
 const BLACK = '#0a0a0a';
