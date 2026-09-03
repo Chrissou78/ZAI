@@ -333,8 +333,6 @@
       "memberSince": "Mitglied seit {{year}}",
       "adminSince": "Administrator seit {{year}}",
       "exclusiveMemberSince": "Exklusives Mitglied seit {{year}}",
-      "membershipUnderReview": "Mitgliedschaft wird geprüft",
-      "claimMembershipCta": "Zai Experience Club Mitgliedschaft beantragen",
       "exclusiveMemberBadge": "Exklusives Mitglied",
       "noTierBadge": "Noch keine Stufe",
       "noTierShort": "Keine Stufe"
@@ -407,46 +405,6 @@
       "weeksAgo_other": "vor {{count}} Wochen",
       "monthsAgo_one": "vor {{count}} Monat",
       "monthsAgo_other": "vor {{count}} Monaten"
-    },
-    "modal": {
-      "success": {
-        "title": "Antrag eingereicht!",
-        "desc": "Ihr Eigentumsnachweis wird geprüft. Nach der Validierung wird Ihre zai Experience Club Card ausgestellt und Ihre exklusive Mitgliedschaft aktiviert.",
-        "done": "Fertig"
-      },
-      "loading": "Experience Card wird geladen...",
-      "qr": {
-        "badge": "Exklusive Mitgliedschaft",
-        "title": "Mit dem Smartphone scannen, um ein Foto aufzunehmen",
-        "desc": "Ihr Smartphone öffnet eine Kameraseite. Nach der Aufnahme erscheint das Foto hier automatisch.",
-        "waiting": "Warte auf Foto …",
-        "back": "← Zurück zu den Upload-Optionen"
-      },
-      "form": {
-        "badge": "Exklusive Mitgliedschaft",
-        "defaultCardName": "zai Experience Club Card",
-        "desc": "Laden Sie bitte Ihre Rechnung über eine der folgenden Optionen hoch, um Ihre Mitgliedschaftsanfrage einzureichen.",
-        "proofOfOwnership": "Eigentumsnachweis",
-        "takePhoto": "Foto aufnehmen",
-        "openCamera": "Kamera öffnen",
-        "usePhone": "Smartphone nutzen",
-        "scanQr": "QR-Code scannen, um ein Foto aufzunehmen",
-        "uploadImage": "Bild hochladen",
-        "uploadFormats": "JPG, PNG, WebP",
-        "photoReceived": "Foto vom Smartphone empfangen",
-        "encryptedReady": "Verschlüsselt und bereit zur Einreichung",
-        "submit": "Zur Prüfung einreichen",
-        "submitting": "Wird eingereicht...",
-        "reviewNote": "Ein Administrator prüft Ihren Nachweis und stellt Ihre Mitgliedskarte nach der Validierung aus."
-      },
-      "errors": {
-        "ecUnavailable": "Die Experience Card ist derzeit nicht verfügbar.",
-        "ecLoadFailed": "Die Experience Card Details konnten nicht geladen werden.",
-        "imageTooLarge": "Das Bild darf höchstens 8 MB groß sein",
-        "uploadLinkFailed": "Der Upload-Link konnte nicht erstellt werden",
-        "submissionFailed": "Die Einreichung ist fehlgeschlagen",
-        "uploadExpired": "Der Upload-Link ist abgelaufen. Bitte versuchen Sie es erneut."
-      }
     }
   },
   "profile": {

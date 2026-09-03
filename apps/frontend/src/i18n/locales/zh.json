@@ -333,8 +333,6 @@
       "memberSince": "会员始于 {{year}} 年",
       "adminSince": "管理员始于 {{year}} 年",
       "exclusiveMemberSince": "尊享会员始于 {{year}} 年",
-      "membershipUnderReview": "会员资格审核中",
-      "claimMembershipCta": "申请加入 zai 尊享俱乐部会员",
       "exclusiveMemberBadge": "尊享会员",
       "noTierBadge": "尚无等级",
       "noTierShort": "无等级"
@@ -407,46 +405,6 @@
       "weeksAgo_other": "{{count}} 周前",
       "monthsAgo_one": "{{count}} 个月前",
       "monthsAgo_other": "{{count}} 个月前"
-    },
-    "modal": {
-      "success": {
-        "title": "申请已提交！",
-        "desc": "您的所有权凭证正在审核中。审核通过后，您的 zai 尊享俱乐部卡将完成铸造，专属会员权益即刻生效。",
-        "done": "完成"
-      },
-      "loading": "正在加载 Experience Card……",
-      "qr": {
-        "badge": "尊享会员",
-        "title": "使用手机扫码拍照",
-        "desc": "手机将打开拍照页面，拍摄完成后照片会自动显示于此处。",
-        "waiting": "等待照片上传……",
-        "back": "← 返回上传选项"
-      },
-      "form": {
-        "badge": "尊享会员",
-        "defaultCardName": "zai 尊享俱乐部卡",
-        "desc": "请通过以下方式上传购买凭证，提交会员申请。",
-        "proofOfOwnership": "所有权凭证",
-        "takePhoto": "拍照",
-        "openCamera": "打开相机",
-        "usePhone": "使用手机",
-        "scanQr": "扫描二维码拍照",
-        "uploadImage": "上传图片",
-        "uploadFormats": "支持 JPG、PNG、WebP 格式",
-        "photoReceived": "已收到手机拍摄的照片",
-        "encryptedReady": "已加密，可提交",
-        "submit": "提交审核",
-        "submitting": "提交中……",
-        "reviewNote": "管理员将审核您的凭证，审核通过后为您铸造会员卡。"
-      },
-      "errors": {
-        "ecUnavailable": "Experience Card 暂不可用。",
-        "ecLoadFailed": "Experience Card 详情加载失败。",
-        "imageTooLarge": "图片大小请控制在 8 MB 以内",
-        "uploadLinkFailed": "上传链接生成失败",
-        "submissionFailed": "提交失败",
-        "uploadExpired": "上传链接已过期，请重试。"
-      }
     }
   },
   "profile": {

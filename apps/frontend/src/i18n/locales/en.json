@@ -333,8 +333,6 @@
       "memberSince": "Member since {{year}}",
       "adminSince": "Admin since {{year}}",
       "exclusiveMemberSince": "Exclusive Member since {{year}}",
-      "membershipUnderReview": "Membership under review",
-      "claimMembershipCta": "Claim Your zai Experience Club Membership",
       "exclusiveMemberBadge": "Exclusive Member",
       "noTierBadge": "No tier yet",
       "noTierShort": "No tier"
@@ -407,46 +405,6 @@
       "weeksAgo_other": "{{count}} weeks ago",
       "monthsAgo_one": "{{count}} month ago",
       "monthsAgo_other": "{{count}} months ago"
-    },
-    "modal": {
-      "success": {
-        "title": "Claim Submitted!",
-        "desc": "Your proof of ownership is being reviewed. Once validated, your zai Experience Club Card will be minted and your exclusive membership activated.",
-        "done": "Done"
-      },
-      "loading": "Loading Experience Card...",
-      "qr": {
-        "badge": "Exclusive Membership",
-        "title": "Scan with your phone to take a photo",
-        "desc": "Your phone will open a camera page. After you take the photo it will appear here automatically.",
-        "waiting": "Waiting for photo…",
-        "back": "← Back to upload options"
-      },
-      "form": {
-        "badge": "Exclusive Membership",
-        "defaultCardName": "zai Experience Club Card",
-        "desc": "Please upload your invoice using one of the options below to submit your membership request.",
-        "proofOfOwnership": "Proof of Ownership",
-        "takePhoto": "Take Photo",
-        "openCamera": "Open camera",
-        "usePhone": "Use Phone",
-        "scanQr": "Scan QR to take photo",
-        "uploadImage": "Upload Image",
-        "uploadFormats": "JPG, PNG, WebP",
-        "photoReceived": "Photo received from phone",
-        "encryptedReady": "Encrypted and ready to submit",
-        "submit": "Submit for Review",
-        "submitting": "Submitting...",
-        "reviewNote": "An admin will review your proof and mint your membership card once validated."
-      },
-      "errors": {
-        "ecUnavailable": "Experience Card not available at the moment.",
-        "ecLoadFailed": "Failed to load Experience Card details.",
-        "imageTooLarge": "Image must be under 8 MB",
-        "uploadLinkFailed": "Failed to generate upload link",
-        "submissionFailed": "Submission failed",
-        "uploadExpired": "Upload link expired. Please try again."
-      }
     }
   },
   "profile": {
