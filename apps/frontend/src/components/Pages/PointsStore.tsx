@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { apiService } from '../../services/api';
 import ProductImageFallback from '../Common/ProductImageFallback';
+import { PRODUCT_IMAGE_RATIO, PRODUCT_IMAGE_MAX_HEIGHT, PRODUCT_GRID_COLUMNS, PRODUCT_CARD_MAX_WIDTH } from '../Common/productCard';
 
 /* ── House tokens (mirrors Updates.tsx / Rewards.tsx) ── */
 const C = {
@@ -152,16 +153,17 @@ function RewardCard({
       display: 'flex', flexDirection: 'column',
       opacity: locked ? 0.62 : 1,
       boxSizing: 'border-box', minWidth: 0, position: 'relative',
+      width: '100%', maxWidth: PRODUCT_CARD_MAX_WIDTH,
       transition: 'opacity 0.2s, border-color 0.2s',
     }}>
       {/* Visual */}
       <div style={{
         position: 'relative', flexShrink: 0,
-        // 4:3 rather than a flat height: the old 150px box grew more letterboxed
-        // as the card widened, cropping more of the product the bigger the card
-        // got. maxHeight guards the case where auto-fit leaves a single card
-        // stretched across the whole row.
-        aspectRatio: '4 / 3', maxHeight: 320,
+        // Portrait, matching the photography. The previous 4:3 box was
+        // landscape while 16 of 17 product photos are portrait, so it cut
+        // roughly a third off the top and bottom of every one. See
+        // productCard.ts for the measurements.
+        aspectRatio: PRODUCT_IMAGE_RATIO, maxHeight: PRODUCT_IMAGE_MAX_HEIGHT,
         background: C.black, overflow: 'hidden',
       }}>
         {deal.image_url ? (
@@ -573,7 +575,7 @@ export default function PointsStore({ embedded = false }: { embedded?: boolean }
         {/* Grid */}
         {sorted.length > 0 ? (
           <div style={{
-            display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(258px, 1fr))',
+            display: 'grid', gridTemplateColumns: PRODUCT_GRID_COLUMNS,
             gap: 'clamp(14px, 2.5vw, 24px)', alignItems: 'stretch',
           }}>
             {sorted.map(deal => (

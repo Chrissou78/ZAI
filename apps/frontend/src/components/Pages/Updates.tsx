@@ -4,6 +4,7 @@ import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-
 import { useTranslation } from 'react-i18next';
 import { stripePromise } from '../../lib/stripe';
 import ProductImageFallback from '../Common/ProductImageFallback';
+import { PRODUCT_IMAGE_RATIO, PRODUCT_IMAGE_MAX_HEIGHT, PRODUCT_GRID_COLUMNS, PRODUCT_CARD_MAX_WIDTH } from '../Common/productCard';
 import PointsStore from './PointsStore';
 
 const C = {
@@ -638,7 +639,7 @@ export default function Updates() {
                   // second, exact guarantee of the same fixed size a card
                   // would have in a full 3-per-row layout, regardless of
                   // how many deals are actually listed.
-                  display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+                  display: 'grid', gridTemplateColumns: PRODUCT_GRID_COLUMNS,
                   gap: 24, justifyContent: 'start',
                 }}>
                   {regularDeals.map(deal => (
@@ -648,20 +649,24 @@ export default function Updates() {
                       style={{
                         border: `1px solid ${C.border}`,
                         background: C.pureWhite, position: 'relative',
-                        display: 'flex', flexDirection: 'row', cursor: 'pointer',
+                        display: 'flex', flexDirection: 'column', cursor: 'pointer',
                         transition: 'background 0.2s',
-                        width: '100%', maxWidth: 350,
+                        width: '100%', maxWidth: PRODUCT_CARD_MAX_WIDTH,
                       }}
                       onMouseEnter={e => (e.currentTarget.style.background = C.surface)}
                       onMouseLeave={e => (e.currentTarget.style.background = C.pureWhite)}
                     >
-                      {/* Image — left side, fills the card's full height and
-                          crops on the sides (object-fit: cover); badge sits
-                          on the image itself instead of floating over the
-                          text column, where it used to collide with the
-                          category tag. */}
+                      {/* Image — full card width in a portrait box, the same
+                          card the points section uses so the two read as one
+                          design. It replaced a 140px column down the left
+                          side: that was both the smaller image and the more
+                          cropped one, since squeezing portrait photos into a
+                          narrow strip cut roughly a fifth off their sides.
+                          Badge sits on the image rather than over the text,
+                          where it used to collide with the category tag. */}
                       <div style={{
-                        width: 140, flexShrink: 0, alignSelf: 'stretch',
+                        width: '100%', flexShrink: 0,
+                        aspectRatio: PRODUCT_IMAGE_RATIO, maxHeight: PRODUCT_IMAGE_MAX_HEIGHT,
                         position: 'relative', background: C.black, overflow: 'hidden',
                       }}>
                         {deal.members_only && (
@@ -674,22 +679,32 @@ export default function Updates() {
                         {deal.image_url ? (
                           <img src={deal.image_url} alt={deal.title} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                         ) : (
-                          <ProductImageFallback minHeight={180} />
+                          <ProductImageFallback />
                         )}
                       </div>
 
-                      {/* Content — right side */}
-                      <div style={{ flex: 1, minWidth: 0, padding: '24px', display: 'flex', flexDirection: 'column' }}>
+                      {/* Content — below the image. Padding and type sizes
+                          match the points card's body so the two sections are
+                          the same card, not two cards that merely resemble
+                          each other. */}
+                      <div style={{
+                        flex: 1, minWidth: 0, boxSizing: 'border-box',
+                        padding: 'clamp(16px, 3vw, 22px)', display: 'flex', flexDirection: 'column',
+                      }}>
                         <div style={{
                           fontSize: 9, letterSpacing: '0.3em', textTransform: 'uppercase',
-                          color: C.red, marginBottom: 10,
+                          color: C.red, marginBottom: 9,
                         }}>{deal.category}</div>
+                        {/* Was clipped to a single line with an ellipsis, which
+                            suited the old narrow side column. Full-width now,
+                            so let a long product name use a second line. */}
                         <div style={{
-                          fontSize: 14, fontWeight: 500, color: C.black, marginBottom: 6, lineHeight: 1.3,
-                          whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                          fontSize: 14.5, fontWeight: 500, color: C.black, marginBottom: 6, lineHeight: 1.35,
+                          display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
                         }}>{deal.title}</div>
                         <div style={{
-                          fontSize: 11, color: C.gray, lineHeight: 1.6, marginBottom: 16, flex: 1,
+                          fontSize: 11.5, color: C.gray, lineHeight: 1.6, marginBottom: 14, flex: 1,
+                          display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden',
                         }}>{deal.description}</div>
                         <div style={{
                           fontSize: 20, fontWeight: 200, letterSpacing: '-0.02em', marginBottom: 10,
