@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto';
 import { getPool, initDB, requireAdmin, isAdmin } from '../db.js';
 import { pointsForAmount, chfForPoints, categoryEarnsPoints, pointsToCoverCHF, TIERS, VOUCHER_VALID_YEARS, tierForPoints } from '../points.js';
-import { authenticate } from '../middleware.js';
+import { applyCors, authenticate } from '../middleware.js';
 
 // ══════════════════════════════════════════════════════════
 // TIERS — the table lives in api/points.js (single source of truth,
@@ -787,6 +787,69 @@ async function handleDeals(req, res, segments, method, userId, decoded) {
     });
   }
 
+  // POST /api/store/deals/admin/upload-image
+  // Pins a deal image to our own Pinata account and hands back a URL to store
+  // in image_url. Deal images had been pasted in from third-party image hosts,
+  // whose free tiers reap unreferenced uploads — so cards silently lost their
+  // photos days later. Pinned IPFS content stays as long as the pin does.
+  // Must be matched before the create route below, which also has one segment.
+  if (method === 'POST' && segments[0] === 'admin' && segments[1] === 'upload-image') {
+    await requireAdmin(decoded);
+
+    const body = typeof req.body === 'string' ? JSON.parse(req.body) : (req.body || {});
+    const { image } = body;
+    if (!image) return res.status(400).json({ success: false, error: 'Image is required (base64 data URI)' });
+
+    const mimeMatch = String(image).match(/^data:(image\/[a-zA-Z+]+);base64,/);
+    if (!mimeMatch) return res.status(400).json({ success: false, error: 'Expected a base64 data URI' });
+    const mimeType = mimeMatch[1];
+    const extFor = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
+    if (!extFor[mimeType]) {
+      return res.status(400).json({ success: false, error: 'Only JPG, PNG and WebP images are allowed' });
+    }
+
+    const buffer = Buffer.from(String(image).replace(/^data:image\/[a-zA-Z+]+;base64,/, ''), 'base64');
+    if (!buffer.length) return res.status(400).json({ success: false, error: 'Image data was empty' });
+    if (buffer.length > 8 * 1024 * 1024) {
+      return res.status(400).json({ success: false, error: 'Image must be under 8 MB' });
+    }
+    if (!process.env.PINATA_JWT) {
+      return res.status(500).json({ success: false, error: 'Image hosting is not configured (PINATA_JWT missing)' });
+    }
+
+    const boundary = '----PinataFormBoundary' + Date.now().toString(36);
+    const fileName = `deal-${Date.now()}.${extFor[mimeType]}`;
+    const multipartBody = Buffer.concat([
+      Buffer.from(
+        `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${fileName}"\r\n`
+        + `Content-Type: ${mimeType}\r\n\r\n`, 'utf-8'),
+      buffer,
+      Buffer.from(`\r\n--${boundary}--\r\n`, 'utf-8'),
+    ]);
+
+    try {
+      const pinRes = await fetch('https://api.pinata.cloud/pinning/pinFileToIPFS', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.PINATA_JWT}`,
+          'Content-Type': `multipart/form-data; boundary=${boundary}`,
+        },
+        body: multipartBody,
+      });
+      if (!pinRes.ok) {
+        const detail = await pinRes.text().catch(() => '');
+        return res.status(502).json({ success: false, error: 'Image host rejected the upload', detail: detail.slice(0, 300) });
+      }
+      const { IpfsHash: cid } = await pinRes.json();
+      if (!cid) return res.status(502).json({ success: false, error: 'Image host returned no CID' });
+
+      const gateway = process.env.PINATA_GATEWAY || 'gateway.pinata.cloud';
+      return res.json({ success: true, data: { url: `https://${gateway}/ipfs/${cid}`, cid } });
+    } catch (e) {
+      return res.status(502).json({ success: false, error: 'Could not reach the image host', detail: e.message });
+    }
+  }
+
   // POST /api/store/deals/admin
   if (method === 'POST' && segments[0] === 'admin' && segments.length === 1) {
     await requireAdmin(decoded);
@@ -1205,16 +1268,9 @@ export const config = {
 };
 
 export default async function handler(req, res) {
-  // ── CORS preflight ──
-  if (req.method === 'OPTIONS') {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    return res.status(200).end();
-  }
-
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  // Shared allowlist rather than '*', so every handler agrees on which
+  // origins may call the API and the set can be changed in one place.
+  if (applyCors(req, res)) return;
 
   try { await initDB(); } catch (e) {
     console.error('[store] DB init failed:', e.message);

@@ -68,6 +68,60 @@ export function applyRateLimit(req, res, route, maxRequests = 30, windowMs = 60_
 }
 
 // ══════════════════════════════════════════════════════════════
+// CORS
+//
+// The app is reachable on several hostnames (experience.zai.ch,
+// experience.zai.swiss, zai.onchainlabs.ch, the Vercel deployment), and the
+// frontend may be served from one while VITE_API_URL points at another — which
+// makes every API call cross-origin. Only the events and store handlers ever
+// set CORS headers, so login broke with "No 'Access-Control-Allow-Origin'
+// header" the moment the app was opened on a new domain.
+//
+// Access-Control-Allow-Origin takes ONE origin or "*", never a comma-separated
+// list, so multiple domains require echoing back the caller's origin after
+// checking it against an allowlist. Vary: Origin keeps a CDN from caching one
+// domain's header and serving it to another.
+//
+// Set ALLOWED_ORIGINS (comma-separated) to add a domain without a code change.
+// ══════════════════════════════════════════════════════════════
+const DEFAULT_ALLOWED_ORIGINS = [
+  'https://experience.zai.ch',
+  'https://experience.zai.swiss',
+  'https://zai.onchainlabs.ch',
+  'https://zai-chi.vercel.app',
+  'http://localhost:5173',
+  'http://localhost:3000',
+];
+
+export function allowedOrigins() {
+  const fromEnv = (process.env.ALLOWED_ORIGINS || '')
+    .split(',').map(s => s.trim()).filter(Boolean);
+  return fromEnv.length ? fromEnv : DEFAULT_ALLOWED_ORIGINS;
+}
+
+/**
+ * Apply CORS headers and answer preflights.
+ * Returns true if the request was a preflight and has been fully handled —
+ * callers must `return` immediately in that case.
+ */
+export function applyCors(req, res) {
+  const origin = req.headers.origin;
+  if (origin && allowedOrigins().includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Vary', 'Origin');
+  }
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Max-Age', '86400');
+
+  if (req.method === 'OPTIONS') {
+    res.status(204).end();
+    return true;
+  }
+  return false;
+}
+
+// ══════════════════════════════════════════════════════════════
 // JWT helpers — enforced secret, no fallback
 // ══════════════════════════════════════════════════════════════
 export function authenticate(req) {

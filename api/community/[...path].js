@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import pg from 'pg';
+import { applyCors } from '../middleware.js';
 
 const { Pool } = pg;
 
@@ -155,6 +156,10 @@ async function resolveUserName(decoded) {
 }
 
 export default async function handler(req, res) {
+  // Answers preflights and echoes an allowlisted origin. Must run before
+  // any auth check, since a preflight carries no Authorization header.
+  if (applyCors(req, res)) return;
+
   const fullPath = req.url.split('?')[0].replace('/api/community/', '').replace(/\/$/, '');
 
   // ─── MEMBERS ───

@@ -1026,11 +1026,27 @@ export default async function handler(req, res) {
           certificateId: sasResult.certificateid,
         });
       } catch (sasErr) {
+        // Two very different failures arrive here and users need telling apart:
+        // the provider rejecting the submitted data (fixable by the member —
+        // callSasApi already formats those as "field: description"), versus the
+        // provider being unreachable (nothing the member can do). Raw messages
+        // like "fetch failed" tell a member nothing, so those get translated
+        // while genuine validation feedback is passed through verbatim.
+        const raw = sasErr.message || '';
+        const isNetwork = /fetch failed|ENOTFOUND|ECONNREFUSED|ETIMEDOUT|EAI_AGAIN|socket hang up|certificate|not configured/i.test(raw);
         await pool.query(
           `UPDATE insurance_registrations SET sas_status = 'error', error_detail = $1, updated_at = NOW() WHERE id = $2`,
-          [sasErr.message, registrationId]
+          [raw, registrationId]
         );
-        return res.status(502).json({ error: 'Insurance activation failed', detail: sasErr.message });
+        return res.status(502).json({
+          error: 'Insurance activation failed',
+          detail: isNetwork
+            ? 'We could not reach the insurance provider. Your details look fine — this is on our side. Please try again in a few minutes.'
+            : raw,
+          retryable: isNetwork,
+          // Keep the underlying message for support without showing it to members.
+          diagnostic: raw,
+        });
       }
     } catch (err) {
       console.error('[PRODUCTS] insurance activation error:', err);

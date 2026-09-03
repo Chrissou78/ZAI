@@ -2,6 +2,7 @@
 import jwt from 'jsonwebtoken';
 import axios from 'axios';
 import {
+  applyCors,
   authenticate,
   applyRateLimit,
   signToken,
@@ -21,6 +22,10 @@ async function getDB() {
 }
 
 export default async function handler(req, res) {
+  // Answers preflights and echoes an allowlisted origin. Must run before
+  // any auth check, since a preflight carries no Authorization header.
+  if (applyCors(req, res)) return;
+
   const path = req.url.split('?')[0].replace('/api/auth/', '').replace(/\/$/, '');
 
   // ══════════════════════════════════════════════════════════════

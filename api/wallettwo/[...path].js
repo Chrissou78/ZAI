@@ -1,6 +1,11 @@
 import axios from 'axios';
+import { applyCors } from '../middleware.js';
 
 export default async function handler(req, res) {
+  // Answers preflights and echoes an allowlisted origin. Must run before
+  // any auth check, since a preflight carries no Authorization header.
+  if (applyCors(req, res)) return;
+
   const path = req.url.split('?')[0].replace('/api/wallettwo/', '').replace(/\/$/, '');
 
   if (path === 'profile' && req.method === 'GET') {

@@ -1429,7 +1429,13 @@
       "totalSpots": "Plätze gesamt (0 = unbegrenzt)",
       "imageUrl": "Bild-URL",
       "endsAt": "Endet am",
-      "confirmDeactivate": "Dieses Angebot deaktivieren?"
+      "confirmDeactivate": "Dieses Angebot deaktivieren?",
+      "imageUploadButton": "Bild hochladen",
+      "imageUploading": "Wird hochgeladen…",
+      "imageUploadHint": "Hochgeladene Bilder werden bei uns gespeichert und verfallen nicht.",
+      "imageUploadTypeError": "Bitte ein JPG-, PNG- oder WebP-Bild auswählen.",
+      "imageUploadSizeError": "Dieses Bild ist über 8 MB. Bitte eine kleinere Datei wählen.",
+      "imageUploadFailed": "Upload fehlgeschlagen. Bitte erneut versuchen."
     },
     "collectibles": {
       "infoText": "Sammelkarten-Drops werden über die Datenbank erstellt und mit Engage-NFTs verknüpft. Dieses Panel zeigt den aktuellen Status aller Serien und Karten. Um eine neue Serie oder Karte hinzuzufügen, verwenden Sie direkt die Datenbank oder wenden Sie sich an das Entwicklerteam.",

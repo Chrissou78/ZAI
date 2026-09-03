@@ -235,6 +235,8 @@ function DealsManager() {
   const [editing, setEditing] = useState<any>(null);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [imageUploading, setImageUploading] = useState(false);
+  const [imageUploadError, setImageUploadError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -331,6 +333,43 @@ function DealsManager() {
       price_chf: product.price ? product.price.replace(/'/g, '') : prev.price_chf,
       contract_address: product.contractAddress || '',
     }));
+  };
+
+  // Read the file in the browser and hand the server a base64 data URI, matching
+  // how avatar upload already works rather than introducing multipart here.
+  const uploadDealImage = async (file: File) => {
+    setImageUploadError(null);
+
+    if (!/^image\/(jpeg|png|webp)$/.test(file.type)) {
+      setImageUploadError(t('adminStore.dealForm.imageUploadTypeError'));
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      setImageUploadError(t('adminStore.dealForm.imageUploadSizeError'));
+      return;
+    }
+
+    setImageUploading(true);
+    try {
+      const dataUri = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.onerror = () => reject(new Error('read-failed'));
+        reader.readAsDataURL(file);
+      });
+
+      const r = await apiService.post('/store/deals/admin/upload-image', { image: dataUri });
+      const url = (r.data as any)?.data?.url;
+      if (!url) throw new Error((r.data as any)?.error || 'no-url');
+      set('image_url', url);
+    } catch (err: any) {
+      const data = err?.response?.data;
+      setImageUploadError(
+        data?.detail || data?.error || err?.message || t('adminStore.dealForm.imageUploadFailed')
+      );
+    } finally {
+      setImageUploading(false);
+    }
   };
 
   return (
@@ -490,6 +529,46 @@ function DealsManager() {
           </div>
           <Field label={t('adminStore.dealForm.imageUrl')}>
             <input style={INPUT} value={editing.image_url || ''} onChange={e => set('image_url', e.target.value)} placeholder="https://..." />
+            {/* Uploading pins the file to our own Pinata account. Pasting a URL
+                from a third-party image host still works, but those free tiers
+                reap unreferenced uploads and the card loses its photo later. */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 8, flexWrap: 'wrap' }}>
+              <label style={{
+                ...BTN_SECONDARY, cursor: imageUploading ? 'wait' : 'pointer',
+                opacity: imageUploading ? 0.6 : 1, margin: 0,
+              }}>
+                {imageUploading
+                  ? t('adminStore.dealForm.imageUploading')
+                  : t('adminStore.dealForm.imageUploadButton')}
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  disabled={imageUploading}
+                  style={{ display: 'none' }}
+                  onChange={e => {
+                    const file = e.target.files?.[0];
+                    e.target.value = '';
+                    if (file) void uploadDealImage(file);
+                  }}
+                />
+              </label>
+              <span style={{ fontSize: 11, color: C.gray }}>
+                {t('adminStore.dealForm.imageUploadHint')}
+              </span>
+            </div>
+            {imageUploadError && (
+              <div style={{ color: C.red, fontSize: 12, marginTop: 6 }}>{imageUploadError}</div>
+            )}
+            {editing.image_url && !editing.product_id && (
+              <img
+                src={editing.image_url}
+                alt=""
+                style={{
+                  marginTop: 10, width: 96, height: 72, objectFit: 'cover',
+                  borderRadius: 6, border: BR, display: 'block',
+                }}
+              />
+            )}
           </Field>
           <Field label={t('adminStore.dealForm.endsAt')}>
             <input style={INPUT} type="datetime-local" value={editing.ends_at ? editing.ends_at.slice(0, 16) : ''} onChange={e => set('ends_at', e.target.value ? new Date(e.target.value).toISOString() : null)} />

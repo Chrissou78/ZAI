@@ -1425,7 +1425,13 @@
       "totalSpots": "名额总数（0 表示不限）",
       "imageUrl": "图片链接",
       "endsAt": "结束时间",
-      "confirmDeactivate": "确定要停用此优惠吗？"
+      "confirmDeactivate": "确定要停用此优惠吗？",
+      "imageUploadButton": "上传图片",
+      "imageUploading": "正在上传…",
+      "imageUploadHint": "上传的图片由我们托管，不会失效。",
+      "imageUploadTypeError": "请选择 JPG、PNG 或 WebP 图片。",
+      "imageUploadSizeError": "该图片超过 8 MB，请选择更小的文件。",
+      "imageUploadFailed": "上传失败，请重试。"
     },
     "collectibles": {
       "infoText": "收藏卡系列通过数据库创建，并与 Engage NFT 关联。此面板显示所有系列和卡片的当前状态。如需添加新系列或卡片，请直接使用数据库或联系开发团队。",

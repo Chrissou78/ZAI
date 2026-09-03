@@ -882,7 +882,13 @@ const Products: React.FC = () => {
       setInsuranceStep('success');
       fetchUserProducts();
     } catch (err: any) {
-      setInsuranceError(err?.response?.data?.error || err?.message || t('products.errors.failedActivateInsurance'));
+      // `detail` is where the actionable reason lives — the provider's own
+      // field-level validation feedback, or the eligibility-window explanation.
+      // Only `error` was being read, so members saw a bare "Insurance
+      // activation failed" while the server had already said why.
+      const data = err?.response?.data;
+      const reason = data?.detail || data?.error || err?.message;
+      setInsuranceError(reason || t('products.errors.failedActivateInsurance'));
       setInsuranceStep('error');
     }
   };

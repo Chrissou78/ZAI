@@ -1,7 +1,7 @@
 import jwt from 'jsonwebtoken';
 import { getPool, initDB } from '../db.js';
 import { createHmac, randomBytes } from 'crypto';
-import { authenticate, applyRateLimit, signToken, sanitizeString, sanitizeObject, JWT_SECRET } from '../middleware.js';
+import { applyCors, authenticate, applyRateLimit, signToken, sanitizeString, sanitizeObject, JWT_SECRET } from '../middleware.js';
 
 // ── Inline TOTP helpers (replaces otplib) ──
 function base32Encode(buffer) {
@@ -142,6 +142,10 @@ async function ensureSecurity(userId) {
 }
 
 export default async function handler(req, res) {
+  // Answers preflights and echoes an allowlisted origin. Must run before
+  // any auth check, since a preflight carries no Authorization header.
+  if (applyCors(req, res)) return;
+
   const method = req.method;
   const path = req.url.split('?')[0].replace('/api/users/', '').replace(/\/$/, '');
 

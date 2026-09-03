@@ -1429,7 +1429,13 @@
       "totalSpots": "Total Spots (0 = unlimited)",
       "imageUrl": "Image URL",
       "endsAt": "Ends At",
-      "confirmDeactivate": "Deactivate this deal?"
+      "confirmDeactivate": "Deactivate this deal?",
+      "imageUploadButton": "Upload image",
+      "imageUploading": "Uploading…",
+      "imageUploadHint": "Uploaded images are hosted by us and will not expire.",
+      "imageUploadTypeError": "Please choose a JPG, PNG or WebP image.",
+      "imageUploadSizeError": "That image is over 8 MB. Please choose a smaller file.",
+      "imageUploadFailed": "Upload failed. Please try again."
     },
     "collectibles": {
       "infoText": "Collectible drops are created via the database and linked to Engage NFTs. This panel shows the current state of all series and cards. To add a new series or card, use the database directly or contact the dev team.",

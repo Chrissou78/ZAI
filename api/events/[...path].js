@@ -1,4 +1,5 @@
 import jwt from 'jsonwebtoken';
+import { applyCors } from '../middleware.js';
 import { randomUUID } from 'crypto';
 import { getPool, initDB } from '../db.js';
 
@@ -199,11 +200,10 @@ async function unregisterAttendee(eventId, userId) {
 /* ── main handler ────────────────────────────────────────── */
 
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,DELETE,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization');
+  // Shared allowlist rather than '*', so every handler agrees on which
+  // origins may call the API and the set can be changed in one place.
+  if (applyCors(req, res)) return;
   res.setHeader('Cache-Control', 'no-store, max-age=0');
-  if (req.method === 'OPTIONS') return res.status(204).end();
 
   try { await initDB(); } catch (e) {
     console.error('[events] DB init failed:', e.message);
