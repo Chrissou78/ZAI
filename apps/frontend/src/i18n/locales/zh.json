@@ -157,11 +157,10 @@
       "label": "zai experience card",
       "headingLine1": "开启 zai 世界",
       "headingLine2": "的专属钥匙",
-      "description": "凡在 zai 产品消费满 CHF 500 的顾客，均可申请加入尊享的 zai 尊享俱乐部。线下门店顾客将获得实体 NFC 感应式 zai Experience Card；线上顾客则可通过 zai 尊享俱乐部后台提交购买凭证，申请会员资格。",
-      "step1": "在 zai 产品消费满 CHF 500，即可获得加入 zai 尊享俱乐部的资格",
-      "step2": "前往授权经销商或精品店领取实体 NFC Experience Card；若为线上购买，请前往 zai 尊享俱乐部后台，提交购买凭证以申请会员资格。",
-      "step3": "登录您的会员专属后台，解锁尊享会员权益",
-      "note": "适用于消费满 CHF 500 的顾客"
+      "description": "zai 体验俱乐部向所有人开放。创建账户即成为会员，无需购买。如果您已拥有 zai 产品，可在此注册以赚取积分并解锁更多权益。",
+      "step1": "创建账户 — 免费加入，向所有人开放",
+      "step2": "拥有 zai 产品？注册它以赚取积分，前往“我的收藏”页面领取",
+      "step3": "开始赚取积分、参加活动并解锁会员权益"
     },
     "howItWorks": {
       "label": "运作方式",
@@ -170,7 +169,7 @@
       "step1": {
         "num": "步骤一",
         "title": "激活您的会员资格",
-        "desc": "线下购买？轻触您的 NFC 感应式 zai Experience Card 即可激活会员资格。线上购买？请前往 zai 尊享俱乐部后台，提交购买凭证以申请会员资格。"
+        "desc": "在 zai 体验俱乐部平台注册，您的会员资格即时生效。免费加入，无需购买。"
       },
       "step2": {
         "num": "步骤二",
@@ -426,7 +425,7 @@
       "form": {
         "badge": "尊享会员",
         "defaultCardName": "zai 尊享俱乐部卡",
-        "desc": "zai 尊享俱乐部专为购买 zai 产品累计消费超过 CHF 500 的会员开设。如您符合此条件，请通过以下方式上传购买凭证，提交会员申请。",
+        "desc": "请通过以下方式上传购买凭证，提交会员申请。",
         "proofOfOwnership": "所有权凭证",
         "takePhoto": "拍照",
         "openCamera": "打开相机",

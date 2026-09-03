@@ -840,28 +840,6 @@ const Home: React.FC = () => {
             }}
           />
         </div>
-        <div
-          style={{
-            marginTop: '0.75rem',
-            fontSize: '10px',
-            color: TEXT_MUTED,
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            maxWidth: '900px',
-            margin: '0.75rem auto 0',
-          }}
-        >
-          <div
-            style={{
-              width: '4px',
-              height: '4px',
-              background: WINE,
-              borderRadius: '50%',
-            }}
-          />
-          {t('home.experienceCard.note')}
-        </div>
       </section>
 
       {/* ════════════  HOW IT WORKS  ════════════ */}

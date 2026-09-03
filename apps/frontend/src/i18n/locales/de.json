@@ -157,11 +157,10 @@
       "label": "zai experience card",
       "headingLine1": "Ihr Schlüssel zu",
       "headingLine2": "der ganzen zai Welt",
-      "description": "Kunden, die mehr als CHF 500 für zai Produkte ausgeben, können dem exklusiven zai Experience Club beitreten. Kunden im Fachhandel erhalten eine physische, NFC-fähige zai Experience Card, während Online-Kunden die Mitgliedschaft über das zai Experience Club Dashboard mit einem Kaufnachweis beantragen können.",
-      "step1": "Geben Sie mehr als CHF 500 für zai Produkte aus, um sich für den zai Experience Club zu qualifizieren",
-      "step2": "Erhalten Sie eine physische NFC Experience Card bei einem autorisierten Händler oder in einer Boutique – oder besuchen Sie bei einem Online-Kauf das zai Experience Club Dashboard, um Ihre Mitgliedschaft mit einem Kaufnachweis zu beantragen.",
-      "step3": "Greifen Sie auf Ihr Mitgliederportal zu und schalten Sie exklusive Mitgliedervorteile frei",
-      "note": "Verfügbar ab einem Einkaufswert von CHF 500"
+      "description": "Der zai Experience Club ist für alle offen. Erstellen Sie ein Konto und Sie sind Mitglied — ohne Kauf. Wenn Sie bereits zai Produkte besitzen, registrieren Sie diese hier, um Punkte zu sammeln und mehr freizuschalten.",
+      "step1": "Konto erstellen — kostenlos und für alle offen",
+      "step2": "Sie besitzen ein zai Produkt? Registrieren Sie es, um Punkte zu sammeln — auf der Seite „Meine Sammlung“ beanspruchen",
+      "step3": "Punkte sammeln, an Events teilnehmen und Mitgliedervorteile freischalten"
     },
     "howItWorks": {
       "label": "so funktioniert es",
@@ -170,7 +169,7 @@
       "step1": {
         "num": "Schritt 01",
         "title": "Aktivieren Sie Ihre Mitgliedschaft",
-        "desc": "Im Fachhandel gekauft? Halten Sie Ihre NFC-fähige zai Experience Card an Ihr Gerät, um Ihre Mitgliedschaft zu aktivieren. Online gekauft? Besuchen Sie das zai Experience Club Dashboard und reichen Sie einen Kaufnachweis ein, um Ihre Mitgliedschaft zu beantragen."
+        "desc": "Melden Sie sich auf der zai Experience Club Plattform an, und Ihre Mitgliedschaft ist sofort aktiv. Kostenlos, ohne Kauf."
       },
       "step2": {
         "num": "Schritt 02",
@@ -426,7 +425,7 @@
       "form": {
         "badge": "Exklusive Mitgliedschaft",
         "defaultCardName": "zai Experience Club Card",
-        "desc": "Der zai Experience Club steht zai Mitgliedern offen, die mehr als CHF 500 für zai Produkte ausgegeben haben. Falls Sie dieses Kriterium erfüllen, laden Sie bitte Ihre Rechnung über eine der folgenden Optionen hoch, um Ihre Mitgliedschaft zu beantragen.",
+        "desc": "Laden Sie bitte Ihre Rechnung über eine der folgenden Optionen hoch, um Ihre Mitgliedschaftsanfrage einzureichen.",
         "proofOfOwnership": "Eigentumsnachweis",
         "takePhoto": "Foto aufnehmen",
         "openCamera": "Kamera öffnen",

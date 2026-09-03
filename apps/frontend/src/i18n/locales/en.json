@@ -157,11 +157,10 @@
       "label": "zai experience card",
       "headingLine1": "Your key to",
       "headingLine2": "everything zai",
-      "description": "Customers who spend over CHF 500 on zai products are eligible to join the exclusive zai Experience Club. In-store customers receive a physical NFC-enabled zai Experience Card, while online customers can request membership through the zai Experience Club dashboard by submitting proof of purchase.",
-      "step1": "Spend over CHF 500 on zai products to become eligible for the zai Experience Club",
-      "step2": "Receive a physical NFC Experience Card from an authorized dealer or boutique, or, if you purchased online, visit the zai Experience Club dashboard to request your membership by submitting proof of purchase.",
-      "step3": "Access your membership portal and unlock exclusive member privileges",
-      "note": "Available for purchases over CHF 500"
+      "description": "The zai Experience Club is open to everyone. Create an account and you are a member, no purchase needed. If you already own zai products, register them here to earn points and unlock more.",
+      "step1": "Create your account, free to join and open to all",
+      "step2": "Own a zai product? Register it to earn points, go to “My Collection” page to claim it",
+      "step3": "Start earning points, joining events, and unlocking member privileges"
     },
     "howItWorks": {
       "label": "how it works",
@@ -170,7 +169,7 @@
       "step1": {
         "num": "Step 01",
         "title": "Activate your membership",
-        "desc": "Purchased in-store? Tap your NFC-enabled zai Experience Card to activate your membership. Purchased online? Visit the zai Experience Club dashboard and submit proof of purchase to request your membership."
+        "desc": "Sign up on the zai Experience Club platform and your membership is active straight away. Free to join, no purchase needed."
       },
       "step2": {
         "num": "Step 02",
@@ -426,7 +425,7 @@
       "form": {
         "badge": "Exclusive Membership",
         "defaultCardName": "zai Experience Club Card",
-        "desc": "The zai Experience Club is an exclusive club for zai members who have spent more than CHF 500 on zai products. If you feel like you meet this criteria, please upload your invoice using one of the options below to submit your membership request.",
+        "desc": "Please upload your invoice using one of the options below to submit your membership request.",
         "proofOfOwnership": "Proof of Ownership",
         "takePhoto": "Take Photo",
         "openCamera": "Open camera",

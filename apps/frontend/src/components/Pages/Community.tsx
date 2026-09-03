@@ -172,14 +172,6 @@ const CommentIcon = ({ size = 14, color = C.muted }: { size?: number; color?: st
   </svg>
 );
 
-const ShareIcon = ({ size = 14, color = C.muted }: { size?: number; color?: string }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/>
-    <polyline points="16 6 12 2 8 6"/>
-    <line x1="12" y1="2" x2="12" y2="15"/>
-  </svg>
-);
-
 const MapPinIcon = ({ size = 12, color = C.muted }: { size?: number; color?: string }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
@@ -974,9 +966,6 @@ const Community: React.FC = () => {
               style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 3, padding: 0 }}>
               <CommentIcon size={13} color={C.muted} />
               {photo.commentCount > 0 && <span style={{ fontSize: '10px', color: C.muted }}>{photo.commentCount}</span>}
-            </button>
-            <button style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 0 }}>
-              <ShareIcon size={13} color={C.muted} />
             </button>
             <div style={{ display: 'flex', gap: 3, marginLeft: 4 }}>
               {MEMBER_DOT_COLORS.slice(0, Math.min(4, Math.max(1, reactionCount))).map((c, i) => (
