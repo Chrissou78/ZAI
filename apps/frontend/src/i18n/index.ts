@@ -3,10 +3,13 @@ import { initReactI18next } from 'react-i18next';
 import en from './locales/en.json';
 import de from './locales/de.json';
 import zh from './locales/zh.json';
+import fr from './locales/fr.json';
 
-export type SupportedLanguage = 'en' | 'de' | 'zh';
+export type SupportedLanguage = 'en' | 'de' | 'zh' | 'fr';
 
-export const SUPPORTED_LANGUAGES: SupportedLanguage[] = ['en', 'de', 'zh'];
+// Order drives both language switchers (public hero + Settings), which map
+// over this array — adding a code here is all it takes to offer it.
+export const SUPPORTED_LANGUAGES: SupportedLanguage[] = ['en', 'de', 'fr', 'zh'];
 
 /**
  * Map any incoming language hint (DB value, browser locale, etc.)
@@ -16,6 +19,7 @@ export function mapToSupportedLanguage(input?: string | null): SupportedLanguage
   if (!input) return 'en';
   const lower = input.toLowerCase();
   if (lower.startsWith('de')) return 'de';
+  if (lower.startsWith('fr')) return 'fr';
   if (lower.startsWith('zh')) return 'zh';
   return 'en';
 }
@@ -56,6 +60,7 @@ i18n.use(initReactI18next).init({
     en: { translation: en },
     de: { translation: de },
     zh: { translation: zh },
+    fr: { translation: fr },
   },
   lng: getInitialLanguage(),
   fallbackLng: 'en',

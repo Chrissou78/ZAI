@@ -107,7 +107,8 @@
       "languages": {
         "en": "English",
         "de": "Deutsch",
-        "zh": "中文"
+        "zh": "中文",
+        "fr": "Français"
       }
     },
     "security": {
@@ -1466,7 +1467,8 @@
     "languages": {
       "en": "English",
       "de": "Deutsch",
-      "zh": "中文"
+      "zh": "中文",
+      "fr": "Français"
     }
   },
   "pointsStore": {
