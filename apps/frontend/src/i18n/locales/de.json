@@ -1392,7 +1392,9 @@
       "imageUploadHint": "Hochgeladene Bilder werden bei uns gespeichert und verfallen nicht.",
       "imageUploadTypeError": "Bitte ein JPG-, PNG- oder WebP-Bild auswählen.",
       "imageUploadSizeError": "Dieses Bild ist über 8 MB. Bitte eine kleinere Datei wählen.",
-      "imageUploadFailed": "Upload fehlgeschlagen. Bitte erneut versuchen."
+      "imageUploadFailed": "Upload fehlgeschlagen. Bitte erneut versuchen.",
+      "priceInvalid": "Bitte den Preis als Zahl eingeben, z. B. 1950 oder 1950.50.",
+      "discountInvalid": "Maximaler Punkte-Rabatt muss eine ganze Zahl sein."
     },
     "collectibles": {
       "infoText": "Sammelkarten-Drops werden über die Datenbank erstellt und mit Engage-NFTs verknüpft. Dieses Panel zeigt den aktuellen Status aller Serien und Karten. Um eine neue Serie oder Karte hinzuzufügen, verwenden Sie direkt die Datenbank oder wenden Sie sich an das Entwicklerteam.",

@@ -1388,7 +1388,9 @@
       "imageUploadHint": "上传的图片由我们托管，不会失效。",
       "imageUploadTypeError": "请选择 JPG、PNG 或 WebP 图片。",
       "imageUploadSizeError": "该图片超过 8 MB，请选择更小的文件。",
-      "imageUploadFailed": "上传失败，请重试。"
+      "imageUploadFailed": "上传失败，请重试。",
+      "priceInvalid": "请以数字形式输入价格，例如 1950 或 1950.50。",
+      "discountInvalid": "最高积分抵扣必须为整数。"
     },
     "collectibles": {
       "infoText": "收藏卡系列通过数据库创建，并与 Engage NFT 关联。此面板显示所有系列和卡片的当前状态。如需添加新系列或卡片，请直接使用数据库或联系开发团队。",

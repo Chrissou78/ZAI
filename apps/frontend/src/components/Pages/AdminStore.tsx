@@ -265,6 +265,28 @@ function DealsManager() {
 
   useEffect(() => { load(); loadProducts(); }, [load, loadProducts]);
 
+  /**
+   * Turn a displayed price into something a numeric column will accept.
+   *
+   * The prefill previously stripped only U+0027, but Swiss grouping is
+   * rendered with U+2019 by newer ICU (Chrome's differs from Node's), and a
+   * value can also arrive with a currency prefix or a non-breaking space.
+   * Anything that survived went into a `type="number"` input, which renders a
+   * non-numeric string as BLANK — so the field looked empty while the bad
+   * string sat in state, and Postgres rejected it on save with "invalid input
+   * syntax for type numeric".
+   */
+  const toNumericString = (v: unknown): string => {
+    if (v == null) return '';
+    let x = String(v).trim();
+    if (!x) return '';
+    x = x.replace(/['’  \s]/g, '');   // apostrophe variants, spaces
+    x = x.replace(/[A-Za-z]+/g, '');                 // CHF, EUR, ...
+    if (x.includes(',') && !x.includes('.')) x = x.replace(',', '.');
+    else x = x.replace(/,/g, '');
+    return x;
+  };
+
   const save = async () => {
     // A points-only deal has no money path at all: the server forces
     // price_chf and max_points_discount to 0 and only keeps points_price.
@@ -275,10 +297,28 @@ function DealsManager() {
       setFormError(t('adminStore.dealForm.pointsPriceRequired'));
       return;
     }
+
+    // Money deals: the price must be a real number before it reaches a numeric
+    // column. Caught here so the admin sees a field message rather than a raw
+    // Postgres error in an alert box.
+    const priceStr = toNumericString(editing.price_chf);
+    const priceNum = Number(priceStr);
+    if (!pointsOnly && (priceStr === '' || !Number.isFinite(priceNum) || priceNum < 0)) {
+      setFormError(t('adminStore.dealForm.priceInvalid'));
+      return;
+    }
+    const discountStr = toNumericString(editing.max_points_discount);
+    const discountNum = discountStr === '' ? 0 : Number(discountStr);
+    if (!pointsOnly && !Number.isFinite(discountNum)) {
+      setFormError(t('adminStore.dealForm.discountInvalid'));
+      return;
+    }
+
     setFormError(null);
     const payload = pointsOnly
       ? { ...editing, points_only: true, points_price: pointsPrice, price_chf: 0, max_points_discount: 0 }
-      : { ...editing, points_only: false, points_price: 0 };
+      : { ...editing, points_only: false, points_price: 0,
+          price_chf: priceNum, max_points_discount: Math.trunc(discountNum) };
     setSaving(true);
     try {
       if (editing.id) {
@@ -289,7 +329,10 @@ function DealsManager() {
       setEditing(null);
       load();
     } catch (e: any) {
-      alert(e?.response?.data?.error || t('adminStore.common.saveFailed'));
+      // The form has an inline error slot; a browser alert() was how a raw
+      // Postgres message ended up in front of the admin.
+      const d = e?.response?.data;
+      setFormError(d?.detail || d?.error || t('adminStore.common.saveFailed'));
     } finally { setSaving(false); }
   };
 
@@ -330,7 +373,7 @@ function DealsManager() {
       description: product.description || `Exclusive deal on ${product.name}`,
       category: inferCategory(product.name),
       image_url: product.image || '',
-      price_chf: product.price ? product.price.replace(/'/g, '') : prev.price_chf,
+      price_chf: product.price ? toNumericString(product.price) : prev.price_chf,
       contract_address: product.contractAddress || '',
     }));
   };

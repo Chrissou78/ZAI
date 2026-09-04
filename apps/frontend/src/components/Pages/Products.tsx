@@ -1184,7 +1184,18 @@ const Products: React.FC = () => {
         {!needsCarousel ? (
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+            // Fixed-width tracks, not 1fr. `auto-fit` with a fractional max
+            // divides the whole row between however few items exist, so a new
+            // member with one product saw that product and the claim card
+            // stretched to half the page each. Cards now keep the same width
+            // whether there are two or twenty, filling from the left and
+            // leaving the remainder of the row empty. 220px matches the width
+            // the carousel below already uses for the same cards.
+            // min(100%, 220px) as the floor keeps a plain 220px track from
+            // overflowing a container narrower than that — this grid is chosen
+            // by product count, not viewport, so it renders on phones too.
+            gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 220px), 220px))',
+            justifyContent: 'start',
             gap: 16,
           }}>
             <ClaimCard onClaim={openReceiptModal} />

@@ -2,6 +2,7 @@ import { randomUUID } from 'crypto';
 import { getPool, initDB, requireAdmin, isAdmin } from '../db.js';
 import { pointsForAmount, chfForPoints, categoryEarnsPoints, pointsToCoverCHF, TIERS, VOUCHER_VALID_YEARS, tierForPoints } from '../points.js';
 import { applyCors, authenticate } from '../middleware.js';
+import { notifyOrder } from '../_lib/mailer.js';
 
 // ══════════════════════════════════════════════════════════
 // TIERS — the table lives in api/points.js (single source of truth,
@@ -233,6 +234,24 @@ async function fulfillDealRedemption({ redemptionId, dealId, userId, pointsUsed,
     console.error('[deal-fulfill] Failed to log purchase history (non-fatal):', logErr.message);
   }
 
+  // Tell the zai team a paid order came in. Not awaited: a mail failure must
+  // never affect a purchase that has already been paid for and fulfilled.
+  buyerLine(userId).then(({ who, email }) => notifyOrder({
+    subject: `New deal purchase — ${deal?.title || dealId}`,
+    title: 'A member purchased a deal',
+    rows: [
+      ['Item', deal?.title || dealId],
+      ['Member', who],
+      ['Email', email || '—'],
+      ['Paid', `CHF ${Number(amountCHF || 0).toFixed(2)}`],
+      ['Points applied', pts > 0 ? `${pts} pts` : 'none'],
+      ['Points earned', earnedPts > 0 ? `${earnedPts} pts` : 'none'],
+      ['Category', deal?.category || '—'],
+      ['Redemption ID', redemptionId],
+    ],
+    footNote: 'Sent automatically when a deal purchase is confirmed.',
+  })).catch(() => {});
+
   // ── Auto-mint NFT for the deal (non-fatal if it fails) ──
   let minted = false;
   try {
@@ -322,6 +341,44 @@ function makeVoucherCode(tierKey, amountCHF) {
     block += VOUCHER_CODE_ALPHABET[Math.floor(Math.random() * VOUCHER_CODE_ALPHABET.length)];
   }
   return `ZAI-${tierKey.slice(0, 3).toUpperCase()}${amountCHF}-${block}`;
+}
+
+/**
+ * Coerce a client-supplied money/points value to a number, or null if it is
+ * not one. The admin form sends price_chf straight through, and it used to go
+ * unchecked into a numeric column — so a display-formatted value like "1'950"
+ * surfaced as a raw Postgres "invalid input syntax for type numeric" error.
+ * Tolerates the grouping characters a formatted price can carry.
+ */
+/** Buyer details for an order notification. Never throws. */
+async function buyerLine(userId) {
+  try {
+    const r = await getPool().query(
+      `SELECT name, given_name, family_name, email FROM user_profiles WHERE user_id = $1`,
+      [userId]
+    );
+    const u = r.rows[0];
+    if (!u) return { who: userId, email: '' };
+    const name = (u.name || `${u.given_name || ''} ${u.family_name || ''}`).trim();
+    return { who: name || userId, email: u.email || '' };
+  } catch {
+    return { who: userId, email: '' };
+  }
+}
+
+function toNumberOrNull(v) {
+  if (v === null || v === undefined || v === '') return null;
+  if (typeof v === 'number') return Number.isFinite(v) ? v : null;
+  let cleaned = String(v)
+    .replace(/['’  \s]/g, '')
+    .replace(/[A-Za-z]+/g, '');
+  // A lone comma is a decimal point in de-CH/fr-CH input; commas alongside
+  // a dot are grouping and drop out.
+  if (cleaned.includes(',') && !cleaned.includes('.')) cleaned = cleaned.replace(',', '.');
+  else cleaned = cleaned.replace(/,/g, '');
+  if (cleaned === '') return null;
+  const n = Number(cleaned);
+  return Number.isFinite(n) ? n : null;
 }
 
 async function handleVouchers(req, res, segments, method, userId) {
@@ -781,6 +838,22 @@ async function handleDeals(req, res, segments, method, userId, decoded) {
       console.error('[points-redeem] purchase history log failed (non-fatal):', logErr.message);
     }
 
+    // These need fulfilling by hand — the member was told the team would be in
+    // touch within two working days, so the team has to hear about it.
+    buyerLine(userId).then(({ who, email }) => notifyOrder({
+      subject: `Points redemption — ${deal.title}`,
+      title: 'A member redeemed a reward with points',
+      rows: [
+        ['Item', deal.title],
+        ['Member', who],
+        ['Email', email || '—'],
+        ['Points spent', `${cost} pts`],
+        ['Category', deal.category || '—'],
+        ['Redemption ID', redemptionId],
+      ],
+      footNote: 'This reward is fulfilled manually. The member was told the team would be in touch within two working days.',
+    })).catch(() => {});
+
     return res.json({
       success: true,
       data: { redemptionId, pointsSpent: cost, balance: await getBalance(userId) },
@@ -858,6 +931,17 @@ async function handleDeals(req, res, segments, method, userId, decoded) {
             points_only, points_price } = req.body;
     const id = randomUUID();
     const spotsVal = parseInt(spots_total) || 0;
+
+    // Reject a non-numeric price with a clear message instead of letting the
+    // numeric column raise "invalid input syntax" at the admin.
+    const priceVal = points_only === true ? 0 : toNumberOrNull(price_chf);
+    const discountVal = points_only === true ? 0 : (toNumberOrNull(max_points_discount) ?? 0);
+    if (points_only !== true && (priceVal === null || priceVal < 0)) {
+      return res.status(400).json({
+        success: false, error: 'Invalid price',
+        detail: `Price must be a number. Received: ${JSON.stringify(price_chf)}`,
+      });
+    }
     // A points-only item has no money path: force price_chf to 0 and ignore
     // any money-discount cap, so it can never accidentally be charged for.
     const isPointsOnly = points_only === true;
@@ -868,7 +952,7 @@ async function handleDeals(req, res, segments, method, userId, decoded) {
                           points_only, points_price)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)`,
       [id, title, description || '', category || 'accessories',
-       isPointsOnly ? 0 : price_chf, isPointsOnly ? 0 : (max_points_discount || 0), image_url || '',
+       isPointsOnly ? 0 : priceVal, isPointsOnly ? 0 : Math.trunc(discountVal), image_url || '',
        ends_at || null, spotsVal, spotsVal,
        members_only !== false, featured === true, contract_address || '',
        isPointsOnly, ptsPrice]
@@ -896,8 +980,20 @@ async function handleDeals(req, res, segments, method, userId, decoded) {
     set('title', b.title);
     set('description', b.description);
     set('category', b.category);
-    set('price_chf', b.price_chf);
-    set('max_points_discount', b.max_points_discount);
+    // Same coercion as create: a formatted string must never reach numeric.
+    if (b.price_chf !== undefined) {
+      const p = toNumberOrNull(b.price_chf);
+      if (p === null || p < 0) {
+        return res.status(400).json({
+          success: false, error: 'Invalid price',
+          detail: `Price must be a number. Received: ${JSON.stringify(b.price_chf)}`,
+        });
+      }
+      set('price_chf', p);
+    }
+    if (b.max_points_discount !== undefined) {
+      set('max_points_discount', Math.trunc(toNumberOrNull(b.max_points_discount) ?? 0));
+    }
     set('points_only', b.points_only);
     set('points_price', b.points_price);
     set('image_url', b.image_url);
@@ -1095,6 +1191,18 @@ async function handleCollectibles(req, res, segments, method, userId) {
     } catch (logErr) {
       console.error('[collectible-claim] Failed to log purchase history (non-fatal):', logErr.message);
     }
+
+    buyerLine(userId).then(({ who, email }) => notifyOrder({
+      subject: `Collectible claimed — ${card.name}`,
+      title: 'A member claimed a collectible',
+      rows: [
+        ['Collectible', card.name],
+        ['Member', who],
+        ['Email', email || '—'],
+        ['Rarity', card.rarity || '—'],
+        ['Claim ID', claimId],
+      ],
+    })).catch(() => {});
 
     return res.json({
       success: true,

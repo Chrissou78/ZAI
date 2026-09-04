@@ -1392,7 +1392,9 @@
       "imageUploadHint": "Uploaded images are hosted by us and will not expire.",
       "imageUploadTypeError": "Please choose a JPG, PNG or WebP image.",
       "imageUploadSizeError": "That image is over 8 MB. Please choose a smaller file.",
-      "imageUploadFailed": "Upload failed. Please try again."
+      "imageUploadFailed": "Upload failed. Please try again.",
+      "priceInvalid": "Enter the price as a number, for example 1950 or 1950.50.",
+      "discountInvalid": "Max points discount must be a whole number."
     },
     "collectibles": {
       "infoText": "Collectible drops are created via the database and linked to Engage NFTs. This panel shows the current state of all series and cards. To add a new series or card, use the database directly or contact the dev team.",
