@@ -143,6 +143,12 @@
         "founded": "Gegründet",
         "alpineDesign": "Alpines Design",
         "handcrafted": "Handgefertigt"
+      },
+      "joinClub": "Dem Club beitreten",
+      "perks": {
+        "freeToJoin": "Kostenlos beitreten",
+        "exclusiveEvents": "Exklusive Events",
+        "pointsAndRewards": "Punkte und Belohnungen"
       }
     },
     "lockedTooltip": {

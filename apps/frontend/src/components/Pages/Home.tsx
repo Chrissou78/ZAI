@@ -587,69 +587,70 @@ const Home: React.FC = () => {
           >
             {t('home.hero.description')}
           </p>
-          {user && (
+          {/* Hero actions depend on whether anyone is signed in. Logged out,
+              the only thing worth offering is joining — it reuses
+              WalletConnectButton so the CTA opens the very same WalletTwo
+              signup as the header, rather than a second copy of that flow.
+              Logged in, the three member destinations take over.
+
+              These three used to sit inside LockedTooltip keyed on holding an
+              Experience Card, which applies pointerEvents: 'none' — so a
+              member who had just registered saw three greyed-out, unclickable
+              buttons. The card is minted automatically now and membership is
+              open to everyone, so there is nothing left to gate on. */}
+          {user ? (
             <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-              <LockedTooltip
-                locked={!exclusive}
-                message={t('home.lockedTooltip.claimProduct')}
+              <button
+                onClick={() => navigate('/products')}
+                style={{ ...BTN_BASE, background: WINE, color: '#fff' }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = WINE_HOVER)}
+                onMouseLeave={(e) => (e.currentTarget.style.background = WINE)}
               >
-                <button
-                  onClick={() => navigate('/products')}
-                  style={{ ...BTN_BASE, background: WINE, color: '#fff' }}
-                  onMouseEnter={(e) =>
-                    (e.currentTarget.style.background = WINE_HOVER)
-                  }
-                  onMouseLeave={(e) =>
-                    (e.currentTarget.style.background = WINE)
-                  }
-                >
-                  {t('home.hero.claimProduct')}
-                </button>
-              </LockedTooltip>
-              <LockedTooltip
-                locked={!exclusive}
-                message={t('home.lockedTooltip.events')}
+                {t('home.hero.claimProduct')}
+              </button>
+              <button
+                onClick={() => navigate('/events')}
+                style={{ ...BTN_BASE, background: 'transparent', color: '#fff', border: '1px solid #444' }}
+                onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#fff')}
+                onMouseLeave={(e) => (e.currentTarget.style.borderColor = '#444')}
               >
-                <button
-                  onClick={() => navigate('/events')}
-                  style={{
-                    ...BTN_BASE,
-                    background: 'transparent',
-                    color: '#fff',
-                    border: '1px solid #444',
-                  }}
-                  onMouseEnter={(e) =>
-                    (e.currentTarget.style.borderColor = '#fff')
-                  }
-                  onMouseLeave={(e) =>
-                    (e.currentTarget.style.borderColor = '#444')
-                  }
-                >
-                  {t('home.hero.seeEvents')}
-                </button>
-              </LockedTooltip>
-              <LockedTooltip
-                locked={!exclusive}
-                message={t('home.lockedTooltip.rewards')}
+                {t('home.hero.seeEvents')}
+              </button>
+              <button
+                onClick={() => navigate('/rewards')}
+                style={{ ...BTN_BASE, background: 'transparent', color: '#fff', border: '1px solid #444' }}
+                onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#fff')}
+                onMouseLeave={(e) => (e.currentTarget.style.borderColor = '#444')}
               >
-                <button
-                  onClick={() => navigate('/rewards')}
-                  style={{
-                    ...BTN_BASE,
-                    background: 'transparent',
-                    color: '#fff',
-                    border: '1px solid #444',
-                  }}
-                  onMouseEnter={(e) =>
-                    (e.currentTarget.style.borderColor = '#fff')
-                  }
-                  onMouseLeave={(e) =>
-                    (e.currentTarget.style.borderColor = '#444')
-                  }
-                >
-                  {t('home.hero.viewRewards')}
-                </button>
-              </LockedTooltip>
+                {t('home.hero.viewRewards')}
+              </button>
+            </div>
+          ) : (
+            <div>
+              <WalletConnectButton variant="hero" label={t('home.hero.joinClub')} />
+              <div
+                style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: '0.5rem 1.5rem',
+                  marginTop: '1.5rem',
+                  fontSize: '10px',
+                  letterSpacing: '0.16em',
+                  textTransform: 'uppercase',
+                  color: '#8a8a8a',
+                }}
+              >
+                {[
+                  t('home.hero.perks.freeToJoin'),
+                  t('home.hero.perks.exclusiveEvents'),
+                  t('home.hero.perks.pointsAndRewards'),
+                ].map((perk) => (
+                  <span key={perk} style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ width: '4px', height: '4px', borderRadius: '50%', background: WINE, flexShrink: 0 }} />
+                    {perk}
+                  </span>
+                ))}
+              </div>
             </div>
           )}
         </div>

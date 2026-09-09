@@ -33,18 +33,14 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   return <>{children}</>;
 };
 
-const ExclusiveRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user } = useAppContext();
-  const isAdminUser = user?.role === 'admin' || user?.role === 'owner';
-  const stored = localStorage.getItem('zai_experience_card');
-  const hasExperienceCard = !!stored && stored !== 'null' && stored !== 'undefined';
-
-  if (!hasExperienceCard && !isAdminUser) {
-    return <Navigate to="/dashboard" replace />;
-  }
-
-  return <>{children}</>;
-};
+// There is no longer an "exclusive" tier of member pages. These routes used to
+// sit behind a guard that bounced anyone without an Experience Card to
+// /dashboard, which made sense while membership had to be earned by spending
+// CHF 500. Membership is open to everyone now and the card is minted
+// automatically on registration, so that guard turned a newly registered
+// member into someone silently redirected away from the very pages the home
+// page invites them to — and away from their own onboarding steps.
+// ProtectedRoute below still requires a signed-in user; that is the only gate.
 
 const Router: React.FC = () => {
   const { user, isLoading } = useAppContext();
@@ -62,11 +58,11 @@ const Router: React.FC = () => {
           >
             <Route path="/" element={<Home />} />
             <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/products" element={<ExclusiveRoute><Products /></ExclusiveRoute>} />
-            <Route path="/events" element={<ExclusiveRoute><Events /></ExclusiveRoute>} />
-            <Route path="/community" element={<ExclusiveRoute><Community /></ExclusiveRoute>} />
-            <Route path="/rewards" element={<ExclusiveRoute><Rewards /></ExclusiveRoute>} />
-            <Route path="/updates" element={<ExclusiveRoute><Updates /></ExclusiveRoute>} />
+            <Route path="/products" element={<Products />} />
+            <Route path="/events" element={<Events />} />
+            <Route path="/community" element={<Community />} />
+            <Route path="/rewards" element={<Rewards />} />
+            <Route path="/updates" element={<Updates />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/admin" element={<Admin />} />
@@ -92,11 +88,11 @@ const Router: React.FC = () => {
           }
         >
           <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/products" element={<ExclusiveRoute><Products /></ExclusiveRoute>} />
-          <Route path="/events" element={<ExclusiveRoute><Events /></ExclusiveRoute>} />
-          <Route path="/community" element={<ExclusiveRoute><Community /></ExclusiveRoute>} />
-          <Route path="/rewards" element={<ExclusiveRoute><Rewards /></ExclusiveRoute>} />
-          <Route path="/updates" element={<ExclusiveRoute><Updates /></ExclusiveRoute>} />
+          <Route path="/products" element={<Products />} />
+          <Route path="/events" element={<Events />} />
+          <Route path="/community" element={<Community />} />
+          <Route path="/rewards" element={<Rewards />} />
+          <Route path="/updates" element={<Updates />} />
           <Route path="/profile" element={<Profile />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/admin" element={<Admin />} />

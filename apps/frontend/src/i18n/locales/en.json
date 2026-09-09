@@ -143,6 +143,12 @@
         "founded": "Founded",
         "alpineDesign": "Alpine Design",
         "handcrafted": "Handcrafted"
+      },
+      "joinClub": "Join the Club",
+      "perks": {
+        "freeToJoin": "Free to join",
+        "exclusiveEvents": "Exclusive events",
+        "pointsAndRewards": "Points and rewards"
       }
     },
     "lockedTooltip": {

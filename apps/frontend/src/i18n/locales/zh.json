@@ -143,6 +143,12 @@
         "founded": "创立于",
         "alpineDesign": "阿尔卑斯设计",
         "handcrafted": "匠心手作"
+      },
+      "joinClub": "加入俱乐部",
+      "perks": {
+        "freeToJoin": "免费加入",
+        "exclusiveEvents": "专属活动",
+        "pointsAndRewards": "积分与奖励"
       }
     },
     "lockedTooltip": {

@@ -3,7 +3,22 @@ import { useAppContext } from '../../context/AppContext';
 import { useNavigate } from 'react-router-dom';
 import { apiService } from '../../services/api';
 
-export function WalletConnectButton() {
+/**
+ * `variant` only changes the trigger's appearance — the WalletTwo iframe,
+ * postMessage handling and session exchange below are shared. The hero CTA
+ * therefore cannot drift out of step with the header's Sign Up / Log In.
+ *
+ * In the 'hero' variant a logged-in user renders nothing: the hero swaps in
+ * its own member actions at that point, so a second control there would be
+ * redundant.
+ */
+export function WalletConnectButton({
+  variant = 'header',
+  label,
+}: {
+  variant?: 'header' | 'hero';
+  label?: string;
+} = {}) {
   const { user, setUser, setWalletState } = useAppContext();
   const navigate = useNavigate();
   const [showModal, setShowModal] = useState(false);
@@ -103,6 +118,7 @@ export function WalletConnectButton() {
     // with the hero's centered logo. Show the avatar only on mobile instead
     // of trying to guess a safe truncation width for arbitrary name/email
     // lengths; the name/email still shows on desktop, where there's room.
+    if (variant === 'hero') return null;
     const label = user.givenName || user.email || '';
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -151,22 +167,41 @@ export function WalletConnectButton() {
     <>
       <button
         onClick={handleOpenModal}
-        style={{
-          background: '#7A222E',
-          color: '#fff',
-          border: 'none',
-          padding: isMobile ? '7px 10px' : '10px 20px',
-          fontSize: isMobile ? '9px' : '12px',
-          fontWeight: 500,
-          letterSpacing: isMobile ? '0.04em' : '0.1em',
-          textTransform: 'uppercase',
-          borderRadius: '4px',
-          cursor: 'pointer',
-          whiteSpace: 'nowrap',
-          transition: 'all 0.2s',
-        }}
+        style={
+          variant === 'hero'
+            ? {
+                background: '#7A222E',
+                color: '#fff',
+                border: 'none',
+                padding: '1rem 2rem',
+                fontSize: 'clamp(11px, 1.4vw, 13px)',
+                fontWeight: 500,
+                letterSpacing: '0.18em',
+                textTransform: 'uppercase',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                transition: 'background 0.2s',
+                fontFamily: "'Inter', sans-serif",
+              }
+            : {
+                background: '#7A222E',
+                color: '#fff',
+                border: 'none',
+                padding: isMobile ? '7px 10px' : '10px 20px',
+                fontSize: isMobile ? '9px' : '12px',
+                fontWeight: 500,
+                letterSpacing: isMobile ? '0.04em' : '0.1em',
+                textTransform: 'uppercase',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                transition: 'all 0.2s',
+              }
+        }
+        onMouseEnter={(e) => (e.currentTarget.style.background = '#9a2535')}
+        onMouseLeave={(e) => (e.currentTarget.style.background = '#7A222E')}
       >
-        {isMobile ? 'Log In' : 'Sign Up / Log In'}
+        {label ?? (isMobile ? 'Log In' : 'Sign Up / Log In')}
       </button>
 
       {showModal && (
