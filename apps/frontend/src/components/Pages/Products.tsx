@@ -618,12 +618,13 @@ const Products: React.FC = () => {
           window.dispatchEvent(new CustomEvent('zai:product-claimed'));
         }
 
+        // Set only, never clear on absence — this endpoint often omits the
+        // card entirely, which is what deleted a flag Dashboard had just
+        // written. See the note in Sidebar.
         const ecCard = (response.data as any).experienceCard;
         if (ecCard) {
           localStorage.setItem('zai_experience_card', JSON.stringify(ecCard));
           window.dispatchEvent(new CustomEvent('zai:experience-card-updated'));
-        } else {
-          localStorage.removeItem('zai_experience_card');
         }
       }
     } catch (err: any) {

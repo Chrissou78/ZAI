@@ -71,11 +71,18 @@ const Sidebar: React.FC = () => {
     };
   }, []);
 
-  // Admins always see everything
-  const showExclusive = hasExperienceCard || isAdminUser;
+  // These pages are open to every signed-in member. They used to be hidden
+  // unless a cached Experience Card flag was present, which produced the
+  // reported flicker: three pages delete that cache key whenever their own
+  // fetch happens not to carry a card, and this sidebar re-reads it on a 3s
+  // poll — so the whole section vanished mid-session and came back on the
+  // next page that did return one. Membership is open to everyone now and
+  // the card mints automatically, so there is nothing to gate on; the routes
+  // themselves were opened up for the same reason.
+  const showExclusive = true;
 
   const checkCommunityUpdates = useCallback(async () => {
-    if (!user || !showExclusive) { setCommunityNewCount(0); return; }
+    if (!user) { setCommunityNewCount(0); return; }
     try {
       const res = await apiService.get('/community/notifications');
       if (res.data?.success) {

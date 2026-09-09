@@ -437,10 +437,9 @@ const Home: React.FC = () => {
           setHasExperienceCard(ecFound);
           // Refresh the shared cache so Dashboard/Sidebar/Products (and this
           // page on the next visit) don't have to wait on their own fetch.
+          // Set only, never clear on absence — see the note in Sidebar.
           if (ecFound) {
             localStorage.setItem('zai_experience_card', d.experienceCard ? JSON.stringify(d.experienceCard) : 'true');
-          } else {
-            localStorage.removeItem('zai_experience_card');
           }
           window.dispatchEvent(new Event('zai:experience-card-updated'));
         }

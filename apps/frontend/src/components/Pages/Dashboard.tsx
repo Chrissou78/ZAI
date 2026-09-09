@@ -369,13 +369,15 @@ const Dashboard: React.FC = () => {
       const ecFound = !!responseData?.experienceCard || !!responseData?.stats?.hasExperienceCard;
       setHasExperienceCard(ecFound);
 
+      // Set only, never clear on absence — see the note in Sidebar. These
+      // endpoints do not all carry the card, so treating "missing from this
+      // response" as "member has no card" made the flag flip between pages.
+      // Logout is what clears it.
       if (ecFound) {
         const ecPayload = responseData?.experienceCard
           ? JSON.stringify(responseData.experienceCard)
           : 'true';
         localStorage.setItem('zai_experience_card', ecPayload);
-      } else {
-        localStorage.removeItem('zai_experience_card');
       }
       window.dispatchEvent(new Event('zai:experience-card-updated'));
 
