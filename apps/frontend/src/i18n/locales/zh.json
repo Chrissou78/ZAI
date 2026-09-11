@@ -1512,7 +1512,9 @@
       "pointsOnly": "仅限积分",
       "pointsApplied": "已使用 {{points}} 分",
       "markShipped": "标记为已发货",
-      "markToProcess": "退回待处理"
+      "markToProcess": "退回待处理",
+      "mailOff": "订单邮件未能发送。",
+      "mailOffDetail": "订单仍会记录在此，但没有任何邮件送达 {{inbox}}。请在 API 环境中设置 SMTP_USER 和 SMTP_PASS。"
     }
   },
   "welcomeGift": {

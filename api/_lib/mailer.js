@@ -73,4 +73,35 @@ export function notifyOrder({ title, rows, footNote, subject }) {
     .catch((e) => { console.error('[notify] FAILED:', subject, e.message); return false; });
 }
 
+/**
+ * Is outbound mail actually usable right now?
+ *
+ * notifyOrder() skips with nothing but a console warning when SMTP is not
+ * configured, which is invisible from the outside — the first anyone knows is
+ * that an inbox stayed empty. This lets an admin screen say so instead.
+ *
+ * `verify` opens a connection and authenticates; it sends no mail.
+ */
+export async function mailStatus() {
+  const host = process.env.SMTP_HOST || 'smtp.gmail.com';
+  const user = process.env.SMTP_USER || '';
+  const configured = !!(process.env.SMTP_USER && process.env.SMTP_PASS);
+  const base = {
+    configured,
+    host,
+    // Enough to tell which mailbox is in use without printing it in full.
+    user: user ? user.replace(/^(.).*(@.*)$/, '$1***$2') : null,
+    inbox: ADMIN_INBOX,
+  };
+  if (!configured) {
+    return { ...base, verified: false, error: 'SMTP_USER and SMTP_PASS are not set in this environment' };
+  }
+  try {
+    await getTransporter().verify();
+    return { ...base, verified: true, error: null };
+  } catch (e) {
+    return { ...base, verified: false, error: e.message || 'SMTP verification failed' };
+  }
+}
+
 export { ADMIN_INBOX };

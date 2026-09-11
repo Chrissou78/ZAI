@@ -1519,7 +1519,9 @@
       "pointsOnly": "Nur Punkte",
       "pointsApplied": "{{points}} Pkt. eingesetzt",
       "markShipped": "Als versendet markieren",
-      "markToProcess": "Zurück zu bearbeiten"
+      "markToProcess": "Zurück zu bearbeiten",
+      "mailOff": "Bestell-E-Mails werden nicht versendet.",
+      "mailOffDetail": "Bestellungen werden hier weiterhin erfasst, aber es erreicht nichts {{inbox}}. Bitte SMTP_USER und SMTP_PASS in der API-Umgebung setzen."
     }
   },
   "welcomeGift": {

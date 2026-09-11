@@ -1519,7 +1519,9 @@
       "pointsOnly": "Points only",
       "pointsApplied": "{{points}} pts applied",
       "markShipped": "Mark as shipped",
-      "markToProcess": "Move back to process"
+      "markToProcess": "Move back to process",
+      "mailOff": "Order emails are not being sent.",
+      "mailOffDetail": "Orders are still recorded here, but nothing is reaching {{inbox}}. Set SMTP_USER and SMTP_PASS in the API environment."
     }
   },
   "welcomeGift": {

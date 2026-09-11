@@ -1519,7 +1519,9 @@
       "pointsOnly": "Points uniquement",
       "pointsApplied": "{{points}} pts utilisés",
       "markShipped": "Marquer comme expédiée",
-      "markToProcess": "Remettre à traiter"
+      "markToProcess": "Remettre à traiter",
+      "mailOff": "Les e-mails de commande ne sont pas envoyés.",
+      "mailOffDetail": "Les commandes restent enregistrées ici, mais rien n'arrive à {{inbox}}. Définissez SMTP_USER et SMTP_PASS dans l'environnement de l'API."
     }
   },
   "welcomeGift": {

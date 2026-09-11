@@ -2,7 +2,7 @@ import { randomUUID } from 'crypto';
 import { getPool, initDB, requireAdmin, isAdmin } from '../db.js';
 import { pointsForAmount, chfForPoints, categoryEarnsPoints, pointsToCoverCHF, TIERS, VOUCHER_VALID_YEARS, tierForPoints } from '../points.js';
 import { applyCors, authenticate } from '../middleware.js';
-import { notifyOrder } from '../_lib/mailer.js';
+import { notifyOrder, mailStatus } from '../_lib/mailer.js';
 
 // ══════════════════════════════════════════════════════════
 // TIERS — the table lives in api/points.js (single source of truth,
@@ -533,6 +533,11 @@ async function handleStoreAdmin(req, res, segments, method, decoded) {
         balances,
       },
     });
+  }
+
+  // GET /api/store/admin/notifications/status — can we actually send mail?
+  if (method === 'GET' && segments[0] === 'notifications' && segments[1] === 'status') {
+    return res.json({ success: true, data: await mailStatus() });
   }
 
   // GET /api/store/admin/orders — everything the fulfilment team needs.

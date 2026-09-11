@@ -912,6 +912,9 @@ function OrdersManager() {
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [filter, setFilter] = useState<'all' | 'to_process' | 'shipped'>('all');
+  // Order emails skip silently when SMTP is unset, so the only symptom is an
+  // inbox that stays empty. Surface it where the orders are.
+  const [mail, setMail] = useState<{ configured: boolean; verified: boolean; inbox: string; error: string | null } | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -924,6 +927,12 @@ function OrdersManager() {
     } finally { setLoading(false); }
   }, [t]);
   useEffect(() => { void load(); }, [load]);
+
+  useEffect(() => {
+    apiService.get('/store/admin/notifications/status')
+      .then(r => setMail((r.data as any)?.data ?? null))
+      .catch(() => setMail(null));
+  }, []);
 
   const visible = orders.filter(o => filter === 'all' || o.fulfilment_status === filter);
   const fmtDate = (d: string) =>
@@ -971,6 +980,17 @@ function OrdersManager() {
           {t('adminStore.orders.count', { count: visible.length })}
         </span>
       </div>
+
+      {mail && !mail.verified && (
+        <div style={{
+          padding: '12px 16px', marginBottom: 16, borderRadius: 6, fontSize: 12, lineHeight: 1.6,
+          background: 'rgba(229,57,53,0.07)', border: '1px solid rgba(229,57,53,0.3)', color: '#8a1f1f',
+        }}>
+          <strong>{t('adminStore.orders.mailOff')}</strong>{' '}
+          {t('adminStore.orders.mailOffDetail', { inbox: mail.inbox })}
+          {mail.error && <div style={{ marginTop: 6, opacity: 0.8 }}>{mail.error}</div>}
+        </div>
+      )}
 
       {error && <div style={{ color: C.red, fontSize: 12, marginBottom: 12 }}>{error}</div>}
 
