@@ -318,7 +318,8 @@ function DealsManager() {
     const payload = pointsOnly
       ? { ...editing, points_only: true, points_price: pointsPrice, price_chf: 0, max_points_discount: 0 }
       : { ...editing, points_only: false, points_price: 0,
-          price_chf: priceNum, max_points_discount: Math.trunc(discountNum) };
+          price_chf: priceNum, max_points_discount: Math.trunc(discountNum),
+          discount_percent: Math.min(100, Math.max(0, parseInt(editing.discount_percent, 10) || 0)) };
     setSaving(true);
     try {
       if (editing.id) {
@@ -421,7 +422,7 @@ function DealsManager() {
         <div style={{ fontSize: 13, color: C.gray }}>{t('adminStore.list.dealsCount', { count: deals.length })}</div>
         <button style={BTN_PRIMARY} onClick={() => { setFormError(null); setEditing({
           title: '', description: '', category: 'accessories', price_chf: '',
-          max_points_discount: 0, image_url: '', ends_at: '', spots_total: 0,
+          max_points_discount: 0, discount_percent: 0, image_url: '', ends_at: '', spots_total: 0,
           featured: false, product_id: null, contract_address: '',
           points_only: false, points_price: '',
         }); }}>{t('adminStore.list.newDeal')}</button>
@@ -560,10 +561,69 @@ function DealsManager() {
               </Field>
             )}
           </div>
+          {/* Discount off the list price. Percentage and resulting price are two
+              views of one value: editing either updates the other, and only the
+              percentage is stored, so the pair cannot disagree after a price
+              change. The list price stays in price_chf so the card can strike
+              it through. */}
+          {editing.points_only !== true && (() => {
+            const list = Number(toNumericString(editing.price_chf)) || 0;
+            const pct = Math.min(100, Math.max(0, parseInt(editing.discount_percent, 10) || 0));
+            const discounted = Math.round(list * (1 - pct / 100) * 100) / 100;
+            const setFromPrice = (raw: string) => {
+              const val = Number(toNumericString(raw));
+              if (!list || !Number.isFinite(val)) { set('discount_percent', 0); return; }
+              const nextPct = Math.min(100, Math.max(0, Math.round((1 - val / list) * 100)));
+              set('discount_percent', nextPct);
+            };
+            return (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+                <Field label={t('adminStore.dealForm.discountPercent')}>
+                  <input
+                    style={INPUT} type="number" min="0" max="100" step="1"
+                    value={editing.discount_percent ?? 0}
+                    onChange={e => set('discount_percent', Math.min(100, Math.max(0, parseInt(e.target.value, 10) || 0)))}
+                  />
+                  <div style={{ fontSize: 11, color: C.gray, marginTop: 6 }}>
+                    {t('adminStore.dealForm.discountPercentHint')}
+                  </div>
+                </Field>
+                <Field label={t('adminStore.dealForm.discountedPrice')}>
+                  <input
+                    style={INPUT} type="number" step="0.01" min="0"
+                    value={list ? discounted : ''}
+                    onChange={e => setFromPrice(e.target.value)}
+                    disabled={!list}
+                  />
+                  <div style={{ fontSize: 11, color: C.gray, marginTop: 6 }}>
+                    {list
+                      ? (pct > 0
+                          ? t('adminStore.dealForm.discountedPriceHint', {
+                              list: list.toLocaleString('de-CH', { minimumFractionDigits: 2 }), pct })
+                          : t('adminStore.dealForm.noDiscount'))
+                      : t('adminStore.dealForm.discountNeedsPrice')}
+                  </div>
+                </Field>
+              </div>
+            );
+          })()}
+
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
             {editing.points_only !== true && (
               <Field label={t('adminStore.dealForm.maxPointsDiscount')}>
-                <input style={INPUT} type="number" value={editing.max_points_discount || 0} onChange={e => set('max_points_discount', parseInt(e.target.value) || 0)} />
+                {/* Read-only: the server derives this from the payable price on
+                    every read, because points cover 100% of a deal. The input
+                    that used to be here saved a value that was then ignored,
+                    which is why editing it appeared to do nothing. */}
+                <div style={{ ...INPUT, background: C.surface, color: C.gray }}>
+                  {t('adminStore.dealForm.maxPointsDerived', {
+                    points: Math.round(
+                      (Number(toNumericString(editing.price_chf)) || 0)
+                      * (1 - Math.min(100, Math.max(0, parseInt(editing.discount_percent, 10) || 0)) / 100)
+                      * 100
+                    ).toLocaleString('de-CH'),
+                  })}
+                </div>
               </Field>
             )}
             <Field label={t('adminStore.dealForm.totalSpots')}>

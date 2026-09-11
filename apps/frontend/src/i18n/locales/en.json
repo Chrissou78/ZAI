@@ -1213,7 +1213,8 @@
         "fullPrice": "Full price",
         "pointsDiscount_one": "Points discount ({{count}} pt)",
         "pointsDiscount_other": "Points discount ({{count}} pts)",
-        "youPay": "You pay"
+        "youPay": "You pay",
+        "dealDiscount": "Deal discount ({{pct}}%)"
       },
       "continueToPayment": "Continue to payment",
       "pointsNote": "1 pt = CHF 0.01 · Points deducted from your balance on confirmation",
@@ -1419,7 +1420,14 @@
       "imageUploadSizeError": "That image is over 8 MB. Please choose a smaller file.",
       "imageUploadFailed": "Upload failed. Please try again.",
       "priceInvalid": "Enter the price as a number, for example 1950 or 1950.50.",
-      "discountInvalid": "Max points discount must be a whole number."
+      "discountInvalid": "Max points discount must be a whole number.",
+      "discountPercent": "Discount %",
+      "discountPercentHint": "0 for no discount. Members pay the reduced price.",
+      "discountedPrice": "Discounted price (CHF)",
+      "discountedPriceHint": "Was CHF {{list}} — {{pct}}% off",
+      "noDiscount": "No discount — members pay the full price.",
+      "discountNeedsPrice": "Set a price first.",
+      "maxPointsDerived": "{{points}} pts — covers the full payable price"
     },
     "collectibles": {
       "infoText": "Collectible drops are created via the database and linked to Engage NFTs. This panel shows the current state of all series and cards. To add a new series or card, use the database directly or contact the dev team.",

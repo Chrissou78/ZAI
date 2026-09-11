@@ -43,6 +43,16 @@ const isDealLive = (d: any) =>
 // belong exclusively to the embedded <PointsStore /> section further down the
 // page, which selects on `points_only === true`; these two sets never overlap.
 const isMoneyDeal = (d: any) => d.points_only !== true;
+// The server sends effective_price_chf, but fall back to computing it so a
+// cached or older response still renders the right number.
+const discountPct = (d: any) => Math.min(100, Math.max(0, parseInt(d?.discount_percent, 10) || 0));
+const payablePrice = (d: any) => {
+  const list = parseFloat(d?.price_chf) || 0;
+  const server = parseFloat(d?.effective_price_chf);
+  if (Number.isFinite(server)) return server;
+  return Math.round(list * (1 - discountPct(d) / 100) * 100) / 100;
+};
+const chf = (n: number, dp = 0) => n.toLocaleString('de-CH', { minimumFractionDigits: dp });
 const filterLiveDeals = (deals: any[]) =>
   (deals || []).filter(d => isDealLive(d) && isMoneyDeal(d));
 
@@ -232,7 +242,11 @@ function DealModal({ deal, onClose, onSuccess }: {
 
   const max = Math.min(balance, deal.max_points_discount || 0);
   const discount = points / 100;
-  const finalPrice = Math.max(0, parseFloat(deal.price_chf) - discount);
+  // Points come off the already-discounted price, matching the server.
+  const listPrice = parseFloat(deal.price_chf) || 0;
+  const payable = payablePrice(deal);
+  const dealPct = discountPct(deal);
+  const finalPrice = Math.max(0, payable - discount);
 
   const handleConfirm = async () => {
     setLoading(true);
@@ -308,7 +322,20 @@ function DealModal({ deal, onClose, onSuccess }: {
               <div style={LABEL}>{t('updates.deal.yourBalance')}</div>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 24 }}>
-              <div style={{ fontSize: 28, fontWeight: 300 }}>CHF {parseFloat(deal.price_chf).toLocaleString('de-CH', { minimumFractionDigits: 0 })}</div>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+                {dealPct > 0 && (
+                  <span style={{ fontSize: 16, color: C.gray, textDecoration: 'line-through' }}>
+                    CHF {chf(listPrice)}
+                  </span>
+                )}
+                <span style={{ fontSize: 28, fontWeight: 300 }}>CHF {chf(payable)}</span>
+                {dealPct > 0 && (
+                  <span style={{
+                    fontSize: 10, fontWeight: 700, color: '#fff',
+                    background: C.red, padding: '2px 6px', borderRadius: 3,
+                  }}>-{dealPct}%</span>
+                )}
+              </div>
               <div style={{ fontSize: 16, fontWeight: 500 }}>{t('updates.deal.pts', { count: balance })}</div>
             </div>
 
@@ -329,8 +356,14 @@ function DealModal({ deal, onClose, onSuccess }: {
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 8, color: C.gray }}>
                 <span>{t('updates.deal.summary.fullPrice')}</span>
-                <span>CHF {parseFloat(deal.price_chf).toLocaleString('de-CH', { minimumFractionDigits: 2 })}</span>
+                <span>CHF {chf(listPrice, 2)}</span>
               </div>
+              {dealPct > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 8, color: C.red }}>
+                  <span>{t('updates.deal.summary.dealDiscount', { pct: dealPct })}</span>
+                  <span>– CHF {chf(listPrice - payable, 2)}</span>
+                </div>
+              )}
               {points > 0 && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 8, color: C.red }}>
                   <span>{t('updates.deal.summary.pointsDiscount', { count: points })}</span>
@@ -825,9 +858,28 @@ export default function Updates() {
                           display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden',
                         }}>{deal.description}</div>
                         <div style={{
-                          fontSize: 20, fontWeight: 200, letterSpacing: '-0.02em', marginBottom: 10,
+                          display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: 8,
+                          marginBottom: 10,
                         }}>
-                          CHF {parseFloat(deal.price_chf).toLocaleString('de-CH')}
+                          {discountPct(deal) > 0 && (
+                            <>
+                              <span style={{
+                                fontSize: 14, fontWeight: 300, color: C.gray,
+                                textDecoration: 'line-through', textDecorationThickness: '1px',
+                              }}>
+                                CHF {chf(parseFloat(deal.price_chf) || 0)}
+                              </span>
+                              <span style={{
+                                fontSize: 10, fontWeight: 700, letterSpacing: '0.06em',
+                                color: '#fff', background: C.red, padding: '2px 6px', borderRadius: 3,
+                              }}>
+                                -{discountPct(deal)}%
+                              </span>
+                            </>
+                          )}
+                          <span style={{ fontSize: 20, fontWeight: 200, letterSpacing: '-0.02em' }}>
+                            CHF {chf(payablePrice(deal))}
+                          </span>
                         </div>
 
                         {deal.max_points_discount > 0 && (

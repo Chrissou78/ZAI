@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto';
 import { getPool, initDB, requireAdmin, isAdmin } from '../db.js';
-import { pointsForAmount, chfForPoints, categoryEarnsPoints, pointsToCoverCHF, TIERS, VOUCHER_VALID_YEARS, tierForPoints } from '../points.js';
+import { pointsForAmount, chfForPoints, categoryEarnsPoints, pointsToCoverCHF, TIERS, VOUCHER_VALID_YEARS, tierForPoints, effectivePriceCHF } from '../points.js';
 import { applyCors, authenticate } from '../middleware.js';
 import { notifyOrder, mailStatus } from '../_lib/mailer.js';
 
@@ -725,9 +725,17 @@ async function handleVouchers(req, res, segments, method, userId) {
 // like 1,000 (CHF 10) sat against a CHF 1,950 ski. Points-only items are left
 // alone — they are priced in points already.
 function withDerivedPointsCap(rows) {
-  return rows.map(d => d.points_only
-    ? d
-    : { ...d, max_points_discount: pointsToCoverCHF(d.price_chf) });
+  return rows.map(d => {
+    if (d.points_only) return d;
+    // Points cover what is actually payable, so the cap follows the discounted
+    // price rather than the list price.
+    const effective = effectivePriceCHF(d.price_chf, d.discount_percent);
+    return {
+      ...d,
+      effective_price_chf: effective,
+      max_points_discount: pointsToCoverCHF(effective),
+    };
+  });
 }
 
 // Which of these deals the caller has already redeemed. Applied to BOTH the
@@ -813,11 +821,14 @@ async function handleDeals(req, res, segments, method, userId, decoded) {
     // rather than read from max_points_discount — those stored values had
     // drifted badly (CHF 10 off a CHF 1,950 ski) and would silently re-cap
     // members here even though the UI offered more.
-    const maxPts = pointsToCoverCHF(deal.price_chf);
+    // The list price is struck through on the card; this is what is charged.
+    const listCHF = Number(deal.price_chf) || 0;
+    const payableCHF = effectivePriceCHF(listCHF, deal.discount_percent);
+    const maxPts = pointsToCoverCHF(payableCHF);
     const pts = Math.max(0, Math.min(parseInt(pointsToUse) || 0, maxPts));
     // 1 point = CHF 0.01 (see api/points.js).
     const discountCHF = chfForPoints(pts);
-    const finalCHF = Math.max(0, parseFloat(deal.price_chf) - discountCHF);
+    const finalCHF = Math.max(0, payableCHF - discountCHF);
 
     const bal = await getBalance(userId);
     if (pts > bal) return res.status(400).json({ error: 'Insufficient points' });
@@ -1160,7 +1171,7 @@ async function handleDeals(req, res, segments, method, userId, decoded) {
   // POST /api/store/deals/admin
   if (method === 'POST' && segments[0] === 'admin' && segments.length === 1) {
     await requireAdmin(decoded);
-    const { title, description, category, price_chf, max_points_discount,
+    const { title, description, category, price_chf, max_points_discount, discount_percent,
             image_url, ends_at, spots_total, members_only, featured, contract_address,
             points_only, points_price } = req.body;
     const id = randomUUID();
@@ -1183,13 +1194,14 @@ async function handleDeals(req, res, segments, method, userId, decoded) {
     await getPool().query(
       `INSERT INTO deals (id, title, description, category, price_chf, max_points_discount,
                           image_url, ends_at, spots_total, spots_left, members_only, featured, contract_address,
-                          points_only, points_price)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)`,
+                          points_only, points_price, discount_percent)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
       [id, title, description || '', category || 'accessories',
        isPointsOnly ? 0 : priceVal, isPointsOnly ? 0 : Math.trunc(discountVal), image_url || '',
        ends_at || null, spotsVal, spotsVal,
        members_only !== false, featured === true, contract_address || '',
-       isPointsOnly, ptsPrice]
+       isPointsOnly, ptsPrice,
+       isPointsOnly ? 0 : Math.min(100, Math.max(0, parseInt(discount_percent, 10) || 0))]
     );
     return res.json({ success: true, data: { id } });
   }
@@ -1227,6 +1239,10 @@ async function handleDeals(req, res, segments, method, userId, decoded) {
     }
     if (b.max_points_discount !== undefined) {
       set('max_points_discount', Math.trunc(toNumberOrNull(b.max_points_discount) ?? 0));
+    }
+    if (b.discount_percent !== undefined) {
+      const pct = Math.min(100, Math.max(0, parseInt(b.discount_percent, 10) || 0));
+      set('discount_percent', pct);
     }
     set('points_only', b.points_only);
     set('points_price', b.points_price);

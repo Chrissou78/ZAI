@@ -1210,7 +1210,8 @@
         "fullPrice": "原价",
         "pointsDiscount_one": "积分抵扣（{{count}} 积分）",
         "pointsDiscount_other": "积分抵扣（{{count}} 积分）",
-        "youPay": "应付金额"
+        "youPay": "应付金额",
+        "dealDiscount": "优惠折扣 ({{pct}}%)"
       },
       "continueToPayment": "继续付款",
       "pointsNote": "1 积分 = CHF 0.01 · 确认后将从您的余额中扣除积分",
@@ -1415,7 +1416,14 @@
       "imageUploadSizeError": "该图片超过 8 MB，请选择更小的文件。",
       "imageUploadFailed": "上传失败，请重试。",
       "priceInvalid": "请以数字形式输入价格，例如 1950 或 1950.50。",
-      "discountInvalid": "最高积分抵扣必须为整数。"
+      "discountInvalid": "最高积分抵扣必须为整数。",
+      "discountPercent": "折扣 %",
+      "discountPercentHint": "0 表示无折扣。会员按折后价支付。",
+      "discountedPrice": "折后价 (CHF)",
+      "discountedPriceHint": "原价 CHF {{list}} — 折扣 {{pct}}%",
+      "noDiscount": "无折扣 — 会员支付全价。",
+      "discountNeedsPrice": "请先设置价格。",
+      "maxPointsDerived": "{{points}} 分 — 可覆盖全部应付金额"
     },
     "collectibles": {
       "infoText": "收藏卡系列通过数据库创建，并与 Engage NFT 关联。此面板显示所有系列和卡片的当前状态。如需添加新系列或卡片，请直接使用数据库或联系开发团队。",

@@ -91,3 +91,16 @@ export function unlockedTiers(points) {
   const n = parseInt(points, 10) || 0;
   return TIERS.filter((t) => n >= t.min);
 }
+
+/**
+ * What a member actually pays before points are applied.
+ *
+ * `price_chf` stays the list price so the card can strike it through; the
+ * discount is a separate percentage. Rounded to the rappen, and clamped so a
+ * bad percentage can never produce a negative charge.
+ */
+export function effectivePriceCHF(priceCHF, discountPercent) {
+  const price = Number(priceCHF) || 0;
+  const pct = Math.min(100, Math.max(0, Number(discountPercent) || 0));
+  return Math.round(price * (1 - pct / 100) * 100) / 100;
+}

@@ -1213,7 +1213,8 @@
         "fullPrice": "Vollpreis",
         "pointsDiscount_one": "Punkterabatt ({{count}} Pkt.)",
         "pointsDiscount_other": "Punkterabatt ({{count}} Pkt.)",
-        "youPay": "Sie zahlen"
+        "youPay": "Sie zahlen",
+        "dealDiscount": "Angebotsrabatt ({{pct}}%)"
       },
       "continueToPayment": "Weiter zur Zahlung",
       "pointsNote": "1 Pkt. = CHF 0.01 · Punkte werden bei Bestätigung von Ihrem Guthaben abgezogen",
@@ -1419,7 +1420,14 @@
       "imageUploadSizeError": "Dieses Bild ist über 8 MB. Bitte eine kleinere Datei wählen.",
       "imageUploadFailed": "Upload fehlgeschlagen. Bitte erneut versuchen.",
       "priceInvalid": "Bitte den Preis als Zahl eingeben, z. B. 1950 oder 1950.50.",
-      "discountInvalid": "Maximaler Punkte-Rabatt muss eine ganze Zahl sein."
+      "discountInvalid": "Maximaler Punkte-Rabatt muss eine ganze Zahl sein.",
+      "discountPercent": "Rabatt %",
+      "discountPercentHint": "0 für keinen Rabatt. Mitglieder zahlen den reduzierten Preis.",
+      "discountedPrice": "Reduzierter Preis (CHF)",
+      "discountedPriceHint": "Vorher CHF {{list}} — {{pct}}% Rabatt",
+      "noDiscount": "Kein Rabatt — Mitglieder zahlen den vollen Preis.",
+      "discountNeedsPrice": "Bitte zuerst einen Preis festlegen.",
+      "maxPointsDerived": "{{points}} Pkt. — deckt den vollen zu zahlenden Preis"
     },
     "collectibles": {
       "infoText": "Sammelkarten-Drops werden über die Datenbank erstellt und mit Engage-NFTs verknüpft. Dieses Panel zeigt den aktuellen Status aller Serien und Karten. Um eine neue Serie oder Karte hinzuzufügen, verwenden Sie direkt die Datenbank oder wenden Sie sich an das Entwicklerteam.",

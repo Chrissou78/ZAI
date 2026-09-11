@@ -533,6 +533,14 @@ export async function initDB() {
       );
     }
 
+    // Percentage off the list price, shown on the card as a struck-through
+    // original next to the new price. Stored as the percent rather than the
+    // discounted amount so the two can never disagree after a price change.
+    await pool.query(`
+      ALTER TABLE deals
+        ADD COLUMN IF NOT EXISTS discount_percent INTEGER DEFAULT 0
+    `);
+
     // ── Orders: shipping details, a human reference, fulfilment state ──
     // Every deal order gets a reference, points-only redemptions included, so
     // the team has one way to refer to an order regardless of how it was paid.
