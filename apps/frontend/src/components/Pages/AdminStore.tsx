@@ -872,6 +872,227 @@ function MediaManager() {
 // ═══════════════════════════════════════════════════════════
 // MAIN ADMIN STORE PAGE
 // ═══════════════════════════════════════════════════════════
+/* ── Orders ───────────────────────────────────────────────
+   Every paid deal order, money and points-only alike, with the address the
+   member gave at checkout. Event registrations are excluded — nothing to ship.
+   ────────────────────────────────────────────────────────── */
+interface OrderRow {
+  id: string; order_ref: string; status: string; fulfilment_status: string;
+  shipped_at: string | null; points_used: number; amount_chf: string;
+  points_only: boolean; created_at: string;
+  ship_first_name: string | null; ship_family_name: string | null;
+  ship_street: string | null; ship_postcode: string | null;
+  ship_city: string | null; ship_country: string | null; ship_phone: string | null;
+  item_title: string | null; item_category: string | null;
+  member_name: string; member_email: string;
+  profile_street: string | null; profile_postcode: string | null;
+  profile_city: string | null; profile_country: string | null; profile_phone: string | null;
+}
+
+/** The captured address, falling back to the profile for older orders. */
+function shipTo(o: OrderRow) {
+  const captured = !!(o.ship_street || o.ship_city);
+  return {
+    captured,
+    name: [o.ship_first_name, o.ship_family_name].filter(Boolean).join(' ') || o.member_name,
+    street: (captured ? o.ship_street : o.profile_street) || '',
+    postcode: (captured ? o.ship_postcode : o.profile_postcode) || '',
+    city: (captured ? o.ship_city : o.profile_city) || '',
+    country: (captured ? o.ship_country : o.profile_country) || '',
+    phone: (captured ? o.ship_phone : o.profile_phone) || '',
+  };
+}
+
+function OrdersManager() {
+  const { t } = useTranslation();
+  const [orders, setOrders] = useState<OrderRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [open, setOpen] = useState<OrderRow | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [filter, setFilter] = useState<'all' | 'to_process' | 'shipped'>('all');
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const r = await apiService.get('/store/admin/orders');
+      setOrders(((r.data as any)?.data || []) as OrderRow[]);
+      setError(null);
+    } catch (e: any) {
+      setError(e?.response?.data?.error || t('adminStore.orders.loadFailed'));
+    } finally { setLoading(false); }
+  }, [t]);
+  useEffect(() => { void load(); }, [load]);
+
+  const visible = orders.filter(o => filter === 'all' || o.fulfilment_status === filter);
+  const fmtDate = (d: string) =>
+    new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase();
+  const money = (v: string) => `CHF ${Number(v || 0).toLocaleString('de-CH', { minimumFractionDigits: 0 })}`;
+
+  const setShipped = async (o: OrderRow, shipped: boolean) => {
+    setBusy(true);
+    try {
+      await apiService.post(`/store/admin/orders/${o.id}/ship`, { shipped });
+      await load();
+      setOpen(prev => prev && prev.id === o.id
+        ? { ...prev, fulfilment_status: shipped ? 'shipped' : 'to_process' }
+        : prev);
+    } catch (e: any) {
+      setError(e?.response?.data?.error || t('adminStore.orders.updateFailed'));
+    } finally { setBusy(false); }
+  };
+
+  const copyAddress = (o: OrderRow) => {
+    const a = shipTo(o);
+    const text = [a.name, a.street, `${a.postcode} ${a.city}`.trim(), a.country, a.phone]
+      .filter(Boolean).join('\n');
+    navigator.clipboard?.writeText(text).then(() => {
+      setCopied(true); setTimeout(() => setCopied(false), 2000);
+    }).catch(() => { /* clipboard blocked — the address is on screen anyway */ });
+  };
+
+  if (loading) return <div style={{ padding: 24, fontSize: 13, color: C.gray }}>{t('adminStore.common.loading')}</div>;
+
+  return (
+    <div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', marginBottom: 20 }}>
+        {(['all', 'to_process', 'shipped'] as const).map(f => (
+          <button key={f} onClick={() => setFilter(f)} style={{
+            ...BTN_SECONDARY,
+            background: filter === f ? C.black : 'transparent',
+            color: filter === f ? '#fff' : C.mid,
+            borderColor: filter === f ? C.black : C.border,
+          }}>
+            {t(`adminStore.orders.filters.${f}`)}
+          </button>
+        ))}
+        <span style={{ fontSize: 12, color: C.gray, marginLeft: 'auto' }}>
+          {t('adminStore.orders.count', { count: visible.length })}
+        </span>
+      </div>
+
+      {error && <div style={{ color: C.red, fontSize: 12, marginBottom: 12 }}>{error}</div>}
+
+      {visible.length === 0 && (
+        <div style={{ padding: 24, fontSize: 13, color: C.gray, textAlign: 'center', border: BR, borderRadius: 8 }}>
+          {t('adminStore.orders.empty')}
+        </div>
+      )}
+
+      {visible.map(o => (
+        <div key={o.id} style={{
+          display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12,
+          padding: '14px 16px', border: BR, borderRadius: 8, marginBottom: 8, background: C.pureWhite,
+        }}>
+          <div style={{ minWidth: 0, flex: '1 1 240px' }}>
+            <div style={{ fontSize: 10, letterSpacing: '0.14em', color: C.gray, marginBottom: 3 }}>
+              {o.order_ref} · {fmtDate(o.created_at)}
+            </div>
+            <div style={{ fontSize: 14, fontWeight: 600, wordBreak: 'break-word' }}>
+              {o.item_title || '—'}
+            </div>
+            <div style={{ fontSize: 12, color: C.gray }}>{o.member_name}</div>
+          </div>
+          <div style={{ textAlign: 'right', flexShrink: 0 }}>
+            <div style={{ fontSize: 13, fontWeight: 500 }}>
+              {o.points_only ? t('adminStore.orders.pointsOnly') : money(o.amount_chf)}
+            </div>
+            {o.points_used > 0 && (
+              <div style={{ fontSize: 11, color: C.gray }}>
+                {t('adminStore.orders.pointsApplied', { points: o.points_used.toLocaleString('de-CH') })}
+              </div>
+            )}
+          </div>
+          <span style={{
+            fontSize: 9, letterSpacing: '0.12em', textTransform: 'uppercase',
+            padding: '4px 9px', borderRadius: 3, flexShrink: 0,
+            background: o.fulfilment_status === 'shipped' ? 'rgba(76,175,125,0.15)' : 'rgba(122,34,46,0.08)',
+            color: o.fulfilment_status === 'shipped' ? '#2c6b4a' : C.red,
+          }}>
+            {t(`adminStore.orders.status.${o.fulfilment_status}`)}
+          </span>
+          <button style={BTN_SECONDARY} onClick={() => { setCopied(false); setOpen(o); }}>
+            {t('adminStore.orders.view')}
+          </button>
+        </div>
+      ))}
+
+      {open && (
+        <Modal title="" onClose={() => setOpen(null)}>
+          <div style={{ marginTop: -12 }}>
+            <div style={{ fontSize: 10, letterSpacing: '0.16em', color: C.red, marginBottom: 4 }}>
+              {open.order_ref} · {fmtDate(open.created_at)}
+            </div>
+            <h2 style={{ fontSize: 19, fontWeight: 400, margin: '0 0 20px' }}>{open.item_title || '—'}</h2>
+
+            <div style={{ border: BR, borderRadius: 8, padding: 16, marginBottom: 14 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
+                <span style={LABEL}>{t('adminStore.orders.shipTo')}</span>
+                <button onClick={() => copyAddress(open)} style={{
+                  background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+                  fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase',
+                  color: C.red, textDecoration: 'underline', fontFamily: C.font,
+                }}>
+                  {copied ? t('adminStore.orders.copied') : t('adminStore.orders.copyAddress')}
+                </button>
+              </div>
+              {(() => {
+                const a = shipTo(open);
+                const lines = [a.name, a.street, `${a.postcode} ${a.city}`.trim(), a.country, a.phone].filter(Boolean);
+                if (lines.length <= 1) {
+                  return <div style={{ fontSize: 13, color: C.gray }}>{t('adminStore.orders.noAddress')}</div>;
+                }
+                return (
+                  <>
+                    {lines.map((l, i) => (
+                      <div key={i} style={{ fontSize: 13, lineHeight: 1.7 }}>{l}</div>
+                    ))}
+                    {!a.captured && (
+                      <div style={{ fontSize: 11, color: C.gray, marginTop: 8, fontStyle: 'italic' }}>
+                        {t('adminStore.orders.fromProfile')}
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
+            </div>
+
+            <div style={{ border: BR, borderRadius: 8, padding: 16, marginBottom: 18 }}>
+              <div style={{ ...LABEL, marginBottom: 12 }}>{t('adminStore.orders.orderLabel')}</div>
+              {([
+                [t('adminStore.orders.member'), `${open.member_name}${open.member_email ? '\n' + open.member_email : ''}`],
+                [t('adminStore.orders.item'), open.item_title || '—'],
+                [t('adminStore.orders.type'), open.points_only ? t('adminStore.orders.typePoints') : t('adminStore.orders.typeDeal')],
+                [t('adminStore.orders.paid'), open.points_only ? t('adminStore.orders.pointsOnly') : money(open.amount_chf)],
+                [t('adminStore.orders.pointsAppliedLabel'), open.points_used > 0 ? `${open.points_used.toLocaleString('de-CH')} pts` : '—'],
+                [t('adminStore.orders.statusLabel'), t(`adminStore.orders.status.${open.fulfilment_status}`)],
+              ] as const).map(([k, v]) => (
+                <div key={k} style={{ display: 'flex', justifyContent: 'space-between', gap: 16, padding: '6px 0' }}>
+                  <span style={{ fontSize: 12, color: C.gray, flexShrink: 0 }}>{k}</span>
+                  <span style={{ fontSize: 13, textAlign: 'right', whiteSpace: 'pre-line', wordBreak: 'break-word' }}>{v}</span>
+                </div>
+              ))}
+            </div>
+
+            {open.fulfilment_status === 'shipped' ? (
+              <button style={{ ...BTN_SECONDARY, width: '100%' }} disabled={busy}
+                      onClick={() => setShipped(open, false)}>
+                {busy ? t('adminStore.common.saving') : t('adminStore.orders.markToProcess')}
+              </button>
+            ) : (
+              <button style={{ ...BTN_PRIMARY, width: '100%' }} disabled={busy}
+                      onClick={() => setShipped(open, true)}>
+                {busy ? t('adminStore.common.saving') : t('adminStore.orders.markShipped')}
+              </button>
+            )}
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
 /* ── Points Manager ───────────────────────────────────────
    Awards points outside the normal earn paths — an investor allocation, a
    goodwill correction. points_ledger is append-only, so a grant is a positive
@@ -1073,7 +1294,7 @@ export default function AdminStore() {
   const { t } = useTranslation();
   const { user } = useAppContext();
   const isAdminUser = user?.role === 'admin' || user?.role === 'owner';
-  const [tab, setTab] = useState<'deals' | 'collectibles' | 'media' | 'points'>('deals');
+  const [tab, setTab] = useState<'deals' | 'collectibles' | 'media' | 'points' | 'orders'>('deals');
 
   if (!isAdminUser) {
     return (
@@ -1101,6 +1322,7 @@ export default function AdminStore() {
             { key: 'deals', label: t('adminStore.tabs.deals') },
             { key: 'collectibles', label: t('adminStore.tabs.collectibles') },
             { key: 'media', label: t('adminStore.tabs.media') },
+            { key: 'orders', label: t('adminStore.tabs.orders') },
             { key: 'points', label: t('adminStore.tabs.points') },
           ] as const).map(tabItem => (
             <button key={tabItem.key} onClick={() => setTab(tabItem.key)} style={{
@@ -1114,6 +1336,7 @@ export default function AdminStore() {
           ))}
         </div>
 
+        {tab === 'orders' && <OrdersManager />}
         {tab === 'points' && <PointsManager />}
         {tab === 'deals' && <DealsManager />}
         {tab === 'collectibles' && <CollectiblesManager />}

@@ -1217,7 +1217,8 @@
       },
       "continueToPayment": "Passer au paiement",
       "pointsNote": "1 pt = CHF 0.01 · Les points sont déduits de votre solde à la confirmation",
-      "totalToPay": "Total à payer"
+      "totalToPay": "Total à payer",
+      "continueToShipping": "Continuer vers la livraison"
     },
     "payment": {
       "back": "Retour",
@@ -1253,6 +1254,21 @@
       "ptsEarned": "Pts gagnés",
       "ptsToEarn": "Pts à gagner",
       "claimNow": "Réclamer"
+    },
+    "shipping": {
+      "back": "← Retour",
+      "heading": "Adresse de livraison",
+      "intro": "Pré-rempli depuis votre profil. Vérifiez : c'est là que nous livrons.",
+      "firstName": "Prénom",
+      "familyName": "Nom",
+      "street": "Rue et numéro",
+      "postcode": "Code postal",
+      "city": "Localité",
+      "country": "Pays",
+      "phone": "Téléphone, pour le coursier",
+      "saveDefault": "Enregistrer comme adresse par défaut",
+      "confirmAndPay": "Confirmer et payer CHF {{amount}}",
+      "required": "Veuillez compléter tous les champs pour que nous sachions où livrer."
     }
   },
   "admin": {
@@ -1335,7 +1351,8 @@
       "deals": "Offres",
       "collectibles": "Collectibles",
       "media": "Médias et récits",
-      "points": "Points"
+      "points": "Points",
+      "orders": "Commandes"
     },
     "common": {
       "loading": "Chargement…",
@@ -1468,6 +1485,41 @@
       "skippedDuplicate": "{{count}} ignoré(s) — attribution déjà soumise.",
       "loadFailed": "Les membres n'ont pu être chargés.",
       "grantFailed": "L'attribution n'a pu être finalisée. Aucun point n'a été attribué."
+    },
+    "orders": {
+      "loadFailed": "Les commandes n'ont pu être chargées.",
+      "updateFailed": "La commande n'a pu être mise à jour.",
+      "empty": "Aucune commande pour le moment.",
+      "count_one": "{{count}} commande",
+      "count_other": "{{count}} commandes",
+      "filters": {
+        "all": "Toutes",
+        "to_process": "À traiter",
+        "shipped": "Expédiées"
+      },
+      "status": {
+        "to_process": "À traiter",
+        "shipped": "Expédiée"
+      },
+      "view": "Voir la commande",
+      "shipTo": "Livrer à",
+      "copyAddress": "Copier l'adresse",
+      "copied": "Copié",
+      "noAddress": "Aucune adresse enregistrée — contactez le membre.",
+      "fromProfile": "Depuis le profil du membre ; cette commande est antérieure à la saisie d'adresse au paiement.",
+      "orderLabel": "Commande",
+      "member": "Membre",
+      "item": "Article",
+      "type": "Type",
+      "paid": "Payé",
+      "pointsAppliedLabel": "Points utilisés",
+      "statusLabel": "Statut",
+      "typeDeal": "Offre membre",
+      "typePoints": "Échange de points",
+      "pointsOnly": "Points uniquement",
+      "pointsApplied": "{{points}} pts utilisés",
+      "markShipped": "Marquer comme expédiée",
+      "markToProcess": "Remettre à traiter"
     }
   },
   "welcomeGift": {

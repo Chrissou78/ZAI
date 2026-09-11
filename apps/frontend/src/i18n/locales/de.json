@@ -1217,7 +1217,8 @@
       },
       "continueToPayment": "Weiter zur Zahlung",
       "pointsNote": "1 Pkt. = CHF 0.01 · Punkte werden bei Bestätigung von Ihrem Guthaben abgezogen",
-      "totalToPay": "Gesamtbetrag"
+      "totalToPay": "Gesamtbetrag",
+      "continueToShipping": "Weiter zur Lieferadresse"
     },
     "payment": {
       "back": "Zurück",
@@ -1253,6 +1254,21 @@
       "ptsEarned": "Pkt. verdient",
       "ptsToEarn": "Pkt. zu verdienen",
       "claimNow": "Jetzt einlösen"
+    },
+    "shipping": {
+      "back": "← Zurück",
+      "heading": "Lieferadresse",
+      "intro": "Aus Ihrem Profil übernommen. Bitte prüfen — hierhin liefern wir.",
+      "firstName": "Vorname",
+      "familyName": "Nachname",
+      "street": "Strasse und Nummer",
+      "postcode": "PLZ",
+      "city": "Ort",
+      "country": "Land",
+      "phone": "Telefon, für den Kurier",
+      "saveDefault": "Als meine Standardadresse speichern",
+      "confirmAndPay": "Bestätigen und CHF {{amount}} bezahlen",
+      "required": "Bitte alle Felder ausfüllen, damit wir wissen, wohin geliefert wird."
     }
   },
   "admin": {
@@ -1335,7 +1351,8 @@
       "deals": "Angebote",
       "collectibles": "Sammelkarten",
       "media": "Medien & Beiträge",
-      "points": "Punkte"
+      "points": "Punkte",
+      "orders": "Bestellungen"
     },
     "common": {
       "loading": "Wird geladen…",
@@ -1468,6 +1485,41 @@
       "skippedDuplicate": "{{count}} übersprungen — Vergabe wurde bereits übermittelt.",
       "loadFailed": "Mitglieder konnten nicht geladen werden.",
       "grantFailed": "Die Vergabe konnte nicht abgeschlossen werden. Es wurden keine Punkte vergeben."
+    },
+    "orders": {
+      "loadFailed": "Bestellungen konnten nicht geladen werden.",
+      "updateFailed": "Die Bestellung konnte nicht aktualisiert werden.",
+      "empty": "Noch keine Bestellungen.",
+      "count_one": "{{count}} Bestellung",
+      "count_other": "{{count}} Bestellungen",
+      "filters": {
+        "all": "Alle",
+        "to_process": "Zu bearbeiten",
+        "shipped": "Versendet"
+      },
+      "status": {
+        "to_process": "Zu bearbeiten",
+        "shipped": "Versendet"
+      },
+      "view": "Bestellung ansehen",
+      "shipTo": "Lieferadresse",
+      "copyAddress": "Adresse kopieren",
+      "copied": "Kopiert",
+      "noAddress": "Keine Adresse hinterlegt — bitte das Mitglied kontaktieren.",
+      "fromProfile": "Aus dem Mitgliederprofil; diese Bestellung stammt aus der Zeit vor der Adresserfassung.",
+      "orderLabel": "Bestellung",
+      "member": "Mitglied",
+      "item": "Artikel",
+      "type": "Art",
+      "paid": "Bezahlt",
+      "pointsAppliedLabel": "Eingesetzte Punkte",
+      "statusLabel": "Status",
+      "typeDeal": "Mitglieder-Angebot",
+      "typePoints": "Punkte-Einlösung",
+      "pointsOnly": "Nur Punkte",
+      "pointsApplied": "{{points}} Pkt. eingesetzt",
+      "markShipped": "Als versendet markieren",
+      "markToProcess": "Zurück zu bearbeiten"
     }
   },
   "welcomeGift": {

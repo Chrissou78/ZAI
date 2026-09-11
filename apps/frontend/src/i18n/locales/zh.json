@@ -1214,7 +1214,8 @@
       },
       "continueToPayment": "继续付款",
       "pointsNote": "1 积分 = CHF 0.01 · 确认后将从您的余额中扣除积分",
-      "totalToPay": "应付总额"
+      "totalToPay": "应付总额",
+      "continueToShipping": "继续填写配送信息"
     },
     "payment": {
       "back": "返回",
@@ -1250,6 +1251,21 @@
       "ptsEarned": "已获积分",
       "ptsToEarn": "可获积分",
       "claimNow": "立即领取"
+    },
+    "shipping": {
+      "back": "← 返回",
+      "heading": "配送信息",
+      "intro": "已从您的个人资料预填。请确认无误，我们将寄送至此。",
+      "firstName": "名",
+      "familyName": "姓",
+      "street": "街道和门牌号",
+      "postcode": "邮政编码",
+      "city": "城市",
+      "country": "国家",
+      "phone": "电话（供快递员联系）",
+      "saveDefault": "设为我的默认地址",
+      "confirmAndPay": "确认并支付 CHF {{amount}}",
+      "required": "请填写所有字段，以便我们确定配送地址。"
     }
   },
   "admin": {
@@ -1331,7 +1347,8 @@
       "deals": "优惠",
       "collectibles": "收藏卡",
       "media": "媒体与报道",
-      "points": "积分"
+      "points": "积分",
+      "orders": "订单"
     },
     "common": {
       "loading": "加载中…",
@@ -1462,6 +1479,40 @@
       "skippedDuplicate": "{{count}} 位已跳过 — 该发放已提交过。",
       "loadFailed": "无法加载会员列表。",
       "grantFailed": "发放未能完成，未发放任何积分。"
+    },
+    "orders": {
+      "loadFailed": "无法加载订单。",
+      "updateFailed": "无法更新该订单。",
+      "empty": "暂无订单。",
+      "count_other": "{{count}} 个订单",
+      "filters": {
+        "all": "全部",
+        "to_process": "待处理",
+        "shipped": "已发货"
+      },
+      "status": {
+        "to_process": "待处理",
+        "shipped": "已发货"
+      },
+      "view": "查看订单",
+      "shipTo": "收件地址",
+      "copyAddress": "复制地址",
+      "copied": "已复制",
+      "noAddress": "没有地址记录 — 请联系会员。",
+      "fromProfile": "来自会员资料；该订单早于结账时采集地址的功能。",
+      "orderLabel": "订单",
+      "member": "会员",
+      "item": "商品",
+      "type": "类型",
+      "paid": "已付",
+      "pointsAppliedLabel": "使用积分",
+      "statusLabel": "状态",
+      "typeDeal": "会员优惠",
+      "typePoints": "积分兑换",
+      "pointsOnly": "仅限积分",
+      "pointsApplied": "已使用 {{points}} 分",
+      "markShipped": "标记为已发货",
+      "markToProcess": "退回待处理"
     }
   },
   "welcomeGift": {

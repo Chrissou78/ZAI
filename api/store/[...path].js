@@ -381,6 +381,52 @@ function toNumberOrNull(v) {
   return Number.isFinite(n) ? n : null;
 }
 
+/**
+ * Shipping details captured at checkout. Stored on the order rather than read
+ * from the profile at fulfilment time, so a later profile edit cannot silently
+ * change where an already-placed order was meant to go.
+ */
+function readShipping(body) {
+  const f = (v) => String(v ?? '').trim();
+  return {
+    firstName:  f(body?.shipping?.firstName),
+    familyName: f(body?.shipping?.familyName),
+    street:     f(body?.shipping?.street),
+    postcode:   f(body?.shipping?.postcode),
+    city:       f(body?.shipping?.city),
+    country:    f(body?.shipping?.country),
+    phone:      f(body?.shipping?.phone),
+  };
+}
+
+const SHIP_COLS = `ship_first_name, ship_family_name, ship_street,
+                   ship_postcode, ship_city, ship_country, ship_phone`;
+const shipValues = (sh) => [sh.firstName, sh.familyName, sh.street,
+                            sh.postcode, sh.city, sh.country, sh.phone];
+
+/** Copy the address onto the profile when the member ticks "save as default". */
+async function maybeSaveDefaultAddress(userId, sh, save) {
+  if (!save) return;
+  try {
+    await getPool().query(
+      `UPDATE user_profiles
+          SET given_name   = COALESCE(NULLIF($2,''), given_name),
+              family_name  = COALESCE(NULLIF($3,''), family_name),
+              address      = COALESCE(NULLIF($4,''), address),
+              postal_code  = COALESCE(NULLIF($5,''), postal_code),
+              city         = COALESCE(NULLIF($6,''), city),
+              country      = COALESCE(NULLIF($7,''), country),
+              phone_number = COALESCE(NULLIF($8,''), phone_number),
+              updated_at   = NOW()
+        WHERE user_id = $1`,
+      [userId, sh.firstName, sh.familyName, sh.street, sh.postcode, sh.city, sh.country, sh.phone]
+    );
+  } catch (e) {
+    // Never fail a purchase because the convenience copy did not stick.
+    console.error('[orders] saving default address failed (non-fatal):', e.message);
+  }
+}
+
 // ── ADMIN: manual points grants ──────────────────────────
 // zai award points outside the normal earn paths (an investor allocation, a
 // goodwill correction). points_ledger is append-only and getBalance() sums it,
@@ -487,6 +533,51 @@ async function handleStoreAdmin(req, res, segments, method, decoded) {
         balances,
       },
     });
+  }
+
+  // GET /api/store/admin/orders — everything the fulfilment team needs.
+  // Deal orders only: event registrations have nothing to ship.
+  if (method === 'GET' && segments[0] === 'orders' && segments.length === 1) {
+    const rows = (await getPool().query(`
+      SELECT r.id, r.order_ref, r.status, r.fulfilment_status, r.shipped_at,
+             r.points_used, r.amount_chf, r.points_only, r.created_at,
+             r.ship_first_name, r.ship_family_name, r.ship_street,
+             r.ship_postcode, r.ship_city, r.ship_country, r.ship_phone,
+             d.title AS item_title, d.category AS item_category, d.image_url AS item_image,
+             p.user_id AS member_id,
+             COALESCE(NULLIF(TRIM(p.name), ''),
+                      NULLIF(TRIM(CONCAT_WS(' ', p.given_name, p.family_name)), ''),
+                      p.email, r.user_id) AS member_name,
+             COALESCE(p.email, '') AS member_email,
+             -- Fall back to the profile for orders placed before checkout
+             -- captured an address, so the team still has somewhere to ship.
+             p.address AS profile_street, p.postal_code AS profile_postcode,
+             p.city AS profile_city, p.country AS profile_country,
+             p.phone_number AS profile_phone
+        FROM deal_redemptions r
+        LEFT JOIN deals d ON d.id = r.deal_id
+        LEFT JOIN user_profiles p ON p.user_id = r.user_id
+       WHERE r.status = 'paid'
+       ORDER BY r.created_at DESC
+       LIMIT 500
+    `)).rows;
+    return res.json({ success: true, data: rows });
+  }
+
+  // POST /api/store/admin/orders/:id/ship  { shipped: boolean }
+  if (method === 'POST' && segments[0] === 'orders' && segments[2] === 'ship') {
+    const shipped = req.body?.shipped !== false;
+    const r = await getPool().query(
+      `UPDATE deal_redemptions
+          SET fulfilment_status = $2,
+              shipped_at = CASE WHEN $2 = 'shipped' THEN NOW() ELSE NULL END,
+              updated_at = NOW()
+        WHERE id = $1
+        RETURNING id, order_ref, fulfilment_status, shipped_at`,
+      [segments[1], shipped ? 'shipped' : 'to_process']
+    );
+    if (!r.rowCount) return res.status(404).json({ success: false, error: 'Order not found' });
+    return res.json({ success: true, data: r.rows[0] });
   }
 
   // GET /api/store/admin/points/history — what has been awarded by hand
@@ -700,6 +791,7 @@ async function handleDeals(req, res, segments, method, userId, decoded) {
   if (method === 'POST' && segments.length === 2 && segments[1] === 'redeem') {
     const dealId = segments[0];
     const { pointsToUse = 0 } = req.body || {};
+    const shipping = readShipping(req.body);
 
     const dr = await getPool().query(
       'SELECT * FROM deals WHERE id = $1 AND active = true', [dealId]
@@ -736,10 +828,13 @@ async function handleDeals(req, res, segments, method, userId, decoded) {
     // logs history and mints identically to a paid one — and stays idempotent.
     if (finalCHF <= 0) {
       await getPool().query(
-        `INSERT INTO deal_redemptions (id, deal_id, user_id, points_used, amount_chf, stripe_session_id, status)
-         VALUES ($1, $2, $3, $4, 0, '', 'pending')`,
-        [redemptionId, dealId, userId, pts]
+        `INSERT INTO deal_redemptions (id, deal_id, user_id, points_used, amount_chf,
+                                       stripe_session_id, status, order_ref, ${SHIP_COLS})
+         VALUES ($1, $2, $3, $4, 0, '', 'pending',
+                 'ZAI-' || nextval('deal_order_ref_seq'), $5,$6,$7,$8,$9,$10,$11)`,
+        [redemptionId, dealId, userId, pts, ...shipValues(shipping)]
       );
+      await maybeSaveDefaultAddress(userId, shipping, req.body?.saveAddress === true);
 
       const result = await fulfillDealRedemption({
         redemptionId, dealId, userId, pointsUsed: pts,
@@ -786,10 +881,13 @@ async function handleDeals(req, res, segments, method, userId, decoded) {
     const paymentIntent = await stripe.paymentIntents.create(piConfig);
 
     await getPool().query(
-      `INSERT INTO deal_redemptions (id, deal_id, user_id, points_used, amount_chf, stripe_session_id, status)
-       VALUES ($1, $2, $3, $4, $5, $6, 'pending')`,
-      [redemptionId, dealId, userId, pts, finalCHF, paymentIntent.id]
+      `INSERT INTO deal_redemptions (id, deal_id, user_id, points_used, amount_chf,
+                                     stripe_session_id, status, order_ref, ${SHIP_COLS})
+       VALUES ($1, $2, $3, $4, $5, $6, 'pending',
+               'ZAI-' || nextval('deal_order_ref_seq'), $7,$8,$9,$10,$11,$12,$13)`,
+      [redemptionId, dealId, userId, pts, finalCHF, paymentIntent.id, ...shipValues(shipping)]
     );
+    await maybeSaveDefaultAddress(userId, shipping, req.body?.saveAddress === true);
 
     return res.json({
       success: true,
@@ -923,11 +1021,17 @@ async function handleDeals(req, res, segments, method, userId, decoded) {
     // the check above. The previous order spent the points first, which meant a
     // row rejected by the index would have already debited the member.
     try {
+      // Points-only rewards are physical goods too, so they carry a reference
+      // and an address like any other order — that is what makes the Orders
+      // list complete rather than money purchases only.
       await getPool().query(
-        `INSERT INTO deal_redemptions (id, deal_id, user_id, points_used, amount_chf, stripe_session_id, status, points_only)
-         VALUES ($1,$2,$3,$4,0,'',$5,true)`,
-        [redemptionId, dealId, userId, cost, 'paid']
+        `INSERT INTO deal_redemptions (id, deal_id, user_id, points_used, amount_chf,
+                                       stripe_session_id, status, points_only, order_ref, ${SHIP_COLS})
+         VALUES ($1,$2,$3,$4,0,'',$5,true,
+                 'ZAI-' || nextval('deal_order_ref_seq'), $6,$7,$8,$9,$10,$11,$12)`,
+        [redemptionId, dealId, userId, cost, 'paid', ...shipValues(readShipping(req.body))]
       );
+      await maybeSaveDefaultAddress(userId, readShipping(req.body), req.body?.saveAddress === true);
     } catch (e) {
       if (e && e.code === '23505') { // unique_violation — lost the race
         return res.status(409).json({ error: 'You have already redeemed this reward', alreadyRedeemed: true });

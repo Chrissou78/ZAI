@@ -15,6 +15,11 @@ const C = {
 const LABEL: React.CSSProperties = {
   fontSize: 10, letterSpacing: '0.2em', textTransform: 'uppercase', color: C.gray, fontWeight: 500,
 };
+const SHIP_INPUT: React.CSSProperties = {
+  width: '100%', padding: '10px 12px', border: `1px solid ${C.border}`,
+  borderRadius: 6, fontSize: 13, fontFamily: C.font, boxSizing: 'border-box',
+  background: C.pureWhite, color: C.black,
+};
 const RED_LABEL: React.CSSProperties = {
   fontSize: 11, letterSpacing: '0.3em', textTransform: 'uppercase', color: C.red, fontWeight: 500,
 };
@@ -186,13 +191,43 @@ function DealModal({ deal, onClose, onSuccess }: {
   const { t } = useTranslation();
   const [balance, setBalance] = useState(0);
   const [points, setPoints] = useState(0);
-  const [step, setStep] = useState<'points' | 'pay'>('points');
+  // points -> shipping -> pay. Shipping sits between confirming the price and
+  // handing over to Stripe, so the member settles what they are paying before
+  // being asked where it goes, and the address is captured on our side rather
+  // than left to Stripe's own fields.
+  const [step, setStep] = useState<'points' | 'shipping' | 'pay'>('points');
   const [loading, setLoading] = useState(false);
+  const [ship, setShip] = useState({
+    firstName: '', familyName: '', street: '', postcode: '', city: '', country: '', phone: '',
+  });
+  const [saveAddress, setSaveAddress] = useState(true);
+  const [shipError, setShipError] = useState('');
   const [paymentData, setPaymentData] = useState<{ clientSecret: string; amount: number; redemptionId: string } | null>(null);
 
   useEffect(() => {
     fetch('/api/store/rewards/balance', { headers: authHeaders() })
       .then(r => r.json()).then(d => { if (d.success) setBalance(d.data.balance); });
+  }, []);
+
+  // Prefilled from the profile, then editable: most members ship to their own
+  // address, but a gift or a second home should not force a profile edit.
+  useEffect(() => {
+    fetch('/api/users/me', { headers: authHeaders() })
+      .then(r => r.json())
+      .then(d => {
+        const u = d?.data || d?.user || d;
+        if (!u) return;
+        setShip(prev => ({
+          firstName:  prev.firstName  || u.givenName || '',
+          familyName: prev.familyName || u.familyName || '',
+          street:     prev.street     || u.address || '',
+          postcode:   prev.postcode   || u.postalCode || '',
+          city:       prev.city       || u.city || '',
+          country:    prev.country    || u.country || '',
+          phone:      prev.phone      || u.phoneNumber || '',
+        }));
+      })
+      .catch(() => { /* the member can type it in */ });
   }, []);
 
   const max = Math.min(balance, deal.max_points_discount || 0);
@@ -204,7 +239,7 @@ function DealModal({ deal, onClose, onSuccess }: {
     try {
       const r = await fetch(`/api/store/deals/${deal.id}/redeem`, {
         method: 'POST', headers: authHeaders(),
-        body: JSON.stringify({ pointsToUse: points }),
+        body: JSON.stringify({ pointsToUse: points, shipping: ship, saveAddress }),
       });
       const json = await r.json();
       // Points covered the whole price, so there is nothing to charge and the
@@ -308,13 +343,12 @@ function DealModal({ deal, onClose, onSuccess }: {
               </div>
             </div>
 
-            <button onClick={handleConfirm} disabled={loading} style={{
+            <button onClick={() => { setShipError(''); setStep('shipping'); }} style={{
               width: '100%', padding: '16px', background: C.red, color: '#fff', border: 'none',
               fontSize: 12, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase',
-              borderRadius: 6, cursor: loading ? 'default' : 'pointer', fontFamily: C.font,
-              opacity: loading ? 0.6 : 1,
+              borderRadius: 6, cursor: 'pointer', fontFamily: C.font,
             }}>
-              {loading ? t('updates.common.processing') : t('updates.deal.continueToPayment')}
+              {t('updates.deal.continueToShipping')}
             </button>
 
             <div style={{ textAlign: 'center', fontSize: 11, color: C.gray, marginTop: 10 }}>
@@ -323,7 +357,91 @@ function DealModal({ deal, onClose, onSuccess }: {
           </>
         )}
 
-        {/* ── Step 2: Payment form ── */}
+        {/* ── Step 2: Shipping details ── */}
+        {step === 'shipping' && (
+          <>
+            <button onClick={() => setStep('points')} style={{
+              background: 'none', border: 'none', padding: 0, marginBottom: 16,
+              fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase',
+              color: C.gray, cursor: 'pointer', fontFamily: C.font,
+            }}>{t('updates.shipping.back')}</button>
+
+            <div style={LABEL}>{t('updates.shipping.heading')}</div>
+            <p style={{ fontSize: 12, color: C.gray, margin: '4px 0 18px', lineHeight: 1.5 }}>
+              {t('updates.shipping.intro')}
+            </p>
+
+            <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))' }}>
+              {([
+                ['firstName',  t('updates.shipping.firstName')],
+                ['familyName', t('updates.shipping.familyName')],
+              ] as const).map(([key, label]) => (
+                <label key={key} style={{ display: 'block' }}>
+                  <span style={{ ...LABEL, display: 'block', marginBottom: 5 }}>{label}</span>
+                  <input value={ship[key]} onChange={e => setShip(p => ({ ...p, [key]: e.target.value }))}
+                         style={SHIP_INPUT} />
+                </label>
+              ))}
+            </div>
+
+            <label style={{ display: 'block', marginTop: 12 }}>
+              <span style={{ ...LABEL, display: 'block', marginBottom: 5 }}>{t('updates.shipping.street')}</span>
+              <input value={ship.street} onChange={e => setShip(p => ({ ...p, street: e.target.value }))}
+                     style={SHIP_INPUT} />
+            </label>
+
+            <div style={{ display: 'grid', gap: 12, gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', marginTop: 12 }}>
+              {([
+                ['postcode', t('updates.shipping.postcode')],
+                ['city',     t('updates.shipping.city')],
+                ['country',  t('updates.shipping.country')],
+                ['phone',    t('updates.shipping.phone')],
+              ] as const).map(([key, label]) => (
+                <label key={key} style={{ display: 'block' }}>
+                  <span style={{ ...LABEL, display: 'block', marginBottom: 5 }}>{label}</span>
+                  <input value={ship[key]} onChange={e => setShip(p => ({ ...p, [key]: e.target.value }))}
+                         style={SHIP_INPUT} />
+                </label>
+              ))}
+            </div>
+
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '16px 0 4px', cursor: 'pointer' }}>
+              <input type="checkbox" checked={saveAddress} onChange={e => setSaveAddress(e.target.checked)} />
+              <span style={{ fontSize: 12 }}>{t('updates.shipping.saveDefault')}</span>
+            </label>
+
+            {shipError && <div style={{ color: C.red, fontSize: 12, marginTop: 8 }}>{shipError}</div>}
+
+            <button
+              onClick={() => {
+                // Required so an order cannot reach the team with nowhere to
+                // send it. Phone is required too: couriers ask for it.
+                const missing = (['firstName','familyName','street','postcode','city','country','phone'] as const)
+                  .filter(k => !ship[k].trim());
+                if (missing.length) { setShipError(t('updates.shipping.required')); return; }
+                setShipError('');
+                void handleConfirm();
+              }}
+              disabled={loading}
+              style={{
+                width: '100%', padding: '16px', marginTop: 16, background: C.red, color: '#fff', border: 'none',
+                fontSize: 12, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase',
+                borderRadius: 6, cursor: loading ? 'default' : 'pointer', fontFamily: C.font,
+                opacity: loading ? 0.6 : 1,
+              }}
+            >
+              {loading
+                ? t('updates.common.processing')
+                : t('updates.shipping.confirmAndPay', { amount: finalPrice.toLocaleString('de-CH', { minimumFractionDigits: 2 }) })}
+            </button>
+
+            <div style={{ textAlign: 'center', fontSize: 11, color: C.gray, marginTop: 10 }}>
+              {t('updates.deal.pointsNote')}
+            </div>
+          </>
+        )}
+
+        {/* ── Step 3: Payment form ── */}
         {step === 'pay' && paymentData && elementsOptions && (
           <>
             <div style={{
@@ -339,7 +457,7 @@ function DealModal({ deal, onClose, onSuccess }: {
                 amount={paymentData.amount}
                 redemptionId={paymentData.redemptionId}
                 onSuccess={() => { onClose(); onSuccess(); }}
-                onBack={() => { setStep('points'); setPaymentData(null); }}
+                onBack={() => { setStep('shipping'); setPaymentData(null); }}
               />
             </Elements>
           </>

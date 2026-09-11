@@ -1217,7 +1217,8 @@
       },
       "continueToPayment": "Continue to payment",
       "pointsNote": "1 pt = CHF 0.01 · Points deducted from your balance on confirmation",
-      "totalToPay": "Total to pay"
+      "totalToPay": "Total to pay",
+      "continueToShipping": "Continue to shipping"
     },
     "payment": {
       "back": "Back",
@@ -1253,6 +1254,21 @@
       "ptsEarned": "Pts earned",
       "ptsToEarn": "Pts to earn",
       "claimNow": "Claim now"
+    },
+    "shipping": {
+      "back": "← Back",
+      "heading": "Shipping details",
+      "intro": "Prefilled from your profile. Check it is right, we ship here.",
+      "firstName": "First name",
+      "familyName": "Family name",
+      "street": "Street and number",
+      "postcode": "Postcode",
+      "city": "City",
+      "country": "Country",
+      "phone": "Phone, for the courier",
+      "saveDefault": "Save this as my default address",
+      "confirmAndPay": "Confirm and pay CHF {{amount}}",
+      "required": "Please complete every field so we know where to ship."
     }
   },
   "admin": {
@@ -1335,7 +1351,8 @@
       "deals": "Deals",
       "collectibles": "Collectibles",
       "media": "Media & Stories",
-      "points": "Points"
+      "points": "Points",
+      "orders": "Orders"
     },
     "common": {
       "loading": "Loading…",
@@ -1468,6 +1485,41 @@
       "skippedDuplicate": "{{count}} skipped as an already-submitted grant.",
       "loadFailed": "Members could not be loaded.",
       "grantFailed": "The grant could not be completed. No points were awarded."
+    },
+    "orders": {
+      "loadFailed": "Orders could not be loaded.",
+      "updateFailed": "The order could not be updated.",
+      "empty": "No orders yet.",
+      "count_one": "{{count}} order",
+      "count_other": "{{count}} orders",
+      "filters": {
+        "all": "All",
+        "to_process": "To process",
+        "shipped": "Shipped"
+      },
+      "status": {
+        "to_process": "To process",
+        "shipped": "Shipped"
+      },
+      "view": "View order",
+      "shipTo": "Ship to",
+      "copyAddress": "Copy address",
+      "copied": "Copied",
+      "noAddress": "No address on file — contact the member.",
+      "fromProfile": "From the member profile; this order predates address capture at checkout.",
+      "orderLabel": "Order",
+      "member": "Member",
+      "item": "Item",
+      "type": "Type",
+      "paid": "Paid",
+      "pointsAppliedLabel": "Points applied",
+      "statusLabel": "Status",
+      "typeDeal": "Member deal",
+      "typePoints": "Points redemption",
+      "pointsOnly": "Points only",
+      "pointsApplied": "{{points}} pts applied",
+      "markShipped": "Mark as shipped",
+      "markToProcess": "Move back to process"
     }
   },
   "welcomeGift": {

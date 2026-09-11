@@ -533,6 +533,50 @@ export async function initDB() {
       );
     }
 
+    // ── Orders: shipping details, a human reference, fulfilment state ──
+    // Every deal order gets a reference, points-only redemptions included, so
+    // the team has one way to refer to an order regardless of how it was paid.
+    // A sequence rather than a count of rows: a count would reuse a number
+    // after a deletion and two concurrent checkouts could read the same value.
+    await pool.query(`CREATE SEQUENCE IF NOT EXISTS deal_order_ref_seq START 1000`);
+    await pool.query(`
+      ALTER TABLE deal_redemptions
+        ADD COLUMN IF NOT EXISTS order_ref          TEXT,
+        ADD COLUMN IF NOT EXISTS ship_first_name    TEXT,
+        ADD COLUMN IF NOT EXISTS ship_family_name   TEXT,
+        ADD COLUMN IF NOT EXISTS ship_street        TEXT,
+        ADD COLUMN IF NOT EXISTS ship_postcode      TEXT,
+        ADD COLUMN IF NOT EXISTS ship_city          TEXT,
+        ADD COLUMN IF NOT EXISTS ship_country       TEXT,
+        ADD COLUMN IF NOT EXISTS ship_phone         TEXT,
+        ADD COLUMN IF NOT EXISTS fulfilment_status  TEXT DEFAULT 'to_process',
+        ADD COLUMN IF NOT EXISTS shipped_at         TIMESTAMPTZ
+    `);
+
+    // Backfill references for orders placed before this existed, oldest first
+    // so the numbering follows the order they were actually placed.
+    await pool.query(`
+      WITH numbered AS (
+        SELECT id, 'ZAI-' || nextval('deal_order_ref_seq') AS ref
+          FROM (SELECT id FROM deal_redemptions WHERE order_ref IS NULL
+                 ORDER BY created_at ASC NULLS LAST) q
+      )
+      UPDATE deal_redemptions d SET order_ref = n.ref
+        FROM numbered n WHERE d.id = n.id
+    `);
+
+    try {
+      await pool.query(`
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_deal_redemptions_order_ref
+          ON deal_redemptions(order_ref) WHERE order_ref IS NOT NULL
+      `);
+    } catch (idxErr) {
+      console.error(
+        '[DB] Could not create idx_deal_redemptions_order_ref — duplicate order ' +
+        'references may exist. Detail:', idxErr.message
+      );
+    }
+
     // A manual points grant carries the admin's batch id in related_id. This
     // index is what makes a double-submitted grant a no-op rather than double
     // points — a mis-click on a 5,000 point award is expensive to unpick by
