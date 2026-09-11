@@ -500,7 +500,12 @@ function getTransporter() {
   return _transporter;
 }
 
-const EMAIL_FROM = '"zai Experience Club" <no-reply@zai.ch>';
+// Sender address. Configurable because it is the lever that fixes deliverability
+// without a code change: zai.ch's SPF record authorises Microsoft 365 and ends in
+// -all, so mail sent through Google claiming to be From: no-reply@zai.ch fails SPF
+// at any external receiver — including zai.ch's own Hornetsecurity gateway. Either
+// send through M365, or send as a domain whose SPF covers the relay in use.
+const EMAIL_FROM = process.env.MAIL_FROM || '"zai Experience Club" <no-reply@zai.ch>';
 const ADMIN_INBOX = 'info@zai.ch';
 // Base for links we put in outgoing email. This used to read VITE_API_URL,
 // which conflated two unrelated things: where the browser should send API

@@ -11,7 +11,12 @@ import nodemailer from 'nodemailer';
  */
 
 const ADMIN_INBOX = process.env.ZAI_ORDERS_INBOX || 'info@zai.ch';
-const FROM = '"zai Experience Club" <no-reply@zai.ch>';
+// Sender address. Configurable because it is the lever that fixes deliverability
+// without a code change: zai.ch's SPF record authorises Microsoft 365 and ends in
+// -all, so mail sent through Google claiming to be From: no-reply@zai.ch fails SPF
+// at any external receiver — including zai.ch's own Hornetsecurity gateway. Either
+// send through M365, or send as a domain whose SPF covers the relay in use.
+const FROM = process.env.MAIL_FROM || '"zai Experience Club" <no-reply@zai.ch>';
 
 const RED = '#7A222E';
 const BLACK = '#0a0a0a';
@@ -92,6 +97,9 @@ export async function mailStatus() {
     // Enough to tell which mailbox is in use without printing it in full.
     user: user ? user.replace(/^(.).*(@.*)$/, '$1***$2') : null,
     inbox: ADMIN_INBOX,
+    // The From domain is what receivers run SPF against, so it belongs in any
+    // report about why mail is or is not arriving.
+    from: FROM,
   };
   if (!configured) {
     return { ...base, verified: false, error: 'SMTP_USER and SMTP_PASS are not set in this environment' };
