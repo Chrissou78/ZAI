@@ -1334,7 +1334,8 @@
     "tabs": {
       "deals": "Deals",
       "collectibles": "Collectibles",
-      "media": "Media & Stories"
+      "media": "Media & Stories",
+      "points": "Points"
     },
     "common": {
       "loading": "Loading…",
@@ -1441,6 +1442,32 @@
       "publishedAt": "Published At",
       "exclusive": "Exclusive",
       "confirmRemove": "Remove this story?"
+    },
+    "points": {
+      "intro": "Award points directly to members — an investor allocation, or a goodwill correction. Granted points can be spent on the Deals page straight away. Use a negative amount to correct a mistake.",
+      "amountLabel": "Points per member",
+      "amountHint": "Whole number. Negative deducts. Max 1,000,000.",
+      "noteLabel": "Reason",
+      "notePlaceholder": "Investor allocation",
+      "noteHint": "Shown to the member in their points history.",
+      "membersLabel": "Members",
+      "searchPlaceholder": "Search by name or email…",
+      "selectAll": "Select all {{count}} shown",
+      "noMembers": "No members match that search.",
+      "balance": "{{points}} pts",
+      "selectedCount_one": "{{count}} member selected",
+      "selectedCount_other": "{{count}} members selected",
+      "reviewButton": "Review grant",
+      "confirmLine": "{{count}} member(s) × {{amount}} pts — {{total}} points in total",
+      "confirmAward": "This credits each selected member immediately.",
+      "confirmDeduct": "This deducts from each selected member immediately.",
+      "confirmButton": "Confirm grant",
+      "granting": "Granting…",
+      "granted_one": "Awarded {{amount}} pts to {{count}} member.",
+      "granted_other": "Awarded {{amount}} pts to {{count}} members.",
+      "skippedDuplicate": "{{count}} skipped as an already-submitted grant.",
+      "loadFailed": "Members could not be loaded.",
+      "grantFailed": "The grant could not be completed. No points were awarded."
     }
   },
   "welcomeGift": {

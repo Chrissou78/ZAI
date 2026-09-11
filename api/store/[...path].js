@@ -381,6 +381,131 @@ function toNumberOrNull(v) {
   return Number.isFinite(n) ? n : null;
 }
 
+// ── ADMIN: manual points grants ──────────────────────────
+// zai award points outside the normal earn paths (an investor allocation, a
+// goodwill correction). points_ledger is append-only and getBalance() sums it,
+// so a grant is simply a positive row — granted points spend on the deals page
+// straight away with no extra plumbing.
+const MAX_GRANT = 1_000_000;
+
+async function handleStoreAdmin(req, res, segments, method, decoded) {
+  await requireAdmin(decoded);
+
+  // GET /api/store/admin/members — the picker's options, with live balances so
+  // an admin can see what someone already holds before topping them up.
+  if (method === 'GET' && segments[0] === 'members') {
+    const rows = (await getPool().query(`
+      SELECT p.user_id,
+             COALESCE(NULLIF(TRIM(p.name), ''),
+                      NULLIF(TRIM(CONCAT_WS(' ', p.given_name, p.family_name)), ''),
+                      p.email, p.user_id) AS name,
+             COALESCE(p.email, '') AS email,
+             COALESCE((SELECT SUM(amount) FROM points_ledger l WHERE l.user_id = p.user_id), 0)::int AS balance
+        FROM user_profiles p
+       ORDER BY name ASC
+    `)).rows;
+    return res.json({ success: true, data: rows });
+  }
+
+  // POST /api/store/admin/points/grant  { userIds[], amount, note, batchId }
+  if (method === 'POST' && segments[0] === 'points' && segments[1] === 'grant') {
+    const b = req.body || {};
+    const userIds = Array.isArray(b.userIds) ? [...new Set(b.userIds.filter(Boolean))] : [];
+    const amount = Number(b.amount);
+    const note = String(b.note || '').trim();
+    // The client sends one id per confirmed submission. Retrying the same
+    // submission re-sends the same id, so the unique index turns it into a
+    // no-op instead of a second award.
+    const batchId = String(b.batchId || '').trim();
+
+    if (!userIds.length) {
+      return res.status(400).json({ success: false, error: 'Select at least one member' });
+    }
+    if (!Number.isInteger(amount) || amount === 0) {
+      return res.status(400).json({ success: false, error: 'Amount must be a whole number and not zero' });
+    }
+    if (Math.abs(amount) > MAX_GRANT) {
+      return res.status(400).json({ success: false, error: `Amount must be between -${MAX_GRANT} and ${MAX_GRANT}` });
+    }
+    if (!batchId) {
+      return res.status(400).json({ success: false, error: 'Missing batchId' });
+    }
+
+    // Deducting more than someone holds would leave a negative balance, which
+    // no other code path can produce — refuse rather than create one.
+    if (amount < 0) {
+      const short = (await getPool().query(`
+        SELECT p.user_id,
+               COALESCE((SELECT SUM(l.amount) FROM points_ledger l WHERE l.user_id = p.user_id), 0)::int AS balance
+          FROM user_profiles p WHERE p.user_id = ANY($1)
+      `, [userIds])).rows.filter(r => r.balance + amount < 0);
+      if (short.length) {
+        return res.status(400).json({
+          success: false, error: 'Deduction exceeds balance',
+          detail: `${short.length} of ${userIds.length} selected member(s) hold fewer than ${Math.abs(amount)} points.`,
+        });
+      }
+    }
+
+    const description = note || (amount > 0 ? 'Points awarded by zai' : 'Points adjusted by zai');
+    const client = await getPool().connect();
+    const granted = [];
+    try {
+      await client.query('BEGIN');
+      for (const uid of userIds) {
+        const r = await client.query(
+          `INSERT INTO points_ledger (id, user_id, amount, type, description, related_id)
+           VALUES ($1, $2, $3, 'admin_grant', $4, $5)
+           ON CONFLICT DO NOTHING
+           RETURNING user_id`,
+          [randomUUID(), uid, amount, description, batchId]
+        );
+        if (r.rowCount) granted.push(uid);
+      }
+      await client.query('COMMIT');
+    } catch (e) {
+      await client.query('ROLLBACK');
+      throw e;
+    } finally {
+      client.release();
+    }
+
+    const balances = (await getPool().query(`
+      SELECT user_id, COALESCE(SUM(amount), 0)::int AS balance
+        FROM points_ledger WHERE user_id = ANY($1) GROUP BY user_id
+    `, [userIds])).rows;
+
+    console.log(`[points-grant] ${decoded.userId} granted ${amount} to ${granted.length}/${userIds.length} (batch ${batchId})`);
+    return res.json({
+      success: true,
+      data: {
+        amount,
+        requested: userIds.length,
+        granted: granted.length,
+        // A repeat submission lands here: nothing written, balances unchanged.
+        skippedAsDuplicate: userIds.length - granted.length,
+        balances,
+      },
+    });
+  }
+
+  // GET /api/store/admin/points/history — what has been awarded by hand
+  if (method === 'GET' && segments[0] === 'points' && segments[1] === 'history') {
+    const rows = (await getPool().query(`
+      SELECT l.id, l.user_id, l.amount, l.description, l.related_id, l.created_at,
+             COALESCE(NULLIF(TRIM(p.name), ''), p.email, l.user_id) AS name
+        FROM points_ledger l
+        LEFT JOIN user_profiles p ON p.user_id = l.user_id
+       WHERE l.type = 'admin_grant'
+       ORDER BY l.created_at DESC
+       LIMIT 100
+    `)).rows;
+    return res.json({ success: true, data: rows });
+  }
+
+  return res.status(404).json({ error: 'Not found' });
+}
+
 async function handleVouchers(req, res, segments, method, userId) {
   // GET /api/store/vouchers
   if (method === 'GET' && segments.length === 0) {
@@ -1427,6 +1552,7 @@ export default async function handler(req, res) {
       case 'media':        return await handleMedia(req, res, segments, method, decoded);
       case 'referrals':    return await handleReferrals(req, res, segments, method, userId, decoded);
       case 'vouchers':     return await handleVouchers(req, res, segments, method, userId);
+      case 'admin':        return await handleStoreAdmin(req, res, segments, method, decoded);
       default:             return res.status(404).json({ error: 'Not found', path: fullPath });
     }
   } catch (err) {

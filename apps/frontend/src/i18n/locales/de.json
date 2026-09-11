@@ -1334,7 +1334,8 @@
     "tabs": {
       "deals": "Angebote",
       "collectibles": "Sammelkarten",
-      "media": "Medien & Beiträge"
+      "media": "Medien & Beiträge",
+      "points": "Punkte"
     },
     "common": {
       "loading": "Wird geladen…",
@@ -1441,6 +1442,32 @@
       "publishedAt": "Veröffentlicht am",
       "exclusive": "Exklusiv",
       "confirmRemove": "Diesen Beitrag entfernen?"
+    },
+    "points": {
+      "intro": "Punkte direkt an Mitglieder vergeben — eine Investoren-Zuteilung oder eine Korrektur aus Kulanz. Vergebene Punkte können sofort auf der Angebotsseite eingelöst werden. Ein negativer Betrag korrigiert einen Fehler.",
+      "amountLabel": "Punkte pro Mitglied",
+      "amountHint": "Ganze Zahl. Negativ zieht ab. Max. 1 000 000.",
+      "noteLabel": "Grund",
+      "notePlaceholder": "Investoren-Zuteilung",
+      "noteHint": "Wird dem Mitglied in seinem Punkteverlauf angezeigt.",
+      "membersLabel": "Mitglieder",
+      "searchPlaceholder": "Nach Name oder E-Mail suchen…",
+      "selectAll": "Alle {{count}} angezeigten auswählen",
+      "noMembers": "Keine Mitglieder für diese Suche.",
+      "balance": "{{points}} Pkt.",
+      "selectedCount_one": "{{count}} Mitglied ausgewählt",
+      "selectedCount_other": "{{count}} Mitglieder ausgewählt",
+      "reviewButton": "Vergabe prüfen",
+      "confirmLine": "{{count}} Mitglied(er) × {{amount}} Pkt. — insgesamt {{total}} Punkte",
+      "confirmAward": "Jedes ausgewählte Mitglied wird sofort gutgeschrieben.",
+      "confirmDeduct": "Jedem ausgewählten Mitglied wird sofort abgezogen.",
+      "confirmButton": "Vergabe bestätigen",
+      "granting": "Wird vergeben…",
+      "granted_one": "{{amount}} Pkt. an {{count}} Mitglied vergeben.",
+      "granted_other": "{{amount}} Pkt. an {{count}} Mitglieder vergeben.",
+      "skippedDuplicate": "{{count}} übersprungen — Vergabe wurde bereits übermittelt.",
+      "loadFailed": "Mitglieder konnten nicht geladen werden.",
+      "grantFailed": "Die Vergabe konnte nicht abgeschlossen werden. Es wurden keine Punkte vergeben."
     }
   },
   "welcomeGift": {

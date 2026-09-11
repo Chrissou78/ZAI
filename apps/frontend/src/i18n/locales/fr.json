@@ -1334,7 +1334,8 @@
     "tabs": {
       "deals": "Offres",
       "collectibles": "Collectibles",
-      "media": "Médias et récits"
+      "media": "Médias et récits",
+      "points": "Points"
     },
     "common": {
       "loading": "Chargement…",
@@ -1441,6 +1442,32 @@
       "publishedAt": "Date de publication",
       "exclusive": "Exclusif",
       "confirmRemove": "Retirer ce récit ?"
+    },
+    "points": {
+      "intro": "Attribuez des points directement aux membres — une allocation investisseurs ou une correction commerciale. Les points attribués sont utilisables immédiatement sur la page Offres. Un montant négatif corrige une erreur.",
+      "amountLabel": "Points par membre",
+      "amountHint": "Nombre entier. Négatif pour déduire. Max 1 000 000.",
+      "noteLabel": "Motif",
+      "notePlaceholder": "Allocation investisseurs",
+      "noteHint": "Affiché au membre dans son historique de points.",
+      "membersLabel": "Membres",
+      "searchPlaceholder": "Rechercher par nom ou e-mail…",
+      "selectAll": "Sélectionner les {{count}} affichés",
+      "noMembers": "Aucun membre ne correspond à cette recherche.",
+      "balance": "{{points}} pts",
+      "selectedCount_one": "{{count}} membre sélectionné",
+      "selectedCount_other": "{{count}} membres sélectionnés",
+      "reviewButton": "Vérifier l'attribution",
+      "confirmLine": "{{count}} membre(s) × {{amount}} pts — {{total}} points au total",
+      "confirmAward": "Chaque membre sélectionné est crédité immédiatement.",
+      "confirmDeduct": "Chaque membre sélectionné est débité immédiatement.",
+      "confirmButton": "Confirmer l'attribution",
+      "granting": "Attribution…",
+      "granted_one": "{{amount}} pts attribués à {{count}} membre.",
+      "granted_other": "{{amount}} pts attribués à {{count}} membres.",
+      "skippedDuplicate": "{{count}} ignoré(s) — attribution déjà soumise.",
+      "loadFailed": "Les membres n'ont pu être chargés.",
+      "grantFailed": "L'attribution n'a pu être finalisée. Aucun point n'a été attribué."
     }
   },
   "welcomeGift": {

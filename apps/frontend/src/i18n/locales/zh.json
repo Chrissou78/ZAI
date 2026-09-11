@@ -1330,7 +1330,8 @@
     "tabs": {
       "deals": "优惠",
       "collectibles": "收藏卡",
-      "media": "媒体与报道"
+      "media": "媒体与报道",
+      "points": "积分"
     },
     "common": {
       "loading": "加载中…",
@@ -1437,6 +1438,30 @@
       "publishedAt": "发布时间",
       "exclusive": "会员专享",
       "confirmRemove": "确定要移除此报道吗？"
+    },
+    "points": {
+      "intro": "直接向会员发放积分 — 投资者配额或善意补偿。发放的积分可立即在优惠页面使用。输入负数可更正错误。",
+      "amountLabel": "每位会员的积分",
+      "amountHint": "整数。负数为扣除。最多 1,000,000。",
+      "noteLabel": "事由",
+      "notePlaceholder": "投资者配额",
+      "noteHint": "将在会员的积分记录中显示。",
+      "membersLabel": "会员",
+      "searchPlaceholder": "按姓名或邮箱搜索…",
+      "selectAll": "全选当前 {{count}} 位",
+      "noMembers": "没有符合搜索条件的会员。",
+      "balance": "{{points}} 分",
+      "selectedCount_other": "已选择 {{count}} 位会员",
+      "reviewButton": "核对发放",
+      "confirmLine": "{{count}} 位会员 × {{amount}} 分 — 共 {{total}} 分",
+      "confirmAward": "将立即为每位所选会员入账。",
+      "confirmDeduct": "将立即从每位所选会员扣除。",
+      "confirmButton": "确认发放",
+      "granting": "发放中…",
+      "granted_other": "已向 {{count}} 位会员发放 {{amount}} 分。",
+      "skippedDuplicate": "{{count}} 位已跳过 — 该发放已提交过。",
+      "loadFailed": "无法加载会员列表。",
+      "grantFailed": "发放未能完成，未发放任何积分。"
     }
   },
   "welcomeGift": {

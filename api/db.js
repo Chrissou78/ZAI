@@ -533,6 +533,24 @@ export async function initDB() {
       );
     }
 
+    // A manual points grant carries the admin's batch id in related_id. This
+    // index is what makes a double-submitted grant a no-op rather than double
+    // points — a mis-click on a 5,000 point award is expensive to unpick by
+    // hand. Guarded like the index above: initDB throwing would 500 every
+    // store request, and the endpoint also passes ON CONFLICT DO NOTHING.
+    try {
+      await pool.query(`
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_points_admin_grant_once
+          ON points_ledger(user_id, related_id)
+          WHERE type = 'admin_grant'
+      `);
+    } catch (idxErr) {
+      console.error(
+        '[DB] Could not create idx_points_admin_grant_once — a repeated manual ' +
+        'grant could double-credit. Detail:', idxErr.message
+      );
+    }
+
     // ── Seed owner role from env var (no hardcoded ID) ──
     const OWNER_USER_ID = process.env.ZAI_OWNER_USER_ID;
     if (OWNER_USER_ID) {

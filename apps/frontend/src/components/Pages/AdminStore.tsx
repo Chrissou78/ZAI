@@ -872,11 +872,208 @@ function MediaManager() {
 // ═══════════════════════════════════════════════════════════
 // MAIN ADMIN STORE PAGE
 // ═══════════════════════════════════════════════════════════
+/* ── Points Manager ───────────────────────────────────────
+   Awards points outside the normal earn paths — an investor allocation, a
+   goodwill correction. points_ledger is append-only, so a grant is a positive
+   row and spends on the deals page immediately.
+   ────────────────────────────────────────────────────────── */
+interface MemberRow { user_id: string; name: string; email: string; balance: number }
+
+function PointsManager() {
+  const { t } = useTranslation();
+  const [members, setMembers] = useState<MemberRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [amount, setAmount] = useState('');
+  const [note, setNote] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<{ granted: number; skipped: number; amount: number } | null>(null);
+  const [confirming, setConfirming] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const r = await apiService.get('/store/admin/members');
+      setMembers(((r.data as any)?.data || []) as MemberRow[]);
+      setError(null);
+    } catch (e: any) {
+      setError(e?.response?.data?.error || t('adminStore.points.loadFailed'));
+    } finally { setLoading(false); }
+  }, [t]);
+  useEffect(() => { void load(); }, [load]);
+
+  const filtered = members.filter(m => {
+    const q = search.trim().toLowerCase();
+    return !q || m.name.toLowerCase().includes(q) || m.email.toLowerCase().includes(q);
+  });
+  const amountNum = Number(amount);
+  const amountValid = Number.isInteger(amountNum) && amountNum !== 0 && Math.abs(amountNum) <= 1000000;
+  const canSubmit = selected.size > 0 && amountValid && !submitting;
+
+  const toggle = (id: string) => setSelected(prev => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
+  const allFilteredSelected = filtered.length > 0 && filtered.every(m => selected.has(m.user_id));
+  const toggleAllFiltered = () => setSelected(prev => {
+    const next = new Set(prev);
+    if (allFilteredSelected) filtered.forEach(m => next.delete(m.user_id));
+    else filtered.forEach(m => next.add(m.user_id));
+    return next;
+  });
+
+  const submit = async () => {
+    setSubmitting(true); setError(null);
+    try {
+      // One id per confirmed submission. If the response is lost and the admin
+      // retries, the same id makes the server insert a no-op rather than a
+      // second award.
+      const batchId = (crypto as any)?.randomUUID?.() ?? `b-${Date.now()}-${Math.random()}`;
+      const r = await apiService.post('/store/admin/points/grant', {
+        userIds: [...selected], amount: amountNum, note: note.trim(), batchId,
+      });
+      const d = (r.data as any)?.data;
+      setResult({ granted: d?.granted ?? 0, skipped: d?.skippedAsDuplicate ?? 0, amount: d?.amount ?? amountNum });
+      setSelected(new Set()); setAmount(''); setNote(''); setConfirming(false);
+      await load();
+    } catch (e: any) {
+      const d = e?.response?.data;
+      setError(d?.detail || d?.error || t('adminStore.points.grantFailed'));
+      setConfirming(false);
+    } finally { setSubmitting(false); }
+  };
+
+  const fmt = (n: number) => n.toLocaleString('de-CH');
+
+  if (loading) return <div style={{ padding: 24, fontSize: 13, color: C.gray }}>{t('adminStore.common.loading')}</div>;
+
+  return (
+    <div>
+      <p style={{ fontSize: 13, color: C.gray, margin: '0 0 20px', maxWidth: 640, lineHeight: 1.6 }}>
+        {t('adminStore.points.intro')}
+      </p>
+
+      {result && (
+        <div style={{
+          padding: '12px 16px', marginBottom: 20, borderRadius: 6,
+          background: 'rgba(76,175,125,0.09)', border: '1px solid rgba(76,175,125,0.35)',
+          fontSize: 13, color: C.black,
+        }}>
+          {t('adminStore.points.granted', { count: result.granted, amount: fmt(result.amount) })}
+          {result.skipped > 0 && ' ' + t('adminStore.points.skippedDuplicate', { count: result.skipped })}
+        </div>
+      )}
+
+      <div style={{ display: 'grid', gap: 20, gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', marginBottom: 20 }}>
+        <Field label={t('adminStore.points.amountLabel')}>
+          <input
+            style={INPUT} type="number" step="1" value={amount} placeholder="5000"
+            onChange={e => { setAmount(e.target.value); setResult(null); }}
+          />
+          <div style={{ fontSize: 11, color: C.gray, marginTop: 6 }}>{t('adminStore.points.amountHint')}</div>
+        </Field>
+        <Field label={t('adminStore.points.noteLabel')}>
+          <input
+            style={INPUT} value={note} placeholder={t('adminStore.points.notePlaceholder')}
+            onChange={e => setNote(e.target.value)}
+          />
+          <div style={{ fontSize: 11, color: C.gray, marginTop: 6 }}>{t('adminStore.points.noteHint')}</div>
+        </Field>
+      </div>
+
+      <Field label={t('adminStore.points.membersLabel')}>
+        <input
+          style={{ ...INPUT, marginBottom: 8 }} value={search}
+          placeholder={t('adminStore.points.searchPlaceholder')}
+          onChange={e => setSearch(e.target.value)}
+        />
+        <div style={{ border: BR, borderRadius: 6, maxHeight: 320, overflowY: 'auto', background: C.pureWhite }}>
+          <label style={{
+            display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px',
+            borderBottom: BR, cursor: 'pointer', background: C.surface, position: 'sticky', top: 0,
+          }}>
+            <input type="checkbox" checked={allFilteredSelected} onChange={toggleAllFiltered} />
+            <span style={{ fontSize: 12, fontWeight: 600 }}>
+              {t('adminStore.points.selectAll', { count: filtered.length })}
+            </span>
+          </label>
+          {filtered.length === 0 && (
+            <div style={{ padding: 16, fontSize: 12, color: C.gray, textAlign: 'center' }}>
+              {t('adminStore.points.noMembers')}
+            </div>
+          )}
+          {filtered.map(m => (
+            <label key={m.user_id} style={{
+              display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px',
+              borderBottom: BR, cursor: 'pointer',
+              background: selected.has(m.user_id) ? 'rgba(122,34,46,0.05)' : C.pureWhite,
+            }}>
+              <input type="checkbox" checked={selected.has(m.user_id)} onChange={() => toggle(m.user_id)} />
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <span style={{ fontSize: 13, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {m.name}
+                </span>
+                {m.email && m.email !== m.name && (
+                  <span style={{ fontSize: 11, color: C.gray }}>{m.email}</span>
+                )}
+              </span>
+              <span style={{ fontSize: 12, color: C.gray, flexShrink: 0 }}>
+                {t('adminStore.points.balance', { points: fmt(m.balance) })}
+              </span>
+            </label>
+          ))}
+        </div>
+      </Field>
+
+      {error && <div style={{ color: C.red, fontSize: 12, marginBottom: 12 }}>{error}</div>}
+
+      {/* A grant is hard to unpick by hand, so the total is spelled out and
+          confirmed before anything is written. */}
+      {confirming ? (
+        <div style={{ border: `1px solid ${C.red}`, borderRadius: 6, padding: 16, background: 'rgba(122,34,46,0.04)' }}>
+          <div style={{ fontSize: 14, marginBottom: 4 }}>
+            {t('adminStore.points.confirmLine', {
+              count: selected.size, amount: fmt(amountNum), total: fmt(Math.abs(amountNum) * selected.size),
+            })}
+          </div>
+          <div style={{ fontSize: 12, color: C.gray, marginBottom: 14 }}>
+            {amountNum < 0 ? t('adminStore.points.confirmDeduct') : t('adminStore.points.confirmAward')}
+          </div>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            <button style={BTN_PRIMARY} disabled={submitting} onClick={submit}>
+              {submitting ? t('adminStore.points.granting') : t('adminStore.points.confirmButton')}
+            </button>
+            <button style={BTN_SECONDARY} disabled={submitting} onClick={() => setConfirming(false)}>
+              {t('adminStore.common.cancel')}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+          <button
+            style={{ ...BTN_PRIMARY, opacity: canSubmit ? 1 : 0.45, cursor: canSubmit ? 'pointer' : 'default' }}
+            disabled={!canSubmit}
+            onClick={() => { setResult(null); setConfirming(true); }}
+          >
+            {t('adminStore.points.reviewButton')}
+          </button>
+          <span style={{ fontSize: 12, color: C.gray }}>
+            {t('adminStore.points.selectedCount', { count: selected.size })}
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AdminStore() {
   const { t } = useTranslation();
   const { user } = useAppContext();
   const isAdminUser = user?.role === 'admin' || user?.role === 'owner';
-  const [tab, setTab] = useState<'deals' | 'collectibles' | 'media'>('deals');
+  const [tab, setTab] = useState<'deals' | 'collectibles' | 'media' | 'points'>('deals');
 
   if (!isAdminUser) {
     return (
@@ -904,6 +1101,7 @@ export default function AdminStore() {
             { key: 'deals', label: t('adminStore.tabs.deals') },
             { key: 'collectibles', label: t('adminStore.tabs.collectibles') },
             { key: 'media', label: t('adminStore.tabs.media') },
+            { key: 'points', label: t('adminStore.tabs.points') },
           ] as const).map(tabItem => (
             <button key={tabItem.key} onClick={() => setTab(tabItem.key)} style={{
               padding: '12px 20px', background: 'none', border: 'none',
@@ -916,6 +1114,7 @@ export default function AdminStore() {
           ))}
         </div>
 
+        {tab === 'points' && <PointsManager />}
         {tab === 'deals' && <DealsManager />}
         {tab === 'collectibles' && <CollectiblesManager />}
         {tab === 'media' && <MediaManager />}
