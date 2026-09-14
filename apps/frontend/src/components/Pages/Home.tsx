@@ -1039,7 +1039,9 @@ const Home: React.FC = () => {
               color: '#666',
               fontSize: '14px',
               lineHeight: 1.8,
-              maxWidth: '580px',
+              // Matches the 900px section container above. It was 580px, so
+              // the copy wrapped well short of the grid below it.
+              maxWidth: '900px',
               marginBottom: '3rem',
             }}
           >
@@ -1224,7 +1226,9 @@ const Home: React.FC = () => {
               color: TEXT_MUTED,
               fontSize: '14px',
               lineHeight: 1.8,
-              maxWidth: '580px',
+              // Matches the 900px section container above. It was 580px, so
+              // the copy wrapped well short of the grid below it.
+              maxWidth: '900px',
               marginBottom: '3rem',
             }}
           >
@@ -1357,7 +1361,9 @@ const Home: React.FC = () => {
               color: '#666',
               fontSize: '14px',
               lineHeight: 1.8,
-              maxWidth: '580px',
+              // Matches the 900px section container above. It was 580px, so
+              // the copy wrapped well short of the grid below it.
+              maxWidth: '900px',
               marginBottom: '2.5rem',
             }}
           >
