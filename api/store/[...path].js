@@ -762,7 +762,7 @@ async function handleDeals(req, res, segments, method, userId, decoded) {
       const r = await getPool().query(
         `SELECT id, title, description, category, price_chf, max_points_discount,
                 image_url, ends_at, spots_total, spots_left, members_only, featured, active,
-                points_only, points_price,
+                points_only, points_price, discount_percent,
                 created_at,
                 CASE
                   WHEN active = false THEN 'archived'
@@ -778,9 +778,13 @@ async function handleDeals(req, res, segments, method, userId, decoded) {
       return res.json({ success: true, data: await decorateDeals(r.rows, userId) });
     } else {
       const r = await getPool().query(
+        // NOTE: these two lists enumerate columns explicitly, so a new column on
+        // `deals` has to be added here as well or it silently never reaches the
+        // client — which is exactly how discount_percent came to be saved on
+        // create and then shown as 0 on the next read.
         `SELECT id, title, description, category, price_chf, max_points_discount,
                 image_url, ends_at, spots_total, spots_left, members_only, featured,
-                points_only, points_price
+                points_only, points_price, discount_percent
          FROM deals
          WHERE active = true
            AND (ends_at IS NULL OR ends_at > NOW())
