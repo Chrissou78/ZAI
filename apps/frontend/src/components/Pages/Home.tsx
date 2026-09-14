@@ -89,8 +89,13 @@ const PARTNERS: {
 }[] = [
   {
     name: 'Asten Hotels',
-    logo: 'https://pink-certain-crab-380.mypinata.cloud/ipfs/QmUBeUPMa7iMU9f686BDUmhBPVkCz1Pw7oD3nMZSMpppuo',
+    // zai's supplied artwork, with the tagline. Source file is kept at
+    // public/partners/asten-hotels.png; this is the same image with the blank
+    // canvas trimmed and the white background made transparent. Colours are
+    // untouched.
+    logo: 'https://pink-certain-crab-380.mypinata.cloud/ipfs/QmbPErW6oFX7V4tPdx8gqcD1uTwvMXnTuo1zjA1rkXH8v4',
     url: 'https://www.astenhotels.com/en',
+    lightTile: true,
   },
 ];
 
