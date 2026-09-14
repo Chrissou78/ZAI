@@ -1427,7 +1427,10 @@
       "discountedPriceHint": "Vorher CHF {{list}} — {{pct}}% Rabatt",
       "noDiscount": "Kein Rabatt — Mitglieder zahlen den vollen Preis.",
       "discountNeedsPrice": "Bitte zuerst einen Preis festlegen.",
-      "maxPointsDerived": "{{points}} Pkt. — deckt den vollen zu zahlenden Preis"
+      "pointsOff": "Punkte sind für dieses Angebot deaktiviert — Mitglieder zahlen nur in CHF.",
+      "pointsCapValue": "Mitglieder können bis zu CHF {{chf}} mit Punkten abziehen.",
+      "pointsCoverFull": "vollen Preis abdecken ({{points}} Pkt.)",
+      "pointsTurnOff": "Punkte deaktivieren"
     },
     "collectibles": {
       "infoText": "Sammelkarten-Drops werden über die Datenbank erstellt und mit Engage-NFTs verknüpft. Dieses Panel zeigt den aktuellen Status aller Serien und Karten. Um eine neue Serie oder Karte hinzuzufügen, verwenden Sie direkt die Datenbank oder wenden Sie sich an das Entwicklerteam.",

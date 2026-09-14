@@ -727,13 +727,17 @@ async function handleVouchers(req, res, segments, method, userId) {
 function withDerivedPointsCap(rows) {
   return rows.map(d => {
     if (d.points_only) return d;
-    // Points cover what is actually payable, so the cap follows the discounted
-    // price rather than the list price.
     const effective = effectivePriceCHF(d.price_chf, d.discount_percent);
+    // The stored cap is what the admin set: 0 means this deal does not accept
+    // points at all. It used to be overwritten with the full price on every
+    // read, which forced every deal to accept points and made the admin field
+    // impossible to change. Only the ceiling is enforced — a cap above the
+    // payable price would let points pay more than the deal costs.
+    const stored = Math.max(0, parseInt(d.max_points_discount, 10) || 0);
     return {
       ...d,
       effective_price_chf: effective,
-      max_points_discount: pointsToCoverCHF(effective),
+      max_points_discount: Math.min(stored, pointsToCoverCHF(effective)),
     };
   });
 }
@@ -828,7 +832,9 @@ async function handleDeals(req, res, segments, method, userId, decoded) {
     // The list price is struck through on the card; this is what is charged.
     const listCHF = Number(deal.price_chf) || 0;
     const payableCHF = effectivePriceCHF(listCHF, deal.discount_percent);
-    const maxPts = pointsToCoverCHF(payableCHF);
+    // Same rule as the listing: the admin's cap, never more than the price.
+    const storedCap = Math.max(0, parseInt(deal.max_points_discount, 10) || 0);
+    const maxPts = Math.min(storedCap, pointsToCoverCHF(payableCHF));
     const pts = Math.max(0, Math.min(parseInt(pointsToUse) || 0, maxPts));
     // 1 point = CHF 0.01 (see api/points.js).
     const discountCHF = chfForPoints(pts);

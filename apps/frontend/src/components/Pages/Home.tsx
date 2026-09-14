@@ -67,6 +67,22 @@ const TIERS = [
 ];
 
 /* ── Locked-feature tooltip (hover) ── */
+/**
+ * Confirmed ecosystem partners. Logos are hosted on our own Pinata account
+ * rather than hotlinked from the partner's site, so a redesign on their end
+ * cannot blank out our home page.
+ *
+ * Any remaining slots render as the original placeholder tiles, so the row
+ * stays balanced while partners are still being signed.
+ */
+const PARTNERS: { name: string; logo: string; url: string }[] = [
+  {
+    name: 'Asten Hotels',
+    logo: 'https://pink-certain-crab-380.mypinata.cloud/ipfs/QmUBeUPMa7iMU9f686BDUmhBPVkCz1Pw7oD3nMZSMpppuo',
+    url: 'https://www.astenhotels.com/en',
+  },
+];
+
 const LockedTooltip: React.FC<{
   children: React.ReactNode;
   locked: boolean;
@@ -1350,14 +1366,70 @@ const Home: React.FC = () => {
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+              // 260px rather than the old 120px. A wordmark is limited by the
+              // tile's WIDTH, not its height — Asten's is 8.6:1 — so widening
+              // the track is what actually enlarges the logo. Measured at a
+              // 1222px container this gives four per row and a 39% wider logo
+              // than 200px tracks; going beyond 260 adds nothing at that width.
+              gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
               gap: '1px',
               background: '#1e1e1e',
               border: '1px solid #1e1e1e',
               marginBottom: '2rem',
             }}
           >
-            {(t('home.ecosystem.placeholders', { returnObjects: true }) as string[]).map((label, i) => (
+            {PARTNERS.map(partner => (
+              <a
+                key={partner.name}
+                href={partner.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                title={partner.name}
+                style={{
+                  background: BG_CARD,
+                  // Narrow side padding: every pixel of it comes straight off
+                  // the logo's width.
+                  padding: '2rem 1rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  minHeight: '140px',
+                  position: 'relative',
+                  overflow: 'hidden',
+                  textDecoration: 'none',
+                  transition: 'background 0.2s',
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.background = '#151515';
+                  const img = e.currentTarget.querySelector('img');
+                  if (img) (img as HTMLImageElement).style.opacity = '1';
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.background = BG_CARD;
+                  const img = e.currentTarget.querySelector('img');
+                  if (img) (img as HTMLImageElement).style.opacity = '0.85';
+                }}
+              >
+                <img
+                  src={partner.logo}
+                  alt={partner.name}
+                  loading="lazy"
+                  style={{
+                    // Fill the tile's width; maxHeight only bites for a
+                    // squarer logo than this one.
+                    width: '100%',
+                    maxHeight: '80px',
+                    height: 'auto',
+                    objectFit: 'contain',
+                    opacity: 0.85,
+                    transition: 'opacity 0.2s',
+                  }}
+                />
+              </a>
+            ))}
+            {(t('home.ecosystem.placeholders', { returnObjects: true }) as string[])
+              .slice(PARTNERS.length)
+              .map((label, i) => (
               <div
                 key={i}
                 style={{
@@ -1366,7 +1438,7 @@ const Home: React.FC = () => {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  minHeight: '100px',
+                  minHeight: '140px',
                   position: 'relative',
                   overflow: 'hidden',
                 }}

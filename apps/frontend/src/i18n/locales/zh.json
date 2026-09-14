@@ -1423,7 +1423,10 @@
       "discountedPriceHint": "原价 CHF {{list}} — 折扣 {{pct}}%",
       "noDiscount": "无折扣 — 会员支付全价。",
       "discountNeedsPrice": "请先设置价格。",
-      "maxPointsDerived": "{{points}} 分 — 可覆盖全部应付金额"
+      "pointsOff": "此优惠已关闭积分抵扣 — 会员仅以 CHF 支付。",
+      "pointsCapValue": "会员最多可用积分抵扣 CHF {{chf}}。",
+      "pointsCoverFull": "覆盖全额（{{points}} 分）",
+      "pointsTurnOff": "关闭积分"
     },
     "collectibles": {
       "infoText": "收藏卡系列通过数据库创建，并与 Engage NFT 关联。此面板显示所有系列和卡片的当前状态。如需添加新系列或卡片，请直接使用数据库或联系开发团队。",

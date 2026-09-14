@@ -1427,7 +1427,10 @@
       "discountedPriceHint": "Avant CHF {{list}} — {{pct}} % de remise",
       "noDiscount": "Aucune remise — les membres paient le prix complet.",
       "discountNeedsPrice": "Définissez d'abord un prix.",
-      "maxPointsDerived": "{{points}} pts — couvre la totalité du prix à payer"
+      "pointsOff": "Les points sont désactivés pour cette offre — les membres paient uniquement en CHF.",
+      "pointsCapValue": "Les membres peuvent déduire jusqu’à CHF {{chf}} en points.",
+      "pointsCoverFull": "couvrir le prix complet ({{points}} pts)",
+      "pointsTurnOff": "désactiver les points"
     },
     "collectibles": {
       "infoText": "Les séries de collectibles sont créées via la base de données et liées aux NFT Engage. Ce panneau affiche l'état actuel de toutes les séries et cartes. Pour ajouter une série ou une carte, utilisez directement la base de données ou contactez l'équipe technique.",

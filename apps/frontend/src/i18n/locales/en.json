@@ -1427,7 +1427,10 @@
       "discountedPriceHint": "Was CHF {{list}} — {{pct}}% off",
       "noDiscount": "No discount — members pay the full price.",
       "discountNeedsPrice": "Set a price first.",
-      "maxPointsDerived": "{{points}} pts — covers the full payable price"
+      "pointsOff": "Points are off for this deal — members pay in CHF only.",
+      "pointsCapValue": "Members can take up to CHF {{chf}} off with points.",
+      "pointsCoverFull": "cover the full price ({{points}} pts)",
+      "pointsTurnOff": "turn points off"
     },
     "collectibles": {
       "infoText": "Collectible drops are created via the database and linked to Engage NFTs. This panel shows the current state of all series and cards. To add a new series or card, use the database directly or contact the dev team.",

@@ -611,19 +611,54 @@ function DealsManager() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
             {editing.points_only !== true && (
               <Field label={t('adminStore.dealForm.maxPointsDiscount')}>
-                {/* Read-only: the server derives this from the payable price on
-                    every read, because points cover 100% of a deal. The input
-                    that used to be here saved a value that was then ignored,
-                    which is why editing it appeared to do nothing. */}
-                <div style={{ ...INPUT, background: C.surface, color: C.gray }}>
-                  {t('adminStore.dealForm.maxPointsDerived', {
-                    points: Math.round(
-                      (Number(toNumericString(editing.price_chf)) || 0)
-                      * (1 - Math.min(100, Math.max(0, parseInt(editing.discount_percent, 10) || 0)) / 100)
-                      * 100
-                    ).toLocaleString('de-CH'),
-                  })}
-                </div>
+                {/* Optional per deal: 0 means this deal does not accept points.
+                    The server clamps anything above the payable price. */}
+                <input
+                  style={INPUT} type="number" min="0" step="100"
+                  value={editing.max_points_discount ?? 0}
+                  onChange={e => set('max_points_discount', Math.max(0, parseInt(e.target.value, 10) || 0))}
+                />
+                {(() => {
+                  const payable = (Number(toNumericString(editing.price_chf)) || 0)
+                    * (1 - Math.min(100, Math.max(0, parseInt(editing.discount_percent, 10) || 0)) / 100);
+                  const full = Math.round(payable * 100);
+                  const cap = Math.max(0, parseInt(editing.max_points_discount, 10) || 0);
+                  return (
+                    <div style={{ fontSize: 11, color: C.gray, marginTop: 6, display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+                      <span>
+                        {cap === 0
+                          ? t('adminStore.dealForm.pointsOff')
+                          : t('adminStore.dealForm.pointsCapValue', {
+                              chf: (Math.min(cap, full) / 100).toLocaleString('de-CH', { minimumFractionDigits: 2 }),
+                            })}
+                      </span>
+                      {full > 0 && cap !== full && (
+                        <button
+                          type="button"
+                          onClick={() => set('max_points_discount', full)}
+                          style={{
+                            background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+                            color: C.red, fontSize: 11, textDecoration: 'underline', fontFamily: C.font,
+                          }}
+                        >
+                          {t('adminStore.dealForm.pointsCoverFull', { points: full.toLocaleString('de-CH') })}
+                        </button>
+                      )}
+                      {cap > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => set('max_points_discount', 0)}
+                          style={{
+                            background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+                            color: C.gray, fontSize: 11, textDecoration: 'underline', fontFamily: C.font,
+                          }}
+                        >
+                          {t('adminStore.dealForm.pointsTurnOff')}
+                        </button>
+                      )}
+                    </div>
+                  );
+                })()}
               </Field>
             )}
             <Field label={t('adminStore.dealForm.totalSpots')}>
