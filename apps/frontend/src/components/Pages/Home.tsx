@@ -75,7 +75,18 @@ const TIERS = [
  * Any remaining slots render as the original placeholder tiles, so the row
  * stays balanced while partners are still being signed.
  */
-const PARTNERS: { name: string; logo: string; url: string }[] = [
+const PARTNERS: {
+  name: string;
+  logo: string;
+  url: string;
+  /**
+   * Set when the supplied artwork is dark — the tiles sit on #1a1a1a, so a
+   * black wordmark needs a light panel behind it rather than a recoloured
+   * logo. Partners generally supply one official version and would rather see
+   * it used than altered.
+   */
+  lightTile?: boolean;
+}[] = [
   {
     name: 'Asten Hotels',
     logo: 'https://pink-certain-crab-380.mypinata.cloud/ipfs/QmUBeUPMa7iMU9f686BDUmhBPVkCz1Pw7oD3nMZSMpppuo',
@@ -1392,7 +1403,7 @@ const Home: React.FC = () => {
                 rel="noopener noreferrer"
                 title={partner.name}
                 style={{
-                  background: BG_CARD,
+                  background: partner.lightTile ? '#f5f4f0' : BG_CARD,
                   // Narrow side padding: every pixel of it comes straight off
                   // the logo's width.
                   padding: '2rem 1rem',
@@ -1406,12 +1417,12 @@ const Home: React.FC = () => {
                   transition: 'background 0.2s',
                 }}
                 onMouseEnter={e => {
-                  e.currentTarget.style.background = '#151515';
+                  e.currentTarget.style.background = partner.lightTile ? '#ffffff' : '#151515';
                   const img = e.currentTarget.querySelector('img');
                   if (img) (img as HTMLImageElement).style.opacity = '1';
                 }}
                 onMouseLeave={e => {
-                  e.currentTarget.style.background = BG_CARD;
+                  e.currentTarget.style.background = partner.lightTile ? '#f5f4f0' : BG_CARD;
                   const img = e.currentTarget.querySelector('img');
                   if (img) (img as HTMLImageElement).style.opacity = '0.85';
                 }}
@@ -1427,7 +1438,9 @@ const Home: React.FC = () => {
                     maxHeight: '80px',
                     height: 'auto',
                     objectFit: 'contain',
-                    opacity: 0.85,
+                    // A logo on its own light panel is already at full
+                    // contrast; dimming it there just looks washed out.
+                    opacity: partner.lightTile ? 1 : 0.85,
                     transition: 'opacity 0.2s',
                   }}
                 />
