@@ -275,15 +275,7 @@
     "ecosystem": {
       "label": "écosystème zai",
       "heading": "Partenaires et communauté",
-      "description": "L'écosystème zai réunit des marques partenaires exclusives et une communauté mondiale de propriétaires zai — unis par une même passion pour la montagne. Les partenaires seront bientôt dévoilés. Rejoignez la communauté pour partager vos expériences.",
-      "placeholders": [
-        "Forfait de ski",
-        "Destination",
-        "Finance",
-        "Forfait de ski",
-        "Destination"
-      ],
-      "toBeAnnounced": "Partenaires à annoncer"
+      "description": "L'écosystème zai réunit des marques partenaires exclusives et une communauté mondiale de propriétaires zai — unis par une même passion pour la montagne. Les partenaires seront bientôt dévoilés. Rejoignez la communauté pour partager vos expériences."
     },
     "referralSection": {
       "label": "parrainer un ami",

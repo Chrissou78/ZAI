@@ -275,15 +275,7 @@
     "ecosystem": {
       "label": "zai ecosystem",
       "heading": "Partners & Community",
-      "description": "The zai ecosystem brings together exclusive brand partners and a global community of zai owners — connected through a shared passion for the mountain. Partners will be revealed soon. Join the community to share your experiences.",
-      "placeholders": [
-        "Mountain Pass",
-        "Destination",
-        "Financial",
-        "Mountain Pass",
-        "Destination"
-      ],
-      "toBeAnnounced": "Partners to be announced"
+      "description": "The zai ecosystem brings together exclusive brand partners and a global community of zai owners — connected through a shared passion for the mountain. Partners will be revealed soon. Join the community to share your experiences."
     },
     "referralSection": {
       "label": "refer a friend",

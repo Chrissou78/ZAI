@@ -275,15 +275,7 @@
     "ecosystem": {
       "label": "zai ökosystem",
       "heading": "Partner & Community",
-      "description": "Das zai Ökosystem vereint exklusive Markenpartner und eine weltweite Community von zai Besitzern – verbunden durch die gemeinsame Leidenschaft für die Berge. Partner werden in Kürze bekannt gegeben. Treten Sie der Community bei, um Ihre Erlebnisse zu teilen.",
-      "placeholders": [
-        "Bergpass",
-        "Reiseziel",
-        "Finanzen",
-        "Bergpass",
-        "Reiseziel"
-      ],
-      "toBeAnnounced": "Partner werden noch bekannt gegeben"
+      "description": "Das zai Ökosystem vereint exklusive Markenpartner und eine weltweite Community von zai Besitzern – verbunden durch die gemeinsame Leidenschaft für die Berge. Partner werden in Kürze bekannt gegeben. Treten Sie der Community bei, um Ihre Erlebnisse zu teilen."
     },
     "referralSection": {
       "label": "freunde einladen",

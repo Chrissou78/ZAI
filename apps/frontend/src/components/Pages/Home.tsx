@@ -1388,12 +1388,13 @@ const Home: React.FC = () => {
           <div
             style={{
               display: 'grid',
-              // 260px rather than the old 120px. A wordmark is limited by the
-              // tile's WIDTH, not its height — Asten's is 8.6:1 — so widening
-              // the track is what actually enlarges the logo. Measured at a
-              // 1222px container this gives four per row and a 39% wider logo
-              // than 200px tracks; going beyond 260 adds nothing at that width.
-              gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+              // Fixed 300px tracks, not 1fr. With the placeholders gone there
+              // is a single partner, and auto-fit with a fractional max would
+              // stretch that one tile across the whole 900px row. Tracks stay
+              // the same size as partners are added, filling from the left.
+              // min() keeps it from overflowing a container narrower than 300.
+              gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 300px), 300px))',
+              justifyContent: 'start',
               gap: '1px',
               background: '#1e1e1e',
               border: '1px solid #1e1e1e',
@@ -1451,100 +1452,6 @@ const Home: React.FC = () => {
                 />
               </a>
             ))}
-            {(t('home.ecosystem.placeholders', { returnObjects: true }) as string[])
-              .slice(PARTNERS.length)
-              .map((label, i) => (
-              <div
-                key={i}
-                style={{
-                  background: BG_CARD,
-                  padding: '2rem 1.5rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  minHeight: '140px',
-                  position: 'relative',
-                  overflow: 'hidden',
-                }}
-              >
-                <div
-                  style={{
-                    position: 'absolute',
-                    inset: 0,
-                    backgroundImage:
-                      'repeating-linear-gradient(45deg, transparent, transparent 3px, rgba(255,255,255,0.015) 3px, rgba(255,255,255,0.015) 6px)',
-                  }}
-                />
-                <div
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    gap: '8px',
-                    opacity: 0.35,
-                    position: 'relative',
-                    zIndex: 1,
-                  }}
-                >
-                  <div
-                    style={{
-                      fontSize: '22px',
-                      color: TEXT_DIM,
-                      letterSpacing: '4px',
-                    }}
-                  >
-                    ■
-                  </div>
-                  <div
-                    style={{
-                      fontSize: '10px',
-                      letterSpacing: '0.25em',
-                      textTransform: 'uppercase',
-                      color: TEXT_DIM,
-                    }}
-                  >
-                    {label}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-              padding: '1.25rem 0',
-              borderTop: '1px solid #333',
-            }}
-          >
-            <div
-              style={{
-                width: '5px',
-                height: '5px',
-                background: WINE,
-                borderRadius: '50%',
-                flexShrink: 0,
-              }}
-            />
-            <span
-              style={{
-                fontSize: '11px',
-                letterSpacing: '0.2em',
-                textTransform: 'uppercase',
-                color: TEXT_DIM,
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {t('home.ecosystem.toBeAnnounced')}
-            </span>
-            <div
-              style={{
-                flex: 1,
-                height: '1px',
-                background: 'linear-gradient(90deg, #333, transparent)',
-              }}
-            />
           </div>
         </div>
       </section>
