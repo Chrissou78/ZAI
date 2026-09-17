@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useAppContext } from '../../context/AppContext';
 import { useNavigate } from 'react-router-dom';
 import { apiService } from '../../services/api';
+import UserAvatar from '../Common/UserAvatar';
 
 /**
  * `variant` only changes the trigger's appearance — the WalletTwo iframe,
@@ -111,7 +112,6 @@ export function WalletConnectButton({
   };
 
   if (user) {
-    const initials = `${user.givenName?.[0] ?? ''}${user.familyName?.[0] ?? ''}`.toUpperCase();
     // Falls back to the email when no name is set yet (e.g. right after a
     // fresh WalletTwo connect, before a profile has been filled in) — that
     // fallback text has no natural length limit, so on mobile it collided
@@ -122,24 +122,14 @@ export function WalletConnectButton({
     const label = user.givenName || user.email || '';
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-        <div
-          style={{
-            width: '32px',
-            height: '32px',
-            borderRadius: '50%',
-            background: 'linear-gradient(135deg, #2a2a2a, #1a1a1a)',
-            border: '1px solid #555',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: '#f5f4f0',
-            fontSize: '12px',
-            fontWeight: 500,
-            flexShrink: 0,
-          }}
-        >
-          {initials}
-        </div>
+        {/* Shared component: this used to build its own initials and never
+            showed the uploaded picture. */}
+        <UserAvatar
+          firstName={user.givenName || user.email}
+          lastName={user.familyName}
+          size="sm"
+          imageUrl={user.image}
+        />
         {!isMobile && label && (
           <div style={{ fontSize: '12px', maxWidth: '160px', overflow: 'hidden' }}>
             <div style={{ fontWeight: 500, color: '#fff', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>

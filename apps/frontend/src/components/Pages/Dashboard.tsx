@@ -5,6 +5,7 @@ import { useAppContext } from '../../context/AppContext';
 import { apiService } from '../../services/api';
 import { QRCodeSVG } from 'qrcode.react';
 import { CameraIcon, UploadIcon, SmartphoneIcon } from '../Icons/ClaimIcons';
+import UserAvatar from '../Common/UserAvatar';
 
 interface DashboardStats {
   productsClaimed: number;
@@ -601,23 +602,16 @@ const Dashboard: React.FC = () => {
             textAlign: 'left',
           }}
         >
-          <div
-            style={{
-              width: '56px',
-              height: '56px',
-              borderRadius: '50%',
-              background: '#1a1a1a',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '24px',
-              fontWeight: '300',
-              marginBottom: '1rem',
-              color: '#f5f4f0',
-              letterSpacing: '0.05em',
-            }}
-          >
-            {userFirst?.[0]?.toUpperCase() || userDisplay?.[0]?.toUpperCase() || ''}
+          {/* Shared component rather than a hand-rolled circle: this one drew
+              a single initial and ignored the uploaded picture, which is why
+              the avatar differed from one page to the next. */}
+          <div style={{ marginBottom: '1rem' }}>
+            <UserAvatar
+              firstName={userFirst || userDisplay}
+              lastName={userLast}
+              px={56}
+              imageUrl={user?.image}
+            />
           </div>
           <div style={{ fontSize: '22px', fontWeight: 400, marginBottom: '2px', color: '#1a1a1a' }}>
             {userFirst || userDisplay}

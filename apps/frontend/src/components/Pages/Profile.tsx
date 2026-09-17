@@ -958,7 +958,6 @@ const Profile: React.FC = () => {
 
   const firstName = clean(formData.givenName) || clean(user.givenName) || t('profile.fallbackName');
   const lastName = clean(formData.familyName) || clean(user.familyName) || '';
-  const initials = (firstName[0] || '').toUpperCase();
 
   const bulletItems: string[] = [];
   const ms = memberSince();
@@ -1087,21 +1086,16 @@ const Profile: React.FC = () => {
             onClick={() => { if (!uploadingAvatar) avatarInputRef.current?.click(); }}
             title={t('profile.avatar.changePhoto')}
           >
-            {user?.image ? (
-              <UserAvatar firstName={firstName} lastName={lastName} size="lg" imageUrl={user.image} />
-            ) : (
-              <div
-                style={{
-                  width: '80px', height: '80px', borderRadius: '50%',
-                  background: C.surface2, border: `2px solid ${C.border}`,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: '22px', fontWeight: 300, color: C.black,
-                  letterSpacing: '0.05em',
-                }}
-              >
-                {initials}
-              </div>
-            )}
+            {/* One component for both cases. The old fallback branch built its
+                own single-letter initial, so the same member saw "D" here and
+                "DS" in the sidebar. */}
+            <UserAvatar
+              firstName={firstName}
+              lastName={lastName}
+              size="lg"
+              variant="light"
+              imageUrl={user?.image}
+            />
 
             {/* Camera / edit overlay */}
             <div
