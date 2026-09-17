@@ -319,7 +319,7 @@ function DealModal({ deal, onClose, onSuccess }: {
           <>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 }}>
               <div style={LABEL}>{t('updates.deal.fullPrice')}</div>
-              <div style={LABEL}>{t('updates.deal.yourBalance')}</div>
+              {max > 0 && <div style={LABEL}>{t('updates.deal.yourBalance')}</div>}
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 24 }}>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
@@ -336,20 +336,28 @@ function DealModal({ deal, onClose, onSuccess }: {
                   }}>-{dealPct}%</span>
                 )}
               </div>
-              <div style={{ fontSize: 16, fontWeight: 500 }}>{t('updates.deal.pts', { count: balance })}</div>
+              {max > 0 && <div style={{ fontSize: 16, fontWeight: 500 }}>{t('updates.deal.pts', { count: balance })}</div>}
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-              <div style={LABEL}>{t('updates.deal.pointsToApply')}</div>
-              <div style={{ fontSize: 16, fontWeight: 500 }}>{t('updates.deal.pts', { count: points })}</div>
-            </div>
-            <input type="range" min={0} max={max} step={50} value={points}
-                   onChange={e => setPoints(parseInt(e.target.value))}
-                   style={{ width: '100%', accentColor: C.red, marginBottom: 4 }} />
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: C.gray, marginBottom: 20 }}>
-              <span>{t('updates.deal.pts', { count: 0 })}</span>
-              <span>{t('updates.deal.ptsMax', { count: max })}</span>
-            </div>
+            {/* Only when the deal actually accepts points. With the cap at 0
+                the slider was still drawn, pinned at "0 pts max" — offering a
+                discount that cannot be taken. The balance row above is hidden
+                with it, since it is there to inform this choice. */}
+            {max > 0 && (
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <div style={LABEL}>{t('updates.deal.pointsToApply')}</div>
+                  <div style={{ fontSize: 16, fontWeight: 500 }}>{t('updates.deal.pts', { count: points })}</div>
+                </div>
+                <input type="range" min={0} max={max} step={50} value={points}
+                       onChange={e => setPoints(parseInt(e.target.value))}
+                       style={{ width: '100%', accentColor: C.red, marginBottom: 4 }} />
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: C.gray, marginBottom: 20 }}>
+                  <span>{t('updates.deal.pts', { count: 0 })}</span>
+                  <span>{t('updates.deal.ptsMax', { count: max })}</span>
+                </div>
+              </>
+            )}
 
             <div style={{
               border: `1px solid ${C.border}`, borderRadius: 8, padding: '16px 20px', marginBottom: 20,
@@ -775,7 +783,6 @@ export default function Updates() {
                 <div style={RED_LABEL}>{t('updates.regular.memberDealsLabel')}</div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 8, marginBottom: 20 }}>
                   <h2 style={{ fontSize: 'clamp(22px, 2.5vw, 30px)', fontWeight: 300, margin: '6px 0 0' }}>{t('updates.regular.exclusiveOffers')}</h2>
-                  <span style={{ fontSize: 12, color: C.gray, cursor: 'pointer', whiteSpace: 'nowrap' }}>{t('updates.regular.viewAllDeals')}</span>
                 </div>
                 <div style={{
                   // auto-fit stretches existing cards to fill any leftover
