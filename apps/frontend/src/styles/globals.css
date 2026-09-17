@@ -59,3 +59,11 @@ body {
   flex: 1;
   min-height: 100vh;
 }
+/* Sidebar nav list — the only part of the sidebar that scrolls, so the logo,
+   profile, logout and footer stay pinned on short screens. Slim bar rather than
+   the platform default, which is heavy against a 250px dark column. */
+.zai-sidenav-scroll { scrollbar-width: thin; scrollbar-color: #3a3a3a transparent; }
+.zai-sidenav-scroll::-webkit-scrollbar { width: 6px; }
+.zai-sidenav-scroll::-webkit-scrollbar-track { background: transparent; }
+.zai-sidenav-scroll::-webkit-scrollbar-thumb { background: #3a3a3a; border-radius: 3px; }
+.zai-sidenav-scroll::-webkit-scrollbar-thumb:hover { background: #555; }

@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useAppContext } from '../../context/AppContext';
 import { apiService } from '../../services/api';
 import UserAvatar from '../Common/UserAvatar';
+import { usePendingOrders } from '../../hooks/usePendingOrders';
 import {
   HomeIcon,
   DashboardIcon,
@@ -44,6 +45,10 @@ const Sidebar: React.FC = () => {
   const [communityNewCount, setCommunityNewCount] = useState(0);
   const [adminPendingCount, setAdminPendingCount] = useState(0);
   const [hasExperienceCard, setHasExperienceCard] = useState(false);
+
+  // Shared with the mobile menu button and the ORDERS tab, so the three
+  // indicators always show the same thing.
+  const ordersPendingCount = usePendingOrders();
 
   const isActive = (path: string) => location.pathname === path;
   const isAdminUser = user?.role === 'admin' || user?.role === 'owner';
@@ -163,7 +168,7 @@ const Sidebar: React.FC = () => {
       section: t('nav.sections.admin'),
       items: [
         { path: '/admin', label: t('nav.items.claimRequests'), icon: <ProductsIcon />, badge: adminPendingCount },
-        { path: '/admin/store', label: t('nav.items.storeContent'), icon: <UpdatesIcon /> },
+        { path: '/admin/store', label: t('nav.items.storeContent'), icon: <UpdatesIcon />, badge: ordersPendingCount },
       ],
     }] : []),
   ];
@@ -181,7 +186,11 @@ const Sidebar: React.FC = () => {
         display: 'flex',
         flexDirection: 'column',
         zIndex: 100,
-        overflowY: 'auto',
+        // The sidebar itself must not scroll: it is the frame. Scrolling lives
+        // on the nav list below so the logo, profile, logout and footer stay
+        // put. This was 'auto', which let the whole column scroll and left the
+        // pinned blocks drawn over the items on a short window.
+        overflow: 'hidden',
         color: '#f5f4f0',
       }}
     >
@@ -235,7 +244,13 @@ const Sidebar: React.FC = () => {
       )}
 
       {/* Navigation */}
-      <div style={{ flex: 1, padding: '0.4rem 0', minHeight: 0 }}>
+      {/* The only scrolling region. flex:1 + minHeight:0 lets it shrink below
+          its content height, which is what makes overflow actually engage
+          inside a flex column. */}
+      <div
+        className="zai-sidenav-scroll"
+        style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden', padding: '0.4rem 0' }}
+      >
         {navSections.map((section, idx) => (
           <div key={idx} style={{ marginBottom: idx < navSections.length - 1 ? '0.5rem' : '0' }}>
             <div style={{
@@ -336,7 +351,10 @@ const Sidebar: React.FC = () => {
       </div>
 
       {/* Logout Button */}
-      <div style={{ padding: '0.6rem 1rem', borderTop: '1px solid #2a2a2a', marginTop: 'auto', flexShrink: 0 }}>
+      {/* Pinned. flex:1 on the list above is what holds this at the bottom, so
+          marginTop:auto is gone — with the list scrolling it had nothing left
+          to push against and the block ended up drawn over the items. */}
+      <div style={{ padding: '0.6rem 1rem', borderTop: '1px solid #2a2a2a', flexShrink: 0 }}>
         <LogoutButton />
       </div>
 

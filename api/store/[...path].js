@@ -540,6 +540,17 @@ async function handleStoreAdmin(req, res, segments, method, decoded) {
     return res.json({ success: true, data: await mailStatus() });
   }
 
+  // GET /api/store/admin/orders/pending-count — just the number, for the
+  // indicator dots. Deliberately separate from the list above: the sidebar
+  // polls this once a minute and has no use for 500 rows of order detail.
+  if (method === 'GET' && segments[0] === 'orders' && segments[1] === 'pending-count') {
+    const r = await getPool().query(
+      `SELECT COUNT(*)::int AS count FROM deal_redemptions
+        WHERE status = 'paid' AND COALESCE(fulfilment_status, 'to_process') = 'to_process'`
+    );
+    return res.json({ success: true, count: r.rows[0].count });
+  }
+
   // GET /api/store/admin/orders — everything the fulfilment team needs.
   // Deal orders only: event registrations have nothing to ship.
   if (method === 'GET' && segments[0] === 'orders' && segments.length === 1) {

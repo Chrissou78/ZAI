@@ -4,12 +4,16 @@ import { useTranslation } from 'react-i18next';
 import Sidebar from './Sidebar';
 import OnboardingWidget from '../Onboarding/OnboardingWidget';
 import { ZaiWordmark } from '../Icons/LogoIcons';
+import { usePendingOrders } from '../../hooks/usePendingOrders';
 
 const MainLayout: React.FC = () => {
   const { t } = useTranslation();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
+  // The sidebar's badge is invisible while the menu is closed, so the button
+  // that opens it carries the same signal.
+  const pendingOrders = usePendingOrders();
 
   React.useEffect(() => {
     const handleResize = () => {
@@ -87,9 +91,25 @@ const MainLayout: React.FC = () => {
                 color: '#f5f4f0',
                 fontSize: '24px',
                 cursor: 'pointer',
+                position: 'relative',
+                lineHeight: 1,
               }}
             >
               ☰
+              {pendingOrders > 0 && (
+                <span
+                  style={{
+                    position: 'absolute',
+                    top: '-1px',
+                    right: '-2px',
+                    width: '8px',
+                    height: '8px',
+                    borderRadius: '50%',
+                    background: '#7A222E',
+                    border: '1px solid #0a0a0a',
+                  }}
+                />
+              )}
             </button>
             {/* The wordmark rather than the plain word, so the mobile bar
                 carries the same brand treatment as the sidebar it opens.

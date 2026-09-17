@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAppContext } from '../../context/AppContext';
 import { apiService } from '../../services/api';
+import { usePendingOrders } from '../../hooks/usePendingOrders';
 
 const C = {
   black: '#0a0a0a', white: '#f5f4f0', red: '#7A222E',
@@ -1411,6 +1412,10 @@ export default function AdminStore() {
   const isAdminUser = user?.role === 'admin' || user?.role === 'owner';
   const [tab, setTab] = useState<'deals' | 'collectibles' | 'media' | 'points' | 'orders'>('deals');
 
+  // Orders waiting to be processed, for the dot on the ORDERS tab. Called
+  // above the access-denied return below, because hooks must run every render.
+  const pendingOrders = usePendingOrders();
+
   if (!isAdminUser) {
     return (
       <div style={{ padding: 48, fontFamily: C.font, textAlign: 'center' }}>
@@ -1437,7 +1442,7 @@ export default function AdminStore() {
             { key: 'deals', label: t('adminStore.tabs.deals') },
             { key: 'collectibles', label: t('adminStore.tabs.collectibles') },
             { key: 'media', label: t('adminStore.tabs.media') },
-            { key: 'orders', label: t('adminStore.tabs.orders') },
+            { key: 'orders', label: t('adminStore.tabs.orders'), dot: pendingOrders > 0 },
             { key: 'points', label: t('adminStore.tabs.points') },
           ] as const).map(tabItem => (
             <button key={tabItem.key} onClick={() => setTab(tabItem.key)} style={{
@@ -1447,7 +1452,18 @@ export default function AdminStore() {
               letterSpacing: '0.08em', textTransform: 'uppercase',
               cursor: 'pointer', fontFamily: C.font,
               color: tab === tabItem.key ? C.black : C.gray,
-            }}>{tabItem.label}</button>
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+            }}>
+              {tabItem.label}
+              {/* A dot rather than a number: the count is already on the tab's
+                  own table, this only says "something is waiting". */}
+              {(tabItem as any).dot && (
+                <span style={{
+                  width: 6, height: 6, borderRadius: '50%',
+                  background: C.red, flexShrink: 0,
+                }} />
+              )}
+            </button>
           ))}
         </div>
 
