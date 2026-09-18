@@ -102,6 +102,19 @@ function explain(err, host, port) {
       + 'SMTP ports on new accounts; ask the provider to unblock it, or send over a '
       + 'port they permit.';
   }
+  // Checked before EAUTH: Google answers 421 4.7.0 at EHLO, i.e. it refuses the
+  // session before any credentials are offered. 4.7.x is policy/security, so
+  // this is the relay declining to talk to THIS host — not a bad password. It
+  // is the signature failure of sending Gmail from a datacentre IP, and it is
+  // exactly why the same settings work from a laptop and from Vercel.
+  if (/421/.test(msg) || /4\.7\.0/.test(msg) || /try again later, closing connection/i.test(msg)) {
+    return `${host} accepted the connection and then closed it on policy grounds `
+      + '(421 4.7.0, at EHLO — before any password was sent). The relay is refusing '
+      + 'the IP address of this server, so no change to SMTP_USER or SMTP_PASS will help. '
+      + 'Send through a relay that authorises this host instead: for zai.ch that means '
+      + 'Microsoft 365, whose SPF record the domain already authorises — mail relayed '
+      + 'through Gmail as no-reply@zai.ch fails SPF at the recipient even when it does go out.';
+  }
   if (code === 'EAUTH' || /invalid login|username and password|authentication/i.test(msg)) {
     return 'The connection works but the credentials were rejected. Check SMTP_USER / '
       + 'SMTP_PASS on THIS deployment — for Gmail this must be an app password, not '

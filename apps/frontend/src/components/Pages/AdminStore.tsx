@@ -1010,7 +1010,7 @@ function OrdersManager() {
   const [filter, setFilter] = useState<'all' | 'to_process' | 'shipped'>('all');
   // Order emails skip silently when SMTP is unset, so the only symptom is an
   // inbox that stays empty. Surface it where the orders are.
-  const [mail, setMail] = useState<{ configured: boolean; verified: boolean; inbox: string; error: string | null } | null>(null);
+  const [mail, setMail] = useState<{ configured: boolean; verified: boolean; inbox: string; error: string | null; hint?: string | null } | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -1084,7 +1084,15 @@ function OrdersManager() {
         }}>
           <strong>{t('adminStore.orders.mailOff')}</strong>{' '}
           {t('adminStore.orders.mailOffDetail', { inbox: mail.inbox })}
+          {/* Only tell someone to set the credentials when they are actually
+              unset. This used to print unconditionally, so a Google policy
+              rejection came with instructions to fix a variable that was
+              already correct. */}
+          {mail.configured === false && ' ' + t('adminStore.orders.mailOffUnset')}
           {mail.error && <div style={{ marginTop: 6, opacity: 0.8 }}>{mail.error}</div>}
+          {/* The server classifies the failure — a blocked port, a refused IP
+              and a bad password all read as "verification failed" otherwise. */}
+          {mail.hint && <div style={{ marginTop: 6, fontWeight: 500 }}>{mail.hint}</div>}
         </div>
       )}
 
