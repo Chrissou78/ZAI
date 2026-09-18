@@ -26,10 +26,15 @@ const BORDER = '#e0ddd6';
 let _transporter = null;
 function getTransporter() {
   if (!_transporter) {
+    const port = parseInt(process.env.SMTP_PORT || '587', 10);
     _transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST || 'smtp.gmail.com',
-      port: parseInt(process.env.SMTP_PORT || '587', 10),
-      secure: false,
+      port,
+      // Port 465 is implicit TLS and must be `secure`; 587 and 25 start plain
+      // and upgrade via STARTTLS. This was hardcoded false, so configuring
+      // 465 — the obvious choice when a provider blocks other ports — could
+      // only ever hang or fail the handshake.
+      secure: port === 465,
       auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
     });
   }
@@ -79,6 +84,40 @@ export function notifyOrder({ title, rows, footNote, subject }) {
 }
 
 /**
+ * Turn a nodemailer failure into the one sentence that says what to do.
+ *
+ * The same "SMTP verification failed" covers a blocked port, a wrong password
+ * and a bad hostname, and those need completely different fixes. Outbound
+ * port blocking in particular is the classic reason mail works locally and on
+ * Vercel but not from a rented server — the provider blocks 25 (and sometimes
+ * 465/587) on new accounts until you ask them to unblock it.
+ */
+function explain(err, host, port) {
+  const code = err?.code || '';
+  const msg = err?.message || '';
+  if (code === 'ETIMEDOUT' || code === 'ESOCKET' || code === 'ECONNREFUSED') {
+    return `This server cannot open a connection to ${host}:${port} (${code}). `
+      + 'That is a network block, not a credentials problem — the same settings will '
+      + 'work from a laptop or from Vercel. Hosting providers commonly block outbound '
+      + 'SMTP ports on new accounts; ask the provider to unblock it, or send over a '
+      + 'port they permit.';
+  }
+  if (code === 'EAUTH' || /invalid login|username and password|authentication/i.test(msg)) {
+    return 'The connection works but the credentials were rejected. Check SMTP_USER / '
+      + 'SMTP_PASS on THIS deployment — for Gmail this must be an app password, not '
+      + 'the account password.';
+  }
+  if (code === 'EDNS' || /getaddrinfo|ENOTFOUND/i.test(msg)) {
+    return `The hostname ${host} does not resolve from this server — check SMTP_HOST for a typo.`;
+  }
+  if (/certificate|self.signed|TLS|SSL/i.test(msg)) {
+    return `TLS negotiation failed against ${host}:${port}. Port 465 needs an implicit-TLS `
+      + 'connection while 587 upgrades with STARTTLS — a mismatch between the two looks like this.';
+  }
+  return null;
+}
+
+/**
  * Is outbound mail actually usable right now?
  *
  * notifyOrder() skips with nothing but a console warning when SMTP is not
@@ -90,10 +129,15 @@ export function notifyOrder({ title, rows, footNote, subject }) {
 export async function mailStatus() {
   const host = process.env.SMTP_HOST || 'smtp.gmail.com';
   const user = process.env.SMTP_USER || '';
+  const port = parseInt(process.env.SMTP_PORT || '587', 10);
   const configured = !!(process.env.SMTP_USER && process.env.SMTP_PASS);
   const base = {
     configured,
     host,
+    port,
+    // Which deployment answered. Mail working in one place and not the other is
+    // the whole reason this report exists, so it has to say who is speaking.
+    platform: process.env.VERCEL || process.env.VERCEL_ENV ? 'vercel' : 'server',
     // Enough to tell which mailbox is in use without printing it in full.
     user: user ? user.replace(/^(.).*(@.*)$/, '$1***$2') : null,
     inbox: ADMIN_INBOX,
@@ -102,13 +146,24 @@ export async function mailStatus() {
     from: FROM,
   };
   if (!configured) {
-    return { ...base, verified: false, error: 'SMTP_USER and SMTP_PASS are not set in this environment' };
+    return {
+      ...base,
+      verified: false,
+      error: 'SMTP_USER and SMTP_PASS are not set in this environment',
+      hint: 'Set them on this deployment specifically — Vercel and the server keep separate environments.',
+    };
   }
   try {
     await getTransporter().verify();
-    return { ...base, verified: true, error: null };
+    return { ...base, verified: true, error: null, hint: null };
   } catch (e) {
-    return { ...base, verified: false, error: e.message || 'SMTP verification failed' };
+    return {
+      ...base,
+      verified: false,
+      code: e?.code || null,
+      error: e.message || 'SMTP verification failed',
+      hint: explain(e, host, port),
+    };
   }
 }
 

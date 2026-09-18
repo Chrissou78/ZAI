@@ -3,6 +3,7 @@ import { getPool, initDB, requireAdmin, isAdmin } from '../db.js';
 import { pointsForAmount, chfForPoints, categoryEarnsPoints, pointsToCoverCHF, TIERS, VOUCHER_VALID_YEARS, tierForPoints, effectivePriceCHF } from '../points.js';
 import { applyCors, authenticate } from '../middleware.js';
 import { notifyOrder, mailStatus } from '../_lib/mailer.js';
+import { envReport } from '../_lib/envcheck.js';
 
 // ══════════════════════════════════════════════════════════
 // TIERS — the table lives in api/points.js (single source of truth,
@@ -538,6 +539,19 @@ async function handleStoreAdmin(req, res, segments, method, decoded) {
   // GET /api/store/admin/notifications/status — can we actually send mail?
   if (method === 'GET' && segments[0] === 'notifications' && segments[1] === 'status') {
     return res.json({ success: true, data: await mailStatus() });
+  }
+
+  // GET /api/store/admin/diagnostics — what is configured on whichever
+  // deployment answered this request, plus a live SMTP check.
+  //
+  // Names and set/missing only, never a value: enough to see that a variable
+  // did not reach the running process, which is the failure this exists for.
+  // Admin-gated by requireAdmin() above, like everything else on this router.
+  if (method === 'GET' && segments[0] === 'diagnostics') {
+    return res.json({
+      success: true,
+      data: { env: envReport(), mail: await mailStatus() },
+    });
   }
 
   // GET /api/store/admin/orders/pending-count — just the number, for the

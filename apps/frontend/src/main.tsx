@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import './i18n';
 import App from './App';
 import './styles/globals.css';
+import { installDeploymentCheck } from './lib/deploymentCheck';
 
 // ══════════════════════════════════════════════════════════════
 // Force https before anything else runs.
@@ -28,6 +29,10 @@ if (isInsecure) {
   const { host, pathname, search, hash } = window.location;
   window.location.replace(`https://${host}${pathname}${search}${hash}`);
 } else {
+  // window.zaiCheck() re-runs the config report on demand, without needing a
+  // fresh login. No-op for non-admins: the endpoint refuses them.
+  installDeploymentCheck();
+
   ReactDOM.createRoot(document.getElementById('root')!).render(
     <React.StrictMode>
       <App />

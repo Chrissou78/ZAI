@@ -3,6 +3,7 @@ import { useAppContext } from '../../context/AppContext';
 import { useNavigate } from 'react-router-dom';
 import { apiService } from '../../services/api';
 import UserAvatar from '../Common/UserAvatar';
+import { logDeploymentCheck } from '../../lib/deploymentCheck';
 
 /**
  * `variant` only changes the trigger's appearance — the WalletTwo iframe,
@@ -95,6 +96,11 @@ export function WalletConnectButton({
         });
         localStorage.setItem('zai_user', JSON.stringify(response.data.user));
         localStorage.setItem('zai_token', jwtToken);
+
+        // Config report for whichever backend answered. Admin-gated server
+        // side, so it quietly does nothing for ordinary members. Not awaited:
+        // a diagnostic must never delay getting someone into the app.
+        void logDeploymentCheck();
 
         setShowModal(false);
         setIsLoading(false);
