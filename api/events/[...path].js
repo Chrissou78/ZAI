@@ -414,10 +414,12 @@ export default async function handler(req, res) {
       if (process.env.STRIPE_CONNECTED_ACCOUNT_ID) {
         piConfig.application_fee_amount = Math.round(amount * 100 * PLATFORM_FEE_PERCENT / 100);
         piConfig.transfer_data = { destination: process.env.STRIPE_CONNECTED_ACCOUNT_ID };
-        // Settlement merchant is zai, not the platform — see the same note on
-        // the store's PaymentIntent. Event tickets showed "Onchain
-        // Technologies AG" on the buyer's statement without this.
-        piConfig.on_behalf_of = process.env.STRIPE_CONNECTED_ACCOUNT_ID;
+        // Off unless explicitly enabled — see the fuller note on the store's
+        // PaymentIntent. It switches payment-method config to the connected
+        // account's, which broke checkout while that account had none for CHF.
+        if (process.env.STRIPE_ON_BEHALF_OF === 'true') {
+          piConfig.on_behalf_of = process.env.STRIPE_CONNECTED_ACCOUNT_ID;
+        }
       }
 
       const paymentIntent = await stripe.paymentIntents.create(piConfig);

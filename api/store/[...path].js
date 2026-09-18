@@ -927,13 +927,18 @@ async function handleDeals(req, res, segments, method, userId, decoded) {
       piConfig.transfer_data = {
         destination: process.env.STRIPE_CONNECTED_ACCOUNT_ID,
       };
-      // on_behalf_of makes zai's connected account the settlement merchant, so
-      // Stripe shows ITS business name, statement descriptor and support
-      // details on receipts, Apple Pay and bank statements. Without it the
-      // platform account is the merchant of record and buyers saw "Onchain
-      // Technologies AG / onchainlabs.ch" for a zai purchase. It has to name
-      // the same account as transfer_data.destination.
-      piConfig.on_behalf_of = process.env.STRIPE_CONNECTED_ACCOUNT_ID;
+      // Gated OFF by default, deliberately. on_behalf_of makes zai's account
+      // the settlement merchant, which also switches the payment-method
+      // configuration from the platform's to that account's. zai's account has
+      // no methods enabled for CHF yet, so turning this on took checkout down
+      // with "No valid payment method types for this Payment Intent".
+      //
+      // Enable the methods on the connected account in the Stripe Dashboard
+      // first, then set STRIPE_ON_BEHALF_OF=true. Until then payments keep
+      // working and the buyer keeps seeing the platform's name.
+      if (process.env.STRIPE_ON_BEHALF_OF === 'true') {
+        piConfig.on_behalf_of = process.env.STRIPE_CONNECTED_ACCOUNT_ID;
+      }
     }
 
     const paymentIntent = await stripe.paymentIntents.create(piConfig);
