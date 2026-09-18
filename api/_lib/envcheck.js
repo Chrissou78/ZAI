@@ -32,8 +32,13 @@ const GROUPS = [
     vars: [
       { name: 'SMTP_HOST', required: true },
       { name: 'SMTP_PORT', required: true },
-      { name: 'SMTP_USER', required: true },
-      { name: 'SMTP_PASS', required: true },
+      // Not marked required: a relay that authenticates by source IP takes no
+      // login at all, so absent credentials can be correct. Whether mail
+      // actually works is answered by the live check, not by this list.
+      { name: 'SMTP_USER', note: 'unused when relaying by IP' },
+      { name: 'SMTP_PASS', note: 'unused when relaying by IP' },
+      { name: 'SMTP_ALLOW_NO_AUTH', note: "'true' to send with no login (IP-authenticated relay)" },
+      { name: 'SMTP_IPV6', note: "'true' to allow IPv6; otherwise connections are pinned to IPv4" },
       { name: 'MAIL_FROM' },
       { name: 'ZAI_ORDERS_INBOX' },
     ],

@@ -23,6 +23,22 @@ const BLACK = '#0a0a0a';
 const GRAY = '#6a6a6a';
 const BORDER = '#e0ddd6';
 
+/**
+ * Google Workspace SMTP relay authenticates by source IP, not by password:
+ * with "Only accept mail from the specified IP addresses" there is no account
+ * to log in as, and offering credentials is wrong rather than merely
+ * unnecessary. So an empty SMTP_USER/SMTP_PASS has to mean "send anyway" in
+ * that setup — but it must not mean that by accident when someone simply
+ * forgot to set the password, which would silently start sending
+ * unauthenticated. Hence an explicit opt-in.
+ */
+const NO_AUTH = process.env.SMTP_ALLOW_NO_AUTH === 'true';
+const HAS_CREDS = !!(process.env.SMTP_USER && process.env.SMTP_PASS);
+
+export function mailConfigured() {
+  return HAS_CREDS || (NO_AUTH && !!process.env.SMTP_HOST);
+}
+
 let _transporter = null;
 function getTransporter() {
   if (!_transporter) {
@@ -30,12 +46,20 @@ function getTransporter() {
     _transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST || 'smtp.gmail.com',
       port,
+      // Node prefers IPv6 where it can, and a relay allowlist written for the
+      // v4 address alone then rejects the connection for a reason that looks
+      // nothing like the cause. Pin to IPv4 unless told otherwise.
+      ...(process.env.SMTP_IPV6 === 'true' ? {} : { family: 4 }),
       // Port 465 is implicit TLS and must be `secure`; 587 and 25 start plain
       // and upgrade via STARTTLS. This was hardcoded false, so configuring
       // 465 — the obvious choice when a provider blocks other ports — could
       // only ever hang or fail the handshake.
       secure: port === 465,
-      auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
+      // Omitted entirely, not left blank: nodemailer attempts AUTH if the key
+      // is present at all, and the relay rejects an unexpected login.
+      ...(HAS_CREDS
+        ? { auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS } }
+        : {}),
     });
   }
   return _transporter;
@@ -73,7 +97,7 @@ function wrap(title, rows, footNote) {
  * triggered it. Callers are not expected to await this.
  */
 export function notifyOrder({ title, rows, footNote, subject }) {
-  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+  if (!mailConfigured()) {
     console.warn('[notify] SMTP not configured — skipping:', subject);
     return Promise.resolve(false);
   }
@@ -143,7 +167,7 @@ export async function mailStatus() {
   const host = process.env.SMTP_HOST || 'smtp.gmail.com';
   const user = process.env.SMTP_USER || '';
   const port = parseInt(process.env.SMTP_PORT || '587', 10);
-  const configured = !!(process.env.SMTP_USER && process.env.SMTP_PASS);
+  const configured = mailConfigured();
   const base = {
     configured,
     host,
@@ -153,6 +177,9 @@ export async function mailStatus() {
     platform: process.env.VERCEL || process.env.VERCEL_ENV ? 'vercel' : 'server',
     // Enough to tell which mailbox is in use without printing it in full.
     user: user ? user.replace(/^(.).*(@.*)$/, '$1***$2') : null,
+    // Says which of the two shapes is in play, so "no user" reads as a choice
+    // rather than as something missing.
+    auth: HAS_CREDS ? 'password' : NO_AUTH ? 'by IP (no login)' : 'none',
     inbox: ADMIN_INBOX,
     // The From domain is what receivers run SPF against, so it belongs in any
     // report about why mail is or is not arriving.
@@ -163,7 +190,8 @@ export async function mailStatus() {
       ...base,
       verified: false,
       error: 'SMTP_USER and SMTP_PASS are not set in this environment',
-      hint: 'Set them on this deployment specifically — Vercel and the server keep separate environments.',
+      hint: 'Set them on this deployment specifically — Vercel and the server keep separate environments. '
+        + 'If this is a relay that authenticates by IP instead of by password, set SMTP_ALLOW_NO_AUTH=true.',
     };
   }
   try {
