@@ -913,6 +913,13 @@ async function handleDeals(req, res, segments, method, userId, decoded) {
       piConfig.transfer_data = {
         destination: process.env.STRIPE_CONNECTED_ACCOUNT_ID,
       };
+      // on_behalf_of makes zai's connected account the settlement merchant, so
+      // Stripe shows ITS business name, statement descriptor and support
+      // details on receipts, Apple Pay and bank statements. Without it the
+      // platform account is the merchant of record and buyers saw "Onchain
+      // Technologies AG / onchainlabs.ch" for a zai purchase. It has to name
+      // the same account as transfer_data.destination.
+      piConfig.on_behalf_of = process.env.STRIPE_CONNECTED_ACCOUNT_ID;
     }
 
     const paymentIntent = await stripe.paymentIntents.create(piConfig);
