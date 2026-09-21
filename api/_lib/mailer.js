@@ -10,13 +10,24 @@ import nodemailer from 'nodemailer';
  * for another reason, migrating it here is the tidy-up.
  */
 
-const ADMIN_INBOX = process.env.ZAI_ORDERS_INBOX || 'info@zai.ch';
+// The shared mailbox zai created for this. It is never read by a person or
+// by us — notifications land there and that is the whole contract.
+const ADMIN_INBOX = process.env.ZAI_ORDERS_INBOX || 'experience-club@zai.ch';
 // Sender address. Configurable because it is the lever that fixes deliverability
 // without a code change: zai.ch's SPF record authorises Microsoft 365 and ends in
 // -all, so mail sent through Google claiming to be From: no-reply@zai.ch fails SPF
 // at any external receiver — including zai.ch's own Hornetsecurity gateway. Either
 // send through M365, or send as a domain whose SPF covers the relay in use.
-const FROM = process.env.MAIL_FROM || '"zai Experience Club" <no-reply@zai.ch>';
+const FROM = process.env.MAIL_FROM || '"zai Experience Club" <experience-club@zai.ch>';
+
+/**
+ * The bare address out of MAIL_FROM. XOAUTH2 needs the mailbox on its own —
+ * the display-name form that MAIL_FROM carries is rejected as a username.
+ */
+function senderAddress() {
+  const m = /<([^>]+)>/.exec(FROM);
+  return (m ? m[1] : FROM).trim();
+}
 
 const RED = '#7A222E';
 const BLACK = '#0a0a0a';
@@ -32,19 +43,102 @@ const BORDER = '#e0ddd6';
  * forgot to set the password, which would silently start sending
  * unauthenticated. Hence an explicit opt-in.
  */
+
+/**
+ * Microsoft 365 OAuth 2.0, client-credentials flow.
+ *
+ * experience-club@zai.ch is a SHARED mailbox: no licence, no password, nothing
+ * to log in as. Password SMTP AUTH therefore cannot be used against it at all,
+ * and Microsoft is retiring Basic auth for SMTP regardless — it is the last
+ * protocol still standing after EAS, POP, IMAP, EWS and Autodiscover lost it.
+ *
+ * So the app authenticates as itself and is granted access to that one mailbox.
+ * On the tenant side that means an Entra app registration with the
+ * SMTP.SendAsApp application permission, registered as an Exchange service
+ * principal and given rights on the mailbox alone. Nothing here can reach any
+ * other mailbox.
+ *
+ * Tokens last about an hour, so one is cached and renewed a minute early
+ * rather than fetched per message.
+ */
+const OAUTH_SCOPE = 'https://outlook.office365.com/.default';
+const MS_TENANT = process.env.MS_TENANT_ID;
+const MS_CLIENT = process.env.MS_CLIENT_ID;
+const MS_SECRET = process.env.MS_CLIENT_SECRET;
+const USE_OAUTH = !!(MS_TENANT && MS_CLIENT && MS_SECRET);
+
+let _token = null;
+let _tokenExpiry = 0;
+
+async function getAccessToken() {
+  if (_token && Date.now() < _tokenExpiry) return _token;
+  const res = await fetch(
+    `https://login.microsoftonline.com/${encodeURIComponent(MS_TENANT)}/oauth2/v2.0/token`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: MS_CLIENT,
+        client_secret: MS_SECRET,
+        scope: OAUTH_SCOPE,
+        grant_type: 'client_credentials',
+      }),
+    }
+  );
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.access_token) {
+    // Surfaced rather than swallowed: a tenant misconfiguration otherwise
+    // reads as a generic SMTP failure, which sends people to the wrong place.
+    throw new Error(
+      `Microsoft token request failed (${res.status}): `
+      + `${data.error_description || data.error || 'no access_token returned'}`
+    );
+  }
+  _token = data.access_token;
+  _tokenExpiry = Date.now() + Math.max(0, (data.expires_in || 3600) - 60) * 1000;
+  return _token;
+}
+
 const NO_AUTH = process.env.SMTP_ALLOW_NO_AUTH === 'true';
 const HAS_CREDS = !!(process.env.SMTP_USER && process.env.SMTP_PASS);
 
 export function mailConfigured() {
-  return HAS_CREDS || (NO_AUTH && !!process.env.SMTP_HOST);
+  return USE_OAUTH || HAS_CREDS || (NO_AUTH && !!process.env.SMTP_HOST);
 }
 
 let _transporter = null;
-function getTransporter() {
+let _transporterToken = null;
+
+async function getTransporter() {
+  // With OAuth the credential expires, so the cached transport is rebuilt
+  // whenever the token behind it has been renewed.
+  if (USE_OAUTH) {
+    const accessToken = await getAccessToken();
+    if (!_transporter || _transporterToken !== accessToken) {
+      const port = parseInt(process.env.SMTP_PORT || '587', 10);
+      _transporter = nodemailer.createTransport({
+        host: process.env.SMTP_HOST || 'smtp.office365.com',
+        port,
+        secure: port === 465,
+        ...(process.env.SMTP_IPV6 === 'true' ? {} : { family: 4 }),
+        auth: {
+          type: 'OAuth2',
+          user: process.env.SMTP_USER || senderAddress(),
+          accessToken,
+        },
+      });
+      _transporterToken = accessToken;
+    }
+    return _transporter;
+  }
   if (!_transporter) {
     const port = parseInt(process.env.SMTP_PORT || '587', 10);
     _transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST || 'smtp.gmail.com',
+      // zai.ch is on Microsoft 365. The old Gmail default cannot work here
+      // twice over: Google refuses this server's IP at EHLO (421 4.7.0), and
+      // zai.ch's SPF authorises Outlook and ends in -all, so Gmail-relayed
+      // mail claiming to be zai.ch fails SPF at the recipient anyway.
+      host: process.env.SMTP_HOST || 'smtp.office365.com',
       port,
       // Node prefers IPv6 where it can, and a relay allowlist written for the
       // v4 address alone then rejects the connection for a reason that looks
@@ -101,8 +195,9 @@ export function notifyOrder({ title, rows, footNote, subject }) {
     console.warn('[notify] SMTP not configured — skipping:', subject);
     return Promise.resolve(false);
   }
-  return getTransporter()
-    .sendMail({ from: FROM, to: ADMIN_INBOX, subject, html: wrap(title, rows, footNote) })
+  return Promise.resolve()
+    .then(() => getTransporter())
+    .then(t => t.sendMail({ from: FROM, to: ADMIN_INBOX, subject, html: wrap(title, rows, footNote) }))
     .then(() => { console.log('[notify] sent:', subject); return true; })
     .catch((e) => { console.error('[notify] FAILED:', subject, e.message); return false; });
 }
@@ -164,7 +259,7 @@ function explain(err, host, port) {
  * `verify` opens a connection and authenticates; it sends no mail.
  */
 export async function mailStatus() {
-  const host = process.env.SMTP_HOST || 'smtp.gmail.com';
+  const host = process.env.SMTP_HOST || 'smtp.office365.com';
   const user = process.env.SMTP_USER || '';
   const port = parseInt(process.env.SMTP_PORT || '587', 10);
   const configured = mailConfigured();
@@ -179,7 +274,7 @@ export async function mailStatus() {
     user: user ? user.replace(/^(.).*(@.*)$/, '$1***$2') : null,
     // Says which of the two shapes is in play, so "no user" reads as a choice
     // rather than as something missing.
-    auth: HAS_CREDS ? 'password' : NO_AUTH ? 'by IP (no login)' : 'none',
+    auth: USE_OAUTH ? 'OAuth2 (Microsoft 365 app)' : HAS_CREDS ? 'password' : NO_AUTH ? 'by IP (no login)' : 'none',
     inbox: ADMIN_INBOX,
     // The From domain is what receivers run SPF against, so it belongs in any
     // report about why mail is or is not arriving.
@@ -195,7 +290,7 @@ export async function mailStatus() {
     };
   }
   try {
-    await getTransporter().verify();
+    await (await getTransporter()).verify();
     return { ...base, verified: true, error: null, hint: null };
   } catch (e) {
     return {

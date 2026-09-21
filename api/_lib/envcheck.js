@@ -37,6 +37,9 @@ const GROUPS = [
       // actually works is answered by the live check, not by this list.
       { name: 'SMTP_USER', note: 'unused when relaying by IP' },
       { name: 'SMTP_PASS', note: 'unused when relaying by IP' },
+      { name: 'MS_TENANT_ID', note: 'Microsoft 365 OAuth — set all three to use app auth' },
+      { name: 'MS_CLIENT_ID', note: 'Entra app registration (SMTP.SendAsApp)' },
+      { name: 'MS_CLIENT_SECRET', note: 'takes precedence over SMTP_USER/SMTP_PASS' },
       { name: 'SMTP_ALLOW_NO_AUTH', note: "'true' to send with no login (IP-authenticated relay)" },
       { name: 'SMTP_IPV6', note: "'true' to allow IPv6; otherwise connections are pinned to IPv4" },
       { name: 'MAIL_FROM' },
