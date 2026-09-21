@@ -199,6 +199,46 @@ async function unregisterAttendee(eventId, userId) {
 
 /* ── main handler ────────────────────────────────────────── */
 
+
+/**
+ * Create a PaymentIntent, falling back if zai's account cannot settle it yet.
+ * (Same helper as the store route; these two files share no module.)
+ *
+ * on_behalf_of makes zai the merchant of record — its name on receipts, Apple
+ * Pay, TWINT and bank statements instead of the platform's. It also switches
+ * the payment-method configuration from the platform's to that account's, and
+ * a connected account created purely as a payout destination has none. Stripe
+ * then rejects every PaymentIntent with "No valid payment method types", which
+ * a buyer meets as a dead checkout after typing in their address.
+ *
+ * Note this is not about whether zai accepts Swiss francs — it is about which
+ * payment methods are switched on in that Stripe account. An account can be
+ * perfectly able to receive payouts while having nothing enabled to charge
+ * with.
+ *
+ * So: ask for zai as merchant of record, and if Stripe says that account
+ * cannot take the payment, take it on the platform instead rather than losing
+ * the sale. The moment the methods are enabled in the Dashboard the first
+ * attempt starts succeeding, with no deploy and no env change.
+ */
+async function createPaymentIntent(stripe, piConfig) {
+  try {
+    return await stripe.paymentIntents.create(piConfig);
+  } catch (err) {
+    const noMethods = /no valid payment method types/i.test(err?.message || '');
+    if (!noMethods || !piConfig.on_behalf_of) throw err;
+    console.error(
+      '[stripe] %s cannot settle this payment — no payment methods enabled on that '
+      + 'connected account for %s. Charging on the platform account instead, so the '
+      + 'buyer still sees the platform name. Enable card/TWINT on that account in the '
+      + 'Stripe Dashboard to fix it properly.',
+      piConfig.on_behalf_of, (piConfig.currency || '').toUpperCase()
+    );
+    const { on_behalf_of, ...withoutMerchant } = piConfig;
+    return await stripe.paymentIntents.create(withoutMerchant);
+  }
+}
+
 export default async function handler(req, res) {
   // Shared allowlist rather than '*', so every handler agrees on which
   // origins may call the API and the set can be changed in one place.
@@ -422,7 +462,7 @@ export default async function handler(req, res) {
         }
       }
 
-      const paymentIntent = await stripe.paymentIntents.create(piConfig);
+      const paymentIntent = await createPaymentIntent(stripe, piConfig);
 
       await getPool().query(
         `INSERT INTO event_payments (id, event_id, user_id, event_title, amount_chf, currency, stripe_payment_intent, status, voucher_code, voucher_discount_chf)
