@@ -58,7 +58,7 @@ const GROUPS = [
       { name: 'STRIPE_SECRET_KEY', required: true },
       { name: 'STRIPE_WEBHOOK_SECRET', required: true },
       { name: 'STRIPE_CONNECTED_ACCOUNT_ID', note: 'payout destination for zai' },
-      { name: 'STRIPE_ON_BEHALF_OF', note: "'true' makes zai the merchant of record — needs payment methods enabled on that account first" },
+      { name: 'STRIPE_ON_BEHALF_OF', note: "zai is merchant of record by default; set to 'false' only to fall back to the platform" },
       { name: 'PLATFORM_FEE_PERCENT' },
       { name: 'EVENT_CANCELLATION_FEE_PERCENT' },
     ],
