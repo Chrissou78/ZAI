@@ -392,9 +392,13 @@ function DealModal({ deal, onClose, onSuccess }: {
               {t('updates.deal.continueToShipping')}
             </button>
 
-            <div style={{ textAlign: 'center', fontSize: 11, color: C.gray, marginTop: 10 }}>
-              {t('updates.deal.pointsNote')}
-            </div>
+            {/* Only where points are actually in play. On a deal that does not
+                accept them it explained a rate nobody could use. */}
+            {max > 0 && (
+              <div style={{ textAlign: 'center', fontSize: 11, color: C.gray, marginTop: 10 }}>
+                {t('updates.deal.pointsNote')}
+              </div>
+            )}
           </>
         )}
 
@@ -476,9 +480,13 @@ function DealModal({ deal, onClose, onSuccess }: {
                 : t('updates.shipping.confirmAndPay', { amount: finalPrice.toLocaleString('de-CH', { minimumFractionDigits: 2 }) })}
             </button>
 
-            <div style={{ textAlign: 'center', fontSize: 11, color: C.gray, marginTop: 10 }}>
-              {t('updates.deal.pointsNote')}
-            </div>
+            {/* By this step the amount is settled, so the note matters only
+                if points are actually being deducted. */}
+            {points > 0 && (
+              <div style={{ textAlign: 'center', fontSize: 11, color: C.gray, marginTop: 10 }}>
+                {t('updates.deal.pointsNote')}
+              </div>
+            )}
           </>
         )}
 
