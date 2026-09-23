@@ -240,6 +240,20 @@ function explain(err, host, port) {
       + 'through Gmail as no-reply@zai.ch fails SPF at the recipient even when it does go out.';
   }
   if (code === 'EAUTH' || /invalid login|username and password|authentication/i.test(msg)) {
+    // Office 365 answers 535 5.7.3 both for a wrong password and for a mailbox
+    // where client SMTP submission is switched off — and the second is far more
+    // common than the first, because Microsoft disables it by default. Sending
+    // someone to re-check a password that was correct all along wastes a day.
+    if (/office365|outlook|protection\.outlook/i.test(host) || /5\.7\.3/.test(msg)) {
+      return 'Microsoft accepted the connection and refused the login (535 5.7.3). '
+        + 'That is usually not a wrong password: SMTP AUTH is disabled by default on '
+        + 'Microsoft 365 mailboxes. Ask the tenant admin to run '
+        + '`Set-CASMailbox -Identity <mailbox> -SmtpClientAuthenticationDisabled $false`, '
+        + 'and to confirm it is not disabled tenant-wide or blocked by a conditional '
+        + 'access / security-defaults policy. An unlicensed shared mailbox cannot use '
+        + 'password auth at all — that case needs the OAuth app registration instead '
+        + '(MS_TENANT_ID / MS_CLIENT_ID / MS_CLIENT_SECRET).';
+    }
     return 'The connection works but the credentials were rejected. Check SMTP_USER / '
       + 'SMTP_PASS on THIS deployment — for Gmail this must be an app password, not '
       + 'the account password.';
