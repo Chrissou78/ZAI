@@ -4,6 +4,7 @@ import { pointsForAmount, chfForPoints, categoryEarnsPoints, pointsToCoverCHF, T
 import { applyCors, authenticate } from '../middleware.js';
 import { notifyOrder, mailStatus } from '../_lib/mailer.js';
 import { envReport } from '../_lib/envcheck.js';
+import { stripeAccountStatus } from '../_lib/stripecheck.js';
 
 // ══════════════════════════════════════════════════════════
 // TIERS — the table lives in api/points.js (single source of truth,
@@ -548,10 +549,8 @@ async function handleStoreAdmin(req, res, segments, method, decoded) {
   // did not reach the running process, which is the failure this exists for.
   // Admin-gated by requireAdmin() above, like everything else on this router.
   if (method === 'GET' && segments[0] === 'diagnostics') {
-    return res.json({
-      success: true,
-      data: { env: envReport(), mail: await mailStatus() },
-    });
+    const [mail, stripe] = await Promise.all([mailStatus(), stripeAccountStatus()]);
+    return res.json({ success: true, data: { env: envReport(), mail, stripe } });
   }
 
   // GET /api/store/admin/orders/pending-count — just the number, for the

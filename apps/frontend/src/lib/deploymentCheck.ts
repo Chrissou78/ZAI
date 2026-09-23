@@ -17,6 +17,21 @@ import { apiService } from '../services/api';
 type VarRow = { name: string; ok: boolean; status: string; required: boolean; note?: string };
 type Group = { group: string; vars: VarRow[] };
 
+interface StripeReport {
+  configured: boolean;
+  reason?: string;
+  accountId?: string;
+  merchantOfRecordRequested?: boolean;
+  buyerSeesThisAccount?: boolean;
+  capabilities?: { card_payments: string; transfers: string };
+  businessName?: string | null;
+  statementDescriptor?: string | null;
+  country?: string | null;
+  chargesEnabled?: boolean;
+  payoutsEnabled?: boolean;
+  notes?: string[];
+}
+
 interface Report {
   env: {
     platform: string;
@@ -41,6 +56,7 @@ interface Report {
     error: string | null;
     hint?: string | null;
   };
+  stripe?: StripeReport;
 }
 
 const mark = (ok: boolean) => (ok ? '✅' : '❌');
@@ -57,7 +73,7 @@ export async function logDeploymentCheck(): Promise<void> {
     return;
   }
 
-  const { env, mail } = report;
+  const { env, mail, stripe } = report;
   const s = env.summary;
 
   console.groupCollapsed(
@@ -107,6 +123,33 @@ export async function logDeploymentCheck(): Promise<void> {
   });
   if (mail.hint) console.warn('→ ' + mail.hint);
   console.groupEnd();
+
+  // Whose name the buyer actually sees on a receipt or bank statement. Read
+  // live from Stripe, because the two reasons it can be wrong — the account
+  // cannot charge, or it has no name set — are indistinguishable from outside.
+  if (stripe) {
+    const ok = !!stripe.buyerSeesThisAccount;
+    console.groupCollapsed(
+      `${mark(ok)} Stripe — buyer sees ${ok ? (stripe.businessName || 'the connected account') : 'the PLATFORM name'}`
+    );
+    if (!stripe.configured) {
+      console.warn('→ ' + (stripe.reason || 'Connected account could not be read.'));
+    } else {
+      console.table({
+        'account': stripe.accountId || '—',
+        'merchant of record requested': stripe.merchantOfRecordRequested ? 'zai' : 'platform (switched off)',
+        'card_payments': stripe.capabilities?.card_payments || '—',
+        'transfers': stripe.capabilities?.transfers || '—',
+        'charges enabled': stripe.chargesEnabled ? 'yes' : 'no',
+        'payouts enabled': stripe.payoutsEnabled ? 'yes' : 'no',
+        'business name': stripe.businessName || '(not set)',
+        'statement descriptor': stripe.statementDescriptor || '(not set)',
+        'country': stripe.country || '—',
+      });
+      (stripe.notes || []).forEach(n => console.warn('→ ' + n));
+    }
+    console.groupEnd();
+  }
 
   console.groupEnd();
 }
