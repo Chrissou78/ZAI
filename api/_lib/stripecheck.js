@@ -14,8 +14,9 @@
  */
 export async function stripeAccountStatus() {
   const accountId = process.env.STRIPE_CONNECTED_ACCOUNT_ID;
+  const direct = (process.env.STRIPE_DIRECT_CHARGES || '').trim().toLowerCase() === 'true';
   const merchantOfRecord =
-    (process.env.STRIPE_ON_BEHALF_OF || '').trim().toLowerCase() !== 'false';
+    direct || (process.env.STRIPE_ON_BEHALF_OF || '').trim().toLowerCase() !== 'false';
 
   if (!accountId) {
     return {
@@ -44,6 +45,16 @@ export async function stripeAccountStatus() {
 
     const canCharge = cardPayments === 'active';
     const notes = [];
+    if (direct && !canCharge) {
+      // Worth stating first and plainly: unlike the destination model, this one
+      // has no fallback. Every purchase fails until the capability is live.
+      notes.push(
+        'DIRECT CHARGES ARE ON BUT THIS ACCOUNT CANNOT CHARGE. There is no fallback in '
+        + 'this mode — the charge is created on this account, so every purchase will fail '
+        + 'until card_payments is active. Set STRIPE_DIRECT_CHARGES=false and restart to '
+        + 'restore sales while the capability is enabled.'
+      );
+    }
     if (!merchantOfRecord) {
       notes.push('STRIPE_ON_BEHALF_OF=false — the platform is deliberately the merchant of record.');
     }
@@ -67,6 +78,8 @@ export async function stripeAccountStatus() {
       configured: true,
       accountId,
       merchantOfRecordRequested: merchantOfRecord,
+      model: direct ? 'direct charges (zai receives, fee returns to platform)'
+                    : 'destination charges (platform receives, transfers to zai)',
       // The bottom line, in one field: is the buyer seeing zai or not?
       buyerSeesThisAccount: merchantOfRecord && canCharge,
       capabilities: { card_payments: cardPayments, transfers },

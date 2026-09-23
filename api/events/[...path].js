@@ -2,6 +2,7 @@ import jwt from 'jsonwebtoken';
 import { applyCors } from '../middleware.js';
 import { randomUUID } from 'crypto';
 import { getPool, initDB } from '../db.js';
+import { getStripe, chargeContext, applyChargeRouting } from '../_lib/stripe.js';
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const API_KEY = process.env.WALLETTWO_API_KEY;
@@ -221,9 +222,9 @@ async function unregisterAttendee(eventId, userId) {
  * the sale. The moment the methods are enabled in the Dashboard the first
  * attempt starts succeeding, with no deploy and no env change.
  */
-async function createPaymentIntent(stripe, piConfig) {
+async function createPaymentIntent(stripe, piConfig, opts) {
   try {
-    return await stripe.paymentIntents.create(piConfig);
+    return await stripe.paymentIntents.create(piConfig, opts);
   } catch (err) {
     const noMethods = /no valid payment method types/i.test(err?.message || '');
     if (!noMethods || !piConfig.on_behalf_of) throw err;
@@ -235,7 +236,7 @@ async function createPaymentIntent(stripe, piConfig) {
       piConfig.on_behalf_of, (piConfig.currency || '').toUpperCase()
     );
     const { on_behalf_of, ...withoutMerchant } = piConfig;
-    return await stripe.paymentIntents.create(withoutMerchant);
+    return await stripe.paymentIntents.create(withoutMerchant, opts);
   }
 }
 
@@ -438,8 +439,7 @@ export default async function handler(req, res) {
         });
       }
 
-      const Stripe = (await import('stripe')).default;
-      const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+      const stripe = await getStripe();
       const PLATFORM_FEE_PERCENT = parseFloat(process.env.PLATFORM_FEE_PERCENT || '5');
 
       const paymentId = randomUUID();
@@ -451,18 +451,10 @@ export default async function handler(req, res) {
         metadata: { paymentId, eventId, userId },
       };
 
-      if (process.env.STRIPE_CONNECTED_ACCOUNT_ID) {
-        piConfig.application_fee_amount = Math.round(amount * 100 * PLATFORM_FEE_PERCENT / 100);
-        piConfig.transfer_data = { destination: process.env.STRIPE_CONNECTED_ACCOUNT_ID };
-        // On by default — see the fuller note on the store's PaymentIntent,
-        // including why STRIPE_ON_BEHALF_OF=false is the switch to reach for
-        // if checkout starts rejecting payments.
-        if ((process.env.STRIPE_ON_BEHALF_OF || '').trim().toLowerCase() !== 'false') {
-          piConfig.on_behalf_of = process.env.STRIPE_CONNECTED_ACCOUNT_ID;
-        }
-      }
+      // Fee, destination and merchant of record — see api/_lib/stripe.js.
+      applyChargeRouting(piConfig, Math.round(amount * 100), PLATFORM_FEE_PERCENT);
 
-      const paymentIntent = await createPaymentIntent(stripe, piConfig);
+      const paymentIntent = await createPaymentIntent(stripe, piConfig, chargeContext());
 
       await getPool().query(
         `INSERT INTO event_payments (id, event_id, user_id, event_title, amount_chf, currency, stripe_payment_intent, status, voucher_code, voucher_discount_chf)
@@ -499,12 +491,11 @@ export default async function handler(req, res) {
         return res.status(200).json({ success: true, data: { alreadyProcessed: true } });
       }
 
-      const Stripe = (await import('stripe')).default;
-      const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+      const stripe = await getStripe();
 
       let pi;
       try {
-        pi = await stripe.paymentIntents.retrieve(payment.stripe_payment_intent);
+        pi = await stripe.paymentIntents.retrieve(payment.stripe_payment_intent, chargeContext());
       } catch (e) {
         return res.status(502).json({ success: false, error: 'Could not verify payment with Stripe' });
       }
@@ -569,12 +560,14 @@ export default async function handler(req, res) {
         const payment = pr.rows[0];
         const refundAmount = Math.round(parseFloat(payment.amount_chf) * (1 - EVENT_CANCELLATION_FEE_PERCENT / 100) * 100) / 100;
         try {
-          const Stripe = (await import('stripe')).default;
-          const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+          const stripe = await getStripe();
+          // The refund has to be issued on the account that holds the charge,
+          // and in direct mode that is zai's — a refund attempted on the
+          // platform simply cannot see the payment.
           await stripe.refunds.create({
             payment_intent: payment.stripe_payment_intent,
             amount: Math.round(refundAmount * 100),
-          });
+          }, chargeContext());
           await getPool().query(
             `UPDATE event_payments SET status = 'refunded', refund_amount_chf = $2, updated_at = NOW() WHERE id = $1`,
             [payment.id, refundAmount]

@@ -22,6 +22,7 @@ interface StripeReport {
   reason?: string;
   accountId?: string;
   merchantOfRecordRequested?: boolean;
+  model?: string;
   buyerSeesThisAccount?: boolean;
   capabilities?: { card_payments: string; transfers: string };
   businessName?: string | null;
@@ -137,6 +138,7 @@ export async function logDeploymentCheck(): Promise<void> {
     } else {
       console.table({
         'account': stripe.accountId || '—',
+        'model': stripe.model || '—',
         'merchant of record requested': stripe.merchantOfRecordRequested ? 'zai' : 'platform (switched off)',
         'card_payments': stripe.capabilities?.card_payments || '—',
         'transfers': stripe.capabilities?.transfers || '—',

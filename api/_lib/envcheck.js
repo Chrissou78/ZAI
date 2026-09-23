@@ -60,6 +60,8 @@ const GROUPS = [
     vars: [
       { name: 'STRIPE_SECRET_KEY', required: true },
       { name: 'STRIPE_WEBHOOK_SECRET', required: true },
+      { name: 'STRIPE_CONNECT_WEBHOOK_SECRET', note: 'needed once charges are created on the connected account' },
+      { name: 'STRIPE_DIRECT_CHARGES', note: "'true' charges ON zai's account — only once card_payments is active" },
       { name: 'STRIPE_CONNECTED_ACCOUNT_ID', note: 'payout destination for zai' },
       { name: 'STRIPE_ON_BEHALF_OF', note: "zai is merchant of record by default; set to 'false' only to fall back to the platform" },
       { name: 'PLATFORM_FEE_PERCENT' },

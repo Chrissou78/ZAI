@@ -5,6 +5,7 @@ import { applyCors, authenticate } from '../middleware.js';
 import { notifyOrder, mailStatus } from '../_lib/mailer.js';
 import { envReport } from '../_lib/envcheck.js';
 import { stripeAccountStatus } from '../_lib/stripecheck.js';
+import { getStripe, chargeContext, applyChargeRouting, DIRECT_CHARGES } from '../_lib/stripe.js';
 
 // ══════════════════════════════════════════════════════════
 // TIERS — the table lives in api/points.js (single source of truth,
@@ -769,10 +770,13 @@ async function handleVouchers(req, res, segments, method, userId) {
  * the sale. The moment the methods are enabled in the Dashboard the first
  * attempt starts succeeding, with no deploy and no env change.
  */
-async function createPaymentIntent(stripe, piConfig) {
+async function createPaymentIntent(stripe, piConfig, opts) {
   try {
-    return await stripe.paymentIntents.create(piConfig);
+    return await stripe.paymentIntents.create(piConfig, opts);
   } catch (err) {
+    // In direct mode there is nothing to fall back TO — the charge is created
+    // on zai's account, so the platform is not an alternative home for it. The
+    // error is rethrown and the capability has to be fixed in the Dashboard.
     const noMethods = /no valid payment method types/i.test(err?.message || '');
     if (!noMethods || !piConfig.on_behalf_of) throw err;
     console.error(
@@ -783,7 +787,7 @@ async function createPaymentIntent(stripe, piConfig) {
       piConfig.on_behalf_of, (piConfig.currency || '').toUpperCase()
     );
     const { on_behalf_of, ...withoutMerchant } = piConfig;
-    return await stripe.paymentIntents.create(withoutMerchant);
+    return await stripe.paymentIntents.create(withoutMerchant, opts);
   }
 }
 
@@ -947,8 +951,7 @@ async function handleDeals(req, res, segments, method, userId, decoded) {
       });
     }
 
-    const Stripe = (await import('stripe')).default;
-    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+    const stripe = await getStripe();
     const PLATFORM_FEE_PERCENT = parseFloat(process.env.PLATFORM_FEE_PERCENT || '5');
 
     // ── Create a PaymentIntent (embedded payment, no redirect) ──
@@ -959,32 +962,12 @@ async function handleDeals(req, res, segments, method, userId, decoded) {
       metadata: { redemptionId, dealId, userId, pointsUsed: String(pts) },
     };
 
-    // Only add platform fee + connected account if configured
-    if (process.env.STRIPE_CONNECTED_ACCOUNT_ID && finalCHF > 0) {
-      piConfig.application_fee_amount = Math.round(finalCHF * 100 * PLATFORM_FEE_PERCENT / 100);
-      piConfig.transfer_data = {
-        destination: process.env.STRIPE_CONNECTED_ACCOUNT_ID,
-      };
-      // zai is the settlement merchant, so Stripe shows ITS business name and
-      // statement descriptor on receipts, Apple Pay, TWINT and bank statements
-      // rather than the platform's. It must name the same account as
-      // transfer_data.destination, which it does.
-      //
-      // This also switches the payment-method configuration from the
-      // platform's to the connected account's: whatever is NOT enabled on
-      // zai's account is no longer offered at checkout. Enabling it while that
-      // account had nothing for CHF is what produced "No valid payment method
-      // types for this Payment Intent" and stopped every purchase, so if
-      // checkout starts failing again, this is the first thing to suspect.
-      //
-      // STRIPE_ON_BEHALF_OF=false is the kill switch — an env change and a
-      // restart, rather than waiting on a revert and a deploy.
-      if ((process.env.STRIPE_ON_BEHALF_OF || '').trim().toLowerCase() !== 'false') {
-        piConfig.on_behalf_of = process.env.STRIPE_CONNECTED_ACCOUNT_ID;
-      }
-    }
+    // Fee, destination and merchant of record — see api/_lib/stripe.js. In
+    // direct mode the charge is created ON zai's account below, so zai takes
+    // the full amount and our commission returns as the application fee.
+    applyChargeRouting(piConfig, Math.round(finalCHF * 100), PLATFORM_FEE_PERCENT);
 
-    const paymentIntent = await createPaymentIntent(stripe, piConfig);
+    const paymentIntent = await createPaymentIntent(stripe, piConfig, chargeContext());
 
     await getPool().query(
       `INSERT INTO deal_redemptions (id, deal_id, user_id, points_used, amount_chf,
@@ -1030,12 +1013,13 @@ async function handleDeals(req, res, segments, method, userId, decoded) {
       return res.json({ success: true, data: { alreadyProcessed: true, balance } });
     }
 
-    const Stripe = (await import('stripe')).default;
-    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+    const stripe = await getStripe();
 
     let pi;
     try {
-      pi = await stripe.paymentIntents.retrieve(redemption.stripe_session_id);
+      // Must name the same account the charge was created on, or Stripe
+      // reports it as not found rather than as belonging elsewhere.
+      pi = await stripe.paymentIntents.retrieve(redemption.stripe_session_id, chargeContext());
     } catch (e) {
       return res.status(502).json({ error: 'Could not verify payment with Stripe' });
     }
@@ -1630,16 +1614,31 @@ async function handleStripe(req, res, segments) {
 
   // POST /api/store/stripe/webhook
   if (req.method === 'POST' && segments[0] === 'webhook') {
-    const Stripe = (await import('stripe')).default;
-    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+    const stripe = await getStripe();
     const sig = req.headers['stripe-signature'];
     const buf = await rawBuffer(req);
 
-    let event;
-    try {
-      event = stripe.webhooks.constructEvent(buf, sig, process.env.STRIPE_WEBHOOK_SECRET);
-    } catch (err) {
-      console.error('[stripe] Webhook sig failed:', err.message);
+    // With direct charges the events are raised on zai's account and arrive
+    // through a Connect endpoint, which Stripe signs with its OWN secret. Both
+    // are accepted so the switch does not need the two to be changed in
+    // lockstep, and so a redeploy mid-migration cannot strand an event.
+    const secrets = [
+      process.env.STRIPE_WEBHOOK_SECRET,
+      process.env.STRIPE_CONNECT_WEBHOOK_SECRET,
+    ].filter(Boolean);
+
+    let event = null;
+    let sigError = null;
+    for (const secret of secrets) {
+      try {
+        event = stripe.webhooks.constructEvent(buf, sig, secret);
+        break;
+      } catch (err) {
+        sigError = err;
+      }
+    }
+    if (!event) {
+      console.error('[stripe] Webhook sig failed against %d secret(s):', secrets.length, sigError?.message);
       return res.status(400).json({ error: 'Invalid signature' });
     }
 
