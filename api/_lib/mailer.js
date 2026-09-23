@@ -149,6 +149,11 @@ async function getTransporter() {
       // 465 — the obvious choice when a provider blocks other ports — could
       // only ever hang or fail the handshake.
       secure: port === 465,
+      // On 25 and 587 nodemailer will STARTTLS if offered but fall back to
+      // cleartext if not, which is a silent downgrade. Order details and a
+      // mailbox password are not worth sending in the clear, so require it:
+      // no TLS now means a visible failure rather than an invisible leak.
+      ...(port === 465 ? {} : { requireTLS: true }),
       // Omitted entirely, not left blank: nodemailer attempts AUTH if the key
       // is present at all, and the relay rejects an unexpected login.
       ...(HAS_CREDS
