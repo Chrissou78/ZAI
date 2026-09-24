@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAppContext } from '../../context/AppContext';
+import { getDisplayName } from '../../lib/displayName';
 import { apiService } from '../../services/api';
 import i18n from '../../i18n';
 
@@ -826,7 +827,7 @@ const Community: React.FC = () => {
       const body = res.data as unknown as ReactionResponse;
       if (body.success) {
         const action = body.action;
-        const userName = user?.givenName || user?.name || 'Member';
+        const userName = getDisplayName(user).display;
         const patch = (rr: Reaction[]): Reaction[] => {
           if (action === 'added') return [...rr, { emoji, userId: user?.id || '', userName }];
           const idx = rr.findIndex(r => r.emoji === emoji && r.userId === user?.id);

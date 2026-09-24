@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAppContext } from '../../context/AppContext';
+import { getDisplayName } from '../../lib/displayName';
 import { apiService } from '../../services/api';
 import UserAvatar from '../Common/UserAvatar';
 import ProductImageFallback from '../Common/ProductImageFallback';
@@ -956,8 +957,16 @@ const Profile: React.FC = () => {
     );
   }
 
-  const firstName = clean(formData.givenName) || clean(user.givenName) || t('profile.fallbackName');
-  const lastName = clean(formData.familyName) || clean(user.familyName) || '';
+  // Display only — the inputs below still bind to formData, so this cannot
+  // interfere with editing. getDisplayName keeps an email out of the heading
+  // and the avatar for a member who has not filled in a name yet.
+  const shown = getDisplayName({
+    givenName: clean(formData.givenName) || clean(user.givenName),
+    familyName: clean(formData.familyName) || clean(user.familyName),
+    email: user.email,
+  });
+  const firstName = shown.first || t('profile.fallbackName');
+  const lastName = shown.last;
 
   const bulletItems: string[] = [];
   const ms = memberSince();

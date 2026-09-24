@@ -6,6 +6,7 @@ import { apiService } from '../../services/api';
 import { QRCodeSVG } from 'qrcode.react';
 import { CameraIcon, UploadIcon, SmartphoneIcon } from '../Icons/ClaimIcons';
 import UserAvatar from '../Common/UserAvatar';
+import { getDisplayName } from '../../lib/displayName';
 
 interface DashboardStats {
   productsClaimed: number;
@@ -57,23 +58,6 @@ function clean(val: any): string {
 }
 
 /* ── Derive a clean display name from user fields ── */
-function getDisplayName(user: any): { first: string; last: string; display: string } {
-  const first = (user?.givenName || user?.firstName || '').trim();
-  const last = (user?.familyName || user?.lastName || '').trim();
-  if (first || last) {
-    return { first, last, display: [first, last].filter(Boolean).join(' ') };
-  }
-  // Fallback: extract from email
-  const emailLocal = (user?.email || '').split('@')[0] || '';
-  const parts = emailLocal.replace(/[._-]/g, ' ').split(' ').filter(Boolean);
-  const fallbackFirst = parts[0] ? parts[0][0].toUpperCase() + parts[0].slice(1) : '';
-  const fallbackLast = parts[1] ? parts[1][0].toUpperCase() + parts[1].slice(1) : '';
-  return {
-    first: fallbackFirst,
-    last: fallbackLast,
-    display: [fallbackFirst, fallbackLast].filter(Boolean).join(' ') || user?.email || 'User',
-  };
-}
 
 /* ── Skeleton shimmer keyframes (injected once) ── */
 const SHIMMER_ID = 'zai-shimmer-keyframes';

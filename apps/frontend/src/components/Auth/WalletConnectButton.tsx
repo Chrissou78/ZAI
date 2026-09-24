@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { apiService } from '../../services/api';
 import UserAvatar from '../Common/UserAvatar';
 import { logDeploymentCheck } from '../../lib/deploymentCheck';
+import { getDisplayName } from '../../lib/displayName';
 
 /**
  * `variant` only changes the trigger's appearance — the WalletTwo iframe,
@@ -125,14 +126,16 @@ export function WalletConnectButton({
     // of trying to guess a safe truncation width for arbitrary name/email
     // lengths; the name/email still shows on desktop, where there's room.
     if (variant === 'hero') return null;
-    const label = user.givenName || user.email || '';
+    // Was `user.givenName || user.email`, which printed a full address for
+    // any member who had not filled in a profile.
+    const { first: dnFirst, last: dnLast, display: label } = getDisplayName(user);
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
         {/* Shared component: this used to build its own initials and never
             showed the uploaded picture. */}
         <UserAvatar
-          firstName={user.givenName || user.email}
-          lastName={user.familyName}
+          firstName={dnFirst}
+          lastName={dnLast}
           size="sm"
           imageUrl={user.image}
         />

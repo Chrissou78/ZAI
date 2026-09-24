@@ -5,6 +5,7 @@ import { useAppContext } from '../../context/AppContext';
 import { apiService } from '../../services/api';
 import UserAvatar from '../Common/UserAvatar';
 import { usePendingOrders } from '../../hooks/usePendingOrders';
+import { getDisplayName } from '../../lib/displayName';
 import {
   HomeIcon,
   DashboardIcon,
@@ -20,23 +21,6 @@ import { LogoutButton } from '../Auth/LogoutButton';
 import { ZaiWordmark } from '../Icons/LogoIcons';
 
 /* ── Derive a clean display name from user fields ── */
-function getDisplayName(user: any): { first: string; last: string; display: string } {
-  const first = (user?.givenName || user?.firstName || '').trim();
-  const last = (user?.familyName || user?.lastName || '').trim();
-  if (first || last) {
-    return { first, last, display: [first, last].filter(Boolean).join(' ') };
-  }
-  // Fallback: extract from email
-  const emailLocal = (user?.email || '').split('@')[0] || '';
-  const parts = emailLocal.replace(/[._-]/g, ' ').split(' ').filter(Boolean);
-  const fallbackFirst = parts[0] ? parts[0][0].toUpperCase() + parts[0].slice(1) : '';
-  const fallbackLast = parts[1] ? parts[1][0].toUpperCase() + parts[1].slice(1) : '';
-  return {
-    first: fallbackFirst,
-    last: fallbackLast,
-    display: [fallbackFirst, fallbackLast].filter(Boolean).join(' ') || user?.email || 'User',
-  };
-}
 
 const Sidebar: React.FC = () => {
   const { t } = useTranslation();
