@@ -55,8 +55,21 @@ const show = (acct) => {
   console.log('  currently_due      :', (req.currently_due || []).join(', ') || '—');
 };
 
-console.log('\nBEFORE');
-const before = await stripe.accounts.retrieve(ACCOUNT);
+console.log('');
+console.log('BEFORE  ' + ACCOUNT + (ARG_ACCOUNT ? '  (given on the command line)' : '  (from STRIPE_CONNECTED_ACCOUNT_ID)'));
+let before;
+try {
+  before = await stripe.accounts.retrieve(ACCOUNT);
+} catch (e) {
+  console.error('Could not read ' + ACCOUNT + ' - ' + (e && e.message ? e.message : e));
+  console.error(
+    'A platform can only read accounts CONNECTED to it. If this is the real Stripe account'
+    + ' and it fails here, it has never been connected to this platform - and that, not a'
+    + ' missing capability, is what has to be fixed first. Pointing the app at an'
+    + ' unconnected account would fail every payment.'
+  );
+  process.exit(1);
+}
 show(before);
 
 if ((before.capabilities || {}).card_payments === 'active') {
