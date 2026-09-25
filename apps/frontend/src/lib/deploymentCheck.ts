@@ -101,6 +101,7 @@ export async function logDeploymentCheck(): Promise<void> {
   for (const g of env.groups) {
     const bad = g.vars.filter(v => !v.ok).length;
     console.groupCollapsed(`${mark(bad === 0)} ${g.group} (${g.vars.length - bad}/${g.vars.length})`);
+    void 0;
     console.table(
       g.vars.map(v => ({
         variable: v.name,
@@ -115,7 +116,8 @@ export async function logDeploymentCheck(): Promise<void> {
 
   // Mail gets its own section because it is the one thing here that is checked
   // live rather than just read: verify() opens the connection and authenticates.
-  console.groupCollapsed(`${mark(mail.verified)} SMTP — ${mail.verified ? 'connected' : 'NOT working'}`);
+  const openMail = mail.verified ? console.groupCollapsed : console.group;
+  openMail(`${mark(mail.verified)} SMTP — ${mail.verified ? 'connected' : 'NOT working'}`);
   console.table({
     'answered by': mail.platform,
     host: mail.host,
@@ -137,7 +139,8 @@ export async function logDeploymentCheck(): Promise<void> {
   // cannot charge, or it has no name set — are indistinguishable from outside.
   if (stripe) {
     const ok = !!stripe.buyerSeesThisAccount;
-    console.groupCollapsed(
+    const openStripe = ok ? console.groupCollapsed : console.group;
+    openStripe(
       `${mark(ok)} Stripe — buyer sees ${ok ? (stripe.businessName || 'the connected account') : 'the PLATFORM name'}`
     );
     if (!stripe.configured) {
@@ -172,6 +175,45 @@ export async function logDeploymentCheck(): Promise<void> {
   }
 
   console.groupEnd();
+
+  // ── One copyable block ──
+  // Console groups have to be expanded one at a time before their contents can
+  // be selected, so the facts that matter are also printed flat.
+  const missing = env.groups
+    .flatMap(g => g.vars)
+    .filter(v => !v.ok && v.required)
+    .map(v => v.name);
+  const cap = stripe?.capabilities || {};
+  const lines = [
+    '───────── zai config — copy from here ─────────',
+    `deployment   : ${env.platform} · node ${env.node} · ${env.nodeEnv || 'no NODE_ENV'}`,
+    `env set      : ${s.set}/${s.total}` + (missing.length ? `  · MISSING REQUIRED: ${missing.join(', ')}` : ''),
+    '',
+    `SMTP         : ${mail.verified ? 'CONNECTED' : 'NOT WORKING'}`,
+    `  host       : ${mail.host}:${mail.port}`,
+    `  auth       : ${(mail as any).auth ?? (mail.configured ? 'configured' : 'none')}`,
+    `  user       : ${mail.user || '(none)'}`,
+    `  from       : ${mail.from}`,
+    `  sends to   : ${mail.inbox}`,
+    ...(mail.code ? [`  code       : ${mail.code}`] : []),
+    ...(mail.error ? [`  error      : ${mail.error}`] : []),
+    ...(mail.hint ? [`  hint       : ${mail.hint}`] : []),
+    '',
+    `Stripe       : buyer sees ${stripe?.buyerSeesThisAccount ? (stripe.businessName || 'the connected account') : 'the PLATFORM name'}`,
+    ...(stripe?.configured
+      ? [
+          `  account    : ${stripe.accountId}  (type: ${stripe.type || 'unknown'})`,
+          `  model      : ${stripe.model || '—'}`,
+          `  caps       : ${Object.entries(cap).map(([k, v]) => `${k}=${v}`).join(' ') || '(none)'}`,
+          `  disabled   : ${stripe.requirements?.disabledReason || '—'}`,
+          `  due now    : ${(stripe.requirements?.currentlyDue || []).join(', ') || '—'}`,
+          `  name/descr : ${stripe.businessName || '(not set)'} / ${stripe.statementDescriptor || '(not set)'}`,
+          ...(stripe.notes || []).map(n => `  ! ${n}`),
+        ]
+      : [`  ${stripe?.reason || 'not configured'}`]),
+    '───────── to here ─────────',
+  ];
+  console.log(lines.join(String.fromCharCode(10)));
 }
 
 /**
