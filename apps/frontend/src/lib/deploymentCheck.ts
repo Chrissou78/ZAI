@@ -25,6 +25,13 @@ interface StripeReport {
   model?: string;
   buyerSeesThisAccount?: boolean;
   type?: string;
+  controller?: {
+    type?: string | null;
+    requirementCollection?: string | null;
+    stripeDashboard?: string | null;
+    feesPayer?: string | null;
+    lossesPayments?: string | null;
+  };
   requirements?: {
     disabledReason?: string | null;
     currentlyDue?: string[];
@@ -149,6 +156,9 @@ export async function logDeploymentCheck(): Promise<void> {
       console.table({
         'account': stripe.accountId || '—',
         'account type': stripe.type || '—',
+        'controlled by': stripe.controller?.requirementCollection === 'application' ? 'the platform (we request capabilities)'
+          : stripe.controller?.requirementCollection === 'stripe' ? 'Stripe (zai enables it themselves)'
+          : stripe.controller?.requirementCollection || '—',
         'model': stripe.model || '—',
         'merchant of record requested': stripe.merchantOfRecordRequested ? 'zai' : 'platform (switched off)',
         'card_payments': stripe.capabilities?.card_payments || '—',

@@ -40,8 +40,12 @@ export async function stripeAccountStatus() {
     // answers are opposites: for Express and Custom the platform requests it
     // over the API, for Standard the account holder enables it themselves and
     // the platform cannot. Without this field the advice is a coin flip.
-    const type = acct.type || 'unknown';
+    const type = acct.type || 'none';
     const req = acct.requirements || {};
+    // type "none" means the account was created with a `controller` instead,
+    // and then it is the controller — not the type — that says who may request
+    // a capability. Without this the report cannot answer whose job it is.
+    const ctrl = acct.controller || {};
     // The name a buyer sees comes from the account, never from our code.
     const businessName =
       acct.business_profile?.name || acct.settings?.dashboard?.display_name || null;
@@ -67,7 +71,15 @@ export async function stripeAccountStatus() {
     if (!canCharge) {
       // Who can fix it depends entirely on the account type.
       notes.push(
-        type === 'standard'
+        ctrl.requirement_collection === 'application'
+          ? 'This account is controlled by the PLATFORM (requirement_collection=application), so '
+            + 'the capability is requested over the API — there is no button in either dashboard, '
+            + 'which is why it could not be found. Run: node scripts/request-card-payments.mjs --apply'
+          : ctrl.requirement_collection === 'stripe'
+          ? 'STRIPE collects the requirements for this account, so the platform cannot request the '
+            + 'capability. zai enables card payments in their OWN dashboard: '
+            + 'Settings → Payments → Payment methods.'
+          : type === 'standard'
           ? 'This is a STANDARD connected account. A platform cannot request capabilities on '
             + 'one over the API — which is why there is no "request" button to find. zai enables '
             + 'card payments themselves, in their OWN Stripe dashboard under Settings → Payments '
@@ -106,6 +118,13 @@ export async function stripeAccountStatus() {
       // The bottom line, in one field: is the buyer seeing zai or not?
       buyerSeesThisAccount: merchantOfRecord && canCharge,
       type,
+      controller: {
+        type: ctrl.type || null,
+        requirementCollection: ctrl.requirement_collection || null,
+        stripeDashboard: ctrl.stripe_dashboard?.type || null,
+        feesPayer: ctrl.fees?.payer || null,
+        lossesPayments: ctrl.losses?.payments || null,
+      },
       // Everything Stripe knows to be outstanding, so the blocker is named
       // rather than hunted for in the dashboard.
       requirements: {
