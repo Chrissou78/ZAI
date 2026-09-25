@@ -24,7 +24,14 @@ interface StripeReport {
   merchantOfRecordRequested?: boolean;
   model?: string;
   buyerSeesThisAccount?: boolean;
-  capabilities?: { card_payments: string; transfers: string };
+  type?: string;
+  requirements?: {
+    disabledReason?: string | null;
+    currentlyDue?: string[];
+    pastDue?: string[];
+    pendingVerification?: string[];
+  };
+  capabilities?: Record<string, string>;
   businessName?: string | null;
   statementDescriptor?: string | null;
   country?: string | null;
@@ -138,16 +145,27 @@ export async function logDeploymentCheck(): Promise<void> {
     } else {
       console.table({
         'account': stripe.accountId || '—',
+        'account type': stripe.type || '—',
         'model': stripe.model || '—',
         'merchant of record requested': stripe.merchantOfRecordRequested ? 'zai' : 'platform (switched off)',
         'card_payments': stripe.capabilities?.card_payments || '—',
         'transfers': stripe.capabilities?.transfers || '—',
+        'disabled reason': stripe.requirements?.disabledReason || '—',
+        'Stripe waiting on': (stripe.requirements?.currentlyDue || []).join(', ') || '—',
         'charges enabled': stripe.chargesEnabled ? 'yes' : 'no',
         'payouts enabled': stripe.payoutsEnabled ? 'yes' : 'no',
         'business name': stripe.businessName || '(not set)',
         'statement descriptor': stripe.statementDescriptor || '(not set)',
         'country': stripe.country || '—',
       });
+      // Every capability on the account — a payment method that never shows
+      // up at checkout is usually one that is simply not listed here.
+      const caps = stripe.capabilities || {};
+      if (Object.keys(caps).length) {
+        console.groupCollapsed(`all capabilities (${Object.keys(caps).length})`);
+        console.table(caps);
+        console.groupEnd();
+      }
       (stripe.notes || []).forEach(n => console.warn('→ ' + n));
     }
     console.groupEnd();

@@ -36,6 +36,12 @@ export async function stripeAccountStatus() {
     const caps = acct.capabilities || {};
     const cardPayments = caps.card_payments || 'missing';
     const transfers = caps.transfers || 'missing';
+    // The account TYPE decides who can turn a capability on, and the two
+    // answers are opposites: for Express and Custom the platform requests it
+    // over the API, for Standard the account holder enables it themselves and
+    // the platform cannot. Without this field the advice is a coin flip.
+    const type = acct.type || 'unknown';
+    const req = acct.requirements || {};
     // The name a buyer sees comes from the account, never from our code.
     const businessName =
       acct.business_profile?.name || acct.settings?.dashboard?.display_name || null;
@@ -59,6 +65,17 @@ export async function stripeAccountStatus() {
       notes.push('STRIPE_ON_BEHALF_OF=false — the platform is deliberately the merchant of record.');
     }
     if (!canCharge) {
+      // Who can fix it depends entirely on the account type.
+      notes.push(
+        type === 'standard'
+          ? 'This is a STANDARD connected account. A platform cannot request capabilities on '
+            + 'one over the API — which is why there is no "request" button to find. zai enables '
+            + 'card payments themselves, in their OWN Stripe dashboard under Settings → Payments '
+            + '→ Payment methods, and completes any account activation Stripe still asks for.'
+          : `This is a ${type.toUpperCase()} connected account, so the PLATFORM requests the `
+            + 'capability over the API — there is nothing for zai to click. See the command in '
+            + 'the runbook; zai then only completes whatever Stripe asks them to verify.'
+      );
       notes.push(
         `card_payments is "${cardPayments}" on this account, not "active". Stripe will reject `
         + 'any PaymentIntent that names it as merchant of record, so each payment falls back to '
@@ -69,6 +86,12 @@ export async function stripeAccountStatus() {
     }
     if (canCharge && !businessName) {
       notes.push('No business name set on this account, so Stripe has nothing better to display.');
+    }
+    if (req.disabled_reason) {
+      notes.push(`Stripe reports disabled_reason="${req.disabled_reason}" on this account.`);
+    }
+    if ((req.currently_due || []).length) {
+      notes.push('Stripe is waiting on: ' + req.currently_due.join(', '));
     }
     if (canCharge && !descriptor) {
       notes.push('No statement descriptor set on this account — bank lines will fall back to the business name.');
@@ -82,7 +105,18 @@ export async function stripeAccountStatus() {
                     : 'destination charges (platform receives, transfers to zai)',
       // The bottom line, in one field: is the buyer seeing zai or not?
       buyerSeesThisAccount: merchantOfRecord && canCharge,
-      capabilities: { card_payments: cardPayments, transfers },
+      type,
+      // Everything Stripe knows to be outstanding, so the blocker is named
+      // rather than hunted for in the dashboard.
+      requirements: {
+        disabledReason: req.disabled_reason || null,
+        currentlyDue: req.currently_due || [],
+        pastDue: req.past_due || [],
+        pendingVerification: req.pending_verification || [],
+      },
+      // Every capability, not just the two we act on — a missing one often
+      // explains a payment method that never appears at checkout.
+      capabilities: { card_payments: cardPayments, transfers, ...caps },
       businessName,
       statementDescriptor: descriptor,
       country: acct.country || null,
