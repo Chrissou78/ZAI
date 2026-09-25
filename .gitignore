@@ -41,3 +41,6 @@ Thumbs.db
 # TypeScript incremental build cache (regenerated on every tsc run)
 tsconfig.tsbuildinfo
 *.tsbuildinfo
+
+# zai company details staged for a Stripe submission — never commit
+stripe-kyc.json
