@@ -7,6 +7,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { CameraIcon, UploadIcon, SmartphoneIcon } from '../Icons/ClaimIcons';
 import UserAvatar from '../Common/UserAvatar';
 import { getDisplayName } from '../../lib/displayName';
+import { cardImageForTier } from '../../lib/tierCard';
 
 interface DashboardStats {
   productsClaimed: number;
@@ -239,10 +240,7 @@ const EC_RED = '#7A222E';
 const EC_GOLD = '#7A222E';
 const EC_SURFACE = '#f0ede6';
 
-/* ── Experience Card image path ──
-   Save the experience card image to: apps/frontend/public/images/experience-card.png
-   If you don't have the file yet, use the external URL as fallback. */
-const EC_IMAGE = '/images/experience-card.png';
+/* The card artwork now follows the member's tier — see lib/tierCard.ts. */
 
 const Dashboard: React.FC = () => {
   const { t } = useTranslation();
@@ -705,7 +703,7 @@ const Dashboard: React.FC = () => {
               height: '100%',
             }}>
               <img
-                src={EC_IMAGE}
+                src={cardImageForTier(currentTier?.name)}
                 alt={t('dashboard.welcome.ecImageAlt')}
                 style={{
                   width: '100%',

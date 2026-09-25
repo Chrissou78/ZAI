@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAppContext } from '../../context/AppContext';
 import { getDisplayName } from '../../lib/displayName';
+import { cardImageForTier } from '../../lib/tierCard';
 import { apiService } from '../../services/api';
 import UserAvatar from '../Common/UserAvatar';
 import ProductImageFallback from '../Common/ProductImageFallback';
@@ -1350,7 +1351,7 @@ const Profile: React.FC = () => {
 
               {/* Card image */}
               <img
-                src="/images/experience-card.png"
+                src={cardImageForTier(getTier(points)?.name)}
                 alt={t('profile.experienceCard.imageAlt')}
                 style={{ width: '100%', maxWidth: 420, height: 'auto', borderRadius: 12, display: 'block', marginBottom: '1.5rem' }}
               />
