@@ -108,7 +108,8 @@
         "en": "English",
         "de": "Deutsch",
         "zh": "中文",
-        "fr": "Français"
+        "fr": "Français",
+        "cs": "Čeština"
       }
     },
     "security": {
@@ -1552,7 +1553,8 @@
       "en": "English",
       "de": "Deutsch",
       "zh": "中文",
-      "fr": "Français"
+      "fr": "Français",
+      "cs": "Čeština"
     }
   },
   "pointsStore": {

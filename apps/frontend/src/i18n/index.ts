@@ -4,12 +4,13 @@ import en from './locales/en.json';
 import de from './locales/de.json';
 import zh from './locales/zh.json';
 import fr from './locales/fr.json';
+import cs from './locales/cs.json';
 
-export type SupportedLanguage = 'en' | 'de' | 'zh' | 'fr';
+export type SupportedLanguage = 'en' | 'de' | 'zh' | 'fr' | 'cs';
 
 // Order drives both language switchers (public hero + Settings), which map
 // over this array — adding a code here is all it takes to offer it.
-export const SUPPORTED_LANGUAGES: SupportedLanguage[] = ['en', 'de', 'fr', 'zh'];
+export const SUPPORTED_LANGUAGES: SupportedLanguage[] = ['en', 'de', 'fr', 'cs', 'zh'];
 
 /**
  * Map any incoming language hint (DB value, browser locale, etc.)
@@ -21,6 +22,9 @@ export function mapToSupportedLanguage(input?: string | null): SupportedLanguage
   if (lower.startsWith('de')) return 'de';
   if (lower.startsWith('fr')) return 'fr';
   if (lower.startsWith('zh')) return 'zh';
+  // 'cs' is the ISO code, but 'cz' is what people type and what some systems
+  // store, so accept both rather than silently falling back to English.
+  if (lower.startsWith('cs') || lower.startsWith('cz')) return 'cs';
   return 'en';
 }
 
@@ -61,6 +65,7 @@ i18n.use(initReactI18next).init({
     de: { translation: de },
     zh: { translation: zh },
     fr: { translation: fr },
+    cs: { translation: cs },
   },
   lng: getInitialLanguage(),
   fallbackLng: 'en',
