@@ -2,107 +2,107 @@
   "nav": {
     "brand": "experience club",
     "sections": {
-      "overview": "Overview",
+      "overview": "Přehled",
       "exclusive": "zai Exclusive",
-      "account": "Account",
-      "admin": "Admin"
+      "account": "Účet",
+      "admin": "Administrace"
     },
     "items": {
-      "home": "Home",
-      "dashboard": "Dashboard",
-      "myCollection": "My Collection",
-      "events": "Events",
-      "community": "Community",
-      "pointsTiers": "Points & Tiers",
-      "dealsCollectibles": "Deals & Collectibles",
-      "profile": "Profile",
-      "settings": "Settings",
-      "claimRequests": "Claim Requests",
-      "storeContent": "Store & Content"
+      "home": "Domů",
+      "dashboard": "Nástěnka",
+      "myCollection": "Moje sbírka",
+      "events": "Akce",
+      "community": "Komunita",
+      "pointsTiers": "Body a úrovně",
+      "dealsCollectibles": "Nabídky a sběratelské kusy",
+      "profile": "Profil",
+      "settings": "Nastavení",
+      "claimRequests": "Žádosti o registraci",
+      "storeContent": "Obchod a obsah"
     },
-    "member": "member",
-    "exclusiveMember": "exclusive member",
-    "footer": "Crafted in the Alps"
+    "member": "člen",
+    "exclusiveMember": "exkluzivní člen",
+    "footer": "Vyrobeno v Alpách"
   },
   "layout": {
     "brand": "zai",
-    "openMenu": "Open menu",
-    "closeMenu": "Close menu"
+    "openMenu": "Otevřít menu",
+    "closeMenu": "Zavřít menu"
   },
   "settings": {
-    "eyebrow": "account",
-    "title": "Settings",
-    "subtitle": "Manage notifications, privacy, and account preferences.",
-    "loading": "Loading settings...",
+    "eyebrow": "účet",
+    "title": "Nastavení",
+    "subtitle": "Spravujte oznámení, soukromí a předvolby účtu.",
+    "loading": "Načítání nastavení...",
     "alerts": {
-      "loadFailed": "Failed to load settings",
-      "saveFailed": "Failed to save settings",
-      "saved": "Settings saved",
-      "languageSaveFailed": "Failed to save language preference"
+      "loadFailed": "Nepodařilo se načíst nastavení",
+      "saveFailed": "Nepodařilo se uložit nastavení",
+      "saved": "Nastavení uloženo",
+      "languageSaveFailed": "Nepodařilo se uložit předvolbu jazyka"
     },
     "panels": {
-      "notifications": "Notifications",
-      "privacy": "Privacy",
-      "region": "Region & Currency",
-      "security": "Security"
+      "notifications": "Oznámení",
+      "privacy": "Soukromí",
+      "region": "Region a měna",
+      "security": "Zabezpečení"
     },
     "notifications": {
-      "emailHeading": "Email Notifications",
+      "emailHeading": "E-mailová oznámení",
       "eventInvitations": {
-        "title": "Event invitations",
-        "desc": "Upcoming events and exclusive invitations"
+        "title": "Pozvánky na akce",
+        "desc": "Nadcházející akce a exkluzivní pozvánky"
       },
       "membershipUpdates": {
-        "title": "Membership updates",
-        "desc": "When your membership status changes"
+        "title": "Změny členství",
+        "desc": "Když se změní stav vašeho členství"
       },
       "productLaunches": {
-        "title": "Product launches",
-        "desc": "New zai products before public release"
+        "title": "Uvedení produktů",
+        "desc": "Nové produkty zai před veřejným uvedením"
       },
       "partnerOffers": {
-        "title": "Partner offers",
-        "desc": "Exclusive offers from our ecosystem partners"
+        "title": "Nabídky partnerů",
+        "desc": "Exkluzivní nabídky od partnerů našeho ekosystému"
       },
-      "pushHeading": "Push Notifications",
+      "pushHeading": "Push oznámení",
       "pushProductUpdates": {
-        "title": "Product updates",
-        "desc": "Notifications about your registered products"
+        "title": "Aktualizace produktů",
+        "desc": "Oznámení o vašich registrovaných produktech"
       },
       "pushEventReminders": {
-        "title": "Event reminders",
-        "desc": "48 hours before registered events"
+        "title": "Připomenutí akcí",
+        "desc": "48 hodin před registrovanými akcemi"
       }
     },
     "privacy": {
-      "heading": "Privacy Settings",
+      "heading": "Nastavení soukromí",
       "dataSharing": {
-        "title": "Data sharing",
-        "desc": "Share usage data to improve ZAI"
+        "title": "Sdílení dat",
+        "desc": "Sdílet údaje o používání pro zlepšování ZAI"
       },
       "analytics": {
-        "title": "Analytics",
-        "desc": "Allow analytics tracking"
+        "title": "Analytika",
+        "desc": "Povolit sledování analytiky"
       },
       "profileVisibility": {
-        "title": "Profile visibility",
-        "desc": "Make your profile visible to other members"
+        "title": "Viditelnost profilu",
+        "desc": "Zpřístupnit váš profil ostatním členům"
       },
       "communityVisibility": {
-        "title": "Community visibility",
-        "desc": "Appear in community member lists"
+        "title": "Viditelnost v komunitě",
+        "desc": "Zobrazovat se v seznamech členů komunity"
       }
     },
     "region": {
-      "heading": "Region & Currency",
-      "accountRegion": "Account region",
+      "heading": "Region a měna",
+      "accountRegion": "Region účtu",
       "currency": {
-        "title": "Currency",
-        "desc": "Used for pricing and reward values"
+        "title": "Měna",
+        "desc": "Používá se pro ceny a hodnoty odměn"
       },
       "language": {
-        "title": "Language",
-        "desc": "Portal display language"
+        "title": "Jazyk",
+        "desc": "Jazyk zobrazení portálu"
       },
       "languages": {
         "en": "English",
@@ -113,332 +113,342 @@
       }
     },
     "security": {
-      "heading": "Account Security",
-      "changePassword": "Change password",
-      "update": "Update",
-      "neverChanged": "Never changed",
-      "updatedRecently": "Last updated recently",
-      "updatedMonthsAgo_one": "Last updated {{count}} month ago",
-      "updatedMonthsAgo_other": "Last updated {{count}} months ago",
-      "twoFactor": "Two-factor authentication",
-      "twoFactorEnabledVia": "Enabled via {{method}}",
-      "twoFactorAddLayer": "Add an extra layer of security",
-      "activeSessions": "Active sessions",
-      "deviceCount_one": "{{count}} device logged in",
-      "deviceCount_other": "{{count}} devices logged in",
-      "signOutOthers": "Sign out others"
+      "heading": "Zabezpečení účtu",
+      "changePassword": "Změnit heslo",
+      "update": "Aktualizovat",
+      "neverChanged": "Nikdy neměněno",
+      "updatedRecently": "Naposledy změněno nedávno",
+      "updatedMonthsAgo_one": "Naposledy změněno před {{count}} měsícem",
+      "updatedMonthsAgo_other": "Naposledy změněno před {{count}} měsíci",
+      "twoFactor": "Dvoufázové ověření",
+      "twoFactorEnabledVia": "Aktivováno přes {{method}}",
+      "twoFactorAddLayer": "Přidejte další vrstvu zabezpečení",
+      "activeSessions": "Aktivní relace",
+      "deviceCount_one": "{{count}} přihlášené zařízení",
+      "deviceCount_other": "{{count}} přihlášených zařízení",
+      "signOutOthers": "Odhlásit ostatní",
+      "updatedMonthsAgo_few": "Naposledy změněno před {{count}} měsíci",
+      "deviceCount_few": "{{count}} přihlášená zařízení"
     }
   },
   "home": {
-    "referralBanner": "You've been invited to the zai Experience Club. Connect your wallet to get started and earn bonus points.",
+    "referralBanner": "Byli jste pozváni do zai Experience Club. Připojte svou peněženku, začněte a získejte bonusové body.",
     "hero": {
       "badge": "zai Experience Club",
-      "headingLine1": "Your world",
-      "headingLine2": "beyond the",
-      "headingLine3": "mountain",
-      "description": "Welcome to zai Experience Club. Claim your products, sign up for zai events, and manage your personal zai ski collection all in one place. The zai Experience Club makes zai more personal, more interactive, and closer than ever before!",
-      "claimProduct": "Claim Your Product",
-      "seeEvents": "See Events",
-      "viewRewards": "View Rewards",
+      "headingLine1": "Váš svět",
+      "headingLine2": "za",
+      "headingLine3": "horami",
+      "description": "Vítejte v zai Experience Club. Zaregistrujte své produkty, přihlaste se na akce zai a spravujte svou osobní sbírku lyží zai na jednom místě. zai Experience Club je osobnější, interaktivnější a bližší než kdy dřív!",
+      "claimProduct": "Zaregistrovat produkt",
+      "seeEvents": "Zobrazit akce",
+      "viewRewards": "Zobrazit odměny",
       "stats": {
-        "founded": "Founded",
-        "alpineDesign": "Alpine Design",
-        "handcrafted": "Handcrafted"
+        "founded": "Založeno",
+        "alpineDesign": "Alpský design",
+        "handcrafted": "Ruční výroba"
       },
-      "joinClub": "Join the Club",
+      "joinClub": "Vstoupit do klubu",
       "perks": {
-        "freeToJoin": "Free to join",
-        "exclusiveEvents": "Exclusive events",
-        "pointsAndRewards": "Points and rewards"
+        "freeToJoin": "Vstup zdarma",
+        "exclusiveEvents": "Exkluzivní akce",
+        "pointsAndRewards": "Body a odměny"
       }
     },
     "lockedTooltip": {
-      "badge": "Exclusive",
-      "defaultMessage": "Access exclusive content with the Experience Card membership.",
-      "claimProduct": "Claim your zai Experience Card to unlock product claims and your personal collection.",
-      "events": "Access exclusive zai events with the Experience Card membership.",
-      "rewards": "Unlock rewards and exclusive deals with your Experience Card membership.",
-      "joinRewards": "Join the zai Experience Club to start earning rewards.",
-      "joinDeals": "Join the zai Experience Club to access deals and drops."
+      "badge": "Exkluzivní",
+      "defaultMessage": "Získejte přístup k exkluzivnímu obsahu s členstvím Experience Card.",
+      "claimProduct": "Zaregistrujte svou zai Experience Card a odemkněte registraci produktů i svou osobní sbírku.",
+      "events": "Získejte přístup k exkluzivním akcím zai s členstvím Experience Card.",
+      "rewards": "Odemkněte odměny a exkluzivní nabídky s členstvím Experience Card.",
+      "joinRewards": "Vstupte do zai Experience Club a začněte získávat odměny.",
+      "joinDeals": "Vstupte do zai Experience Club a získejte přístup k nabídkám a dropům."
     },
     "experienceCard": {
       "label": "zai experience card",
-      "headingLine1": "Your key to",
-      "headingLine2": "everything zai",
-      "description": "The zai Experience Club is open to everyone. Create an account and you are a member, no purchase needed. If you already own zai products, register them here to earn points and unlock more.",
-      "step1": "Create your account, free to join and open to all",
-      "step2": "Own a zai product? Register it to earn points, go to “My Collection” page to claim it",
-      "step3": "Start earning points, joining events, and unlocking member privileges"
+      "headingLine1": "Váš klíč ke",
+      "headingLine2": "všemu od zai",
+      "description": "zai Experience Club je otevřený všem. Vytvořte si účet a stáváte se členem, bez nutnosti nákupu. Pokud už produkty zai vlastníte, zaregistrujte je zde, získejte body a odemkněte více.",
+      "step1": "Vytvořte si účet, zdarma a otevřený všem",
+      "step2": "Vlastníte produkt zai? Zaregistrujte jej a získejte body na stránce „Moje sbírka“",
+      "step3": "Začněte sbírat body, účastnit se akcí a odemykat členské výhody"
     },
     "howItWorks": {
-      "label": "how it works",
-      "headingLine1": "Start Your",
-      "headingLine2": "Membership Journey",
+      "label": "jak to funguje",
+      "headingLine1": "Začněte svou",
+      "headingLine2": "členskou cestu",
       "step1": {
-        "num": "Step 01",
-        "title": "Activate your membership",
-        "desc": "Sign up on the zai Experience Club platform and your membership is active straight away. Free to join, no purchase needed."
+        "num": "Krok 01",
+        "title": "Aktivujte své členství",
+        "desc": "Zaregistrujte se na platformě zai Experience Club a vaše členství je ihned aktivní. Zdarma, bez nutnosti nákupu."
       },
       "step2": {
-        "num": "Step 02",
-        "title": "Claim your purchased products",
-        "desc": "Claim your zai products in the My Collection page to build your digital collection, verify ownership, and access product-specific experiences and benefits."
+        "num": "Krok 02",
+        "title": "Zaregistrujte zakoupené produkty",
+        "desc": "Zaregistrujte své produkty zai na stránce Moje sbírka, vytvořte si digitální sbírku, ověřte vlastnictví a získejte přístup k zážitkům a výhodám vázaným na produkt."
       },
       "step3": {
-        "num": "Step 03",
-        "title": "Unlock exclusive benefits",
-        "desc": "Activate your complimentary ski insurance, register for exclusive events, discover member-only offers, and enjoy unique experiences. New benefits and rewards will continue to be revealed over time."
+        "num": "Krok 03",
+        "title": "Odemkněte exkluzivní výhody",
+        "desc": "Aktivujte si bezplatné pojištění lyží, registrujte se na exkluzivní akce, objevujte nabídky jen pro členy a užívejte si jedinečné zážitky. Postupně budeme odhalovat další výhody a odměny."
       },
       "step4": {
-        "num": "Step 04",
-        "title": "Be part of the community",
-        "desc": "Connect with fellow zai owners, share your experiences, and discover stories from the global zai Experience Club community."
+        "num": "Krok 04",
+        "title": "Buďte součástí komunity",
+        "desc": "Spojte se s dalšími majiteli zai, sdílejte své zážitky a objevujte příběhy z celosvětové komunity zai Experience Club."
       }
     },
     "benefits": {
-      "label": "exclusive benefits",
-      "heading": "What you unlock",
+      "label": "exkluzivní výhody",
+      "heading": "Co získáte",
       "insurance": {
-        "title": "Free Ski Insurance",
-        "desc": "Activate complimentary insurance on every new zai ski purchase directly through your portal."
+        "title": "Pojištění lyží zdarma",
+        "desc": "Aktivujte si bezplatné pojištění ke každým novým lyžím zai přímo ve svém portálu."
       },
       "events": {
-        "title": "Exclusive Events",
-        "desc": "Priority access to ski demos, factory tours, quarry visits, and personal meet-and-greets."
+        "title": "Exkluzivní akce",
+        "desc": "Přednostní přístup k testování lyží, prohlídkám výroby, návštěvám lomu a osobním setkáním."
       },
       "rewards": {
-        "title": "Rewards & Deals",
-        "desc": "Earn points on every purchase, climb tiers for better perks, and redeem exclusive member-only deals and collectible drops."
+        "title": "Odměny a nabídky",
+        "desc": "Získávejte body za každý nákup, postupujte úrovněmi za lepší výhody a uplatňujte exkluzivní členské nabídky a sběratelské dropy."
       },
-      "explore": "Explore →"
+      "explore": "Prozkoumat →"
     },
     "rewardsSection": {
-      "label": "loyalty program",
-      "heading": "Rewards & Tiers",
-      "description": "Earn 1 point for every CHF, EUR or USD spent on zai products. Climb through five exclusive tiers to unlock increasingly premium rewards, deals, and experiences.",
-      "ptsSuffix": "+ pts",
-      "cta": "View My Rewards",
+      "label": "věrnostní program",
+      "heading": "Odměny a úrovně",
+      "description": "Získejte 1 bod za každý CHF, EUR nebo USD utracený za produkty zai. Postupujte pěti exkluzivními úrovněmi a odemykejte stále prémiovější odměny, nabídky a zážitky.",
+      "ptsSuffix": "+ bodů",
+      "cta": "Zobrazit mé odměny",
       "tiers": {
         "white": {
           "name": "White",
           "perks": [
-            "CHF 25 zai event voucher"
+            "Poukaz na akce zai v hodnotě 25 CHF"
           ]
         },
         "blue": {
           "name": "Blue",
           "perks": [
-            "CHF 50 zai event voucher"
+            "Poukaz na akce zai v hodnotě 50 CHF"
           ]
         },
         "red": {
           "name": "Red",
           "perks": [
-            "CHF 100 zai event voucher"
+            "Poukaz na akce zai v hodnotě 100 CHF"
           ]
         },
         "black": {
           "name": "Black",
           "perks": [
-            "CHF 200 zai event voucher"
+            "Poukaz na akce zai v hodnotě 200 CHF"
           ]
         },
         "diamond": {
           "name": "Diamond",
           "perks": [
-            "CHF 300 zai event voucher"
+            "Poukaz na akce zai v hodnotě 300 CHF"
           ]
         }
       },
-      "rewardLabel": "Tier Reward"
+      "rewardLabel": "Odměna úrovně"
     },
     "updatesSection": {
-      "label": "updates & deals",
-      "heading": "Exclusive Offers & Drops",
-      "description": "Discover member-only deals, redeem your points for discounts and merchandise, claim limited-edition collectible drops, and stay up to date with the latest stories from the world of zai.",
+      "label": "novinky a nabídky",
+      "heading": "Exkluzivní nabídky a dropy",
+      "description": "Objevujte nabídky jen pro členy, směňujte body za slevy a zboží, získávejte sběratelské kusy v limitované edici a sledujte nejnovější příběhy ze světa zai.",
       "deals": {
-        "tag": "DEALS",
-        "title": "Deals & Offers",
-        "desc": "Exchange points for exclusive discounts on zai products and partner experiences."
+        "tag": "NABÍDKY",
+        "title": "Nabídky a slevy",
+        "desc": "Vyměňte body za exkluzivní slevy na produkty zai a partnerské zážitky."
       },
       "drops": {
-        "tag": "DROPS",
-        "title": "Collectible Drops",
-        "desc": "Claim limited-edition digital collectibles — some unlocked by owning specific products or attending events."
+        "tag": "DROPY",
+        "title": "Sběratelské dropy",
+        "desc": "Získejte digitální sběratelské kusy v limitované edici, některé odemyká vlastnictví konkrétních produktů nebo účast na akcích."
       },
       "stories": {
-        "tag": "STORIES",
+        "tag": "PŘÍBĚHY",
         "title": "zai Insights",
-        "desc": "Read articles, view photos, and watch behind-the-scenes videos from the zai universe."
+        "desc": "Čtěte články, prohlížejte fotografie a sledujte videa ze zákulisí světa zai."
       },
-      "cta": "Browse Deals & Collectibles"
+      "cta": "Procházet nabídky a sběratelské kusy"
     },
     "ecosystem": {
-      "label": "zai ecosystem",
-      "heading": "Partners & Community",
-      "description": "The zai ecosystem brings together exclusive brand partners and a global community of zai owners — connected through a shared passion for the mountain. Partners will be revealed soon. Join the community to share your experiences."
+      "label": "ekosystém zai",
+      "heading": "Partneři a komunita",
+      "description": "Ekosystém zai spojuje exkluzivní partnerské značky a celosvětovou komunitu majitelů zai, propojené společnou vášní pro hory. Partneři budou brzy představeni. Připojte se ke komunitě a sdílejte své zážitky."
     },
     "referralSection": {
-      "label": "refer a friend",
-      "heading": "Share the Experience",
-      "description": "Invite friends to join the zai Experience Club. When they claim their first product, you'll earn 200 bonus points and they'll receive 100 points to get started.",
-      "cta": "Get Your Referral Code"
+      "label": "doporučte přítele",
+      "heading": "Sdílejte zážitek",
+      "description": "Pozvěte přátele do zai Experience Club. Když si zaregistrují svůj první produkt, získáte 200 bonusových bodů a oni dostanou 100 bodů na začátek.",
+      "cta": "Získat doporučující kód"
     },
     "footer": {
-      "explore": "Explore",
-      "members": "Members",
-      "follow": "Follow",
+      "explore": "Prozkoumat",
+      "members": "Členové",
+      "follow": "Sledujte nás",
       "linksExplore": {
-        "shop": "Shop",
-        "dealers": "Dealers",
-        "contact": "Contact"
+        "shop": "Obchod",
+        "dealers": "Prodejci",
+        "contact": "Kontakt"
       },
       "linksMembers": {
-        "pointsTiers": "Points & Tiers",
-        "dealsCollectibles": "Deals & Collectibles",
+        "pointsTiers": "Body a úrovně",
+        "dealsCollectibles": "Nabídky a sběratelské kusy",
         "insights": "zai Insights",
-        "events": "Events"
+        "events": "Akce"
       },
-      "location": "Pontresina, Alps · Since 2003",
+      "location": "Pontresina, Alpy · Od roku 2003",
       "legal": {
-        "privacy": "Privacy Policy",
-        "terms": "Terms & Conditions",
-        "legalInfo": "Legal Information"
+        "privacy": "Zásady ochrany osobních údajů",
+        "terms": "Obchodní podmínky",
+        "legalInfo": "Právní informace"
       }
     }
   },
   "dashboard": {
-    "loading": "Loading...",
+    "loading": "Načítání...",
     "errors": {
-      "dashboardLoadFailed": "Failed to load dashboard"
+      "dashboardLoadFailed": "Nepodařilo se načíst nástěnku"
     },
     "locked": {
-      "badge": "Exclusive",
-      "defaultMessage": "Access exclusive content with the Experience Card membership.",
-      "claimProduct": "Claim your Experience Card to unlock product claims."
+      "badge": "Exkluzivní",
+      "defaultMessage": "Získejte přístup k exkluzivnímu obsahu s členstvím Experience Card.",
+      "claimProduct": "Zaregistrujte svou Experience Card a odemkněte registraci produktů."
     },
     "header": {
-      "eyebrow": "overview",
-      "title": "Dashboard",
-      "subtitle": "Your zai experience club at a glance — products, events, and upcoming activity.",
-      "claimProduct": "Claim Product"
+      "eyebrow": "přehled",
+      "title": "Nástěnka",
+      "subtitle": "Váš zai experience club v kostce — produkty, akce a nadcházející aktivity.",
+      "claimProduct": "Zaregistrovat produkt"
     },
     "profile": {
-      "locationNotSet": "Location not set",
-      "countryNotSet": "Country not set",
-      "tierBadge": "{{tier}} Tier",
-      "points": "{{points}} pts",
-      "pointsToNextTier": "{{points}} for {{tier}}",
-      "maxTier": "Max tier",
-      "memberSince": "Member since {{year}}",
-      "adminSince": "Admin since {{year}}",
-      "exclusiveMemberSince": "Exclusive Member since {{year}}",
-      "exclusiveMemberBadge": "Exclusive Member",
-      "noTierBadge": "No tier yet",
-      "noTierShort": "No tier"
+      "locationNotSet": "Místo neuvedeno",
+      "countryNotSet": "Země neuvedena",
+      "tierBadge": "Úroveň {{tier}}",
+      "points": "{{points}} b.",
+      "pointsToNextTier": "{{points}} do úrovně {{tier}}",
+      "maxTier": "Nejvyšší úroveň",
+      "memberSince": "Členem od roku {{year}}",
+      "adminSince": "Administrátorem od roku {{year}}",
+      "exclusiveMemberSince": "Exkluzivním členem od roku {{year}}",
+      "exclusiveMemberBadge": "Exkluzivní člen",
+      "noTierBadge": "Zatím bez úrovně",
+      "noTierShort": "Bez úrovně"
     },
     "welcome": {
-      "greeting": "Good to see you",
-      "welcomeBack": "Welcome back,",
-      "exclusiveDesc": "Explore exclusive events, manage your registered products, and access the full zai experience club.",
-      "standardDesc": "Claim your zai Experience Card to unlock your collection, exclusive events, and the full zai experience.",
-      "ecImageAlt": "zai Experience Club Card"
+      "greeting": "Rádi vás vidíme",
+      "welcomeBack": "Vítejte zpět,",
+      "exclusiveDesc": "Objevujte exkluzivní akce, spravujte své registrované produkty a využívejte zai experience club naplno.",
+      "standardDesc": "Zaregistrujte svou zai Experience Card a odemkněte svou sbírku, exkluzivní akce a celý zážitek zai.",
+      "ecImageAlt": "Karta zai Experience Club"
     },
     "stats": {
-      "totalPoints": "Total points",
-      "pointsThisMonth": "{{sign}}{{count}} this month",
-      "noActivityThisMonth": "No activity this month",
-      "productsClaimed": "Products claimed",
-      "getStartedClaim": "Get started by claiming a product",
-      "withActiveInsurance_one": "{{count}} with active insurance",
-      "withActiveInsurance_other": "{{count}} with active insurance",
-      "eventsAttended": "Events attended",
-      "upcomingCount_one": "{{count}} upcoming",
-      "upcomingCount_other": "{{count}} upcoming"
+      "totalPoints": "Celkem bodů",
+      "pointsThisMonth": "{{sign}}{{count}} tento měsíc",
+      "noActivityThisMonth": "Tento měsíc žádná aktivita",
+      "productsClaimed": "Zaregistrované produkty",
+      "getStartedClaim": "Začněte registrací produktu",
+      "withActiveInsurance_one": "{{count}} s aktivním pojištěním",
+      "withActiveInsurance_other": "{{count}} s aktivním pojištěním",
+      "eventsAttended": "Navštívené akce",
+      "upcomingCount_one": "{{count}} nadcházející",
+      "upcomingCount_other": "{{count}} nadcházejících",
+      "withActiveInsurance_few": "{{count}} s aktivním pojištěním",
+      "upcomingCount_few": "{{count}} nadcházející"
     },
     "activity": {
-      "heading": "Recent activity",
-      "empty": "No recent activity. Start by claiming a product or registering for an event!",
-      "pointsActivity": "Points activity",
-      "pointsValue": "{{sign}}{{count}} pts",
+      "heading": "Nedávná aktivita",
+      "empty": "Zatím žádná aktivita. Začněte registrací produktu nebo přihlášením na akci!",
+      "pointsActivity": "Pohyb bodů",
+      "pointsValue": "{{sign}}{{count}} b.",
       "wallet": {
-        "label": "Wallet Address:",
-        "copy": "Copy",
-        "notConnected": "No wallet connected"
+        "label": "Adresa peněženky:",
+        "copy": "Kopírovat",
+        "notConnected": "Žádná peněženka není připojena"
       }
     },
     "quickActions": {
-      "heading": "Quick actions",
+      "heading": "Rychlé akce",
       "claimProduct": {
-        "title": "Claim a product",
-        "sub": "NFC or serial number"
+        "title": "Zaregistrovat produkt",
+        "sub": "NFC nebo sériové číslo"
       },
       "browseEvents": {
-        "title": "Browse events",
-        "sub": "See upcoming events"
+        "title": "Procházet akce",
+        "sub": "Zobrazit nadcházející akce"
       },
       "viewTier": {
-        "title": "View your tier",
-        "subProgress": "{{tier}} · {{points}} pts to {{nextTier}}",
-        "subMax": "{{tier}} · Max tier reached"
+        "title": "Zobrazit vaši úroveň",
+        "subProgress": "{{tier}} · {{points}} b. do úrovně {{nextTier}}",
+        "subMax": "{{tier}} · Nejvyšší úroveň dosažena"
       },
       "shareReferral": {
-        "title": "Share referral code",
-        "sub": "Earn 200 pts per friend"
+        "title": "Sdílet doporučující kód",
+        "sub": "Získejte 200 b. za přítele"
       }
     },
     "dateFormat": {
-      "claimed": "Claimed",
-      "today": "Today",
-      "tomorrow": "Tomorrow",
-      "inDays_one": "In {{count}} day",
-      "inDays_other": "In {{count}} days",
-      "justNow": "Just now",
-      "minutesAgo_one": "{{count}}m ago",
-      "minutesAgo_other": "{{count}}m ago",
-      "hoursAgo_one": "{{count}}h ago",
-      "hoursAgo_other": "{{count}}h ago",
-      "yesterday": "Yesterday",
-      "daysAgo_one": "{{count}} day ago",
-      "daysAgo_other": "{{count}} days ago",
-      "weeksAgo_one": "{{count}} week ago",
-      "weeksAgo_other": "{{count}} weeks ago",
-      "monthsAgo_one": "{{count}} month ago",
-      "monthsAgo_other": "{{count}} months ago"
+      "claimed": "Zaregistrováno",
+      "today": "Dnes",
+      "tomorrow": "Zítra",
+      "inDays_one": "Za {{count}} den",
+      "inDays_other": "Za {{count}} dní",
+      "justNow": "Právě teď",
+      "minutesAgo_one": "před {{count}} min",
+      "minutesAgo_other": "před {{count}} min",
+      "hoursAgo_one": "před {{count}} h",
+      "hoursAgo_other": "před {{count}} h",
+      "yesterday": "Včera",
+      "daysAgo_one": "před {{count}} dnem",
+      "daysAgo_other": "před {{count}} dny",
+      "weeksAgo_one": "před {{count}} týdnem",
+      "weeksAgo_other": "před {{count}} týdny",
+      "monthsAgo_one": "před {{count}} měsícem",
+      "monthsAgo_other": "před {{count}} měsíci",
+      "inDays_few": "Za {{count}} dny",
+      "minutesAgo_few": "před {{count}} min",
+      "hoursAgo_few": "před {{count}} h",
+      "daysAgo_few": "před {{count}} dny",
+      "weeksAgo_few": "před {{count}} týdny",
+      "monthsAgo_few": "před {{count}} měsíci"
     }
   },
   "profile": {
-    "loading": "Loading profile...",
-    "fallbackName": "User",
+    "loading": "Načítání profilu...",
+    "fallbackName": "Uživatel",
     "header": {
-      "eyebrow": "account",
-      "title": "Profile",
-      "subtitle": "Manage your personal details and account preferences.",
-      "edit": "Edit",
-      "saveChanges": "Save Changes",
-      "saving": "Saving..."
+      "eyebrow": "účet",
+      "title": "Profil",
+      "subtitle": "Spravujte své osobní údaje a předvolby účtu.",
+      "edit": "Upravit",
+      "saveChanges": "Uložit změny",
+      "saving": "Ukládání..."
     },
     "tabs": {
-      "overview": "Overview",
-      "purchaseHistory": "Purchase History"
+      "overview": "Přehled",
+      "purchaseHistory": "Historie nákupů"
     },
     "avatar": {
-      "changePhoto": "Change profile photo",
+      "changePhoto": "Změnit profilovou fotografii",
       "errors": {
-        "invalidType": "Only JPG, PNG, and TIFF images are allowed.",
-        "tooLarge": "Image must be under 5 MB.",
-        "uploadFailed": "Failed to upload photo.",
-        "readFailed": "Could not read the selected file."
+        "invalidType": "Povoleny jsou pouze obrázky JPG, PNG a TIFF.",
+        "tooLarge": "Obrázek musí být menší než 5 MB.",
+        "uploadFailed": "Nepodařilo se nahrát fotografii.",
+        "readFailed": "Vybraný soubor se nepodařilo načíst."
       }
     },
     "stats": {
-      "products": "Products",
-      "events": "Events"
+      "products": "Produkty",
+      "events": "Akce"
     },
     "tier": {
-      "label": "{{name}} Tier",
-      "ptsToNext": "{{count}} pts to {{tier}}",
-      "none": "No tier yet"
+      "label": "Úroveň {{name}}",
+      "ptsToNext": "{{count}} b. do úrovně {{tier}}",
+      "none": "Zatím bez úrovně"
     },
     "tiers": {
       "blue": "Blue",
@@ -447,659 +457,663 @@
       "diamond": "Diamond"
     },
     "bullets": {
-      "memberSince": "Member since {{date}}",
-      "card": "Card: {{number}}",
-      "nfcCard": "NFC Card: {{id}}",
-      "regionTag": "CHF · Alpine region"
+      "memberSince": "Členem od {{date}}",
+      "card": "Karta: {{number}}",
+      "nfcCard": "NFC karta: {{id}}",
+      "regionTag": "CHF · Alpský region"
     },
     "sections": {
-      "personalInformation": "Personal Information",
-      "rewardsTier": "Rewards & Tier",
+      "personalInformation": "Osobní údaje",
+      "rewardsTier": "Odměny a úroveň",
       "experienceCard": "Experience Card"
     },
     "fields": {
-      "firstName": "First Name",
-      "familyName": "Family Name",
-      "dateOfBirth": "Date of Birth",
-      "phoneNumber": "Phone Number",
-      "phonePlaceholder": "79 123 4567",
-      "emailAddress": "Email Address",
-      "streetAddress": "Street Address",
-      "postalCode": "Postal Code",
-      "city": "City",
-      "country": "Country",
-      "selectCountry": "Select country",
-      "homeAddress": "Home Address"
+      "firstName": "Jméno",
+      "familyName": "Příjmení",
+      "dateOfBirth": "Datum narození",
+      "phoneNumber": "Telefonní číslo",
+      "phonePlaceholder": "601 123 456",
+      "emailAddress": "E-mailová adresa",
+      "streetAddress": "Ulice a číslo popisné",
+      "postalCode": "PSČ",
+      "city": "Město",
+      "country": "Země",
+      "selectCountry": "Vyberte zemi",
+      "homeAddress": "Domácí adresa"
     },
     "actions": {
-      "cancel": "Cancel"
+      "cancel": "Zrušit"
     },
     "tierDisplay": {
-      "loading": "Loading…",
-      "progressTo": "Progress to {{tier}}",
-      "maxTierReached": "Maximum Tier Reached",
-      "ofPoints": "/ {{max}} points",
-      "current": "Current",
+      "loading": "Načítání…",
+      "progressTo": "Postup do úrovně {{tier}}",
+      "maxTierReached": "Nejvyšší úroveň dosažena",
+      "ofPoints": "/ {{max}} bodů",
+      "current": "Aktuální",
       "max": "Max",
-      "hintNext": "Claim a new ski (+500 pts) or attend an event (+150 pts) to accelerate your progress.",
-      "hintMax": "You've unlocked every tier. Keep claiming products and attending events to earn more points.",
-      "ptsValue": "{{value}} pts",
-      "claimProductButton": "Claim Product · +500 pts"
+      "hintNext": "Zaregistrujte nové lyže (+500 b.) nebo se zúčastněte akce (+150 b.) a postupujte rychleji.",
+      "hintMax": "Odemkli jste všechny úrovně. Registrujte další produkty a navštěvujte akce, abyste získávali další body.",
+      "ptsValue": "{{value}} b.",
+      "claimProductButton": "Zaregistrovat produkt · +500 b."
     },
     "experienceCard": {
-      "editCardNumber": "Edit Card #",
-      "addCardNumber": "Add Card #",
+      "editCardNumber": "Upravit č. karty",
+      "addCardNumber": "Přidat č. karty",
       "imageAlt": "zai Experience Card",
-      "cardNumberLabel": "Card Number",
-      "cardNumberPlaceholder": "Enter card number or scan via NFC",
-      "cardNumberDisplayLabel": "Card #",
-      "scanNfc": "Scan NFC",
-      "scanning": "Scanning…",
-      "holdCardHint": "Hold your card near the device…",
-      "cancel": "Cancel",
-      "save": "Save",
-      "saving": "Saving…",
+      "cardNumberLabel": "Číslo karty",
+      "cardNumberPlaceholder": "Zadejte číslo karty nebo naskenujte přes NFC",
+      "cardNumberDisplayLabel": "Č. karty",
+      "scanNfc": "Skenovat NFC",
+      "scanning": "Skenování…",
+      "holdCardHint": "Přiložte kartu k zařízení…",
+      "cancel": "Zrušit",
+      "save": "Uložit",
+      "saving": "Ukládání…",
       "status": {
-        "title": "Status",
+        "title": "Stav",
         "desc": "NFC Experience Card",
-        "active": "Active",
-        "inactive": "Inactive"
+        "active": "Aktivní",
+        "inactive": "Neaktivní"
       },
       "nfc": {
         "title": "NFC",
-        "desc": "Contactless product claim and access",
-        "enabled": "Enabled",
-        "disabled": "Disabled"
+        "desc": "Bezkontaktní registrace produktu a přístup",
+        "enabled": "Zapnuto",
+        "disabled": "Vypnuto"
       },
-      "contract": "Contract"
+      "contract": "Smlouva"
     },
     "alerts": {
-      "updateFailed": "Failed to update profile",
-      "saveCardNumberFailed": "Failed to save card number",
-      "nfcReadError": "Could not read NFC tag. Please try again.",
-      "nfcPermissionDenied": "NFC permission denied. Please allow NFC access in your browser settings.",
-      "nfcFailed": "NFC reading failed. Make sure NFC is enabled on your device."
+      "updateFailed": "Nepodařilo se aktualizovat profil",
+      "saveCardNumberFailed": "Nepodařilo se uložit číslo karty",
+      "nfcReadError": "NFC štítek se nepodařilo přečíst. Zkuste to prosím znovu.",
+      "nfcPermissionDenied": "Přístup k NFC byl odepřen. Povolte prosím NFC v nastavení prohlížeče.",
+      "nfcFailed": "Čtení NFC selhalo. Ujistěte se, že je NFC na vašem zařízení zapnuté."
     },
     "referral": {
-      "heading": "Referral Program",
-      "description": "Share your code. When friends claim their first zai product, you earn 200 pts and they earn 100.",
-      "yourCode": "Your Referral Code",
+      "heading": "Program doporučení",
+      "description": "Sdílejte svůj kód. Když si přátelé zaregistrují svůj první produkt zai, získáte 200 b. a oni 100 b.",
+      "yourCode": "Váš doporučující kód",
       "stats": {
-        "referralsSent": "Referrals Sent",
-        "bonusPoints": "Bonus Points",
-        "valueUnlocked": "Value Unlocked"
+        "referralsSent": "Odeslaná doporučení",
+        "bonusPoints": "Bonusové body",
+        "valueUnlocked": "Odemčená hodnota"
       },
-      "copyCode": "Copy Code",
-      "copied": "Copied",
-      "shareLink": "Share Link",
-      "haveCode": "Have a Referral Code?",
-      "placeholder": "Enter code (e.g. ZAI-XXXX)",
-      "apply": "Apply",
-      "applying": "Applying…",
-      "appliedMessage": "Referral applied! You'll earn bonus points on your first product claim.",
-      "invalidCode": "Invalid referral code.",
-      "couldNotApply": "Could not apply referral code.",
-      "referredByPrefix": "Referred by code"
+      "copyCode": "Kopírovat kód",
+      "copied": "Zkopírováno",
+      "shareLink": "Sdílet odkaz",
+      "haveCode": "Máte doporučující kód?",
+      "placeholder": "Zadejte kód (např. ZAI-XXXX)",
+      "apply": "Uplatnit",
+      "applying": "Uplatňování…",
+      "appliedMessage": "Doporučení uplatněno! Při registraci prvního produktu získáte bonusové body.",
+      "invalidCode": "Neplatný doporučující kód.",
+      "couldNotApply": "Doporučující kód se nepodařilo uplatnit.",
+      "referredByPrefix": "Doporučeno kódem"
     },
     "purchaseHistory": {
-      "loading": "Loading…",
-      "emptyTitle": "No purchases yet",
-      "emptyDesc": "Deals and collectibles you claim will appear here.",
-      "deal": "Deal",
-      "collectible": "Collectible",
-      "item": "Item",
-      "free": "Free",
-      "pointsUsed": "-{{count}} pts used",
-      "pointsEarned": "+{{count}} pts earned"
+      "loading": "Načítání…",
+      "emptyTitle": "Zatím žádné nákupy",
+      "emptyDesc": "Nabídky a sběratelské kusy, které získáte, se zobrazí zde.",
+      "deal": "Nabídka",
+      "collectible": "Sběratelský kus",
+      "item": "Položka",
+      "free": "Zdarma",
+      "pointsUsed": "-{{count}} b. použito",
+      "pointsEarned": "+{{count}} b. získáno"
     },
     "countries": {
-      "Afghanistan": "Afghanistan",
-      "Albania": "Albania",
-      "Algeria": "Algeria",
+      "Afghanistan": "Afghánistán",
+      "Albania": "Albánie",
+      "Algeria": "Alžírsko",
       "Andorra": "Andorra",
       "Angola": "Angola",
       "Argentina": "Argentina",
-      "Armenia": "Armenia",
-      "Australia": "Australia",
-      "Austria": "Austria",
-      "Azerbaijan": "Azerbaijan",
-      "Bahrain": "Bahrain",
-      "Bangladesh": "Bangladesh",
-      "Belgium": "Belgium",
-      "Bolivia": "Bolivia",
-      "Bosnia and Herzegovina": "Bosnia and Herzegovina",
-      "Brazil": "Brazil",
-      "Bulgaria": "Bulgaria",
-      "Cambodia": "Cambodia",
-      "Cameroon": "Cameroon",
-      "Canada": "Canada",
+      "Armenia": "Arménie",
+      "Australia": "Austrálie",
+      "Austria": "Rakousko",
+      "Azerbaijan": "Ázerbájdžán",
+      "Bahrain": "Bahrajn",
+      "Bangladesh": "Bangladéš",
+      "Belgium": "Belgie",
+      "Bolivia": "Bolívie",
+      "Bosnia and Herzegovina": "Bosna a Hercegovina",
+      "Brazil": "Brazílie",
+      "Bulgaria": "Bulharsko",
+      "Cambodia": "Kambodža",
+      "Cameroon": "Kamerun",
+      "Canada": "Kanada",
       "Chile": "Chile",
-      "China": "China",
-      "Colombia": "Colombia",
-      "Costa Rica": "Costa Rica",
-      "Croatia": "Croatia",
-      "Cuba": "Cuba",
-      "Cyprus": "Cyprus",
-      "Czech Republic": "Czech Republic",
-      "Denmark": "Denmark",
-      "Dominican Republic": "Dominican Republic",
-      "Ecuador": "Ecuador",
+      "China": "Čína",
+      "Colombia": "Kolumbie",
+      "Costa Rica": "Kostarika",
+      "Croatia": "Chorvatsko",
+      "Cuba": "Kuba",
+      "Cyprus": "Kypr",
+      "Czech Republic": "Česká republika",
+      "Denmark": "Dánsko",
+      "Dominican Republic": "Dominikánská republika",
+      "Ecuador": "Ekvádor",
       "Egypt": "Egypt",
-      "Estonia": "Estonia",
-      "Ethiopia": "Ethiopia",
-      "Finland": "Finland",
-      "France": "France",
-      "Georgia": "Georgia",
-      "Germany": "Germany",
+      "Estonia": "Estonsko",
+      "Ethiopia": "Etiopie",
+      "Finland": "Finsko",
+      "France": "Francie",
+      "Georgia": "Gruzie",
+      "Germany": "Německo",
       "Ghana": "Ghana",
-      "Greece": "Greece",
+      "Greece": "Řecko",
       "Guatemala": "Guatemala",
-      "Hong Kong": "Hong Kong",
-      "Hungary": "Hungary",
-      "Iceland": "Iceland",
-      "India": "India",
-      "Indonesia": "Indonesia",
-      "Iran": "Iran",
-      "Iraq": "Iraq",
-      "Ireland": "Ireland",
-      "Israel": "Israel",
-      "Italy": "Italy",
-      "Jamaica": "Jamaica",
-      "Japan": "Japan",
-      "Jordan": "Jordan",
-      "Kazakhstan": "Kazakhstan",
-      "Kenya": "Kenya",
-      "Kuwait": "Kuwait",
-      "Latvia": "Latvia",
-      "Lebanon": "Lebanon",
-      "Libya": "Libya",
-      "Liechtenstein": "Liechtenstein",
-      "Lithuania": "Lithuania",
-      "Luxembourg": "Luxembourg",
-      "Malaysia": "Malaysia",
+      "Hong Kong": "Hongkong",
+      "Hungary": "Maďarsko",
+      "Iceland": "Island",
+      "India": "Indie",
+      "Indonesia": "Indonésie",
+      "Iran": "Írán",
+      "Iraq": "Irák",
+      "Ireland": "Irsko",
+      "Israel": "Izrael",
+      "Italy": "Itálie",
+      "Jamaica": "Jamajka",
+      "Japan": "Japonsko",
+      "Jordan": "Jordánsko",
+      "Kazakhstan": "Kazachstán",
+      "Kenya": "Keňa",
+      "Kuwait": "Kuvajt",
+      "Latvia": "Lotyšsko",
+      "Lebanon": "Libanon",
+      "Libya": "Libye",
+      "Liechtenstein": "Lichtenštejnsko",
+      "Lithuania": "Litva",
+      "Luxembourg": "Lucembursko",
+      "Malaysia": "Malajsie",
       "Malta": "Malta",
-      "Mexico": "Mexico",
-      "Moldova": "Moldova",
-      "Monaco": "Monaco",
-      "Mongolia": "Mongolia",
-      "Montenegro": "Montenegro",
-      "Morocco": "Morocco",
-      "Mozambique": "Mozambique",
-      "Netherlands": "Netherlands",
-      "New Zealand": "New Zealand",
-      "Nigeria": "Nigeria",
-      "North Macedonia": "North Macedonia",
-      "Norway": "Norway",
-      "Oman": "Oman",
-      "Pakistan": "Pakistan",
+      "Mexico": "Mexiko",
+      "Moldova": "Moldavsko",
+      "Monaco": "Monako",
+      "Mongolia": "Mongolsko",
+      "Montenegro": "Černá Hora",
+      "Morocco": "Maroko",
+      "Mozambique": "Mosambik",
+      "Netherlands": "Nizozemsko",
+      "New Zealand": "Nový Zéland",
+      "Nigeria": "Nigérie",
+      "North Macedonia": "Severní Makedonie",
+      "Norway": "Norsko",
+      "Oman": "Omán",
+      "Pakistan": "Pákistán",
       "Panama": "Panama",
       "Paraguay": "Paraguay",
       "Peru": "Peru",
-      "Philippines": "Philippines",
-      "Poland": "Poland",
-      "Portugal": "Portugal",
-      "Qatar": "Qatar",
-      "Romania": "Romania",
-      "Russia": "Russia",
-      "Saudi Arabia": "Saudi Arabia",
+      "Philippines": "Filipíny",
+      "Poland": "Polsko",
+      "Portugal": "Portugalsko",
+      "Qatar": "Katar",
+      "Romania": "Rumunsko",
+      "Russia": "Rusko",
+      "Saudi Arabia": "Saúdská Arábie",
       "Senegal": "Senegal",
-      "Serbia": "Serbia",
-      "Singapore": "Singapore",
-      "Slovakia": "Slovakia",
-      "Slovenia": "Slovenia",
-      "South Africa": "South Africa",
-      "South Korea": "South Korea",
-      "Spain": "Spain",
-      "Sri Lanka": "Sri Lanka",
-      "Sweden": "Sweden",
-      "Switzerland": "Switzerland",
-      "Taiwan": "Taiwan",
-      "Thailand": "Thailand",
-      "Tunisia": "Tunisia",
-      "Turkey": "Turkey",
-      "UAE": "UAE",
+      "Serbia": "Srbsko",
+      "Singapore": "Singapur",
+      "Slovakia": "Slovensko",
+      "Slovenia": "Slovinsko",
+      "South Africa": "Jihoafrická republika",
+      "South Korea": "Jižní Korea",
+      "Spain": "Španělsko",
+      "Sri Lanka": "Srí Lanka",
+      "Sweden": "Švédsko",
+      "Switzerland": "Švýcarsko",
+      "Taiwan": "Tchaj-wan",
+      "Thailand": "Thajsko",
+      "Tunisia": "Tunisko",
+      "Turkey": "Turecko",
+      "UAE": "Spojené arabské emiráty",
       "Uganda": "Uganda",
-      "Ukraine": "Ukraine",
-      "United Kingdom": "United Kingdom",
-      "United States": "United States",
+      "Ukraine": "Ukrajina",
+      "United Kingdom": "Spojené království",
+      "United States": "Spojené státy",
       "Uruguay": "Uruguay",
-      "Uzbekistan": "Uzbekistan",
+      "Uzbekistan": "Uzbekistán",
       "Venezuela": "Venezuela",
       "Vietnam": "Vietnam"
     }
   },
   "products": {
     "header": {
-      "eyebrow": "my collection",
-      "title": "Your zai Collection",
-      "subtitle": "Claim products by uploading your proof of purchase. An admin will validate your claim and your product will appear here.",
-      "claimButton": "+ Claim Product"
+      "eyebrow": "moje sbírka",
+      "title": "Vaše sbírka zai",
+      "subtitle": "Zaregistrujte produkty nahráním dokladu o koupi. Administrátor žádost ověří a produkt se zobrazí zde.",
+      "claimButton": "+ Zaregistrovat produkt"
     },
     "itemLabel": {
-      "product": "product",
-      "productCap": "Product",
-      "card": "card",
-      "cardCap": "Card"
+      "product": "produkt",
+      "productCap": "Produkt",
+      "card": "karta",
+      "cardCap": "Karta"
     },
     "notifications": {
       "pending": {
-        "title": "Claim pending review",
-        "detail": "{{item}} — submitted {{date}}"
+        "title": "Žádost čeká na posouzení",
+        "detail": "{{item}} — odesláno {{date}}"
       },
       "minting": {
-        "title": "Minting your {{item}}…",
-        "detail": "{{item}} — your NFT is being created"
+        "title": "Vytváříme váš {{item}}…",
+        "detail": "{{item}} — vaše NFT se právě vytváří"
       },
       "validated": {
-        "title": "{{item}} added to your {{destination}}!",
-        "detail": "{{item}} — validated {{date}}",
-        "destinationCollection": "collection",
-        "destinationAccount": "account"
+        "title": "{{item}} byl přidán do vaší {{destination}}!",
+        "detail": "{{item}} — ověřeno {{date}}",
+        "destinationCollection": "sbírky",
+        "destinationAccount": "účtu"
       },
       "rejected": {
-        "title": "Claim rejected",
+        "title": "Žádost zamítnuta",
         "detailWithNote": "{{item}} — {{note}}",
-        "detailNoNote": "{{item}} — contact support for details"
+        "detailNoNote": "{{item}} — pro podrobnosti kontaktujte podporu"
       },
       "error": {
-        "title": "Minting error — admin notified",
+        "title": "Chyba při vytváření — administrátor byl informován",
         "detail": "{{item}} — {{note}}",
-        "defaultNote": "an error occurred during minting"
+        "defaultNote": "při vytváření došlo k chybě"
       }
     },
     "stats": {
-      "productsClaimed": "Products Claimed",
-      "insuranceActive": "Insurance Active"
+      "productsClaimed": "Zaregistrované produkty",
+      "insuranceActive": "Aktivní pojištění"
     },
-    "collectionLabel": "your collection",
+    "collectionLabel": "vaše sbírka",
     "categoryFilter": {
-      "all": "All"
+      "all": "Vše"
     },
     "categories": {
-      "ski": "SKI",
-      "apparel": "APPAREL",
-      "accessory": "ACCESSORY"
+      "ski": "LYŽE",
+      "apparel": "OBLEČENÍ",
+      "accessory": "DOPLŇKY"
     },
     "claimCard": {
-      "title": "Claim a Product",
-      "subtitle": "Scan or upload your receipt"
+      "title": "Zaregistrovat produkt",
+      "subtitle": "Naskenujte nebo nahrajte účtenku"
     },
     "card": {
-      "insuredBadge": "INSURED",
-      "activateInsurance": "ACTIVATE INSURANCE",
-      "insuranceActive": "INSURANCE ACTIVE"
+      "insuredBadge": "POJIŠTĚNO",
+      "activateInsurance": "AKTIVOVAT POJIŠTĚNÍ",
+      "insuranceActive": "POJIŠTĚNÍ AKTIVNÍ"
     },
     "carousel": {
-      "scrollLeft": "Scroll left",
-      "scrollRight": "Scroll right"
+      "scrollLeft": "Posunout vlevo",
+      "scrollRight": "Posunout vpravo"
     },
     "howToClaim": {
-      "eyebrow": "how to claim",
-      "title": "Register your zai product",
-      "stepLabel": "step {{num}}",
+      "eyebrow": "jak registrovat",
+      "title": "Zaregistrujte svůj produkt zai",
+      "stepLabel": "krok {{num}}",
       "step1": {
-        "title": "Upload your receipt",
-        "desc": "Take a photo of your purchase receipt or upload an image of your proof of purchase."
+        "title": "Nahrajte účtenku",
+        "desc": "Vyfoťte účtenku z nákupu nebo nahrajte obrázek dokladu o koupi."
       },
       "step2": {
-        "title": "Admin review",
-        "desc": "Our team reviews your proof of purchase and validates your claim."
+        "title": "Posouzení administrátorem",
+        "desc": "Náš tým zkontroluje váš doklad o koupi a žádost ověří."
       },
       "step3": {
-        "title": "Enjoy benefits",
-        "desc": "Once validated, your product NFT is minted and you can access insurance, events, and community."
+        "title": "Využívejte výhody",
+        "desc": "Po ověření se vytvoří NFT vašeho produktu a získáte přístup k pojištění, akcím a komunitě."
       }
     },
     "detail": {
-      "price": "Price",
-      "materials": "Materials",
-      "category": "Category",
-      "insurance": "Insurance",
-      "active": "Active",
-      "notActive": "Not Active",
-      "certificate": "Certificate #{{id}}",
-      "activateInsurance": "Activate Insurance",
-      "noInsuranceNote": "Insurance is available for ski products only. This item is registered as {{category}}.",
-      "categoryAccessory": "an accessory",
-      "categoryApparel": "apparel"
+      "price": "Cena",
+      "materials": "Materiály",
+      "category": "Kategorie",
+      "insurance": "Pojištění",
+      "active": "Aktivní",
+      "notActive": "Neaktivní",
+      "certificate": "Certifikát č. {{id}}",
+      "activateInsurance": "Aktivovat pojištění",
+      "noInsuranceNote": "Pojištění je dostupné pouze pro lyže. Tato položka je registrována jako {{category}}.",
+      "categoryAccessory": "doplněk",
+      "categoryApparel": "oblečení"
     },
     "errors": {
-      "failedToLoadProducts": "Failed to load products",
-      "retry": "Retry",
-      "failedGenerateUploadLink": "Failed to generate upload link",
-      "uploadLinkExpired": "Upload link expired. Please try again.",
-      "imageTooLarge": "Image must be under 8 MB",
-      "pleaseChooseProduct": "Please choose your product",
-      "submissionFailed": "Submission failed",
-      "failedToLoadClaimableProducts": "Failed to load claimable products. Please try again.",
-      "failedActivateInsurance": "Failed to activate insurance"
+      "failedToLoadProducts": "Nepodařilo se načíst produkty",
+      "retry": "Zkusit znovu",
+      "failedGenerateUploadLink": "Nepodařilo se vytvořit odkaz pro nahrání",
+      "uploadLinkExpired": "Platnost odkazu pro nahrání vypršela. Zkuste to prosím znovu.",
+      "imageTooLarge": "Obrázek musí být menší než 8 MB",
+      "pleaseChooseProduct": "Vyberte prosím svůj produkt",
+      "submissionFailed": "Odeslání se nezdařilo",
+      "failedToLoadClaimableProducts": "Nepodařilo se načíst registrovatelné produkty. Zkuste to prosím znovu.",
+      "failedActivateInsurance": "Nepodařilo se aktivovat pojištění"
     },
     "receiptModal": {
-      "title": "Claim a Product",
+      "title": "Zaregistrovat produkt",
       "success": {
-        "title": "Claim Submitted!",
-        "desc": "Your proof of purchase is being reviewed. You'll be notified once your {{item}} is validated.",
-        "done": "Done"
+        "title": "Žádost odeslána!",
+        "desc": "Váš doklad o koupi posuzujeme. Jakmile bude {{item}} ověřen, dáme vám vědět.",
+        "done": "Hotovo"
       },
       "qr": {
-        "scanTitle": "Scan with your phone to take a photo",
-        "scanDesc": "Your phone will open a camera page. After you take the photo it will appear here automatically.",
-        "waitingForPhoto": "Waiting for photo…",
-        "backToUploadOptions": "← Back to upload options"
+        "scanTitle": "Naskenujte telefonem a vyfoťte",
+        "scanDesc": "V telefonu se otevře stránka s fotoaparátem. Po vyfocení se snímek zobrazí zde automaticky.",
+        "waitingForPhoto": "Čekání na fotografii…",
+        "backToUploadOptions": "← Zpět na možnosti nahrání"
       },
       "form": {
-        "intro": "Take a photo of your purchase receipt or upload an image. An admin will review it and validate your claim.",
-        "productNameLabel": "Product Name",
-        "loadingProducts": "Loading products…",
-        "selectProductPlaceholder": "Select a product",
-        "enterProductNamePlaceholder": "Enter product name",
-        "exampleProductPlaceholder": "e.g. ZAI Zermatt GT",
-        "proofOfPurchaseLabel": "Proof of Purchase",
-        "takePhoto": "Take Photo",
-        "openCamera": "Open camera",
-        "usePhone": "Use Phone",
-        "scanQrToTakePhoto": "Scan QR to take photo",
-        "uploadImage": "Upload Image",
+        "intro": "Vyfoťte účtenku z nákupu nebo nahrajte obrázek. Administrátor ji posoudí a žádost ověří.",
+        "productNameLabel": "Název produktu",
+        "loadingProducts": "Načítání produktů…",
+        "selectProductPlaceholder": "Vyberte produkt",
+        "enterProductNamePlaceholder": "Zadejte název produktu",
+        "exampleProductPlaceholder": "např. ZAI Zermatt GT",
+        "proofOfPurchaseLabel": "Doklad o koupi",
+        "takePhoto": "Vyfotit",
+        "openCamera": "Otevřít fotoaparát",
+        "usePhone": "Použít telefon",
+        "scanQrToTakePhoto": "Naskenujte QR a vyfoťte",
+        "uploadImage": "Nahrát obrázek",
         "fileTypes": "JPG, PNG, WebP",
-        "photoReceivedTitle": "Photo received from phone",
-        "photoReceivedDesc": "Your receipt photo has been securely uploaded and is ready to submit.",
-        "cancel": "Cancel",
-        "submitClaim": "Submit Claim",
-        "submitting": "Submitting…"
+        "photoReceivedTitle": "Fotografie přijata z telefonu",
+        "photoReceivedDesc": "Fotografie účtenky byla bezpečně nahrána a je připravena k odeslání.",
+        "cancel": "Zrušit",
+        "submitClaim": "Odeslat žádost",
+        "submitting": "Odesílání…"
       }
     },
     "insuranceModal": {
-      "title": "Activate Insurance",
-      "formIntro": "Fill in the details below to activate insurance for {{name}}.",
+      "title": "Aktivovat pojištění",
+      "formIntro": "Vyplňte níže uvedené údaje a aktivujte pojištění pro {{name}}.",
       "labels": {
-        "salutation": "Salutation",
-        "language": "Language",
-        "firstName": "First Name",
-        "lastName": "Last Name",
-        "address": "Address",
-        "zip": "Zip",
-        "city": "City",
-        "country": "Country",
-        "email": "Email",
-        "phone": "Phone",
-        "deviceInformation": "Device Information",
-        "deviceType": "Device Type",
-        "make": "Make",
+        "salutation": "Oslovení",
+        "language": "Jazyk",
+        "firstName": "Jméno",
+        "lastName": "Příjmení",
+        "address": "Adresa",
+        "zip": "PSČ",
+        "city": "Město",
+        "country": "Země",
+        "email": "E-mail",
+        "phone": "Telefon",
+        "deviceInformation": "Informace o vybavení",
+        "deviceType": "Typ vybavení",
+        "make": "Značka",
         "model": "Model",
-        "serialNumber": "Serial Number",
-        "price": "Price (CHF)",
-        "length": "Length (cm)",
-        "purchaseDate": "Purchase Date"
+        "serialNumber": "Sériové číslo",
+        "price": "Cena (CHF)",
+        "length": "Délka (cm)",
+        "purchaseDate": "Datum nákupu"
       },
-      "purchaseDateHint": "Only purchases from the last {{days}} days are eligible.",
+      "purchaseDateHint": "Nárok vzniká pouze u nákupů za posledních {{days}} dní.",
       "errors": {
-        "purchaseDateOutOfWindow": "Enter a purchase date within the last {{days}} days. Older purchases are not eligible for complimentary insurance."
+        "purchaseDateOutOfWindow": "Zadejte datum nákupu za posledních {{days}} dní. Na starší nákupy se bezplatné pojištění nevztahuje."
       },
-      "cancel": "Cancel",
-      "activateInsurance": "Activate Insurance",
+      "cancel": "Zrušit",
+      "activateInsurance": "Aktivovat pojištění",
       "loading": {
-        "activating": "Activating insurance…",
-        "mayTake": "This may take a moment"
+        "activating": "Aktivace pojištění…",
+        "mayTake": "Může to chvíli trvat"
       },
       "success": {
-        "title": "Insurance Activated!",
-        "certificateId": "Certificate ID:",
-        "transactionId": "Transaction ID:",
-        "done": "Done"
+        "title": "Pojištění aktivováno!",
+        "certificateId": "ID certifikátu:",
+        "transactionId": "ID transakce:",
+        "done": "Hotovo"
       },
       "error": {
-        "tryAgain": "Try Again",
-        "close": "Close"
+        "tryAgain": "Zkusit znovu",
+        "close": "Zavřít"
       }
     },
     "salutations": {
-      "mr": "Mr.",
-      "ms": "Ms."
+      "mr": "Pan",
+      "ms": "Paní"
     },
     "deviceTypes": {
-      "skiAlpine": "Ski Alpine",
+      "skiAlpine": "Sjezdové lyže",
       "snowboard": "Snowboard",
-      "crossCountry": "Cross-country"
+      "crossCountry": "Běžky"
     },
     "dates": {
-      "unknown": "Unknown"
+      "unknown": "Neznámé"
     }
   },
   "events": {
     "header": {
-      "eyebrow": "experiences",
-      "title": "Exclusive zai experiences",
-      "subtitle": "Experience card holders receive priority access to exclusive events."
+      "eyebrow": "zážitky",
+      "title": "Exkluzivní zážitky zai",
+      "subtitle": "Držitelé Experience Card mají přednostní přístup k exkluzivním akcím."
     },
     "sections": {
-      "upcoming": "upcoming events",
-      "past": "past events"
+      "upcoming": "nadcházející akce",
+      "past": "proběhlé akce"
     },
     "empty": {
-      "upcomingTitle": "No upcoming events",
-      "upcomingSubtitle": "Check back soon for new experiences.",
-      "pastTitle": "No past events yet",
-      "pastSubtitle": "Events you attend will appear here"
+      "upcomingTitle": "Žádné nadcházející akce",
+      "upcomingSubtitle": "Zkuste to brzy znovu, nové zážitky přibývají.",
+      "pastTitle": "Zatím žádné proběhlé akce",
+      "pastSubtitle": "Akce, kterých se zúčastníte, se zobrazí zde"
     },
     "tag": {
-      "demoDay": "DEMO DAY",
-      "factoryInviteOnly": "FACTORY · INVITE ONLY",
-      "partnerEvent": "PARTNER EVENT",
-      "community": "COMMUNITY",
-      "fallback": "EVENT"
+      "demoDay": "TESTOVACÍ DEN",
+      "factoryInviteOnly": "VÝROBA · POUZE NA POZVÁNKU",
+      "partnerEvent": "PARTNERSKÁ AKCE",
+      "community": "KOMUNITA",
+      "fallback": "AKCE"
     },
     "card": {
-      "registered": "Registered",
-      "scrollLeft": "Scroll left",
-      "scrollRight": "Scroll right"
+      "registered": "Přihlášeno",
+      "scrollLeft": "Posunout vlevo",
+      "scrollRight": "Posunout vpravo"
     },
     "modal": {
       "program": "Program",
-      "price": "Price",
-      "attendees_one": "{{current}} / {{max}} attendee",
-      "attendees_other": "{{current}} / {{max}} attendees",
-      "totalToPay": "Total to pay",
-      "cancelRegistration": "Cancel Registration",
-      "registerAndPay": "Register & Pay",
-      "register": "Register",
-      "processing": "Processing…",
-      "close": "Close"
+      "price": "Cena",
+      "attendees_one": "{{current}} / {{max}} účastník",
+      "attendees_other": "{{current}} / {{max}} účastníků",
+      "totalToPay": "Celkem k úhradě",
+      "cancelRegistration": "Zrušit přihlášku",
+      "registerAndPay": "Přihlásit se a zaplatit",
+      "register": "Přihlásit se",
+      "processing": "Zpracování…",
+      "close": "Zavřít",
+      "attendees_few": "{{current}} / {{max}} účastníci"
     },
     "voucher": {
-      "toggle": "Have an event voucher?",
-      "codeLabel": "Event voucher code",
+      "toggle": "Máte poukaz na akci?",
+      "codeLabel": "Kód poukazu na akci",
       "placeholder": "ZAI-XXXXXX-XXXX",
-      "apply": "Apply",
-      "checking": "Checking…",
-      "hint": "Find your event voucher codes under Rewards.",
-      "remove": "Remove voucher",
-      "appliedAmount": "CHF {{amount}} applied to this registration",
-      "coversFullPrice": "This voucher covers the full price — nothing left to pay.",
-      "coveredConfirmed": "Voucher {{code}} covered the full price. No payment was taken and your place is confirmed.",
-      "coveredRegistrationFailed": "Voucher {{code}} has been redeemed, but we could not confirm your place. Please contact us quoting this code — do not try again, a voucher can only be used once.",
+      "apply": "Uplatnit",
+      "checking": "Ověřování…",
+      "hint": "Kódy svých poukazů na akce najdete v sekci Odměny.",
+      "remove": "Odebrat poukaz",
+      "appliedAmount": "K této přihlášce uplatněno {{amount}} CHF",
+      "coversFullPrice": "Tento poukaz pokrývá celou cenu — není co doplácet.",
+      "coveredConfirmed": "Poukaz {{code}} pokryl celou cenu. Neproběhla žádná platba a vaše místo je potvrzeno.",
+      "coveredRegistrationFailed": "Poukaz {{code}} byl uplatněn, ale vaše místo se nepodařilo potvrdit. Kontaktujte nás prosím a uveďte tento kód — nezkoušejte to znovu, poukaz lze použít pouze jednou.",
       "breakdown": {
-        "original": "Event price",
-        "discount": "Event voucher",
-        "discountWithCode": "Event voucher {{code}}"
+        "original": "Cena akce",
+        "discount": "Poukaz na akci",
+        "discountWithCode": "Poukaz na akci {{code}}"
       },
       "errors": {
-        "notFound": "We do not recognise this voucher code. Please check it and try again.",
-        "alreadyUsed": "This voucher has already been used.",
-        "expired": "This voucher has expired.",
-        "invalid": "Please enter your event voucher code.",
-        "network": "The voucher could not be checked. Please check your connection and try again.",
-        "generic": "The voucher could not be checked. Please try again in a moment."
+        "notFound": "Tento kód poukazu neznáme. Zkontrolujte jej prosím a zkuste to znovu.",
+        "alreadyUsed": "Tento poukaz už byl použit.",
+        "expired": "Platnost tohoto poukazu vypršela.",
+        "invalid": "Zadejte prosím kód svého poukazu na akci.",
+        "network": "Poukaz se nepodařilo ověřit. Zkontrolujte připojení a zkuste to znovu.",
+        "generic": "Poukaz se nepodařilo ověřit. Zkuste to prosím za chvíli znovu."
       }
     },
     "payment": {
-      "loading": "Loading…",
-      "back": "Back",
-      "pay": "Pay {{currency}} {{amount}}",
-      "processing": "Processing…",
-      "securedByStripe": "Secured by Stripe · Registration is confirmed once payment succeeds"
+      "loading": "Načítání…",
+      "back": "Zpět",
+      "pay": "Zaplatit {{amount}} {{currency}}",
+      "processing": "Zpracování…",
+      "securedByStripe": "Zabezpečeno službou Stripe · Přihláška je potvrzena po úspěšné platbě"
     },
     "errors": {
-      "loadFailed": "Failed to load events",
-      "startCheckoutFailed": "Failed to start checkout",
-      "registerFailed": "Failed to register",
-      "unregisterFailed": "Failed to unregister",
-      "checkPaymentDetails": "Please check your payment details",
-      "paymentFailed": "Payment failed",
-      "finalizeRegistrationFailed": "Payment succeeded but we could not finalize your registration.",
-      "finalizeRegistrationFailedRetry": "Payment succeeded but we could not finalize your registration. Please refresh in a moment — it will resolve automatically.",
-      "unexpected": "An unexpected error occurred",
-      "confirmPaymentFailed": "We could not confirm your payment. Please contact support if your registration is missing.",
-      "confirmPaymentFailedServer": "We could not confirm your payment with the server. Please refresh — it should resolve automatically, or contact support."
+      "loadFailed": "Nepodařilo se načíst akce",
+      "startCheckoutFailed": "Nepodařilo se zahájit platbu",
+      "registerFailed": "Přihlášení se nezdařilo",
+      "unregisterFailed": "Odhlášení se nezdařilo",
+      "checkPaymentDetails": "Zkontrolujte prosím platební údaje",
+      "paymentFailed": "Platba se nezdařila",
+      "finalizeRegistrationFailed": "Platba proběhla, ale vaši přihlášku se nepodařilo dokončit.",
+      "finalizeRegistrationFailedRetry": "Platba proběhla, ale vaši přihlášku se nepodařilo dokončit. Obnovte prosím za chvíli stránku — vyřeší se to automaticky.",
+      "unexpected": "Došlo k neočekávané chybě",
+      "confirmPaymentFailed": "Vaši platbu se nepodařilo potvrdit. Pokud přihláška chybí, kontaktujte prosím podporu.",
+      "confirmPaymentFailedServer": "Vaši platbu se nepodařilo potvrdit se serverem. Obnovte stránku — mělo by se to vyřešit automaticky, případně kontaktujte podporu."
     },
     "alerts": {
-      "paymentSuccessful": "Payment successful! Your registration is confirmed."
+      "paymentSuccessful": "Platba proběhla úspěšně! Vaše přihláška je potvrzena."
     }
   },
   "community": {
-    "eyebrow": "zai ecosystem",
-    "title": "Community",
-    "subtitle": "A global family of zai owners — connected by the mountain.",
+    "eyebrow": "ekosystém zai",
+    "title": "Komunita",
+    "subtitle": "Celosvětová rodina majitelů zai — spojená horami.",
     "tabs": {
-      "feed": "Community",
+      "feed": "Komunita",
       "insights": "zai Insights",
-      "newBadge": "{{count}} NEW"
+      "newBadge": "{{count}} NOVÉ"
     },
     "feed": {
-      "allStoriesCount_one": "All Stories · {{count}} Post",
-      "allStoriesCount_other": "All Stories · {{count}} Posts"
+      "allStoriesCount_one": "Všechny příspěvky · {{count}} příspěvek",
+      "allStoriesCount_other": "Všechny příspěvky · {{count}} příspěvků",
+      "allStoriesCount_few": "Všechny příspěvky · {{count}} příspěvky"
     },
     "empty": {
-      "title": "No posts yet",
-      "desc": "Be the first to share your zai moment!"
+      "title": "Zatím žádné příspěvky",
+      "desc": "Buďte první, kdo sdílí svůj okamžik se zai!"
     },
     "pagination": {
-      "prev": "← Prev",
-      "next": "Next →",
-      "posts_one": "{{count}} post",
-      "posts_other": "{{count}} posts"
+      "prev": "← Předchozí",
+      "next": "Další →",
+      "posts_one": "{{count}} příspěvek",
+      "posts_other": "{{count}} příspěvků",
+      "posts_few": "{{count}} příspěvky"
     },
     "share": {
-      "heading": "Share your journey",
-      "desc": "Upload a high-fidelity image from your zai winter adventure. Tell the community about the performance, powder conditions, or alpine peaks.",
-      "cta": "Upload & Share Photo"
+      "heading": "Sdílejte svou cestu",
+      "desc": "Nahrajte kvalitní fotografii ze své zimní výpravy se zai. Napište komunitě o jízdních vlastnostech, podmínkách v prašanu nebo alpských vrcholech.",
+      "cta": "Nahrát a sdílet fotografii"
     },
     "directory": {
-      "heading": "Directory",
-      "badge": "zai members",
-      "registered_one": "{{count}} registered",
-      "registered_other": "{{count}} registered",
-      "searchPlaceholder": "Search members or locations...",
-      "empty": "No members found",
-      "blockedBadge": "blocked",
-      "unblock": "Unblock",
-      "block": "Block",
-      "prev": "‹ PREV",
-      "next": "NEXT ›",
-      "page": "Page {{current}} of {{total}}"
+      "heading": "Adresář",
+      "badge": "členové zai",
+      "registered_one": "{{count}} registrovaný",
+      "registered_other": "{{count}} registrovaných",
+      "searchPlaceholder": "Hledat členy nebo místa...",
+      "empty": "Nenalezeni žádní členové",
+      "blockedBadge": "blokován",
+      "unblock": "Odblokovat",
+      "block": "Blokovat",
+      "prev": "‹ PŘEDCHOZÍ",
+      "next": "DALŠÍ ›",
+      "page": "Strana {{current}} z {{total}}",
+      "registered_few": "{{count}} registrovaní"
     },
     "follow": {
-      "eyebrow": "Follow zai",
-      "heading": "Stay in the loop",
-      "desc": "Follow our WhatsApp channel for event announcements, new model drops, and exclusive stories from the Davos manufactory.",
+      "eyebrow": "Sledujte zai",
+      "heading": "Zůstaňte v obraze",
+      "desc": "Sledujte náš kanál na WhatsAppu a nenechte si ujít oznámení akcí, nové modely a exkluzivní příběhy z manufaktury v Davosu.",
       "brand": "zai Experience Club",
-      "followers": "1,843 followers · Updated weekly",
-      "cta": "Follow WhatsApp Channel",
-      "note": "You will be redirected to WhatsApp. No personal data is shared."
+      "followers": "1 843 odběratelů · Aktualizováno týdně",
+      "cta": "Sledovat kanál na WhatsAppu",
+      "note": "Budete přesměrováni na WhatsApp. Nesdílejí se žádné osobní údaje."
     },
     "upload": {
-      "heading": "Upload & Share",
-      "dropzone": "Click to select an image",
-      "dropzoneHint": "JPG, PNG, or TIFF · Max 4 MB",
-      "previewAlt": "Preview",
-      "captionLabel": "Caption",
-      "captionPlaceholder": "Tell us about this moment...",
-      "submit": "Upload & Share",
-      "submitting": "Uploading to IPFS...",
+      "heading": "Nahrát a sdílet",
+      "dropzone": "Kliknutím vyberte obrázek",
+      "dropzoneHint": "JPG, PNG nebo TIFF · Max 4 MB",
+      "previewAlt": "Náhled",
+      "captionLabel": "Popisek",
+      "captionPlaceholder": "Napište nám o tomto okamžiku...",
+      "submit": "Nahrát a sdílet",
+      "submitting": "Nahrávání na IPFS...",
       "errors": {
-        "invalidType": "Only JPG, PNG, and TIFF images are allowed",
-        "tooLarge": "Image must be under 4 MB",
-        "uploadFailed": "Upload failed"
+        "invalidType": "Povoleny jsou pouze obrázky JPG, PNG a TIFF",
+        "tooLarge": "Obrázek musí být menší než 4 MB",
+        "uploadFailed": "Nahrání se nezdařilo"
       }
     },
     "photo": {
-      "loading": "Loading…",
-      "delete": "Delete",
-      "remove": "Remove",
-      "deleteAdminTitle": "Delete (admin)",
-      "addReactionTitle": "Add reaction",
-      "noComments": "No comments yet",
-      "commentPlaceholder": "Add a comment...",
-      "post": "Post",
-      "confirmDelete": "Delete this photo?",
-      "confirmDeleteComment": "Delete this comment?",
+      "loading": "Načítání…",
+      "delete": "Smazat",
+      "remove": "Odebrat",
+      "deleteAdminTitle": "Smazat (administrátor)",
+      "addReactionTitle": "Přidat reakci",
+      "noComments": "Zatím žádné komentáře",
+      "commentPlaceholder": "Přidat komentář...",
+      "post": "Odeslat",
+      "confirmDelete": "Smazat tuto fotografii?",
+      "confirmDeleteComment": "Smazat tento komentář?",
       "errors": {
-        "addComment": "Failed to add comment",
-        "deletePhoto": "Failed to delete",
-        "deleteComment": "Failed to delete comment",
-        "react": "Failed to react"
+        "addComment": "Komentář se nepodařilo přidat",
+        "deletePhoto": "Smazání se nezdařilo",
+        "deleteComment": "Komentář se nepodařilo smazat",
+        "react": "Reakci se nepodařilo přidat"
       },
-      "close": "Close"
+      "close": "Zavřít"
     },
     "members": {
-      "confirmBlock": "Block \"{{name}}\"? Enter a reason (optional):",
-      "confirmUnblock": "Unblock this member?",
+      "confirmBlock": "Blokovat „{{name}}“? Zadejte důvod (nepovinné):",
+      "confirmUnblock": "Odblokovat tohoto člena?",
       "errors": {
-        "block": "Failed to block member",
-        "unblock": "Failed to unblock member"
+        "block": "Člena se nepodařilo blokovat",
+        "unblock": "Člena se nepodařilo odblokovat"
       }
     },
     "insights": {
-      "empty": "No stories yet. Check back soon.",
-      "topStory": "Top Story",
-      "allStories": "All Stories",
+      "empty": "Zatím žádné příběhy. Zkuste to brzy znovu.",
+      "topStory": "Hlavní příběh",
+      "allStories": "Všechny příběhy",
       "video": "VIDEO",
-      "exclusive": "EXCLUSIVE",
-      "exclusiveTag": "{{category}} · EXCLUSIVE",
-      "watch": "WATCH →",
-      "view": "VIEW →",
-      "read": "READ →",
-      "viewOriginal": "View Original ↗",
+      "exclusive": "EXKLUZIVNĚ",
+      "exclusiveTag": "{{category}} · EXKLUZIVNĚ",
+      "watch": "PŘEHRÁT →",
+      "view": "ZOBRAZIT →",
+      "read": "ČÍST →",
+      "viewOriginal": "Zobrazit originál ↗",
       "mediaType": {
         "video": "video",
-        "photo": "photo",
-        "article": "article",
-        "product_launch": "product launch"
+        "photo": "fotografie",
+        "article": "článek",
+        "product_launch": "uvedení produktu"
       },
       "categories": {
-        "editorial": "Editorial",
-        "behindTheScenes": "Behind the Scenes",
-        "tech": "Tech",
-        "lifestyle": "Lifestyle",
-        "product": "Product"
+        "editorial": "Redakční",
+        "behindTheScenes": "Ze zákulisí",
+        "tech": "Technologie",
+        "lifestyle": "Životní styl",
+        "product": "Produkt"
       }
     },
     "time": {
-      "justNow": "just now",
-      "minutesAgo": "{{count}}m ago",
-      "hoursAgo": "{{count}}h ago",
-      "yesterday": "yesterday",
-      "daysAgo": "{{count}}d ago",
-      "weeksAgo": "{{count}}w ago"
+      "justNow": "právě teď",
+      "minutesAgo": "před {{count}} min",
+      "hoursAgo": "před {{count}} h",
+      "yesterday": "včera",
+      "daysAgo": "před {{count}} d",
+      "weeksAgo": "před {{count}} týd."
     }
   },
   "rewards": {
     "header": {
-      "label": "Loyalty tiers",
-      "title": "Points & tiers",
-      "description": "Progress through tiers by claiming products and accumulating experience points."
+      "label": "Věrnostní úrovně",
+      "title": "Body a úrovně",
+      "description": "Postupujte úrovněmi registrací produktů a sbíráním zkušenostních bodů."
     },
-    "loading": "Loading rewards…",
-    "loadError": "Your points and tiers could not be loaded. Please refresh the page.",
+    "loading": "Načítání odměn…",
+    "loadError": "Vaše body a úrovně se nepodařilo načíst. Obnovte prosím stránku.",
     "banner": {
-      "label": "Your current standing",
-      "tierWord": "Tier",
-      "noTier": "No tier yet",
-      "noTierHint": "{{points}} more points to reach {{tier}}."
+      "label": "Váš aktuální stav",
+      "tierWord": "Úroveň",
+      "noTier": "Zatím bez úrovně",
+      "noTierHint": "Ještě {{points}} bodů do úrovně {{tier}}."
     },
-    "yourTierBadge": "Your tier",
+    "yourTierBadge": "Vaše úroveň",
     "tierRange": {
-      "withCeiling": "{{floor}} – {{ceiling}} points",
-      "noCeiling": "{{floor}}+ points"
+      "withCeiling": "{{floor}} – {{ceiling}} bodů",
+      "noCeiling": "{{floor}}+ bodů"
     },
     "tiers": {
       "white": {
@@ -1119,443 +1133,455 @@
       }
     },
     "progress": {
-      "toNextTier": "Progress to {{tier}}",
-      "maxTierReached": "Maximum tier reached",
-      "helperNext": "Claim a new ski (+500 pts) or attend an event (+150 pts) to accelerate your progress.",
-      "helperMax": "You've unlocked every tier. Keep claiming products and attending events to earn more points.",
-      "current": "Current",
+      "toNextTier": "Postup do úrovně {{tier}}",
+      "maxTierReached": "Nejvyšší úroveň dosažena",
+      "helperNext": "Zaregistrujte nové lyže (+500 b.) nebo se zúčastněte akce (+150 b.) a postupujte rychleji.",
+      "helperMax": "Odemkli jste všechny úrovně. Registrujte další produkty a navštěvujte akce, abyste získávali další body.",
+      "current": "Aktuální",
       "max": "Max",
-      "claimButton": "Claim product · +500 pts"
+      "claimButton": "Zaregistrovat produkt · +500 b."
     },
     "activity": {
-      "sectionTitle": "Recent activity"
+      "sectionTitle": "Nedávná aktivita"
     },
     "vouchers": {
-      "sectionTitle": "Tier event vouchers",
-      "intro": "Every tier unlocks a one-time event voucher, redeemable against any zai ski event purchase. Each voucher is valid for two years from the day you claim it — one per member, per tier.",
-      "blockLabel": "Event voucher",
-      "amount": "CHF {{amount}}",
-      "locked": "Locked",
-      "lockedHint": "{{points}} more points to unlock",
-      "claim": "Claim voucher",
-      "claiming": "Claiming…",
-      "claimedConfirmation": "Voucher claimed",
-      "codeLabel": "Voucher code",
-      "validityNote": "Valid two years from the day you claim it.",
-      "validUntil": "Valid until {{date}}",
-      "redeemed": "Redeemed on {{date}}",
-      "copy": "Copy code",
-      "copied": "Copied",
-      "selectHint": "Code selected — press Ctrl/Cmd + C to copy.",
-      "loadError": "Your vouchers could not be loaded. Please refresh the page to see their status.",
+      "sectionTitle": "Poukazy na akce podle úrovně",
+      "intro": "Každá úroveň odemyká jednorázový poukaz na akci, uplatnitelný na nákup jakékoli lyžařské akce zai. Každý poukaz platí dva roky ode dne uplatnění — jeden na člena a úroveň.",
+      "blockLabel": "Poukaz na akci",
+      "amount": "{{amount}} CHF",
+      "locked": "Uzamčeno",
+      "lockedHint": "Ještě {{points}} bodů k odemčení",
+      "claim": "Získat poukaz",
+      "claiming": "Získávání…",
+      "claimedConfirmation": "Poukaz získán",
+      "codeLabel": "Kód poukazu",
+      "validityNote": "Platí dva roky ode dne získání.",
+      "validUntil": "Platí do {{date}}",
+      "redeemed": "Uplatněno {{date}}",
+      "copy": "Kopírovat kód",
+      "copied": "Zkopírováno",
+      "selectHint": "Kód je vybrán — zkopírujte jej stisknutím Ctrl/Cmd + C.",
+      "loadError": "Vaše poukazy se nepodařilo načíst. Obnovte prosím stránku a zobrazte jejich stav.",
       "errors": {
-        "notReached": "This tier is not reached yet — {{required}} points required.",
-        "network": "The voucher could not be claimed. Please check your connection and try again.",
-        "generic": "The voucher could not be claimed. Please try again in a moment."
+        "notReached": "Této úrovně jste zatím nedosáhli — je potřeba {{required}} bodů.",
+        "network": "Poukaz se nepodařilo získat. Zkontrolujte připojení a zkuste to znovu.",
+        "generic": "Poukaz se nepodařilo získat. Zkuste to prosím za chvíli znovu."
       }
     },
     "units": {
-      "pointsValue": "{{value}} pts"
+      "pointsValue": "{{value}} b."
     }
   },
   "updates": {
     "common": {
-      "loading": "Loading…",
-      "processing": "Processing…"
+      "loading": "Načítání…",
+      "processing": "Zpracování…"
     },
     "header": {
-      "title": "Deals & Collectibles",
-      "memberAccessOnly": "Member access only"
+      "title": "Nabídky a sběratelské kusy",
+      "memberAccessOnly": "Pouze pro členy"
     },
     "tabs": {
-      "deals": "Deals",
-      "collectibles": "Collectible Drops"
+      "deals": "Nabídky",
+      "collectibles": "Sběratelské dropy"
     },
     "featured": {
-      "label": "— FEATURED DEAL",
-      "availableHoursOnly": "⊙ Available {{hours}}h only",
-      "exclusiveMemberPricing": "Exclusive Member Pricing",
-      "limitedAvailability": "Limited availability",
-      "claimOffer": "Claim offer, CHF {{price}}",
-      "newDeal": "New Deal"
+      "label": "— DOPORUČENÁ NABÍDKA",
+      "availableHoursOnly": "⊙ Dostupné pouze {{hours}} h",
+      "exclusiveMemberPricing": "Exkluzivní členská cena",
+      "limitedAvailability": "Omezená dostupnost",
+      "claimOffer": "Využít nabídku, {{price}} CHF",
+      "newDeal": "Nová nabídka"
     },
     "regular": {
-      "memberDealsLabel": "MEMBER DEALS",
-      "exclusiveOffers": "Exclusive Offers",
-      "viewAllDeals": "View all deals →",
-      "membersOnly": "Members only",
-      "upToPtsMax_one": "Up to {{count}} pt max",
-      "upToPtsMax_other": "Up to {{count}} pts max",
-      "saveChf": "save CHF {{amount}}",
-      "endsOn": "Ends",
-      "applyPoints": "Claim Deal →"
+      "memberDealsLabel": "ČLENSKÉ NABÍDKY",
+      "exclusiveOffers": "Exkluzivní nabídky",
+      "viewAllDeals": "Zobrazit všechny nabídky →",
+      "membersOnly": "Pouze pro členy",
+      "upToPtsMax_one": "Až {{count}} bod max.",
+      "upToPtsMax_other": "Až {{count}} bodů max.",
+      "saveChf": "ušetříte {{amount}} CHF",
+      "endsOn": "Končí",
+      "applyPoints": "Využít nabídku →",
+      "upToPtsMax_few": "Až {{count}} body max."
     },
     "emptyStates": {
-      "noDeals": "No deals available yet. Check back soon.",
-      "noCollectibles": "No collectible drops available yet. Check back soon."
+      "noDeals": "Zatím nejsou dostupné žádné nabídky. Zkuste to brzy znovu.",
+      "noCollectibles": "Zatím nejsou dostupné žádné sběratelské dropy. Zkuste to brzy znovu."
     },
     "deal": {
-      "fullPrice": "Full price",
-      "yourBalance": "Your balance",
-      "pointsToApply": "Points to apply",
-      "pts_one": "{{count}} pt",
-      "pts_other": "{{count}} pts",
-      "ptsMax_one": "{{count}} pt max",
-      "ptsMax_other": "{{count}} pts max",
+      "fullPrice": "Plná cena",
+      "yourBalance": "Váš zůstatek",
+      "pointsToApply": "Body k uplatnění",
+      "pts_one": "{{count}} bod",
+      "pts_other": "{{count}} bodů",
+      "ptsMax_one": "max. {{count}} bod",
+      "ptsMax_other": "max. {{count}} bodů",
       "summary": {
-        "fullPrice": "Full price",
-        "pointsDiscount_one": "Points discount ({{count}} pt)",
-        "pointsDiscount_other": "Points discount ({{count}} pts)",
-        "youPay": "You pay",
-        "dealDiscount": "Deal discount ({{pct}}%)"
+        "fullPrice": "Plná cena",
+        "pointsDiscount_one": "Sleva za body ({{count}} bod)",
+        "pointsDiscount_other": "Sleva za body ({{count}} bodů)",
+        "youPay": "Zaplatíte",
+        "dealDiscount": "Sleva z nabídky ({{pct}} %)",
+        "pointsDiscount_few": "Sleva za body ({{count}} body)"
       },
-      "continueToPayment": "Continue to payment",
-      "pointsNote": "1 pt = CHF 0.01 · Points deducted from your balance on confirmation",
-      "totalToPay": "Total to pay",
-      "continueToShipping": "Continue to shipping"
+      "continueToPayment": "Pokračovat k platbě",
+      "pointsNote": "1 bod = 0,01 CHF · Body se odečtou ze zůstatku při potvrzení",
+      "totalToPay": "Celkem k úhradě",
+      "continueToShipping": "Pokračovat k doručení",
+      "pts_few": "{{count}} body",
+      "ptsMax_few": "max. {{count}} body"
     },
     "payment": {
-      "back": "Back",
-      "pay": "Pay CHF {{amount}}",
-      "securedByStripe": "Secured by Stripe",
+      "back": "Zpět",
+      "pay": "Zaplatit {{amount}} CHF",
+      "securedByStripe": "Zabezpečeno službou Stripe",
       "errors": {
-        "fulfillmentFailed": "Payment succeeded but we could not finalize your order.",
-        "checkDetails": "Please check your payment details",
-        "paymentFailed": "Payment failed",
-        "fulfillmentFailedRetry": "Payment succeeded but we could not finalize your order. Please refresh in a moment — it will resolve automatically.",
-        "unexpected": "An unexpected error occurred"
+        "fulfillmentFailed": "Platba proběhla, ale objednávku se nepodařilo dokončit.",
+        "checkDetails": "Zkontrolujte prosím platební údaje",
+        "paymentFailed": "Platba se nezdařila",
+        "fulfillmentFailedRetry": "Platba proběhla, ale objednávku se nepodařilo dokončit. Obnovte prosím za chvíli stránku — vyřeší se to automaticky.",
+        "unexpected": "Došlo k neočekávané chybě"
       }
     },
     "alerts": {
-      "paymentCancelled": "Payment was cancelled.",
-      "paymentSuccessful": "Payment successful! Points have been updated.",
-      "confirmFailedGeneric": "We could not confirm your payment. Please contact support if points/product are missing.",
-      "confirmFailedNetwork": "We could not confirm your payment with the server. Please refresh — it should resolve automatically, or contact support.",
-      "createPaymentFailed": "Failed to create payment",
-      "somethingWrong": "Something went wrong",
-      "claimed": "Claimed! +{{points}} pts",
-      "claimFailed": "Claim failed"
+      "paymentCancelled": "Platba byla zrušena.",
+      "paymentSuccessful": "Platba proběhla úspěšně! Body byly aktualizovány.",
+      "confirmFailedGeneric": "Vaši platbu se nepodařilo potvrdit. Pokud body nebo produkt chybí, kontaktujte prosím podporu.",
+      "confirmFailedNetwork": "Vaši platbu se nepodařilo potvrdit se serverem. Obnovte stránku — mělo by se to vyřešit automaticky, případně kontaktujte podporu.",
+      "createPaymentFailed": "Nepodařilo se vytvořit platbu",
+      "somethingWrong": "Něco se pokazilo",
+      "claimed": "Získáno! +{{points}} b.",
+      "claimFailed": "Získání se nezdařilo"
     },
     "collectibles": {
-      "dropsLabel": "COLLECTIBLE DROPS",
-      "piecesSet": "{{count}}-piece set · Season {{season}}",
-      "collectDesc": "Collect exclusive collectible drops to earn points and unlock exclusive member rewards",
-      "yourCollection": "Your collection",
-      "locked": "Locked",
-      "editionClosed": "Edition closed",
-      "claimed": "Claimed ✓",
-      "availableNow": "Available now",
-      "ptsEarned": "Pts earned",
-      "ptsToEarn": "Pts to earn",
-      "claimNow": "Claim now"
+      "dropsLabel": "SBĚRATELSKÉ DROPY",
+      "piecesSet": "Sada {{count}} kusů · Sezóna {{season}}",
+      "collectDesc": "Sbírejte exkluzivní sběratelské dropy, získávejte body a odemykejte exkluzivní členské odměny",
+      "yourCollection": "Vaše sbírka",
+      "locked": "Uzamčeno",
+      "editionClosed": "Edice uzavřena",
+      "claimed": "Získáno ✓",
+      "availableNow": "Nyní dostupné",
+      "ptsEarned": "Získané body",
+      "ptsToEarn": "Body k získání",
+      "claimNow": "Získat nyní"
     },
     "shipping": {
-      "back": "← Back",
-      "heading": "Shipping details",
-      "intro": "Prefilled from your profile. Check it is right, we ship here.",
-      "firstName": "First name",
-      "familyName": "Family name",
-      "street": "Street and number",
-      "postcode": "Postcode",
-      "city": "City",
-      "country": "Country",
-      "phone": "Phone, for the courier",
-      "saveDefault": "Save this as my default address",
-      "confirmAndPay": "Confirm and pay CHF {{amount}}",
-      "required": "Please complete every field so we know where to ship."
+      "back": "← Zpět",
+      "heading": "Doručovací údaje",
+      "intro": "Předvyplněno z vašeho profilu. Zkontrolujte správnost, sem odešleme zásilku.",
+      "firstName": "Jméno",
+      "familyName": "Příjmení",
+      "street": "Ulice a číslo popisné",
+      "postcode": "PSČ",
+      "city": "Město",
+      "country": "Země",
+      "phone": "Telefon pro kurýra",
+      "saveDefault": "Uložit jako mou výchozí adresu",
+      "confirmAndPay": "Potvrdit a zaplatit {{amount}} CHF",
+      "required": "Vyplňte prosím všechna pole, abychom věděli, kam zásilku odeslat."
     }
   },
   "admin": {
     "header": {
-      "label": "admin",
-      "title": "Claim Requests",
-      "subtitle": "Review proof-of-purchase submissions and validate product claims."
+      "label": "administrace",
+      "title": "Žádosti o registraci",
+      "subtitle": "Posuzujte odeslané doklady o koupi a ověřujte žádosti o registraci produktů."
     },
-    "accessRequired": "Admin access required.",
+    "accessRequired": "Vyžaduje se přístup administrátora.",
     "filters": {
-      "pending": "pending",
-      "validated": "validated",
-      "rejected": "rejected",
-      "all": "all",
-      "count_one": "{{count}} claim",
-      "count_other": "{{count}} claims"
+      "pending": "čekající",
+      "validated": "ověřené",
+      "rejected": "zamítnuté",
+      "all": "vše",
+      "count_one": "{{count}} žádost",
+      "count_other": "{{count}} žádostí",
+      "count_few": "{{count}} žádosti"
     },
     "status": {
-      "pending": "pending",
-      "minting": "minting",
-      "validated": "validated",
-      "rejected": "rejected",
-      "error": "error"
+      "pending": "čeká",
+      "minting": "vytváří se",
+      "validated": "ověřeno",
+      "rejected": "zamítnuto",
+      "error": "chyba"
     },
-    "loading": "Loading claims…",
+    "loading": "Načítání žádostí…",
     "errors": {
-      "retry": "Retry",
-      "failedToLoadClaims": "Failed to load claims",
-      "validationFailed": "Validation failed",
-      "rejectionFailed": "Rejection failed",
-      "mintStartFailed": "Could not start minting: {{error}}",
-      "unknownError": "Unknown error"
+      "retry": "Zkusit znovu",
+      "failedToLoadClaims": "Nepodařilo se načíst žádosti",
+      "validationFailed": "Ověření se nezdařilo",
+      "rejectionFailed": "Zamítnutí se nezdařilo",
+      "mintStartFailed": "Nepodařilo se zahájit vytváření: {{error}}",
+      "unknownError": "Neznámá chyba"
     },
     "empty": {
-      "noClaimsFiltered": "No {{status}} claim requests.",
-      "noClaimsAll": "No claim requests."
+      "noClaimsFiltered": "Žádné žádosti se stavem {{status}}.",
+      "noClaimsAll": "Žádné žádosti o registraci."
     },
     "list": {
-      "product": "Product",
-      "unnamedProduct": "Unnamed product",
-      "submitted": "Submitted {{date}}",
-      "proofAlt": "Proof"
+      "product": "Produkt",
+      "unnamedProduct": "Produkt bez názvu",
+      "submitted": "Odesláno {{date}}",
+      "proofAlt": "Doklad"
     },
     "pagination": {
-      "prev": "← Prev",
-      "next": "Next →"
+      "prev": "← Předchozí",
+      "next": "Další →"
     },
     "modal": {
-      "reviewTitle": "Review Claim Request"
+      "reviewTitle": "Posoudit žádost o registraci"
     },
     "claim": {
-      "claimId": "Claim ID:",
-      "submittedBy": "Submitted By",
-      "proofOfPurchase": "Proof of Purchase",
-      "proofAlt": "Proof of purchase",
-      "clickToZoom": "Click to zoom",
-      "status": "Status: {{status}}",
-      "note": "Note: {{note}}",
-      "mintTx": "Mint TX:",
-      "productToMint": "Product to Mint",
-      "selectProductToMint": "Select Product to Mint",
-      "experienceCardName": "zai Experience Club Card",
-      "membershipCardAuto": "Membership card · selected automatically",
-      "selectProductPlaceholder": "— Select a product —",
-      "adminNoteLabel": "Admin Note (optional)",
-      "notePlaceholder": "Add a note…",
-      "reject": "Reject",
-      "validateAndMint": "Validate & Mint",
-      "processing": "Processing…"
+      "claimId": "ID žádosti:",
+      "submittedBy": "Odeslal",
+      "proofOfPurchase": "Doklad o koupi",
+      "proofAlt": "Doklad o koupi",
+      "clickToZoom": "Kliknutím přiblížíte",
+      "status": "Stav: {{status}}",
+      "note": "Poznámka: {{note}}",
+      "mintTx": "Transakce vytvoření:",
+      "productToMint": "Produkt k vytvoření",
+      "selectProductToMint": "Vyberte produkt k vytvoření",
+      "experienceCardName": "Karta zai Experience Club",
+      "membershipCardAuto": "Členská karta · vybrána automaticky",
+      "selectProductPlaceholder": "— Vyberte produkt —",
+      "adminNoteLabel": "Poznámka administrátora (nepovinné)",
+      "notePlaceholder": "Přidat poznámku…",
+      "reject": "Zamítnout",
+      "validateAndMint": "Ověřit a vytvořit",
+      "processing": "Zpracování…"
     }
   },
   "adminStore": {
-    "accessDenied": "Admin access required.",
+    "accessDenied": "Vyžaduje se přístup administrátora.",
     "header": {
-      "badge": "admin",
-      "title": "Store & Content",
-      "subtitle": "Manage deals, collectible drops, and media stories."
+      "badge": "administrace",
+      "title": "Obchod a obsah",
+      "subtitle": "Spravujte nabídky, sběratelské dropy a mediální příběhy."
     },
     "tabs": {
-      "deals": "Deals",
-      "collectibles": "Collectibles",
-      "media": "Media & Stories",
-      "points": "Points",
-      "orders": "Orders"
+      "deals": "Nabídky",
+      "collectibles": "Sběratelské kusy",
+      "media": "Média a příběhy",
+      "points": "Body",
+      "orders": "Objednávky"
     },
     "common": {
-      "loading": "Loading…",
-      "cancel": "Cancel",
-      "saving": "Saving…",
-      "create": "Create",
-      "update": "Update",
-      "edit": "Edit",
-      "remove": "Remove",
-      "saveFailed": "Save failed",
-      "featured": "Featured",
-      "selectPlaceholder": "Select a product…",
-      "clearSelection": "Clear selection",
-      "searchPlaceholder": "Search products…",
-      "noProductsMatch": "No products match \"{{search}}\""
+      "loading": "Načítání…",
+      "cancel": "Zrušit",
+      "saving": "Ukládání…",
+      "create": "Vytvořit",
+      "update": "Aktualizovat",
+      "edit": "Upravit",
+      "remove": "Odebrat",
+      "saveFailed": "Uložení se nezdařilo",
+      "featured": "Doporučeno",
+      "selectPlaceholder": "Vyberte produkt…",
+      "clearSelection": "Zrušit výběr",
+      "searchPlaceholder": "Hledat produkty…",
+      "noProductsMatch": "Dotazu „{{search}}“ neodpovídají žádné produkty"
     },
     "list": {
-      "dealsCount_one": "{{count}} deal",
-      "dealsCount_other": "{{count}} deals",
-      "storiesCount_one": "{{count}} story",
-      "storiesCount_other": "{{count}} stories",
-      "newDeal": "+ New Deal",
-      "newStory": "+ New Story",
-      "noDeals": "No deals yet. Create your first deal.",
-      "noStories": "No stories yet. Create your first story.",
+      "dealsCount_one": "{{count}} nabídka",
+      "dealsCount_other": "{{count}} nabídek",
+      "storiesCount_one": "{{count}} příběh",
+      "storiesCount_other": "{{count}} příběhů",
+      "newDeal": "+ Nová nabídka",
+      "newStory": "+ Nový příběh",
+      "noDeals": "Zatím žádné nabídky. Vytvořte svou první nabídku.",
+      "noStories": "Zatím žádné příběhy. Vytvořte svůj první příběh.",
       "nft": "NFT",
-      "endsOn": "Ends {{date}}",
-      "spotsLeft": "{{left}}/{{total}} spots",
-      "pointsOnly": "Points only",
-      "pointsCost": "{{points}} points"
+      "endsOn": "Končí {{date}}",
+      "spotsLeft": "{{left}}/{{total}} míst",
+      "pointsOnly": "Pouze za body",
+      "pointsCost": "{{points}} bodů",
+      "dealsCount_few": "{{count}} nabídky",
+      "storiesCount_few": "{{count}} příběhy"
     },
     "dealForm": {
-      "editTitle": "Edit Deal",
-      "newTitle": "New Deal",
-      "linkProduct": "Link to Product (optional — auto-fills fields)",
-      "inheritedFrom": "Inherited from product",
-      "nftAutoMint": "NFT auto-mint enabled",
-      "title": "Title",
-      "titlePlaceholder": "zai Sunglasses",
-      "description": "Description",
-      "category": "Category",
+      "editTitle": "Upravit nabídku",
+      "newTitle": "Nová nabídka",
+      "linkProduct": "Propojit s produktem (nepovinné — automaticky vyplní pole)",
+      "inheritedFrom": "Převzato z produktu",
+      "nftAutoMint": "Automatické vytvoření NFT zapnuto",
+      "title": "Název",
+      "titlePlaceholder": "Sluneční brýle zai",
+      "description": "Popis",
+      "category": "Kategorie",
       "categoryOptions": {
-        "accessories": "Accessories",
-        "apparel": "Apparel",
-        "skis": "Skis",
-        "event": "Event",
-        "experience": "Experience"
+        "accessories": "Doplňky",
+        "apparel": "Oblečení",
+        "skis": "Lyže",
+        "event": "Akce",
+        "experience": "Zážitek"
       },
-      "price": "Price (CHF)",
-      "pointsOnly": "Points-only redemption",
-      "pointsOnlyOffHint": "Off: members pay in CHF and can apply a points discount.",
-      "pointsOnlyOnHint": "Members redeem this deal with points only. The CHF price and max points discount are saved as 0 and are not editable.",
-      "pointsPrice": "Points Price",
-      "pointsPriceRequired": "Enter a points price above 0 for a points-only deal.",
-      "maxPointsDiscount": "Max Points Discount",
-      "totalSpots": "Total Spots (0 = unlimited)",
-      "imageUrl": "Image URL",
-      "endsAt": "Ends At",
-      "confirmDeactivate": "Deactivate this deal?",
-      "imageUploadButton": "Upload image",
-      "imageUploading": "Uploading…",
-      "imageUploadHint": "Uploaded images are hosted by us and will not expire.",
-      "imageUploadTypeError": "Please choose a JPG, PNG or WebP image.",
-      "imageUploadSizeError": "That image is over 8 MB. Please choose a smaller file.",
-      "imageUploadFailed": "Upload failed. Please try again.",
-      "priceInvalid": "Enter the price as a number, for example 1950 or 1950.50.",
-      "discountInvalid": "Max points discount must be a whole number.",
-      "discountPercent": "Discount %",
-      "discountPercentHint": "0 for no discount. Members pay the reduced price.",
-      "discountedPrice": "Discounted price (CHF)",
-      "discountedPriceHint": "Was CHF {{list}} — {{pct}}% off",
-      "noDiscount": "No discount — members pay the full price.",
-      "discountNeedsPrice": "Set a price first.",
-      "pointsOff": "Points are off for this deal — members pay in CHF only.",
-      "pointsCapValue": "Members can take up to CHF {{chf}} off with points.",
-      "pointsCoverFull": "cover the full price ({{points}} pts)",
-      "pointsTurnOff": "turn points off"
+      "price": "Cena (CHF)",
+      "pointsOnly": "Uplatnění pouze za body",
+      "pointsOnlyOffHint": "Vypnuto: členové platí v CHF a mohou uplatnit slevu za body.",
+      "pointsOnlyOnHint": "Členové uplatní tuto nabídku pouze za body. Cena v CHF a maximální sleva za body se uloží jako 0 a nelze je upravovat.",
+      "pointsPrice": "Cena v bodech",
+      "pointsPriceRequired": "Zadejte cenu v bodech vyšší než 0 pro nabídku pouze za body.",
+      "maxPointsDiscount": "Maximální sleva za body",
+      "totalSpots": "Celkem míst (0 = neomezeně)",
+      "imageUrl": "URL obrázku",
+      "endsAt": "Končí dne",
+      "confirmDeactivate": "Deaktivovat tuto nabídku?",
+      "imageUploadButton": "Nahrát obrázek",
+      "imageUploading": "Nahrávání…",
+      "imageUploadHint": "Nahrané obrázky hostujeme my a jejich platnost nevyprší.",
+      "imageUploadTypeError": "Vyberte prosím obrázek ve formátu JPG, PNG nebo WebP.",
+      "imageUploadSizeError": "Tento obrázek přesahuje 8 MB. Vyberte prosím menší soubor.",
+      "imageUploadFailed": "Nahrání se nezdařilo. Zkuste to prosím znovu.",
+      "priceInvalid": "Zadejte cenu jako číslo, například 1950 nebo 1950.50.",
+      "discountInvalid": "Maximální sleva za body musí být celé číslo.",
+      "discountPercent": "Sleva %",
+      "discountPercentHint": "0 znamená bez slevy. Členové platí sníženou cenu.",
+      "discountedPrice": "Zvýhodněná cena (CHF)",
+      "discountedPriceHint": "Původně {{list}} CHF — sleva {{pct}} %",
+      "noDiscount": "Bez slevy — členové platí plnou cenu.",
+      "discountNeedsPrice": "Nejprve zadejte cenu.",
+      "pointsOff": "Body jsou pro tuto nabídku vypnuté — členové platí pouze v CHF.",
+      "pointsCapValue": "Členové mohou body snížit cenu až o {{chf}} CHF.",
+      "pointsCoverFull": "pokrýt celou cenu ({{points}} b.)",
+      "pointsTurnOff": "vypnout body"
     },
     "collectibles": {
-      "infoText": "Collectible drops are created via the database and linked to Engage NFTs. This panel shows the current state of all series and cards. To add a new series or card, use the database directly or contact the dev team.",
-      "noSeries": "No collectible series found.",
-      "season": "Season {{season}}",
-      "cardsCount_one": "{{count}} card",
-      "cardsCount_other": "{{count}} cards",
-      "claimedByYou": "{{count}} claimed by you",
-      "pts": "{{count}} pts",
-      "claimed": "✓ Claimed",
-      "closed": "Closed"
+      "infoText": "Sběratelské dropy se vytvářejí přes databázi a propojují s NFT Engage. Tento panel zobrazuje aktuální stav všech sérií a karet. Novou sérii nebo kartu přidejte přímo v databázi nebo kontaktujte vývojový tým.",
+      "noSeries": "Nebyly nalezeny žádné sběratelské série.",
+      "season": "Sezóna {{season}}",
+      "cardsCount_one": "{{count}} karta",
+      "cardsCount_other": "{{count}} karet",
+      "claimedByYou": "{{count}} získáno vámi",
+      "pts": "{{count}} b.",
+      "claimed": "✓ Získáno",
+      "closed": "Uzavřeno",
+      "cardsCount_few": "{{count}} karty"
     },
     "mediaForm": {
-      "editTitle": "Edit Story",
-      "newTitle": "New Story",
-      "title": "Title",
-      "titlePlaceholder": "Workshop: Ski Tuning Masterclass",
-      "type": "Type",
+      "editTitle": "Upravit příběh",
+      "newTitle": "Nový příběh",
+      "title": "Název",
+      "titlePlaceholder": "Workshop: mistrovský kurz servisu lyží",
+      "type": "Typ",
       "typeOptions": {
-        "article": "Article",
+        "article": "Článek",
         "video": "Video",
-        "photo": "Photo",
-        "productLaunch": "Product Launch"
+        "photo": "Fotografie",
+        "productLaunch": "Uvedení produktu"
       },
-      "category": "Category",
+      "category": "Kategorie",
       "categoryOptions": {
-        "editorial": "Editorial",
-        "behindTheScenes": "Behind the Scenes",
-        "tech": "Tech",
-        "lifestyle": "Lifestyle",
-        "product": "Product"
+        "editorial": "Redakční",
+        "behindTheScenes": "Ze zákulisí",
+        "tech": "Technologie",
+        "lifestyle": "Životní styl",
+        "product": "Produkt"
       },
-      "description": "Description",
-      "mediaUrl": "Media URL (video/article link)",
-      "thumbnailUrl": "Thumbnail URL",
-      "duration": "Duration (for video)",
-      "publishedAt": "Published At",
-      "exclusive": "Exclusive",
-      "confirmRemove": "Remove this story?"
+      "description": "Popis",
+      "mediaUrl": "URL média (odkaz na video/článek)",
+      "thumbnailUrl": "URL náhledového obrázku",
+      "duration": "Délka (u videa)",
+      "publishedAt": "Publikováno dne",
+      "exclusive": "Exkluzivní",
+      "confirmRemove": "Odebrat tento příběh?"
     },
     "points": {
-      "intro": "Award points directly to members — an investor allocation, or a goodwill correction. Granted points can be spent on the Deals page straight away. Use a negative amount to correct a mistake.",
-      "amountLabel": "Points per member",
-      "amountHint": "Whole number. Negative deducts. Max 1,000,000.",
-      "noteLabel": "Reason",
-      "notePlaceholder": "Investor allocation",
-      "noteHint": "Shown to the member in their points history.",
-      "membersLabel": "Members",
-      "searchPlaceholder": "Search by name or email…",
-      "selectAll": "Select all {{count}} shown",
-      "noMembers": "No members match that search.",
-      "balance": "{{points}} pts",
-      "selectedCount_one": "{{count}} member selected",
-      "selectedCount_other": "{{count}} members selected",
-      "reviewButton": "Review grant",
-      "confirmLine": "{{count}} member(s) × {{amount}} pts — {{total}} points in total",
-      "confirmAward": "This credits each selected member immediately.",
-      "confirmDeduct": "This deducts from each selected member immediately.",
-      "confirmButton": "Confirm grant",
-      "granting": "Granting…",
-      "granted_one": "Awarded {{amount}} pts to {{count}} member.",
-      "granted_other": "Awarded {{amount}} pts to {{count}} members.",
-      "skippedDuplicate": "{{count}} skipped as an already-submitted grant.",
-      "loadFailed": "Members could not be loaded.",
-      "grantFailed": "The grant could not be completed. No points were awarded."
+      "intro": "Přidělte body přímo členům — investorskou alokaci nebo korekci z dobré vůle. Přidělené body lze ihned utratit na stránce Nabídky. Chybu opravíte zadáním záporné částky.",
+      "amountLabel": "Body na člena",
+      "amountHint": "Celé číslo. Záporná hodnota odečítá. Maximálně 1 000 000.",
+      "noteLabel": "Důvod",
+      "notePlaceholder": "Investorská alokace",
+      "noteHint": "Zobrazí se členovi v historii bodů.",
+      "membersLabel": "Členové",
+      "searchPlaceholder": "Hledat podle jména nebo e-mailu…",
+      "selectAll": "Vybrat všech {{count}} zobrazených",
+      "noMembers": "Tomuto hledání neodpovídají žádní členové.",
+      "balance": "{{points}} b.",
+      "selectedCount_one": "Vybrán {{count}} člen",
+      "selectedCount_other": "Vybráno {{count}} členů",
+      "reviewButton": "Zkontrolovat přidělení",
+      "confirmLine": "{{count}} člen(ů) × {{amount}} b. — celkem {{total}} bodů",
+      "confirmAward": "Každému vybranému členovi se body ihned připíší.",
+      "confirmDeduct": "Každému vybranému členovi se body ihned odečtou.",
+      "confirmButton": "Potvrdit přidělení",
+      "granting": "Přidělování…",
+      "granted_one": "Přiděleno {{amount}} b. {{count}} členovi.",
+      "granted_other": "Přiděleno {{amount}} b. {{count}} členům.",
+      "skippedDuplicate": "{{count}} přeskočeno jako již odeslané přidělení.",
+      "loadFailed": "Členy se nepodařilo načíst.",
+      "grantFailed": "Přidělení se nepodařilo dokončit. Žádné body nebyly přiděleny.",
+      "selectedCount_few": "Vybráni {{count}} členové",
+      "granted_few": "Přiděleno {{amount}} b. {{count}} členům."
     },
     "orders": {
-      "loadFailed": "Orders could not be loaded.",
-      "updateFailed": "The order could not be updated.",
-      "empty": "No orders yet.",
-      "count_one": "{{count}} order",
-      "count_other": "{{count}} orders",
+      "loadFailed": "Objednávky se nepodařilo načíst.",
+      "updateFailed": "Objednávku se nepodařilo aktualizovat.",
+      "empty": "Zatím žádné objednávky.",
+      "count_one": "{{count}} objednávka",
+      "count_other": "{{count}} objednávek",
       "filters": {
-        "all": "All",
-        "to_process": "To process",
-        "shipped": "Shipped"
+        "all": "Vše",
+        "to_process": "Ke zpracování",
+        "shipped": "Odesláno"
       },
       "status": {
-        "to_process": "To process",
-        "shipped": "Shipped"
+        "to_process": "Ke zpracování",
+        "shipped": "Odesláno"
       },
-      "view": "View order",
-      "shipTo": "Ship to",
-      "copyAddress": "Copy address",
-      "copied": "Copied",
-      "noAddress": "No address on file — contact the member.",
-      "fromProfile": "From the member profile; this order predates address capture at checkout.",
-      "orderLabel": "Order",
-      "member": "Member",
-      "item": "Item",
-      "type": "Type",
-      "paid": "Paid",
-      "pointsAppliedLabel": "Points applied",
-      "statusLabel": "Status",
-      "typeDeal": "Member deal",
-      "typePoints": "Points redemption",
-      "pointsOnly": "Points only",
-      "pointsApplied": "{{points}} pts applied",
-      "markShipped": "Mark as shipped",
-      "markToProcess": "Move back to process",
-      "mailOff": "Order emails are not being sent.",
-      "mailOffDetail": "Orders are still recorded here, but nothing is reaching {{inbox}}.",
-      "mailOffUnset": "Set SMTP_USER and SMTP_PASS in the API environment."
+      "view": "Zobrazit objednávku",
+      "shipTo": "Doručit na",
+      "copyAddress": "Kopírovat adresu",
+      "copied": "Zkopírováno",
+      "noAddress": "Není uložena žádná adresa — kontaktujte člena.",
+      "fromProfile": "Z profilu člena; tato objednávka předchází zadávání adresy při pokladně.",
+      "orderLabel": "Objednávka",
+      "member": "Člen",
+      "item": "Položka",
+      "type": "Typ",
+      "paid": "Zaplaceno",
+      "pointsAppliedLabel": "Uplatněné body",
+      "statusLabel": "Stav",
+      "typeDeal": "Členská nabídka",
+      "typePoints": "Uplatnění bodů",
+      "pointsOnly": "Pouze za body",
+      "pointsApplied": "Uplatněno {{points}} b.",
+      "markShipped": "Označit jako odeslané",
+      "markToProcess": "Vrátit ke zpracování",
+      "mailOff": "E-maily o objednávkách se neodesílají.",
+      "mailOffDetail": "Objednávky se zde stále zaznamenávají, ale na {{inbox}} nic nedorazí.",
+      "mailOffUnset": "Nastavte SMTP_USER a SMTP_PASS v prostředí API.",
+      "count_few": "{{count}} objednávky"
     }
   },
   "welcomeGift": {
-    "headerLine1": "Welcome to the",
+    "headerLine1": "Vítejte v",
     "headerLine2": "zai Experience Club",
-    "eyebrow": "Your welcome gift",
+    "eyebrow": "Váš uvítací dárek",
     "giftName": "{{item}}",
-    "giftSubline": "Reserved for our first platform members",
-    "body": "You are among the first to join. As a thank you, we are sending you a {{item}}, on us. Add your personal details so we know where to ship it.",
-    "step1": "Complete your name, address, and phone number in your profile",
-    "step2": "We ship your gift within five working days",
-    "cta": "Complete your profile"
+    "giftSubline": "Vyhrazeno pro naše první členy platformy",
+    "body": "Patříte mezi první, kdo se připojil. Jako poděkování vám posíláme {{item}} zdarma. Doplňte prosím své osobní údaje, abychom věděli, kam jej odeslat.",
+    "step1": "Doplňte ve svém profilu jméno, adresu a telefonní číslo",
+    "step2": "Dárek odešleme do pěti pracovních dnů",
+    "cta": "Doplnit profil"
   },
   "onboarding": {
-    "title": "Getting Started",
-    "pillTitle": "Getting started",
-    "dismiss": "Dismiss",
-    "stepsRemaining_one": "{{count}} step remaining",
-    "stepsRemaining_other": "{{count}} steps remaining",
-    "allDone": "All done!",
-    "giftWaiting": "Your welcome gift awaits",
-    "allSetLead": "You're all set —",
-    "allSetHighlight": "welcome to zai",
-    "hide": "Hide this widget"
+    "title": "Začínáme",
+    "pillTitle": "Začínáme",
+    "dismiss": "Zavřít",
+    "stepsRemaining_one": "Zbývá {{count}} krok",
+    "stepsRemaining_other": "Zbývá {{count}} kroků",
+    "allDone": "Hotovo!",
+    "giftWaiting": "Čeká na vás uvítací dárek",
+    "allSetLead": "Vše je připraveno —",
+    "allSetHighlight": "vítejte v zai",
+    "hide": "Skrýt tento widget",
+    "stepsRemaining_few": "Zbývají {{count}} kroky"
   },
   "langSwitcher": {
-    "label": "Language",
-    "changeLanguage": "Change language",
-    "activeOption": "Selected",
+    "label": "Jazyk",
+    "changeLanguage": "Změnit jazyk",
+    "activeOption": "Vybráno",
     "languages": {
       "en": "English",
       "de": "Deutsch",
@@ -1566,63 +1592,67 @@
   },
   "pointsStore": {
     "header": {
-      "label": "Points only",
-      "title": "Redeem with points",
-      "description": "These pieces and experiences are not for sale. They are released against your accumulated points alone — never against money.",
-      "balanceLabel": "Your balance"
+      "label": "Pouze za body",
+      "title": "Uplatnění bodů",
+      "description": "Tyto kusy a zážitky nejsou na prodej. Uvolňují se výhradně za nasbírané body — nikdy za peníze.",
+      "balanceLabel": "Váš zůstatek"
     },
-    "loading": "Loading the points collection…",
-    "footnote": "Redemptions are final. Points are deducted the moment you confirm and cannot be reinstated.",
+    "loading": "Načítání bodové kolekce…",
+    "footnote": "Uplatnění je konečné. Body se odečtou v okamžiku potvrzení a nelze je vrátit.",
     "units": {
-      "points_one": "{{count, number}} pt",
-      "points_other": "{{count, number}} pts"
+      "points_one": "{{count, number}} bod",
+      "points_other": "{{count, number}} bodů",
+      "points_few": "{{count, number}} body"
     },
     "empty": {
-      "title": "No points-only rewards available yet",
-      "body": "New pieces and experiences are released through the season. Keep earning — they appear here first."
+      "title": "Zatím nejsou dostupné žádné odměny za body",
+      "body": "Nové kusy a zážitky uvolňujeme v průběhu sezóny. Sbírejte dál — objeví se nejdřív zde."
     },
     "card": {
-      "pointsOnlyBadge": "Points only",
-      "redeemedBadge": "Redeemed",
-      "costLabel": "Redemption cost",
-      "spotsLeft_one": "{{count}} remaining",
-      "spotsLeft_other": "{{count}} remaining",
-      "until": "Until {{date}}",
-      "redeem": "Redeem",
-      "locked": "Not enough points",
-      "soldOut": "Fully redeemed",
-      "expired": "No longer available",
-      "shortfall_one": "Need {{count, number}} more pt",
-      "shortfall_other": "Need {{count, number}} more pts",
-      "redeemedNote": "Redeemed — our team will be in touch",
-      "redeemed": "Already redeemed"
+      "pointsOnlyBadge": "Pouze za body",
+      "redeemedBadge": "Uplatněno",
+      "costLabel": "Cena v bodech",
+      "spotsLeft_one": "zbývá {{count}}",
+      "spotsLeft_other": "zbývá {{count}}",
+      "until": "Do {{date}}",
+      "redeem": "Uplatnit",
+      "locked": "Nedostatek bodů",
+      "soldOut": "Zcela uplatněno",
+      "expired": "Již není dostupné",
+      "shortfall_one": "Chybí {{count, number}} bod",
+      "shortfall_other": "Chybí {{count, number}} bodů",
+      "redeemedNote": "Uplatněno — náš tým se vám ozve",
+      "redeemed": "Již uplatněno",
+      "spotsLeft_few": "zbývají {{count}}",
+      "shortfall_few": "Chybí {{count, number}} body"
     },
     "confirm": {
-      "label": "Confirm redemption",
-      "body": "{{points}} will be deducted from your balance. This cannot be undone.",
-      "balanceAfter": "Balance afterwards: {{points}}",
-      "cancel": "Cancel",
-      "confirm": "Confirm",
-      "submitting": "Redeeming…"
+      "label": "Potvrdit uplatnění",
+      "body": "Z vašeho zůstatku bude odečteno {{points}}. Tuto akci nelze vrátit zpět.",
+      "balanceAfter": "Zůstatek poté: {{points}}",
+      "cancel": "Zrušit",
+      "confirm": "Potvrdit",
+      "submitting": "Uplatňování…"
     },
     "success": {
-      "title": "{{title}} is yours",
-      "body": "{{points}} deducted. Our team will contact you within two working days to arrange your delivery.",
-      "dismiss": "Dismiss",
-      "cardTitle": "Redemption confirmed",
-      "cardBody": "{{points}} deducted. Watch your inbox for the arrangement details."
+      "title": "{{title}} je váš",
+      "body": "Odečteno {{points}}. Náš tým vás do dvou pracovních dnů kontaktuje ohledně doručení.",
+      "dismiss": "Zavřít",
+      "cardTitle": "Uplatnění potvrzeno",
+      "cardBody": "Odečteno {{points}}. Podrobnosti k domluvě najdete ve své e-mailové schránce."
     },
     "errors": {
-      "notEnoughPoints_one": "Not enough points — you need {{count, number}} more pt.",
-      "notEnoughPoints_other": "Not enough points — you need {{count, number}} more pts.",
-      "soldOut": "This reward has just been fully redeemed.",
-      "expired": "This redemption window has now closed.",
-      "notPointsOnly": "This item is not a points-only redemption.",
-      "generic": "The redemption could not be completed. No points were deducted — please try again.",
-      "network": "We could not reach the server, so the redemption is unconfirmed. Please reload the page before trying again.",
-      "loadFailed": "We could not load the points collection.",
-      "retry": "Try again",
-      "alreadyRedeemed": "You have already redeemed this reward."
+      "notEnoughPoints_one": "Nedostatek bodů — chybí vám {{count, number}} bod.",
+      "notEnoughPoints_other": "Nedostatek bodů — chybí vám {{count, number}} bodů.",
+      "soldOut": "Tato odměna byla právě zcela uplatněna.",
+      "expired": "Období pro uplatnění právě skončilo.",
+      "notPointsOnly": "Tato položka není určena k uplatnění za body.",
+      "generic": "Uplatnění se nepodařilo dokončit. Žádné body nebyly odečteny — zkuste to prosím znovu.",
+      "network": "Nepodařilo se spojit se serverem, uplatnění tedy není potvrzeno. Načtěte prosím stránku znovu, než to zkusíte znovu.",
+      "loadFailed": "Bodovou kolekci se nepodařilo načíst.",
+      "retry": "Zkusit znovu",
+      "alreadyRedeemed": "Tuto odměnu jste již uplatnili.",
+      "notEnoughPoints_few": "Nedostatek bodů — chybí vám {{count, number}} body."
     }
   }
 }
