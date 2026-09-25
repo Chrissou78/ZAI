@@ -59,18 +59,15 @@ if ((before.capabilities || {}).card_payments === 'active') {
 }
 
 if (!APPLY) {
-  console.log('\nRead-only. Re-run with --apply to request card_payments (and twint_payments).');
+  console.log('\nRead-only. Re-run with --apply to request card_payments.');
   process.exit(0);
 }
 
-console.log('\nRequesting card_payments and twint_payments …');
+console.log('\nRequesting card_payments …');
 try {
   const after = await stripe.accounts.update(ACCOUNT, {
     capabilities: {
       card_payments: { requested: true },
-      // TWINT is the method club members actually use; requesting it here
-      // avoids a second round trip when cards come back active.
-      twint_payments: { requested: true },
     },
   });
   console.log('\nAFTER');
