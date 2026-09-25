@@ -30,6 +30,12 @@ const stripe = new Stripe(KEY);
 const show = (acct) => {
   const c = acct.controller || {};
   console.log('  account            :', acct.id, `(type: ${acct.type || 'none'})`);
+  // Whose account is this actually? A platform-created account carries our
+  // details and often no dashboard at all, which is exactly what it looks like
+  // when the customer says they cannot find it in their own Stripe.
+  console.log('  email on account   :', acct.email || '—');
+  console.log('  business url       :', acct.business_profile?.url || '—');
+  console.log('  created            :', acct.created ? new Date(acct.created * 1000).toISOString().slice(0, 10) : '—');
   console.log('  charges / payouts  :', acct.charges_enabled ? 'on' : 'off', '/', acct.payouts_enabled ? 'on' : 'off');
   console.log('  capabilities       :',
     Object.entries(acct.capabilities || {}).map(([k, v]) => `${k}=${v}`).join(' ') || '(none)');
