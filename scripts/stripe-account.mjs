@@ -59,6 +59,10 @@ function show(acct, label) {
   console.log('  disabled_reason       :', req.disabled_reason || '-');
   console.log('  currently_due         :', (req.currently_due || []).join(', ') || '-');
   console.log('  past_due              :', (req.past_due || []).join(', ') || '-');
+  // What Stripe will ask for eventually. After withdrawing a capability
+  // request currently_due empties, but these remain — and they are what the
+  // hosted onboarding form will actually collect.
+  console.log('  eventually_due        :', (req.eventually_due || []).join(', ') || '-');
   // Selling is what matters most right now, so say it in plain words.
   const canReceive = (acct.capabilities || {}).transfers === 'active';
   console.log('  >> destination charges:', canReceive ? 'WORKING' : 'BROKEN - payments to this account will fail');
