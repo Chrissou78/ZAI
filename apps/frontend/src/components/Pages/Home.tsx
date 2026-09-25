@@ -981,15 +981,14 @@ const Home: React.FC = () => {
                 style={{
                   background: '#fff',
                   padding: '2rem',
+                  // No hover tint. These read as informational panels, and the
+                  // colour change invited a click that, for a signed-out
+                  // visitor, does nothing at all — `link` is undefined unless
+                  // the member is exclusive. Members still get the pointer
+                  // cursor and the "Explore" line, which say it is a link
+                  // without the whole panel reacting.
                   cursor: b.link ? 'pointer' : 'default',
-                  transition: 'all 0.2s',
                 }}
-                onMouseEnter={(e) =>
-                  (e.currentTarget.style.background = BG_WARM)
-                }
-                onMouseLeave={(e) =>
-                  (e.currentTarget.style.background = '#fff')
-                }
               >
                 <div
                   style={{
@@ -1395,9 +1394,12 @@ const Home: React.FC = () => {
               // min() keeps it from overflowing a container narrower than 300.
               gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 300px), 300px))',
               justifyContent: 'start',
-              gap: '1px',
-              background: '#1e1e1e',
-              border: '1px solid #1e1e1e',
+              // No background or border on the grid itself. It used to carry
+              // '#1e1e1e' so that the 1px gap drew hairlines between tiles —
+              // which works with a full row, but with one partner it painted
+              // the whole empty remainder as a grey slab beside the logo. Each
+              // tile now draws its own edge, so empty space is just the page.
+              gap: '1rem',
               marginBottom: '2rem',
             }}
           >
@@ -1410,6 +1412,9 @@ const Home: React.FC = () => {
                 title={partner.name}
                 style={{
                   background: partner.lightTile ? '#f5f4f0' : BG_CARD,
+                  // Each tile carries its own edge now the grid draws none.
+                  // A dark logo tile would otherwise dissolve into the page.
+                  border: '1px solid #1e1e1e',
                   // Narrow side padding: every pixel of it comes straight off
                   // the logo's width.
                   padding: '2rem 1rem',
