@@ -244,6 +244,20 @@ function explain(err, host, port) {
     // where client SMTP submission is switched off — and the second is far more
     // common than the first, because Microsoft disables it by default. Sending
     // someone to re-check a password that was correct all along wastes a day.
+    // With OAuth the advice is completely different: the token was issued, so
+    // the app registration and secret are fine and nothing about a password is
+    // relevant. What is missing is Exchange-side authorisation for that app.
+    if (USE_OAUTH) {
+      return 'Microsoft issued the token but Exchange refused the app (535 5.7.3). The app '
+        + 'registration and secret are therefore correct — what is missing is permission on '
+        + 'the mailbox itself. In Exchange Online PowerShell: New-ServicePrincipal -AppId '
+        + '<client-id> -ObjectId <enterprise-app-object-id>, then Add-MailboxPermission '
+        + '-Identity <mailbox> -User <service-principal> -AccessRights FullAccess, and '
+        + 'Set-CASMailbox -Identity <mailbox> -SmtpClientAuthenticationDisabled $false, '
+        + 'which is required even for OAuth. Also confirm the app has the SMTP.SendAsApp '
+        + 'APPLICATION permission under Office 365 Exchange Online, with admin consent '
+        + 'granted — Graph Mail.Send does not work for SMTP.';
+    }
     if (/office365|outlook|protection\.outlook/i.test(host) || /5\.7\.3/.test(msg)) {
       return 'Microsoft accepted the connection and refused the login (535 5.7.3). '
         + 'That is usually not a wrong password: SMTP AUTH is disabled by default on '
