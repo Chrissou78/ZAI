@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
 import pg from 'pg';
 import { applyCors } from '../middleware.js';
+import { cleanDisplayName } from '../_lib/displayName.js';
 
 const { Pool } = pg;
 
@@ -153,6 +154,17 @@ async function resolveUserName(decoded) {
   }
 
   return 'Member';
+}
+
+/**
+ * The name to store on a new photo, reaction or comment.
+ *
+ * resolveUserName() takes its first answer from the WalletTwo member cache,
+ * which holds the member's email address until they fill in a profile. Stored
+ * raw, that address then shows in the feed to every other member.
+ */
+async function resolveDisplayName(decoded) {
+  return cleanDisplayName(await resolveUserName(decoded));
 }
 
 export default async function handler(req, res) {
@@ -353,7 +365,22 @@ export default async function handler(req, res) {
       const { limit = 30, offset = 0 } = req.query;
       const l = Math.min(parseInt(limit) || 30, 100);
       const o = parseInt(offset) || 0;
-      const result = await getPool().query('SELECT * FROM photos ORDER BY created_at DESC LIMIT $1 OFFSET $2', [l, o]);
+      // author_name is frozen at upload time, so a member who later fills in
+      // their profile still appeared under whatever was known back then — the
+      // reason updating a name changed nothing in the feed. Their current
+      // profile name wins where they have one; the stored value is the
+      // fallback for members with no profile row.
+      const result = await getPool().query(`
+        SELECT p.*,
+               COALESCE(
+                 NULLIF(TRIM(CONCAT_WS(' ', up.given_name, up.family_name)), ''),
+                 NULLIF(TRIM(up.name), ''),
+                 p.author_name
+               ) AS live_author_name
+          FROM photos p
+          LEFT JOIN user_profiles up ON up.user_id = p.author_id
+         ORDER BY p.created_at DESC
+         LIMIT $1 OFFSET $2`, [l, o]);
       const countResult = await getPool().query('SELECT COUNT(*)::int AS total FROM photos');
 
       const photoIds = result.rows.map(r => r.id);
@@ -366,7 +393,7 @@ export default async function handler(req, res) {
           );
           for (const r of reactionsResult.rows) {
             if (!reactionsMap[r.photo_id]) reactionsMap[r.photo_id] = [];
-            reactionsMap[r.photo_id].push({ emoji: r.emoji, userId: r.user_id, userName: r.user_name });
+            reactionsMap[r.photo_id].push({ emoji: r.emoji, userId: r.user_id, userName: cleanDisplayName(r.user_name) });
           }
         } catch (rxErr) {
           console.error('Reactions query failed:', rxErr.message);
@@ -380,7 +407,10 @@ export default async function handler(req, res) {
         isAdmin: await isAdmin(decoded),
         data: result.rows.map(r => ({
           id: r.id, cid: r.cid, url: r.url.replace('gateway.pinata.cloud', PINATA_GATEWAY()), caption: r.caption,
-          authorId: r.author_id, authorName: r.author_name,
+          authorId: r.author_id,
+          // Cleaned on the way out too, so rows already carrying an address are
+          // fixed without a migration.
+          authorName: cleanDisplayName(r.live_author_name || r.author_name),
           taggedMembers: r.tagged_members || [], commentCount: r.comment_count, createdAt: r.created_at,
           reactions: reactionsMap[r.id] || [],
         })),
@@ -467,7 +497,7 @@ export default async function handler(req, res) {
 
       const photoUrl = `https://${PINATA_GATEWAY()}/ipfs/${cid}`;
       const id = genId();
-      const authorName = await resolveUserName(user);
+      const authorName = await resolveDisplayName(user);
 
       try {
         await getPool().query(
@@ -503,10 +533,10 @@ export default async function handler(req, res) {
         success: true, isAdmin: await isAdmin(decoded),
         data: {
           id: p.id, cid: p.cid, url: p.url.replace('gateway.pinata.cloud', PINATA_GATEWAY()), caption: p.caption,
-          authorId: p.author_id, authorName: p.author_name,
+          authorId: p.author_id, authorName: cleanDisplayName(p.author_name),
           taggedMembers: p.tagged_members || [], commentCount: p.comment_count, createdAt: p.created_at,
-          comments: comments.rows.map(c => ({ id: c.id, text: c.text, authorId: c.author_id, authorName: c.author_name, createdAt: c.created_at })),
-          reactions: reactions.rows.map(r => ({ emoji: r.emoji, userId: r.user_id, userName: r.user_name })),
+          comments: comments.rows.map(c => ({ id: c.id, text: c.text, authorId: c.author_id, authorName: cleanDisplayName(c.author_name), createdAt: c.created_at })),
+          reactions: reactions.rows.map(r => ({ emoji: r.emoji, userId: r.user_id, userName: cleanDisplayName(r.user_name) })),
         },
       });
     } catch (error) { return res.status(500).json({ success: false, error: error.message }); }
@@ -539,7 +569,7 @@ export default async function handler(req, res) {
         'SELECT emoji, user_id, user_name FROM photo_reactions WHERE photo_id=$1 ORDER BY created_at ASC',
         [reactionsGetMatch[1]]
       );
-      return res.json({ success: true, data: result.rows.map(r => ({ emoji: r.emoji, userId: r.user_id, userName: r.user_name })) });
+      return res.json({ success: true, data: result.rows.map(r => ({ emoji: r.emoji, userId: r.user_id, userName: cleanDisplayName(r.user_name) })) });
     } catch (error) { return res.status(500).json({ success: false, error: error.message }); }
   }
 
@@ -556,7 +586,7 @@ export default async function handler(req, res) {
       if (!emoji) return res.status(400).json({ success: false, error: 'Emoji is required' });
 
       const photoId = reactionsPostMatch[1];
-      const userName = await resolveUserName(user);
+      const userName = await resolveDisplayName(user);
 
       const existing = await getPool().query(
         'SELECT id FROM photo_reactions WHERE photo_id=$1 AND user_id=$2 AND emoji=$3',
@@ -588,7 +618,7 @@ export default async function handler(req, res) {
       const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
       if (!body.text || body.text.length > 1000) return res.status(400).json({ success: false, error: 'Comment text required (max 1000 chars)' });
       const id = genId();
-      const authorName = await resolveUserName(user);
+      const authorName = await resolveDisplayName(user);
       await getPool().query('INSERT INTO photo_comments (id, photo_id, text, author_id, author_name) VALUES ($1,$2,$3,$4,$5)', [id, commentPostMatch[1], body.text, user.userId, authorName]);
       await getPool().query('UPDATE photos SET comment_count = comment_count + 1 WHERE id=$1', [commentPostMatch[1]]);
       return res.json({ success: true, data: { id, text: body.text, authorId: user.userId, authorName, createdAt: new Date().toISOString() } });
@@ -635,7 +665,7 @@ export default async function handler(req, res) {
       }
       return res.json({
         success: true, isAdmin: await isAdmin(user),
-        data: result.rows.reverse().map(m => ({ id: m.id, text: m.text, authorId: m.author_id, authorName: m.author_name, recipientId: m.recipient_id, createdAt: m.created_at })),
+        data: result.rows.reverse().map(m => ({ id: m.id, text: m.text, authorId: m.author_id, authorName: cleanDisplayName(m.author_name), recipientId: m.recipient_id, createdAt: m.created_at })),
         pagination: { limit: l, offset: o, total: countResult.rows[0].total, hasMore: o + l < countResult.rows[0].total },
       });
     } catch (error) { return res.status(500).json({ success: false, error: error.message }); }
@@ -650,7 +680,7 @@ export default async function handler(req, res) {
       const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
       if (!body.text || body.text.length > 2000) return res.status(400).json({ success: false, error: 'Message text required (max 2000 chars)' });
       const id = genId();
-      const authorName = await resolveUserName(user);
+      const authorName = await resolveDisplayName(user);
       const recipientId = body.recipientId || null;
       await getPool().query('INSERT INTO chat_messages (id, text, author_id, author_name, recipient_id) VALUES ($1,$2,$3,$4,$5)', [id, body.text, user.userId, authorName, recipientId]);
       return res.json({ success: true, data: { id, text: body.text, authorId: user.userId, authorName, recipientId, createdAt: new Date().toISOString() } });

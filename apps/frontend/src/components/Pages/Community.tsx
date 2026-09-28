@@ -2,6 +2,14 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAppContext } from '../../context/AppContext';
 import { getDisplayName } from '../../lib/displayName';
+
+/**
+ * The API cleans these already, but a name reaching the feed is shown to every
+ * other member, so it is guarded here too — a cached response from before the
+ * server fix would otherwise still print somebody's address.
+ */
+const shownName = (name?: string | null) =>
+  getDisplayName({ givenName: name, email: name }).display;
 import { apiService } from '../../services/api';
 import i18n from '../../i18n';
 
@@ -272,10 +280,10 @@ const PhotoZoomContent: React.FC<{
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: '11px', color: C.white, fontWeight: 500,
             }}>
-              {(selectedPhoto.authorName?.charAt(0) || 'M').toUpperCase()}
+              {(shownName(selectedPhoto.authorName).charAt(0) || 'M').toUpperCase()}
             </div>
             <div>
-              <div style={{ fontSize: '12px', fontWeight: 600, color: C.black }}>{selectedPhoto.authorName}</div>
+              <div style={{ fontSize: '12px', fontWeight: 600, color: C.black }}>{shownName(selectedPhoto.authorName)}</div>
               <div style={{ fontSize: '10px', color: C.muted }}>{fmtFullDate(selectedPhoto.createdAt)}</div>
             </div>
           </div>
@@ -312,7 +320,7 @@ const PhotoZoomContent: React.FC<{
           selectedPhoto.comments.map((c: any) => (
             <div key={c.id} style={{ marginBottom: 14 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '12px', fontWeight: 600, color: C.black }}>{c.authorName}</span>
+                <span style={{ fontSize: '12px', fontWeight: 600, color: C.black }}>{shownName(c.authorName)}</span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <span style={{ fontSize: '10px', color: C.muted }}>{timeAgo(c.createdAt)}</span>
                   {(c.authorId === user?.id || isAdmin) && (
@@ -928,10 +936,10 @@ const Community: React.FC = () => {
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: '12px', color: C.white, fontWeight: 500,
           }}>
-            {(photo.authorName?.charAt(0) || 'M').toUpperCase()}
+            {(shownName(photo.authorName).charAt(0) || 'M').toUpperCase()}
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: '12px', fontWeight: 600, color: C.black }}>{photo.authorName}</div>
+            <div style={{ fontSize: '12px', fontWeight: 600, color: C.black }}>{shownName(photo.authorName)}</div>
           </div>
           <span style={{ fontSize: '10px', color: C.muted, flexShrink: 0 }}>{fmtFullDate(photo.createdAt)}</span>
           {isAdmin && (
