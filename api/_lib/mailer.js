@@ -69,6 +69,15 @@ const USE_OAUTH = !!(MS_TENANT && MS_CLIENT && MS_SECRET);
 
 let _token = null;
 let _tokenExpiry = 0;
+// The roles the issued token actually carries. A token with no roles means the
+// SMTP.SendAsApp permission was never granted or never admin-consented, and no
+// amount of Exchange PowerShell will help — a distinction that is invisible in
+// the 535 that Exchange returns, and which cost us a round of wrong advice.
+let _tokenRoles = null;
+
+export function tokenRoles() {
+  return _tokenRoles;
+}
 
 async function getAccessToken() {
   if (_token && Date.now() < _tokenExpiry) return _token;
@@ -96,6 +105,16 @@ async function getAccessToken() {
   }
   _token = data.access_token;
   _tokenExpiry = Date.now() + Math.max(0, (data.expires_in || 3600) - 60) * 1000;
+  try {
+    // Unverified decode, purely to read the roles claim for diagnostics. The
+    // token's validity is Microsoft's business, not ours.
+    const body = JSON.parse(
+      Buffer.from(_token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString()
+    );
+    _tokenRoles = Array.isArray(body.roles) ? body.roles : [];
+  } catch {
+    _tokenRoles = null;
+  }
   return _token;
 }
 
@@ -248,6 +267,17 @@ function explain(err, host, port) {
     // the app registration and secret are fine and nothing about a password is
     // relevant. What is missing is Exchange-side authorisation for that app.
     if (USE_OAUTH) {
+      // Separates the two causes that both surface as 535.
+      if (Array.isArray(_tokenRoles) && !_tokenRoles.includes('SMTP.SendAsApp')) {
+        return 'The token Microsoft issued carries NO SMTP.SendAsApp role'
+          + (_tokenRoles.length ? ' (it has: ' + _tokenRoles.join(', ') + ')' : ' — it has no roles at all')
+          + '. So the API permission was never granted, or admin consent was never given. '
+          + 'No Exchange PowerShell can fix this: in Entra, open the app registration -> API '
+          + 'permissions -> Add a permission -> APIs my organization uses -> "Office 365 Exchange '
+          + 'Online" -> APPLICATION permissions -> SMTP.SendAsApp, then "Grant admin consent". '
+          + 'Graph Mail.Send is a different permission and does not work for SMTP. The mailbox '
+          + 'steps only matter once the role appears in the token.';
+      }
       return 'Microsoft issued the token but Exchange refused the app (535 5.7.3). The app '
         + 'registration and secret are therefore correct — what is missing is permission on '
         + 'the mailbox itself. In Exchange Online PowerShell: New-ServicePrincipal -AppId '
@@ -308,6 +338,8 @@ export async function mailStatus() {
     // Says which of the two shapes is in play, so "no user" reads as a choice
     // rather than as something missing.
     auth: USE_OAUTH ? 'OAuth2 (Microsoft 365 app)' : HAS_CREDS ? 'password' : NO_AUTH ? 'by IP (no login)' : 'none',
+    // Reported so the decisive fact is visible without decoding a JWT by hand.
+    ...(USE_OAUTH ? { tokenRoles: _tokenRoles } : {}),
     inbox: ADMIN_INBOX,
     // The From domain is what receivers run SPF against, so it belongs in any
     // report about why mail is or is not arriving.
