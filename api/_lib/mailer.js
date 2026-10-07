@@ -235,6 +235,26 @@ export function sendMail({ to, subject, html }) {
 }
 
 /**
+ * Confirm to a member something they just did.
+ *
+ * The counterpart to notifyOrder: that one tells the team, this one tells the
+ * person. Both are sent for the same event, because a member who has just paid
+ * should get something in writing that is not only the card statement.
+ *
+ * `greeting` carries the member's name when we know it. Falls back to a plain
+ * opening rather than "Hi undefined" or "Hi Member".
+ */
+export function notifyMember({ to, subject, title, greeting, rows, footNote }) {
+  if (!to) return Promise.resolve(false);
+  const intro = greeting ? `<p style="font-size:14px;color:${BLACK};margin:0 0 16px;">${esc(greeting)}</p>` : '';
+  const html = wrap(title, rows, footNote).replace(
+    `<table style="width:100%;border-collapse:collapse;">`,
+    `${intro}<table style="width:100%;border-collapse:collapse;">`
+  );
+  return sendMail({ to, subject, html });
+}
+
+/**
  * Fire-and-forget: a failed notification must never fail the purchase that
  * triggered it. Callers are not expected to await this.
  */

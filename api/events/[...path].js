@@ -3,6 +3,7 @@ import { applyCors } from '../middleware.js';
 import { randomUUID } from 'crypto';
 import { getPool, initDB } from '../db.js';
 import { getStripe, chargeContext, applyChargeRouting } from '../_lib/stripe.js';
+import { notifyOrder, notifyMember } from '../_lib/mailer.js';
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const API_KEY = process.env.WALLETTWO_API_KEY;
@@ -240,6 +241,105 @@ async function createPaymentIntent(stripe, piConfig, opts) {
   }
 }
 
+/**
+ * Name and email for a member, for the registration notifications.
+ *
+ * Mirrors buyerLine() in the store route. Never throws: a missing profile must
+ * not cost someone their place at an event.
+ */
+async function attendeeLine(userId) {
+  try {
+    const r = await getPool().query(
+      `SELECT name, given_name, family_name, email FROM user_profiles WHERE user_id = $1`,
+      [userId]
+    );
+    const u = r.rows[0];
+    if (!u) return { who: userId, email: '' };
+    const name = (u.name || `${u.given_name || ''} ${u.family_name || ''}`).trim();
+    return { who: name || userId, email: u.email || '' };
+  } catch {
+    return { who: userId, email: '' };
+  }
+}
+
+/**
+ * Tell the team and the attendee that a place is confirmed.
+ *
+ * Neither is awaited: this route previously sent no mail at all, and adding it
+ * must not introduce a way for a confirmed registration to fail afterwards.
+ */
+function notifyCancellation({ userId, eventTitle, refundAmount, refundFailed }) {
+  attendeeLine(userId).then(({ who, email }) => {
+    notifyOrder({
+      subject: refundFailed
+        ? `REFUND FAILED — ${eventTitle}`
+        : `Event cancellation — ${eventTitle}`,
+      title: refundFailed ? 'A refund could not be issued' : 'A member cancelled a registration',
+      rows: [
+        ['Event', eventTitle],
+        ['Member', who],
+        ['Email', email || '—'],
+        ['Refund', refundAmount != null ? `CHF ${Number(refundAmount).toFixed(2)}` : 'none (free event)'],
+      ],
+      footNote: refundFailed
+        ? 'The place was released but Stripe refused the refund. This needs handling by hand.'
+        : 'Sent automatically when a registration is cancelled.',
+    }).catch(() => {});
+
+    // Not told to the member when the refund failed: the team has to sort that
+    // out first, and a confident "your refund is on its way" would be false.
+    if (!refundFailed) {
+      notifyMember({
+        to: email,
+        subject: `Cancellation confirmed — ${eventTitle}`,
+        title: 'Your registration is cancelled',
+        greeting: who && who !== userId ? `Hi ${who},` : 'Hi,',
+        rows: [
+          ['Event', eventTitle],
+          ...(refundAmount != null ? [['Refund', `CHF ${Number(refundAmount).toFixed(2)}`]] : []),
+        ],
+        footNote: refundAmount != null
+          ? 'The refund is on its way back to your original payment method and usually takes a few working days.'
+          : 'Your place has been released.',
+      }).catch(() => {});
+    }
+  }).catch(() => {});
+}
+
+function notifyRegistration({ userId, eventTitle, eventId, amountCHF, voucherCode, paymentId }) {
+  const paid = amountCHF > 0 ? `CHF ${Number(amountCHF).toFixed(2)}` : 'Free event';
+  attendeeLine(userId).then(({ who, email }) => {
+    notifyOrder({
+      subject: `Event registration — ${eventTitle}`,
+      title: 'A member registered for an event',
+      rows: [
+        ['Event', eventTitle],
+        ['Member', who],
+        ['Email', email || '—'],
+        ['Paid', paid],
+        ...(voucherCode ? [['Voucher', voucherCode]] : []),
+        ['Event ID', eventId],
+        ...(paymentId ? [['Payment ID', paymentId]] : []),
+      ],
+      footNote: 'Sent automatically when a registration is confirmed.',
+    }).catch(() => {});
+
+    notifyMember({
+      to: email,
+      subject: `You are registered — ${eventTitle}`,
+      title: 'Your place is confirmed',
+      greeting: who && who !== userId ? `Hi ${who},` : 'Hi,',
+      rows: [
+        ['Event', eventTitle],
+        ['Paid', paid],
+        ...(voucherCode ? [['Voucher applied', voucherCode]] : []),
+        ...(paymentId ? [['Reference', paymentId]] : []),
+      ],
+      footNote: 'We look forward to seeing you. Details and any changes will follow by email.',
+    }).catch(() => {});
+  }).catch(() => {});
+}
+
 export default async function handler(req, res) {
   // Shared allowlist rather than '*', so every handler agrees on which
   // origins may call the API and the set can be changed in one place.
@@ -366,6 +466,13 @@ export default async function handler(req, res) {
         const msg = data?.message || data?.error || 'Registration failed';
         return res.status(status).json({ success: false, error: msg });
       }
+
+      notifyRegistration({
+        userId,
+        eventTitle: evtRaw?.name || eventId,
+        eventId,
+        amountCHF: 0,
+      });
 
       return res.status(200).json({ success: true, message: 'Registered successfully', data });
     }
@@ -539,6 +646,15 @@ export default async function handler(req, res) {
         });
       }
 
+      notifyRegistration({
+        userId,
+        eventTitle: payment.event_title || payment.event_id,
+        eventId: payment.event_id,
+        amountCHF: parseFloat(payment.amount_chf) || 0,
+        voucherCode: payment.voucher_code || null,
+        paymentId,
+      });
+
       return res.status(200).json({ success: true, message: 'Registered successfully', data: regData });
     }
 
@@ -556,9 +672,16 @@ export default async function handler(req, res) {
          ORDER BY created_at DESC LIMIT 1`,
         [eventId, userId]
       );
+      // Hoisted out of the block below so the notification afterwards can say
+      // what actually happened to the money.
+      let refundedPayment = null;
+      let refundedAmount = null;
+      let refundDidFail = false;
+
       if (pr.rows.length) {
         const payment = pr.rows[0];
         const refundAmount = Math.round(parseFloat(payment.amount_chf) * (1 - EVENT_CANCELLATION_FEE_PERCENT / 100) * 100) / 100;
+        refundedPayment = payment;
         try {
           const stripe = await getStripe();
           // The refund has to be issued on the account that holds the charge,
@@ -572,12 +695,14 @@ export default async function handler(req, res) {
             `UPDATE event_payments SET status = 'refunded', refund_amount_chf = $2, updated_at = NOW() WHERE id = $1`,
             [payment.id, refundAmount]
           );
+          refundedAmount = refundAmount;
         } catch (e) {
           console.error(`[events] Refund failed for payment ${payment.id}:`, e.message);
           await getPool().query(
             `UPDATE event_payments SET status = 'refund_failed', updated_at = NOW() WHERE id = $1`,
             [payment.id]
           );
+          refundDidFail = true;
         }
       }
 
@@ -587,6 +712,13 @@ export default async function handler(req, res) {
         const msg = data?.message || data?.error || 'Unregistration failed';
         return res.status(status).json({ success: false, error: msg });
       }
+
+      notifyCancellation({
+        userId,
+        eventTitle: refundedPayment?.event_title || eventId,
+        refundAmount: refundedAmount,
+        refundFailed: refundDidFail,
+      });
 
       return res.status(200).json({ success: true, message: 'Unregistered successfully', data });
     }

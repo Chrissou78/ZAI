@@ -2,7 +2,7 @@ import { randomUUID } from 'crypto';
 import { getPool, initDB, requireAdmin, isAdmin } from '../db.js';
 import { pointsForAmount, chfForPoints, categoryEarnsPoints, pointsToCoverCHF, TIERS, VOUCHER_VALID_YEARS, tierForPoints, effectivePriceCHF } from '../points.js';
 import { applyCors, authenticate } from '../middleware.js';
-import { notifyOrder, mailStatus } from '../_lib/mailer.js';
+import { notifyOrder, notifyMember, mailStatus } from '../_lib/mailer.js';
 import { envReport } from '../_lib/envcheck.js';
 import { stripeAccountStatus } from '../_lib/stripecheck.js';
 import { getStripe, chargeContext, applyChargeRouting, DIRECT_CHARGES } from '../_lib/stripe.js';
@@ -253,6 +253,23 @@ async function fulfillDealRedemption({ redemptionId, dealId, userId, pointsUsed,
       ['Redemption ID', redemptionId],
     ],
     footNote: 'Sent automatically when a deal purchase is confirmed.',
+  })).catch(() => {});
+
+  // And the member's own receipt. They have just been charged, so they should
+  // have something in writing from zai and not only a line on their statement.
+  buyerLine(userId).then(({ who, email }) => notifyMember({
+    to: email,
+    subject: `Your zai order — ${deal?.title || dealId}`,
+    title: 'Thank you for your order',
+    greeting: who && who !== userId ? `Hi ${who},` : 'Hi,',
+    rows: [
+      ['Item', deal?.title || dealId],
+      ['Paid', `CHF ${Number(amountCHF || 0).toFixed(2)}`],
+      ...(pts > 0 ? [['Points applied', `${pts} pts`]] : []),
+      ...(earnedPts > 0 ? [['Points earned', `${earnedPts} pts`]] : []),
+      ['Order reference', redemptionId],
+    ],
+    footNote: 'We will be in touch about delivery. Keep this reference if you need to contact us about the order.',
   })).catch(() => {});
 
   // ── Auto-mint NFT for the deal (non-fatal if it fails) ──
@@ -1173,6 +1190,21 @@ async function handleDeals(req, res, segments, method, userId, decoded) {
       footNote: 'This reward is fulfilled manually. The member was told the team would be in touch within two working days.',
     })).catch(() => {});
 
+    // The member was promised contact within two working days on screen; say
+    // the same in writing so the promise survives the page being closed.
+    buyerLine(userId).then(({ who, email }) => notifyMember({
+      to: email,
+      subject: `Your redemption — ${deal.title}`,
+      title: 'Your points redemption is confirmed',
+      greeting: who && who !== userId ? `Hi ${who},` : 'Hi,',
+      rows: [
+        ['Item', deal.title],
+        ['Points spent', `${cost} pts`],
+        ['Reference', redemptionId],
+      ],
+      footNote: 'Our team will contact you within two working days to arrange delivery. Points have already been deducted from your balance.',
+    })).catch(() => {});
+
     return res.json({
       success: true,
       data: { redemptionId, pointsSpent: cost, balance: await getBalance(userId) },
@@ -1526,6 +1558,19 @@ async function handleCollectibles(req, res, segments, method, userId) {
         ['Rarity', card.rarity || '—'],
         ['Claim ID', claimId],
       ],
+    })).catch(() => {});
+
+    buyerLine(userId).then(({ who, email }) => notifyMember({
+      to: email,
+      subject: `Collectible claimed — ${card.name}`,
+      title: 'Your collectible is claimed',
+      greeting: who && who !== userId ? `Hi ${who},` : 'Hi,',
+      rows: [
+        ['Collectible', card.name],
+        ['Rarity', card.rarity || '—'],
+        ['Reference', claimId],
+      ],
+      footNote: 'It is now in your collection in the zai Experience Club.',
     })).catch(() => {});
 
     return res.json({
