@@ -1,7 +1,7 @@
 // api/products/[...path].js
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
-import nodemailer from 'nodemailer';
+import { sendMail, ADMIN_INBOX } from '../_lib/mailer.js';
 import {
   applyCors,
   authenticate,
@@ -482,31 +482,21 @@ async function fetchSasMakes() {
   return response.json();
 }
 
-// ── Email notifications (Google SMTP via nodemailer) ──
-let _transporter = null;
-
-function getTransporter() {
-  if (!_transporter) {
-    _transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST || 'smtp.gmail.com',
-      port: Number(process.env.SMTP_PORT) || 587,
-      secure: false,
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
-    });
-  }
-  return _transporter;
-}
+// ── Email notifications ──
+// This route used to carry its own nodemailer transport, defaulting to Gmail
+// and able to authenticate only with a password. When mail moved to Microsoft
+// 365 with OAuth, SMTP_PASS stopped existing — so its guard skipped every send
+// and all member-facing claim mail went silently nowhere. It now shares the
+// one transport in _lib/mailer.js, which knows about OAuth, TLS and the rest.
 
 // Sender address. Configurable because it is the lever that fixes deliverability
 // without a code change: zai.ch's SPF record authorises Microsoft 365 and ends in
 // -all, so mail sent through Google claiming to be From: no-reply@zai.ch fails SPF
 // at any external receiver — including zai.ch's own Hornetsecurity gateway. Either
 // send through M365, or send as a domain whose SPF covers the relay in use.
-const EMAIL_FROM = process.env.MAIL_FROM || '"zai Experience Club" <no-reply@zai.ch>';
-const ADMIN_INBOX = 'info@zai.ch';
+// Sender and club inbox both come from the shared module, so there is one
+// answer to "who do we send as" and "where do admin copies land". This file
+// previously hardcoded info@zai.ch and defaulted the sender to no-reply@zai.ch.
 // Base for links we put in outgoing email. This used to read VITE_API_URL,
 // which conflated two unrelated things: where the browser should send API
 // calls, and where a member should be sent when they click a link in an email.
@@ -563,16 +553,7 @@ function emailP(text) {
 }
 
 async function sendEmail(to, subject, html) {
-  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
-    console.log('[EMAIL] SMTP not configured — skipping:', subject);
-    return;
-  }
-  try {
-    await getTransporter().sendMail({ from: EMAIL_FROM, to, subject, html });
-    console.log(`[EMAIL] ✓ "${subject}" → ${to}`);
-  } catch (err) {
-    console.error(`[EMAIL] ✗ "${subject}" → ${to}:`, err.message);
-  }
+  await sendMail({ to, subject, html });
 }
 
 async function notifyAll(userEmail, subject, userHtml, adminHtml) {

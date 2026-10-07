@@ -211,6 +211,30 @@ function wrap(title, rows, footNote) {
 }
 
 /**
+ * Send one message to any recipient, internal or external.
+ *
+ * notifyOrder() only ever writes to the club inbox; this is the path for mail
+ * that goes TO A MEMBER — claim updates, receipts. External delivery works
+ * because we submit authenticated to Microsoft 365: a Direct Send connector
+ * would only have accepted recipients inside the tenant.
+ *
+ * Never throws. A notification that fails must not fail the thing that
+ * triggered it, and the caller is not expected to await.
+ */
+export function sendMail({ to, subject, html }) {
+  if (!to) return Promise.resolve(false);
+  if (!mailConfigured()) {
+    console.warn('[mail] SMTP not configured — skipping:', subject, '->', to);
+    return Promise.resolve(false);
+  }
+  return Promise.resolve()
+    .then(() => getTransporter())
+    .then(t => t.sendMail({ from: FROM, to, subject, html }))
+    .then(() => { console.log('[mail] sent:', subject, '->', to); return true; })
+    .catch((e) => { console.error('[mail] FAILED:', subject, '->', to, e.message); return false; });
+}
+
+/**
  * Fire-and-forget: a failed notification must never fail the purchase that
  * triggered it. Callers are not expected to await this.
  */
@@ -368,4 +392,4 @@ export async function mailStatus() {
   }
 }
 
-export { ADMIN_INBOX };
+export { ADMIN_INBOX, wrap as mailShell };
