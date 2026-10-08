@@ -554,7 +554,12 @@ export default async function handler(req, res) {
       const piConfig = {
         amount: Math.round(amount * 100),
         currency,
-        automatic_payment_methods: { enabled: true },
+        // allow_redirects: 'never' keeps card, Apple Pay and Google Pay, and drops
+        // every method that leaves the page to pay — Klarna, iDEAL, Bancontact,
+        // EPS, BLIK. Those were switched on in zai's Stripe dashboard, not by us,
+        // and Klarna did not complete properly inside the embedded checkout.
+        // Filtering here means the dashboard settings cannot bring them back.
+        automatic_payment_methods: { enabled: true, allow_redirects: 'never' },
         metadata: { paymentId, eventId, userId },
       };
 
