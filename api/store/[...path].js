@@ -195,12 +195,15 @@ async function fulfillDealRedemption({ redemptionId, dealId, userId, pointsUsed,
     }
   }
 
-  // Update redemption status
-  await getPool().query(
+  // Update redemption status, reading back the delivery address for the
+  // team's notification below.
+  const paidRes = await getPool().query(
     `UPDATE deal_redemptions SET status = 'paid', stripe_payment_intent = $2, updated_at = NOW()
-    WHERE id = $1`,
+    WHERE id = $1
+    RETURNING ${SHIP_COLS}`,
     [redemptionId, stripePaymentIntentId || null]
   );
+  const shipping = shipFromRow(paidRes.rows[0]);
 
   // Decrement spots
   await getPool().query(
@@ -246,6 +249,7 @@ async function fulfillDealRedemption({ redemptionId, dealId, userId, pointsUsed,
       ['Item', deal?.title || dealId],
       ['Member', who],
       ['Email', email || '—'],
+      ...shippingRows(shipping),
       ['Paid', `CHF ${Number(amountCHF || 0).toFixed(2)}`],
       ['Points applied', pts > 0 ? `${pts} pts` : 'none'],
       ['Points earned', earnedPts > 0 ? `${earnedPts} pts` : 'none'],
@@ -423,6 +427,25 @@ const SHIP_COLS = `ship_first_name, ship_family_name, ship_street,
                    ship_postcode, ship_city, ship_country, ship_phone`;
 const shipValues = (sh) => [sh.firstName, sh.familyName, sh.street,
                             sh.postcode, sh.city, sh.country, sh.phone];
+
+/**
+ * Delivery details as mail rows for the zai team, so an order can be handled
+ * straight from the email without opening the admin. Takes the readShipping()
+ * shape; shipFromRow() converts a deal_redemptions row into it.
+ */
+function shippingRows(sh) {
+  const name = [sh.firstName, sh.familyName].filter(Boolean).join(' ');
+  const town = [sh.postcode, sh.city].filter(Boolean).join(' ');
+  const address = [name, sh.street, town, sh.country].filter(Boolean).join(', ');
+  return [
+    ['Delivery address', address || '—'],
+    ['Phone', sh.phone || '—'],
+  ];
+}
+const shipFromRow = (r = {}) => ({
+  firstName: r.ship_first_name, familyName: r.ship_family_name, street: r.ship_street,
+  postcode: r.ship_postcode, city: r.ship_city, country: r.ship_country, phone: r.ship_phone,
+});
 
 /** Copy the address onto the profile when the member ticks "save as default". */
 async function maybeSaveDefaultAddress(userId, sh, save) {
@@ -1101,6 +1124,7 @@ async function handleDeals(req, res, segments, method, userId, decoded) {
 
     const cost = parseInt(deal.points_price) || 0;
     if (cost <= 0) return res.status(400).json({ error: 'Item has no points price set' });
+    const shipping = readShipping(req.body);
 
     // One per member. Without this a points reward could be redeemed
     // repeatedly — the seeded items have spots_total 0, so the spots
@@ -1141,9 +1165,9 @@ async function handleDeals(req, res, segments, method, userId, decoded) {
                                        stripe_session_id, status, points_only, order_ref, ${SHIP_COLS})
          VALUES ($1,$2,$3,$4,0,'',$5,true,
                  'ZAI-' || nextval('deal_order_ref_seq'), $6,$7,$8,$9,$10,$11,$12)`,
-        [redemptionId, dealId, userId, cost, 'paid', ...shipValues(readShipping(req.body))]
+        [redemptionId, dealId, userId, cost, 'paid', ...shipValues(shipping)]
       );
-      await maybeSaveDefaultAddress(userId, readShipping(req.body), req.body?.saveAddress === true);
+      await maybeSaveDefaultAddress(userId, shipping, req.body?.saveAddress === true);
     } catch (e) {
       if (e && e.code === '23505') { // unique_violation — lost the race
         return res.status(409).json({ error: 'You have already redeemed this reward', alreadyRedeemed: true });
@@ -1188,6 +1212,7 @@ async function handleDeals(req, res, segments, method, userId, decoded) {
         ['Item', deal.title],
         ['Member', who],
         ['Email', email || '—'],
+        ...shippingRows(shipping),
         ['Points spent', `${cost} pts`],
         ['Category', deal.category || '—'],
         ['Redemption ID', redemptionId],
