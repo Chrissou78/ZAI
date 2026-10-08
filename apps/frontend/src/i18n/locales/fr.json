@@ -684,7 +684,9 @@
     "notifications": {
       "pending": {
         "title": "Demande en cours d'examen",
-        "detail": "{{item}} — soumise le {{date}}"
+        "detail": "{{item}} — soumise le {{date}}",
+        "strip": "<b>{{item}}</b> est entre les mains de l’équipe zai",
+        "stripDetail": "Envoyée le {{date}} · nous vous écrivons dès que la vérification est faite"
       },
       "minting": {
         "title": "Création de votre {{item}} en cours…",

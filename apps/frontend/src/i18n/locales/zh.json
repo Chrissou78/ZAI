@@ -684,7 +684,9 @@
     "notifications": {
       "pending": {
         "title": "认领申请审核中",
-        "detail": "{{item}} — 提交于 {{date}}"
+        "detail": "{{item}} — 提交于 {{date}}",
+        "strip": "<b>{{item}}</b> 正在由 zai 团队审核",
+        "stripDetail": "提交于 {{date}} · 审核完成后，我们会发邮件通知您"
       },
       "minting": {
         "title": "正在铸造您的{{item}}…",

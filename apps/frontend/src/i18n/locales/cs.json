@@ -694,7 +694,9 @@
     "notifications": {
       "pending": {
         "title": "Žádost čeká na posouzení",
-        "detail": "{{item}} — odesláno {{date}}"
+        "detail": "{{item}} — odesláno {{date}}",
+        "strip": "<b>{{item}}</b> má k posouzení tým zai",
+        "stripDetail": "Odesláno {{date}} · jakmile bude zkontrolováno, pošleme vám e-mail"
       },
       "minting": {
         "title": "Vytváříme váš {{item}}…",

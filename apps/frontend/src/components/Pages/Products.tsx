@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useTranslation } from 'react-i18next';
+import { Trans, useTranslation } from 'react-i18next';
 import { useAppContext } from '../../context/AppContext';
 import { apiService } from '../../services/api';
 import Button from '../Common/Button';
@@ -804,6 +804,27 @@ const Products: React.FC = () => {
           </button>
         </div>
 
+        {/* ══════ STATS BAR ══════ */}
+        <div style={{
+          display: 'grid', gridTemplateColumns: '1fr 1fr',
+          border: bdr, marginBottom: 32,
+        }}>
+          <div style={{ padding: '20px 24px', borderRight: bdr, display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 16, color: C.mid }}>■</span>
+            <div>
+              <div style={{ fontSize: 28, fontWeight: 300, color: C.black }}>{totalClaimed}</div>
+              <div style={lbl}>{t('products.stats.productsClaimed')}</div>
+            </div>
+          </div>
+          <div style={{ padding: '20px 24px', display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 16, color: C.green }}>●</span>
+            <div>
+              <div style={{ fontSize: 28, fontWeight: 300, color: C.black }}>{activeInsurances}</div>
+              <div style={lbl}>{t('products.stats.insuranceActive')}</div>
+            </div>
+          </div>
+        </div>
+
         {/* ══════ CLAIM NOTIFICATION — latest only ══════
             One flat strip for every state, after the V2 design: a status dot
             (pulsing while the claim is still moving), the line, and a short
@@ -814,8 +835,8 @@ const Products: React.FC = () => {
           const view = ({
             pending: {
               dot: C.red, pulse: true, dismiss: false,
-              title: t('products.notifications.pending.title'),
-              detail: t('products.notifications.pending.detail', { item, date: formatClaimedDate(t, latestClaim.createdAt) }),
+              title: <Trans i18nKey="products.notifications.pending.strip" values={{ item }} components={{ b: <b style={{ fontWeight: 500 }} /> }} />,
+              detail: t('products.notifications.pending.stripDetail', { date: formatClaimedDate(t, latestClaim.createdAt) }),
             },
             minting: {
               dot: '#1967d2', pulse: true, dismiss: false,
@@ -848,12 +869,12 @@ const Products: React.FC = () => {
                 item, note: latestClaim.adminNote || t('products.notifications.error.defaultNote'),
               }),
             },
-          } as Record<string, { dot: string; pulse: boolean; dismiss: boolean; title: string; detail: string }>)[latestClaim.status];
+          } as Record<string, { dot: string; pulse: boolean; dismiss: boolean; title: React.ReactNode; detail: string }>)[latestClaim.status];
           if (!view) return null;
           return (
             <div style={{
               display: 'flex', alignItems: 'center', gap: 14,
-              padding: '14px 18px', marginBottom: 24,
+              padding: '14px 18px', marginTop: -12, marginBottom: 32,
               border: bdr, background: C.surface,
             }}>
               <style>{'@keyframes zai-claim-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }'}</style>
@@ -862,7 +883,7 @@ const Products: React.FC = () => {
                 animation: view.pulse ? 'zai-claim-pulse 2s ease-in-out infinite' : 'none',
               }} />
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 12.5, fontWeight: 500, color: C.black }}>{view.title}</div>
+                <div style={{ fontSize: 12.5, fontWeight: latestClaim.status === 'pending' ? 400 : 500, color: C.black }}>{view.title}</div>
                 <div style={{ fontSize: 11, color: C.gray, marginTop: 2 }}>{view.detail}</div>
               </div>
               <span style={{
@@ -884,27 +905,6 @@ const Products: React.FC = () => {
             </div>
           );
         })()}
-
-        {/* ══════ STATS BAR ══════ */}
-        <div style={{
-          display: 'grid', gridTemplateColumns: '1fr 1fr',
-          border: bdr, marginBottom: 32,
-        }}>
-          <div style={{ padding: '20px 24px', borderRight: bdr, display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 16, color: C.mid }}>■</span>
-            <div>
-              <div style={{ fontSize: 28, fontWeight: 300, color: C.black }}>{totalClaimed}</div>
-              <div style={lbl}>{t('products.stats.productsClaimed')}</div>
-            </div>
-          </div>
-          <div style={{ padding: '20px 24px', display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 16, color: C.green }}>●</span>
-            <div>
-              <div style={{ fontSize: 28, fontWeight: 300, color: C.black }}>{activeInsurances}</div>
-              <div style={lbl}>{t('products.stats.insuranceActive')}</div>
-            </div>
-          </div>
-        </div>
 
         {/* ══════ COLLECTION LABEL ══════ */}
         <div style={sectionLabel}>{t('products.collectionLabel')}</div>

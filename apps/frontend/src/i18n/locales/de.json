@@ -684,7 +684,9 @@
     "notifications": {
       "pending": {
         "title": "Registrierung wird geprüft",
-        "detail": "{{item}} — eingereicht am {{date}}"
+        "detail": "{{item}} — eingereicht am {{date}}",
+        "strip": "<b>{{item}}</b> liegt beim zai Team",
+        "stripDetail": "Gesendet am {{date}} · wir schreiben Ihnen, sobald die Prüfung abgeschlossen ist"
       },
       "minting": {
         "title": "Ihr {{item}} wird geprägt…",

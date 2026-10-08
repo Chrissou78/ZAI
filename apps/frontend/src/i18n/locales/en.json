@@ -684,7 +684,9 @@
     "notifications": {
       "pending": {
         "title": "Claim pending review",
-        "detail": "{{item}} — submitted {{date}}"
+        "detail": "{{item}} — submitted {{date}}",
+        "strip": "<b>{{item}}</b> is with the zai team",
+        "stripDetail": "Submitted {{date}} · we email you as soon as it has been reviewed"
       },
       "minting": {
         "title": "Minting your {{item}}…",
