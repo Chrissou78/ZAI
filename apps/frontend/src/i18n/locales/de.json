@@ -1332,6 +1332,23 @@
       "reject": "Ablehnen",
       "validateAndMint": "Validieren & Prägen",
       "processing": "Wird verarbeitet…"
+    },
+    "productOrder": {
+      "button": "Produktreihenfolge",
+      "title": "Produktreihenfolge",
+      "subtitle": "Ziehen Sie ein Produkt am Griff, um die Reihenfolge festzulegen, die Mitglieder beim Registrieren eines Produkts sehen.",
+      "newBadge": "Neu",
+      "newHint": "Neue Produkte erscheinen oben, bis Sie sie einordnen und speichern.",
+      "newestFirst": "Neueste zuerst",
+      "save": "Reihenfolge speichern",
+      "saving": "Wird gespeichert…",
+      "saved": "Reihenfolge gespeichert",
+      "cancel": "Abbrechen",
+      "loading": "Produkte werden geladen…",
+      "loadFailed": "Die Produkte konnten nicht geladen werden.",
+      "saveFailed": "Die Reihenfolge konnte nicht gespeichert werden. Bitte versuchen Sie es erneut.",
+      "dragHandle": "{{name}} verschieben",
+      "discardConfirm": "Änderungen an der Reihenfolge verwerfen?"
     }
   },
   "adminStore": {

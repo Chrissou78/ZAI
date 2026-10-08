@@ -1332,6 +1332,23 @@
       "reject": "Refuser",
       "validateAndMint": "Valider et créer",
       "processing": "Traitement…"
+    },
+    "productOrder": {
+      "button": "Ordre des produits",
+      "title": "Ordre des produits",
+      "subtitle": "Faites glisser un produit par sa poignée pour définir l’ordre que voient les membres lorsqu’ils enregistrent un produit.",
+      "newBadge": "Nouveau",
+      "newHint": "Les nouveaux produits apparaissent en haut jusqu’à ce que vous les placiez et enregistriez.",
+      "newestFirst": "Plus récents d’abord",
+      "save": "Enregistrer l’ordre",
+      "saving": "Enregistrement…",
+      "saved": "Ordre enregistré",
+      "cancel": "Annuler",
+      "loading": "Chargement des produits…",
+      "loadFailed": "Impossible de charger les produits.",
+      "saveFailed": "Impossible d’enregistrer l’ordre. Veuillez réessayer.",
+      "dragHandle": "Déplacer {{name}}",
+      "discardConfirm": "Abandonner vos modifications de l’ordre ?"
     }
   },
   "adminStore": {

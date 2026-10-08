@@ -1351,6 +1351,23 @@
       "reject": "Zamítnout",
       "validateAndMint": "Ověřit a vytvořit",
       "processing": "Zpracování…"
+    },
+    "productOrder": {
+      "button": "Pořadí produktů",
+      "title": "Pořadí produktů",
+      "subtitle": "Přetažením produktu za úchyt nastavíte pořadí, ve kterém ho členové uvidí při registraci produktu.",
+      "newBadge": "Nové",
+      "newHint": "Nové produkty se zobrazují nahoře, dokud je nezařadíte a neuložíte.",
+      "newestFirst": "Nejnovější první",
+      "save": "Uložit pořadí",
+      "saving": "Ukládání…",
+      "saved": "Pořadí uloženo",
+      "cancel": "Zrušit",
+      "loading": "Načítání produktů…",
+      "loadFailed": "Produkty se nepodařilo načíst.",
+      "saveFailed": "Pořadí se nepodařilo uložit. Zkuste to prosím znovu.",
+      "dragHandle": "Přesunout {{name}}",
+      "discardConfirm": "Zahodit změny pořadí?"
     }
   },
   "adminStore": {

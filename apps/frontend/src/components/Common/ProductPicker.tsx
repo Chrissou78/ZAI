@@ -255,7 +255,7 @@ const PickerRow: React.FC<{
 
 /* ── Thumbnail helper ── */
 
-const Thumb: React.FC<{ src?: string; name?: string; size?: number }> = ({ src, name, size = 36 }) => {
+export const Thumb: React.FC<{ src?: string; name?: string; size?: number }> = ({ src, name, size = 36 }) => {
   const [failed, setFailed] = useState(false);
 
   if (src && !failed) {

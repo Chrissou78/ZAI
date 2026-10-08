@@ -5,6 +5,7 @@ import { apiService } from '../../services/api';
 import Modal from '../Common/Modal';
 import Button from '../Common/Button';
 import ProductPicker from '../Common/ProductPicker';
+import ProductOrderModal from '../Products/ProductOrderModal';
 
 /* ───── Types ───── */
 
@@ -271,6 +272,7 @@ const Admin: React.FC = () => {
   const [actionLoading, setActionLoading] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [zoomImage, setZoomImage] = useState<string | null>(null);
+  const [showProductOrder, setShowProductOrder] = useState(false);
 
   const isAdminUser = user?.role === 'admin' || user?.role === 'owner';
 
@@ -516,7 +518,22 @@ const Admin: React.FC = () => {
               {t('admin.filters.count', { count: claims.length })}
             </span>
           )}
+
+          <button
+            onClick={() => setShowProductOrder(true)}
+            style={{
+              marginLeft: 'auto',
+              padding: '8px 16px', fontSize: 11, fontWeight: 600,
+              letterSpacing: '0.1em', textTransform: 'uppercase',
+              border: `1px solid ${C.red}`, borderRadius: 4, cursor: 'pointer',
+              fontFamily: C.font, background: C.pureWhite, color: C.red,
+            }}
+          >
+            ⠿ {t('admin.productOrder.button')}
+          </button>
         </div>
+
+        <ProductOrderModal isOpen={showProductOrder} onClose={() => setShowProductOrder(false)} />
 
         {/* Loading */}
         {isLoading && (

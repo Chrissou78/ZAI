@@ -506,6 +506,16 @@ export async function initDB() {
       ALTER TABLE event_payments ADD COLUMN IF NOT EXISTS voucher_discount_chf NUMERIC(10,2) DEFAULT 0;
       CREATE INDEX IF NOT EXISTS idx_event_payments_user ON event_payments(user_id);
       CREATE INDEX IF NOT EXISTS idx_event_payments_event ON event_payments(event_id);
+
+      -- ── Claim picker order, arranged by drag and drop in the admin ──
+      -- Keyed by contract address because the products themselves live in the
+      -- RWA service, not in this database. A product with no row here has not
+      -- been placed yet and shows above the arranged ones, newest first.
+      CREATE TABLE IF NOT EXISTS product_sort_order (
+        contract_address TEXT PRIMARY KEY,
+        position INTEGER NOT NULL,
+        updated_at TIMESTAMPTZ DEFAULT NOW()
+      );
     `);
 
     await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_product_claims_user_product ON product_claims(user_id, product_id)`);

@@ -1332,6 +1332,23 @@
       "reject": "Reject",
       "validateAndMint": "Validate & Mint",
       "processing": "Processing…"
+    },
+    "productOrder": {
+      "button": "Product order",
+      "title": "Product order",
+      "subtitle": "Drag a product by its handle to set the order members see when they claim a product.",
+      "newBadge": "New",
+      "newHint": "New products appear at the top until you place them and save.",
+      "newestFirst": "Sort newest first",
+      "save": "Save order",
+      "saving": "Saving…",
+      "saved": "Order saved",
+      "cancel": "Cancel",
+      "loading": "Loading products…",
+      "loadFailed": "Could not load the products.",
+      "saveFailed": "Could not save the order. Please try again.",
+      "dragHandle": "Drag to move {{name}}",
+      "discardConfirm": "Discard your changes to the order?"
     }
   },
   "adminStore": {

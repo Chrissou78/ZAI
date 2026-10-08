@@ -1328,6 +1328,23 @@
       "reject": "拒绝",
       "validateAndMint": "验证并铸造",
       "processing": "处理中…"
+    },
+    "productOrder": {
+      "button": "产品排序",
+      "title": "产品排序",
+      "subtitle": "拖动产品左侧的手柄，设置会员认领产品时看到的顺序。",
+      "newBadge": "新",
+      "newHint": "新产品会显示在顶部，直到您将其排好并保存。",
+      "newestFirst": "按最新排序",
+      "save": "保存排序",
+      "saving": "正在保存…",
+      "saved": "排序已保存",
+      "cancel": "取消",
+      "loading": "正在加载产品…",
+      "loadFailed": "无法加载产品。",
+      "saveFailed": "无法保存排序，请重试。",
+      "dragHandle": "移动{{name}}",
+      "discardConfirm": "放弃对排序的更改？"
     }
   },
   "adminStore": {

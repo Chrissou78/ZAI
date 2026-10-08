@@ -28,6 +28,24 @@ async function getDB() {
   return dbModule;
 }
 
+/**
+ * The admin's arrangement of the claim picker: contract address -> position.
+ * Empty when nothing has been arranged or the database is unreachable — the
+ * picker then falls back to newest first rather than failing over its order.
+ */
+async function getClaimOrder() {
+  try {
+    const db = await getDB();
+    if (!db) return new Map();
+    await db.initDB();
+    const { rows } = await db.getPool().query('SELECT contract_address, position FROM product_sort_order');
+    return new Map(rows.map(r => [r.contract_address, r.position]));
+  } catch (err) {
+    console.error('[PRODUCTS] claim order unavailable:', err.message);
+    return new Map();
+  }
+}
+
 let currencyCache = null;
 let currencyCacheTime = 0;
 
@@ -1359,8 +1377,9 @@ export default async function handler(req, res) {
   // ══════════════════════════════════════════════════════════════
   if (fullPath === 'claimable' && req.method === 'GET') {
     try {
-      const rwaMap = await getZaiRwaMap();
-      const currencyMap = await getCurrencyMap();
+      const [rwaMap, currencyMap, order] = await Promise.all([
+        getZaiRwaMap(), getCurrencyMap(), getClaimOrder(),
+      ]);
       const claimable = [];
 
       for (const [addr, rwa] of rwaMap) {
@@ -1377,14 +1396,22 @@ export default async function handler(req, res) {
           priceRaw: rwa.data?.price?.value || '',
           currency: resolveCurrency(rwa.currencyId || rwa.data?.currency?.value || '', currencyMap),
           createdAt: rwa.createdAt || '',
+          sortPosition: order.has(addr) ? order.get(addr) : null,
         });
       }
 
-      // Newest first, so zai's latest products sit at the top of the picker.
-      // The RWA API happens to return them in that order already; sorting here
-      // keeps it that way whatever the API does. ISO dates sort as strings, and
-      // the sort is stable, so products created together keep the API's order.
-      claimable.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+      // The order zai arranged in the admin. Products not placed yet — usually
+      // ones added since — go above the arranged ones, newest first, so a new
+      // product is visible straight away rather than buried at the bottom.
+      // ISO dates sort as strings, and the sort is stable, so products created
+      // together keep the API's order.
+      claimable.sort((a, b) => {
+        const pa = a.sortPosition, pb = b.sortPosition;
+        if (pa === null && pb === null) return b.createdAt.localeCompare(a.createdAt);
+        if (pa === null) return -1;
+        if (pb === null) return 1;
+        return pa - pb;
+      });
 
       return res.json({ success: true, data: claimable });
     } catch (err) {
@@ -2039,6 +2066,47 @@ export default async function handler(req, res) {
     } catch (err) {
       console.error('[PRODUCTS] reject error:', err);
       return res.status(500).json({ error: 'Failed to reject claim request' });
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // PUT /api/products/admin/claimable-order  { order: [contractAddress, ...] }
+  // Saves the claim picker's order as arranged by drag and drop. The whole
+  // list is replaced, so the admin always sends every product in its new place.
+  // ══════════════════════════════════════════════════════════════
+  if (fullPath === 'admin/claimable-order' && req.method === 'PUT') {
+    const decoded = authenticate(req);
+    if (!decoded) return res.status(401).json({ error: 'Unauthorized' });
+
+    const db = await getDB();
+    if (!db) return res.status(503).json({ error: 'Database unavailable' });
+    await db.initDB();
+    if (!(await db.isAdmin(decoded))) return res.status(403).json({ error: 'Admin access required' });
+
+    const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
+    const raw = Array.isArray(body.order) ? body.order : null;
+    if (!raw || raw.length > 1000 || !raw.every(a => typeof a === 'string' && /^0x[0-9a-fA-F]{40}$/.test(a))) {
+      return res.status(400).json({ error: 'order must be a list of contract addresses' });
+    }
+    const order = [...new Set(raw.map(a => a.toLowerCase()))];
+
+    const client = await db.getPool().connect();
+    try {
+      await client.query('BEGIN');
+      await client.query('DELETE FROM product_sort_order');
+      await client.query(
+        `INSERT INTO product_sort_order (contract_address, position)
+         SELECT addr, ord::int FROM unnest($1::text[]) WITH ORDINALITY AS t(addr, ord)`,
+        [order]
+      );
+      await client.query('COMMIT');
+      return res.json({ success: true, count: order.length });
+    } catch (err) {
+      await client.query('ROLLBACK').catch(() => {});
+      console.error('[PRODUCTS] save claim order error:', err);
+      return res.status(500).json({ error: 'Failed to save the product order' });
+    } finally {
+      client.release();
     }
   }
 
