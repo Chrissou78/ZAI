@@ -1376,8 +1376,15 @@ export default async function handler(req, res) {
           price: formatPrice(rwa.data?.price?.value || ''),
           priceRaw: rwa.data?.price?.value || '',
           currency: resolveCurrency(rwa.currencyId || rwa.data?.currency?.value || '', currencyMap),
+          createdAt: rwa.createdAt || '',
         });
       }
+
+      // Newest first, so zai's latest products sit at the top of the picker.
+      // The RWA API happens to return them in that order already; sorting here
+      // keeps it that way whatever the API does. ISO dates sort as strings, and
+      // the sort is stable, so products created together keep the API's order.
+      claimable.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
       return res.json({ success: true, data: claimable });
     } catch (err) {
