@@ -1348,7 +1348,10 @@
       "loadFailed": "Impossible de charger les produits.",
       "saveFailed": "Impossible d’enregistrer l’ordre. Veuillez réessayer.",
       "dragHandle": "Déplacer {{name}}",
-      "discardConfirm": "Abandonner vos modifications de l’ordre ?"
+      "discardConfirm": "Abandonner vos modifications de l’ordre ?",
+      "disabledBadge": "Désactivé",
+      "toggleLabel": "Proposer {{name}} dans la liste d’enregistrement",
+      "switchHint": "Désactivez un produit pour ne plus le proposer aux membres. Les produits déjà enregistrés ne sont pas concernés."
     }
   },
   "adminStore": {

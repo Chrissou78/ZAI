@@ -516,6 +516,9 @@ export async function initDB() {
         position INTEGER NOT NULL,
         updated_at TIMESTAMPTZ DEFAULT NOW()
       );
+      -- Switched off in the admin: no longer offered in the member's claim
+      -- picker. Claims already made for it are untouched.
+      ALTER TABLE product_sort_order ADD COLUMN IF NOT EXISTS hidden BOOLEAN NOT NULL DEFAULT false;
     `);
 
     await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_product_claims_user_product ON product_claims(user_id, product_id)`);

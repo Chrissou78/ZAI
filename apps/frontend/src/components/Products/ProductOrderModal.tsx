@@ -6,7 +6,8 @@ import Button from '../Common/Button';
 import { Thumb } from '../Common/ProductPicker';
 
 /**
- * Admin: arrange the products in the "Claim a Product" picker.
+ * Admin: arrange the products in the "Claim a Product" picker, and switch off
+ * the ones that should no longer be offered.
  *
  * A product is dragged by its handle (mouse or finger); with a mouse the whole
  * row can be grabbed. The handle also moves with the arrow keys. Nothing is
@@ -23,6 +24,8 @@ interface OrderItem {
   image: string;
   createdAt: string;
   sortPosition: number | null;
+  /** Switched off: kept in the list here, left out of the member's picker. */
+  hidden: boolean;
 }
 
 const C = {
@@ -61,7 +64,7 @@ const ProductOrderModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({
     setError(null);
     setDirty(false);
     setSaved(false);
-    apiService.get('/products/claimable')
+    apiService.get('/products/claimable?all=1')
       .then(res => {
         if (cancelled) return;
         const payload = res.data as any;
@@ -72,6 +75,7 @@ const ProductOrderModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({
           image: p.image,
           createdAt: p.createdAt || '',
           sortPosition: p.sortPosition ?? null,
+          hidden: p.hidden === true,
         })));
       })
       .catch(() => { if (!cancelled) setError(t('admin.productOrder.loadFailed')); })
@@ -198,6 +202,12 @@ const ProductOrderModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({
     });
   };
 
+  const toggleHidden = (key: string) => {
+    setItems(prev => prev.map(p => (p.contractAddress === key ? { ...p, hidden: !p.hidden } : p)));
+    setDirty(true);
+    setSaved(false);
+  };
+
   const sortNewestFirst = () => {
     setItems(prev => [...prev].sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
     setDirty(true);
@@ -210,6 +220,7 @@ const ProductOrderModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({
     try {
       await apiService.put('/products/admin/claimable-order', {
         order: items.map(p => p.contractAddress),
+        hidden: items.filter(p => p.hidden).map(p => p.contractAddress),
       });
       setItems(prev => prev.map((p, i) => ({ ...p, sortPosition: i + 1 })));
       setDirty(false);
@@ -238,8 +249,11 @@ const ProductOrderModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({
   return (
     <Modal isOpen={isOpen} onClose={close} title={t('admin.productOrder.title')} size="md" closeOnClickOutside={!dirty}>
       <div style={{ fontFamily: C.font, color: C.black }}>
-        <p style={{ fontSize: 13, color: C.gray, margin: '0 0 12px', lineHeight: 1.5 }}>
+        <p style={{ fontSize: 13, color: C.gray, margin: '0 0 6px', lineHeight: 1.5 }}>
           {t('admin.productOrder.subtitle')}
+        </p>
+        <p style={{ fontSize: 13, color: C.gray, margin: '0 0 12px', lineHeight: 1.5 }}>
+          {t('admin.productOrder.switchHint')}
         </p>
 
         {loading && (
@@ -277,7 +291,7 @@ const ProductOrderModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({
                   // Sized to fit inside the modal (85vh) beside its header, intro and
                   // buttons, so Save stays in view instead of a second scrollbar.
                   position: 'relative', overflowY: 'auto',
-                  maxHeight: narrow ? 'max(160px, calc(85vh - 420px))' : 'max(160px, calc(85vh - 330px))',
+                  maxHeight: narrow ? 'max(160px, calc(85vh - 490px))' : 'max(160px, calc(85vh - 370px))',
                   userSelect: 'none', WebkitUserSelect: 'none', background: C.surface,
                 }}
               >
@@ -320,15 +334,26 @@ const ProductOrderModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({
                       >
                         ⠿
                       </button>
-                      <span style={{ width: 22, fontSize: 11, color: C.gray, textAlign: 'right', flexShrink: 0 }}>
-                        {i + 1}
+                      {/* Position number: left out on a phone, where the name needs the room. */}
+                      {!narrow && (
+                        <span style={{ width: 22, fontSize: 11, color: C.gray, textAlign: 'right', flexShrink: 0 }}>
+                          {i + 1}
+                        </span>
+                      )}
+                      <span style={{ display: 'flex', flexShrink: 0, opacity: p.hidden ? 0.4 : 1 }}>
+                        <Thumb src={p.image} name={p.name} size={36} />
                       </span>
-                      <Thumb src={p.image} name={p.name} size={36} />
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <span style={{ fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {p.name}
-                          </span>
+                        {/* Name on a line of its own: beside the badges a long
+                            name was squeezed to nothing on a phone. */}
+                        <div style={{
+                          fontSize: 13, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                          opacity: p.hidden ? 0.45 : 1,
+                        }}>
+                          {p.name}
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: 11, color: C.gray, opacity: p.hidden ? 0.45 : 1 }}>{formatDay(p.createdAt)}</span>
                           {p.sortPosition === null && (
                             <span style={{
                               fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase',
@@ -338,9 +363,45 @@ const ProductOrderModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({
                               {t('admin.productOrder.newBadge')}
                             </span>
                           )}
+                          {p.hidden && (
+                            <span style={{
+                              fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase',
+                              padding: '2px 6px', borderRadius: 3, flexShrink: 0,
+                              background: '#ecebe8', color: C.gray,
+                            }}>
+                              {t('admin.productOrder.disabledBadge')}
+                            </span>
+                          )}
                         </div>
-                        <div style={{ fontSize: 11, color: C.gray }}>{formatDay(p.createdAt)}</div>
                       </div>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={!p.hidden}
+                        aria-label={t('admin.productOrder.toggleLabel', { name: p.name })}
+                        title={t('admin.productOrder.toggleLabel', { name: p.name })}
+                        // Not a drag: with a mouse the whole row starts one.
+                        onPointerDown={e => e.stopPropagation()}
+                        onClick={() => toggleHidden(p.contractAddress)}
+                        disabled={saving}
+                        style={{
+                          // 44px hit area around a 36x20 switch, for fingers.
+                          flexShrink: 0, width: 44, height: 36, padding: 0,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          background: 'none', border: 'none', cursor: 'pointer',
+                        }}
+                      >
+                        <span style={{
+                          position: 'relative', width: 36, height: 20, borderRadius: 10,
+                          background: p.hidden ? '#cfcac0' : C.green, transition: 'background 0.15s',
+                        }}>
+                          <span style={{
+                            position: 'absolute', top: 2, left: p.hidden ? 2 : 18,
+                            width: 16, height: 16, borderRadius: '50%', background: C.pureWhite,
+                            boxShadow: '0 1px 2px rgba(0,0,0,0.25)', transition: 'left 0.15s',
+                          }} />
+                        </span>
+                      </button>
                     </div>
                   );
                 })}

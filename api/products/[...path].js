@@ -29,17 +29,19 @@ async function getDB() {
 }
 
 /**
- * The admin's arrangement of the claim picker: contract address -> position.
+ * The admin's arrangement of the claim picker:
+ * contract address -> { position, hidden }.
  * Empty when nothing has been arranged or the database is unreachable — the
- * picker then falls back to newest first rather than failing over its order.
+ * picker then falls back to newest first, everything shown, rather than
+ * failing over its order.
  */
 async function getClaimOrder() {
   try {
     const db = await getDB();
     if (!db) return new Map();
     await db.initDB();
-    const { rows } = await db.getPool().query('SELECT contract_address, position FROM product_sort_order');
-    return new Map(rows.map(r => [r.contract_address, r.position]));
+    const { rows } = await db.getPool().query('SELECT contract_address, position, hidden FROM product_sort_order');
+    return new Map(rows.map(r => [r.contract_address, { position: r.position, hidden: r.hidden === true }]));
   } catch (err) {
     console.error('[PRODUCTS] claim order unavailable:', err.message);
     return new Map();
@@ -1376,6 +1378,20 @@ export default async function handler(req, res) {
   // GET /api/products/claimable
   // ══════════════════════════════════════════════════════════════
   if (fullPath === 'claimable' && req.method === 'GET') {
+    // ?all=1 also returns the products switched off in the admin, flagged
+    // hidden: the order editor needs them to switch them back on, and the
+    // claim review needs them so a claim made before a product was switched
+    // off can still be validated. Admins only.
+    const wantAll = new URL(req.url, 'http://localhost').searchParams.get('all') === '1';
+    if (wantAll) {
+      const decoded = authenticate(req);
+      if (!decoded) return res.status(401).json({ error: 'Unauthorized' });
+      const db = await getDB();
+      if (!db) return res.status(503).json({ error: 'Database unavailable' });
+      await db.initDB();
+      if (!(await db.isAdmin(decoded))) return res.status(403).json({ error: 'Admin access required' });
+    }
+
     try {
       const [rwaMap, currencyMap, order] = await Promise.all([
         getZaiRwaMap(), getCurrencyMap(), getClaimOrder(),
@@ -1396,7 +1412,8 @@ export default async function handler(req, res) {
           priceRaw: rwa.data?.price?.value || '',
           currency: resolveCurrency(rwa.currencyId || rwa.data?.currency?.value || '', currencyMap),
           createdAt: rwa.createdAt || '',
-          sortPosition: order.has(addr) ? order.get(addr) : null,
+          sortPosition: order.has(addr) ? order.get(addr).position : null,
+          hidden: order.has(addr) ? order.get(addr).hidden : false,
         });
       }
 
@@ -1413,7 +1430,7 @@ export default async function handler(req, res) {
         return pa - pb;
       });
 
-      return res.json({ success: true, data: claimable });
+      return res.json({ success: true, data: wantAll ? claimable : claimable.filter(p => !p.hidden) });
     } catch (err) {
       console.error('[PRODUCTS] claimable error:', err);
       return res.status(500).json({ error: 'Failed to fetch claimable products' });
@@ -2070,9 +2087,11 @@ export default async function handler(req, res) {
   }
 
   // ══════════════════════════════════════════════════════════════
-  // PUT /api/products/admin/claimable-order  { order: [contractAddress, ...] }
-  // Saves the claim picker's order as arranged by drag and drop. The whole
-  // list is replaced, so the admin always sends every product in its new place.
+  // PUT /api/products/admin/claimable-order
+  //     { order: [contractAddress, ...], hidden: [contractAddress, ...] }
+  // Saves the claim picker's order as arranged by drag and drop, and which
+  // products are switched off. The whole list is replaced, so the admin always
+  // sends every product in its new place.
   // ══════════════════════════════════════════════════════════════
   if (fullPath === 'admin/claimable-order' && req.method === 'PUT') {
     const decoded = authenticate(req);
@@ -2089,18 +2108,24 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'order must be a list of contract addresses' });
     }
     const order = [...new Set(raw.map(a => a.toLowerCase()))];
+    const rawHidden = body.hidden === undefined ? [] : body.hidden;
+    if (!Array.isArray(rawHidden) || !rawHidden.every(a => typeof a === 'string' && /^0x[0-9a-fA-F]{40}$/.test(a))) {
+      return res.status(400).json({ error: 'hidden must be a list of contract addresses' });
+    }
+    const hidden = rawHidden.map(a => a.toLowerCase());
 
     const client = await db.getPool().connect();
     try {
       await client.query('BEGIN');
       await client.query('DELETE FROM product_sort_order');
       await client.query(
-        `INSERT INTO product_sort_order (contract_address, position)
-         SELECT addr, ord::int FROM unnest($1::text[]) WITH ORDINALITY AS t(addr, ord)`,
-        [order]
+        `INSERT INTO product_sort_order (contract_address, position, hidden)
+         SELECT addr, ord::int, addr = ANY($2::text[])
+           FROM unnest($1::text[]) WITH ORDINALITY AS t(addr, ord)`,
+        [order, hidden]
       );
       await client.query('COMMIT');
-      return res.json({ success: true, count: order.length });
+      return res.json({ success: true, count: order.length, hidden: hidden.filter(a => order.includes(a)).length });
     } catch (err) {
       await client.query('ROLLBACK').catch(() => {});
       console.error('[PRODUCTS] save claim order error:', err);

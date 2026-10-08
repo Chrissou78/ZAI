@@ -371,7 +371,9 @@ const Admin: React.FC = () => {
 
   const fetchClaimableProducts = async () => {
     try {
-      const res = await apiService.get('/products/claimable');
+      // all=1 includes products switched off in Product order, so a claim
+      // submitted before one was switched off can still be validated.
+      const res = await apiService.get('/products/claimable?all=1');
       if (res.data?.success) setClaimableProducts((res.data as any).data || []);
     } catch { /* silent */ }
   };

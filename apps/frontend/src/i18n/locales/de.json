@@ -1348,7 +1348,10 @@
       "loadFailed": "Die Produkte konnten nicht geladen werden.",
       "saveFailed": "Die Reihenfolge konnte nicht gespeichert werden. Bitte versuchen Sie es erneut.",
       "dragHandle": "{{name}} verschieben",
-      "discardConfirm": "Änderungen an der Reihenfolge verwerfen?"
+      "discardConfirm": "Änderungen an der Reihenfolge verwerfen?",
+      "disabledBadge": "Deaktiviert",
+      "toggleLabel": "{{name}} in der Registrierungsliste anbieten",
+      "switchHint": "Schalten Sie ein Produkt aus, um es Mitgliedern nicht mehr anzubieten. Bereits registrierte Produkte sind davon nicht betroffen."
     }
   },
   "adminStore": {

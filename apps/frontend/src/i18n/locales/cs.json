@@ -1367,7 +1367,10 @@
       "loadFailed": "Produkty se nepodařilo načíst.",
       "saveFailed": "Pořadí se nepodařilo uložit. Zkuste to prosím znovu.",
       "dragHandle": "Přesunout {{name}}",
-      "discardConfirm": "Zahodit změny pořadí?"
+      "discardConfirm": "Zahodit změny pořadí?",
+      "disabledBadge": "Vypnuto",
+      "toggleLabel": "Nabízet {{name}} v seznamu k registraci",
+      "switchHint": "Vypnutím produktu ho přestanete nabízet členům. Již zaregistrované produkty to neovlivní."
     }
   },
   "adminStore": {

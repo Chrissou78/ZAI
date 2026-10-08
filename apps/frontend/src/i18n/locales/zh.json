@@ -1344,7 +1344,10 @@
       "loadFailed": "无法加载产品。",
       "saveFailed": "无法保存排序，请重试。",
       "dragHandle": "移动{{name}}",
-      "discardConfirm": "放弃对排序的更改？"
+      "discardConfirm": "放弃对排序的更改？",
+      "disabledBadge": "已停用",
+      "toggleLabel": "在认领列表中提供{{name}}",
+      "switchHint": "关闭某个产品后，会员将无法再选择它。已认领的产品不受影响。"
     }
   },
   "adminStore": {
