@@ -715,7 +715,15 @@
         "title": "Chyba při vytváření — administrátor byl informován",
         "detail": "{{item}} — {{note}}",
         "defaultNote": "při vytváření došlo k chybě"
-      }
+      },
+      "label": {
+        "pending": "Kontroluje se",
+        "minting": "Vytváří se",
+        "validated": "Přidáno",
+        "rejected": "Zamítnuto",
+        "error": "Chyba"
+      },
+      "dismiss": "Skrýt"
     },
     "stats": {
       "productsClaimed": "Zaregistrované produkty",
@@ -873,6 +881,63 @@
     },
     "dates": {
       "unknown": "Neznámé"
+    },
+    "claimDrawer": {
+      "eyebrow": "Moje sbírka",
+      "title": "Zaregistrovat produkt",
+      "close": "Zavřít",
+      "steps": {
+        "product": "Produkt",
+        "proof": "Doklad"
+      },
+      "pick": {
+        "lead": "Vyhledejte produkt podle názvu nebo procházejte nabídku zai. Vyberte ten, který vlastníte.",
+        "searchPlaceholder": "Zkuste „blade“, „brýle“, „oak“",
+        "clearSearch": "Vymazat hledání",
+        "all": "Vše",
+        "loading": "Načítání produktů…",
+        "loadFailed": "Produkty se nepodařilo načíst.",
+        "retry": "Zkusit znovu",
+        "noMatch": "Nic neodpovídá. Zkuste kratší slovo nebo použijte tlačítko níže.",
+        "cantFind": "Nemohu najít svůj produkt",
+        "manualLabel": "Jak se jmenuje",
+        "manualPlaceholder": "Napište ho tak, jak je uveden na účtence",
+        "manualHint": "Žádný problém. Tým ho přiřadí ručně podle vašeho dokladu o koupi.",
+        "notInCatalogue": "Není v katalogu"
+      },
+      "proof": {
+        "change": "Změnit",
+        "lead": "Přidejte doklad o koupi: fotku účtenky nebo snímek obrazovky faktury či potvrzení objednávky.",
+        "dropTitle": "Přetáhněte účtenku sem",
+        "dropSub": "nebo klikněte a vyberte soubor · JPG, PNG, WebP nebo HEIC, do 7 MB",
+        "or": "nebo",
+        "phoneDesktop": "Vyfotit telefonem",
+        "phoneMobile": "Vyfotit účtenku",
+        "ready": "Připraveno k odeslání ✓",
+        "remove": "Odebrat",
+        "phoneReceived": "Fotka z telefonu přijata",
+        "hint": "<b>Co tým kontroluje:</b> název produktu, datum a prodejce. Ceny můžete klidně začernit."
+      },
+      "errors": {
+        "notImage": "Vyberte prosím fotku nebo obrázek účtenky.",
+        "tooLarge": "Obrázek je příliš velký. Vyberte prosím obrázek menší než 7 MB."
+      },
+      "foot": {
+        "back": "Zpět",
+        "continue": "Pokračovat",
+        "submit": "Odeslat registraci",
+        "submitting": "Odesílání…",
+        "done": "Hotovo"
+      },
+      "done": {
+        "title": "Registrace odeslána",
+        "desc": "Máme vaši registraci produktu <b>{{item}}</b> i doklad o koupi.",
+        "submitted": "Odesláno",
+        "review": "zai zkontroluje váš doklad",
+        "reviewSub": "Jakmile bude zkontrolován, pošleme vám e-mail.",
+        "joins": "Produkt přibude do vaší sbírky",
+        "joinsSub": "Body se připíšou na váš účet a u produktů, které ji zahrnují, si můžete aktivovat bezplatné lyžařské pojištění."
+      }
     }
   },
   "events": {

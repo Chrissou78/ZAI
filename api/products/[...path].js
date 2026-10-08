@@ -1412,6 +1412,7 @@ export default async function handler(req, res) {
           priceRaw: rwa.data?.price?.value || '',
           currency: resolveCurrency(rwa.currencyId || rwa.data?.currency?.value || '', currencyMap),
           createdAt: rwa.createdAt || '',
+          collection: rwa.data?.collection?.value || '',
           sortPosition: order.has(addr) ? order.get(addr).position : null,
           hidden: order.has(addr) ? order.get(addr).hidden : false,
         });

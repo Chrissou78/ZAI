@@ -4,9 +4,8 @@ import { useAppContext } from '../../context/AppContext';
 import { apiService } from '../../services/api';
 import Button from '../Common/Button';
 import Modal from '../Common/Modal';
-import { QRCodeSVG } from 'qrcode.react';
-import { CameraIcon, UploadIcon, SmartphoneIcon } from '../Icons/ClaimIcons';
-import ProductPicker from '../Common/ProductPicker';
+import ClaimDrawer, { type SubmittedClaim } from '../Products/ClaimDrawer';
+import { type Category, CATEGORY_ORDER, getCategory } from '../../lib/productCategory';
 
 /* ───── Types ───── */
 
@@ -39,22 +38,6 @@ interface Product {
   chainId?: string | null;
   metadata?: Record<string, any>;
   insurance: InsuranceInfo;
-}
-
-interface ClaimableRwa {
-  rwaId: string;
-  name: string;
-  smartContractAddress: string;
-  chainId: number | null;
-  image: string;
-  description: string;
-  price: string;
-  priceRaw: string;
-  currency: string;
-  collection: string;
-  materials: string;
-  available: boolean;
-  nft: { id: string; secret: string } | null;
 }
 
 interface InsuranceFormData {
@@ -239,23 +222,8 @@ const getDisplayPrice = (price?: string, priceRaw?: string): string | null => {
    which the route already passes through as product.collection. That value is
    the source of truth: "Ski", "Apparel" or "Accessory". We classify from it
    first and only fall back to keyword guessing when collection is empty. */
-type Category = 'ski' | 'apparel' | 'accessory';
-
-const SKI_KEYWORDS = ['ski', 'alpine', 'cross-country', 'freeride', 'slalom', 'race', 'touring'];
-const ACCESSORY_KEYWORDS = ['accessor', 'pole', 'bag', 'helmet', 'goggle', 'wax', 'strap', 'cover'];
-
-const getCategory = (name?: string, collection?: string, type?: string): Category => {
-  const col = (collection || '').trim().toLowerCase();
-  if (col.includes('ski')) return 'ski';
-  if (col.includes('accessor')) return 'accessory';
-  if (col.includes('apparel')) return 'apparel';
-
-  // No usable collection value — fall back to keyword guessing.
-  const text = `${name || ''} ${collection || ''} ${type || ''}`.toLowerCase();
-  if (SKI_KEYWORDS.some(kw => text.includes(kw))) return 'ski';
-  if (ACCESSORY_KEYWORDS.some(kw => text.includes(kw))) return 'accessory';
-  return 'apparel';
-};
+// Category, getCategory and CATEGORY_ORDER live in lib/productCategory, shared
+// with the claim drawer.
 
 // Insurance is only available for ski products.
 const categorySupportsInsurance = (cat: Category) => cat === 'ski';
@@ -268,7 +236,6 @@ const CATEGORY_META: Record<Category, { key: string; badgeBg: string }> = {
 
 const getCategoryLabel = (t: TFn, category: Category): string => t(`products.categories.${CATEGORY_META[category].key}`);
 
-const CATEGORY_ORDER: Category[] = ['ski', 'apparel', 'accessory'];
 
 const MAX_GRID_CARDS = 3;
 
@@ -450,11 +417,6 @@ const Products: React.FC = () => {
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
 
-  // Claimable RWAs for the product picker
-  const [claimableRwas, setClaimableRwas] = useState<ClaimableRwa[]>([]);
-  const [claimableLoading, setClaimableLoading] = useState(false);
-  const [claimableError, setClaimableError] = useState<string | null>(null);
-
   const [showInsuranceModal, setShowInsuranceModal] = useState(false);
   const [insuranceProduct, setInsuranceProduct] = useState<Product | null>(null);
   const [insuranceStep, setInsuranceStep] = useState<'form' | 'loading' | 'success' | 'error'>('form');
@@ -477,23 +439,7 @@ const Products: React.FC = () => {
 
   // ── Receipt-based claim flow ──
   const [showReceiptModal, setShowReceiptModal] = useState(false);
-  const [receiptImage, setReceiptImage] = useState<string | null>(null);
-  const [receiptProductName, setReceiptProductName] = useState('');
-  const [receiptProductId, setReceiptProductId] = useState('');
-  const [isCustomProduct, setIsCustomProduct] = useState(false);
-  const [receiptSubmitting, setReceiptSubmitting] = useState(false);
-  const [receiptError, setReceiptError] = useState<string | null>(null);
-  const [receiptSuccess, setReceiptSuccess] = useState(false);
   const [pendingClaimRequests, setPendingClaimRequests] = useState<PendingClaimRequest[]>([]);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [receiptCid, setReceiptCid] = useState<string | null>(null);
-  const [receiptKey, setReceiptKey] = useState<string | null>(null);
-
-  const [showQrLink, setShowQrLink] = useState(false);
-  const [uploadToken, setUploadToken] = useState<string | null>(null);
-  const [qrPolling, setQrPolling] = useState(false);
-  const [isMobileDevice] = useState(() => /Android|iPhone|iPad|iPod/i.test(navigator.userAgent));
-  const uploadPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const handledValidatedRef = useRef<Set<string>>(new Set());
 
   const [allClaims, setAllClaims] = useState<any[]>([]);
@@ -696,153 +642,23 @@ const Products: React.FC = () => {
     };
   }, [user?.id, fetchClaimRequests]);
 
-  const handleUsePhone = async () => {
-    try {
-      const res = await apiService.post('/products/claim-upload/create-token');
-      const payload = res.data as any;
-      if (payload?.success && payload.token) {
-        setUploadToken(payload.token);
-        setShowQrLink(true);
-        setQrPolling(true);
-      } else {
-        setReceiptError(t('products.errors.failedGenerateUploadLink'));
-      }
-    } catch (err: any) {
-      setReceiptError(t('products.errors.failedGenerateUploadLink'));
-    }
-  };
+  // ── Claim drawer ──
+  // The flow itself lives in ClaimDrawer; the page only opens it and, once a
+  // claim is in, shows the "in review" notice without waiting for the poll.
+  const openReceiptModal = () => setShowReceiptModal(true);
 
-  // Poll for phone upload
-  useEffect(() => {
-    if (!qrPolling || !uploadToken) return;
-    if (uploadPollRef.current) clearInterval(uploadPollRef.current);
-
-    uploadPollRef.current = setInterval(async () => {
-      try {
-        const res = await apiService.get(`/products/claim-upload/${uploadToken}/status`);
-        const data = res.data as any;
-        if (data?.status === 'completed' && data?.proofImageCid) {
-          setReceiptImage('phone-uploaded');
-          setReceiptCid(data.proofImageCid || null);
-          setReceiptKey(data.encryptionKey || null);
-          setShowQrLink(false);
-          setQrPolling(false);
-          if (uploadPollRef.current) clearInterval(uploadPollRef.current);
-        }
-      } catch (err: any) {
-        if (err?.response?.status === 410) {
-          setQrPolling(false);
-          setReceiptError(t('products.errors.uploadLinkExpired'));
-          setShowQrLink(false);
-          if (uploadPollRef.current) clearInterval(uploadPollRef.current);
-        }
-      }
-    }, 2000);
-
-    return () => {
-      if (uploadPollRef.current) { clearInterval(uploadPollRef.current); uploadPollRef.current = null; }
+  const handleClaimSubmitted = ({ id, productName }: SubmittedClaim) => {
+    const optimisticClaim = {
+      id,
+      status: 'pending',
+      productName,
+      createdAt: new Date().toISOString(),
     };
-  }, [qrPolling, uploadToken]);
-
-  // ── Fetch available RWA products for the product picker ──
-  const fetchClaimableRwas = async () => {
-    setClaimableLoading(true);
-    setClaimableError(null);
-    setClaimableRwas([]);
-    try {
-      const response = await apiService.get('/products/claimable');
-      const payload = response.data as any;
-      if (payload?.success) {
-        setClaimableRwas(payload.data || []);
-      } else {
-        setClaimableError(payload?.error || t('products.errors.failedToLoadClaimableProducts'));
-      }
-    } catch (err: any) {
-      const msg = err?.response?.data?.error || err?.message || t('products.errors.failedToLoadClaimableProducts');
-      setClaimableError(msg);
-    } finally {
-      setClaimableLoading(false);
-    }
-  };
-
-  // ── Receipt-based claim handlers ──
-  const openReceiptModal = () => {
-    setShowReceiptModal(true);
-    setReceiptImage(null);
-    setReceiptCid(null);
-    setReceiptKey(null);
-    setReceiptProductName('');
-    setReceiptProductId('');
-    setIsCustomProduct(false);
-    setReceiptError(null);
-    setReceiptSuccess(false);
-    setReceiptSubmitting(false);
-    setClaimableError(null);
-    setClaimableLoading(true);
-    setTimeout(() => fetchClaimableRwas(), 0);
-  };
-
-  const handleReceiptCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (file.size > 8 * 1024 * 1024) {
-      setReceiptError(t('products.errors.imageTooLarge'));
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      setReceiptImage(reader.result as string);
-      setReceiptError(null);
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const handleReceiptSubmit = async () => {
-    if (!receiptImage && !receiptCid) return;
-    if (!receiptProductId.trim() && !receiptProductName.trim()) {
-      setReceiptError(t('products.errors.pleaseChooseProduct'));
-      return;
-    }
-    setReceiptSubmitting(true);
-    setReceiptError(null);
-    try {
-      const body: any = { productName: receiptProductName };
-      if (receiptProductId) body.productId = receiptProductId;
-      if (receiptCid) {
-        body.preUploadedCid = receiptCid;
-        body.preUploadedKey = receiptKey;
-      } else {
-        body.proofImage = receiptImage;
-      }
-      const res = await apiService.post('/products/claim-request', body);
-      const payload = res.data as any;
-      if (payload?.success) {
-        setReceiptSuccess(true);
-
-        // Optimistic update: show the "pending review" notification on My
-        // Collection instantly, without waiting for the next poll.
-        const optimisticClaim = {
-          id: payload.claimId || `optimistic-${Date.now()}`,
-          status: 'pending',
-          productName: receiptProductName,
-          createdAt: new Date().toISOString(),
-        };
-        setPendingClaimRequests(prev => [optimisticClaim, ...prev]);
-        setAllClaims(prev => [optimisticClaim, ...prev]);
-
-        // Reconcile with the server right away (real claim id, timestamps,
-        // any other claims) instead of waiting for the 15s poll.
-        fetchClaimRequests();
-      } else {
-        setReceiptError(payload?.error || t('products.errors.submissionFailed'));
-      }
-    } catch (err: any) {
-      setReceiptError(err?.response?.data?.error || err?.message || t('products.errors.submissionFailed'));
-    } finally {
-      setReceiptSubmitting(false);
-    }
+    setPendingClaimRequests(prev => [optimisticClaim, ...prev]);
+    setAllClaims(prev => [optimisticClaim, ...prev]);
+    // Reconcile with the server right away (real claim id, timestamps, any
+    // other claims) instead of waiting for the 15s poll.
+    fetchClaimRequests();
   };
 
   // ── Insurance ──
@@ -937,8 +753,6 @@ const Products: React.FC = () => {
   }
 
   /* ── Helper: is proof ready to submit? ── */
-  const hasProof = !!(receiptImage || receiptCid);
-  const hasProduct = !!(receiptProductId.trim() || receiptProductName.trim());
 
   /* ── Claim notification: only the single latest claim, never a pile-up ──
      This used to show one banner per claim ever made (pending/minting had
@@ -990,139 +804,86 @@ const Products: React.FC = () => {
           </button>
         </div>
 
-        {/* ══════ CLAIM NOTIFICATION — latest only ══════ */}
-        {latestClaim && (
-          <div style={{ marginBottom: 24 }}>
-
-            {latestClaim.status === 'pending' && (
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: 12,
-                padding: '14px 20px',
-                background: 'rgba(255,180,0,0.10)', border: '1px solid rgba(255,180,0,0.25)', borderRadius: 10,
-              }}>
-                <span style={{ fontSize: 18, flexShrink: 0 }}>⏳</span>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: C.black }}>
-                    {t('products.notifications.pending.title')}
-                  </div>
-                  <div style={{ fontSize: 11, color: C.gray, marginTop: 2 }}>
-                    {t('products.notifications.pending.detail', {
-                      item: latestClaim.productName || getItemLabelCap(t, latestClaim.productName),
-                      date: formatClaimedDate(t, latestClaim.createdAt),
-                    })}
-                  </div>
-                </div>
+        {/* ══════ CLAIM NOTIFICATION — latest only ══════
+            One flat strip for every state, after the V2 design: a status dot
+            (pulsing while the claim is still moving), the line, and a short
+            status label. Validated, rejected and error can be dismissed;
+            pending and minting resolve on their own. */}
+        {latestClaim && (() => {
+          const item = latestClaim.productName || getItemLabelCap(t, latestClaim.productName);
+          const view = ({
+            pending: {
+              dot: C.red, pulse: true, dismiss: false,
+              title: t('products.notifications.pending.title'),
+              detail: t('products.notifications.pending.detail', { item, date: formatClaimedDate(t, latestClaim.createdAt) }),
+            },
+            minting: {
+              dot: '#1967d2', pulse: true, dismiss: false,
+              title: t('products.notifications.minting.title', { item: getItemLabel(t, latestClaim.productName) }),
+              detail: t('products.notifications.minting.detail', { item }),
+            },
+            validated: {
+              dot: C.green, pulse: false, dismiss: true,
+              title: t('products.notifications.validated.title', {
+                item: getItemLabelCap(t, latestClaim.productName),
+                destination: isExperienceCard(latestClaim.productName)
+                  ? t('products.notifications.validated.destinationAccount')
+                  : t('products.notifications.validated.destinationCollection'),
+              }),
+              detail: t('products.notifications.validated.detail', {
+                item, date: latestClaim.reviewedAt ? new Date(latestClaim.reviewedAt).toLocaleDateString() : '',
+              }),
+            },
+            rejected: {
+              dot: C.red, pulse: false, dismiss: true,
+              title: t('products.notifications.rejected.title'),
+              detail: latestClaim.adminNote
+                ? t('products.notifications.rejected.detailWithNote', { item, note: latestClaim.adminNote })
+                : t('products.notifications.rejected.detailNoNote', { item }),
+            },
+            error: {
+              dot: '#e65c00', pulse: false, dismiss: true,
+              title: t('products.notifications.error.title'),
+              detail: t('products.notifications.error.detail', {
+                item, note: latestClaim.adminNote || t('products.notifications.error.defaultNote'),
+              }),
+            },
+          } as Record<string, { dot: string; pulse: boolean; dismiss: boolean; title: string; detail: string }>)[latestClaim.status];
+          if (!view) return null;
+          return (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 14,
+              padding: '14px 18px', marginBottom: 24,
+              border: bdr, background: C.surface,
+            }}>
+              <style>{'@keyframes zai-claim-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }'}</style>
+              <span style={{
+                width: 7, height: 7, borderRadius: '50%', background: view.dot, flexShrink: 0,
+                animation: view.pulse ? 'zai-claim-pulse 2s ease-in-out infinite' : 'none',
+              }} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 12.5, fontWeight: 500, color: C.black }}>{view.title}</div>
+                <div style={{ fontSize: 11, color: C.gray, marginTop: 2 }}>{view.detail}</div>
               </div>
-            )}
-
-            {latestClaim.status === 'minting' && (
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: 12,
-                padding: '14px 20px',
-                background: 'rgba(100,160,255,0.10)', border: '1px solid rgba(100,160,255,0.25)', borderRadius: 10,
+              <span style={{
+                fontSize: 9.5, letterSpacing: '0.14em', textTransform: 'uppercase',
+                color: C.gray, flexShrink: 0, whiteSpace: 'nowrap',
               }}>
-                <span style={{ fontSize: 18, flexShrink: 0 }}>⛏️</span>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: C.black }}>
-                    {t('products.notifications.minting.title', { item: getItemLabel(t, latestClaim.productName) })}
-                  </div>
-                  <div style={{ fontSize: 11, color: C.gray, marginTop: 2 }}>
-                    {t('products.notifications.minting.detail', { item: latestClaim.productName || getItemLabelCap(t, latestClaim.productName) })}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {latestClaim.status === 'validated' && (
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: 12,
-                padding: '14px 20px',
-                background: 'rgba(76,175,125,0.10)', border: '1px solid rgba(76,175,125,0.25)', borderRadius: 10,
-              }}>
-                <span style={{ fontSize: 18, flexShrink: 0 }}>✅</span>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: C.green }}>
-                    {t('products.notifications.validated.title', {
-                      item: getItemLabelCap(t, latestClaim.productName),
-                      destination: isExperienceCard(latestClaim.productName)
-                        ? t('products.notifications.validated.destinationAccount')
-                        : t('products.notifications.validated.destinationCollection'),
-                    })}
-                  </div>
-                  <div style={{ fontSize: 11, color: C.gray, marginTop: 2 }}>
-                    {t('products.notifications.validated.detail', {
-                      item: latestClaim.productName || getItemLabelCap(t, latestClaim.productName),
-                      date: latestClaim.reviewedAt ? new Date(latestClaim.reviewedAt).toLocaleDateString() : '',
-                    })}
-                  </div>
-                </div>
+                {t(`products.notifications.label.${latestClaim.status}`)}
+              </span>
+              {view.dismiss && (
                 <button
                   onClick={() => setDismissedClaimIds(prev => new Set([...prev, latestClaim.id]))}
+                  aria-label={t('products.notifications.dismiss')}
                   style={{
-                    background: 'none', border: 'none', color: '#999', cursor: 'pointer',
-                    fontSize: 16, padding: '4px 8px', flexShrink: 0,
+                    background: 'none', border: 'none', color: C.gray, cursor: 'pointer',
+                    fontSize: 15, padding: '4px 6px', flexShrink: 0, lineHeight: 1,
                   }}
-                >✕</button>
-              </div>
-            )}
-
-            {latestClaim.status === 'rejected' && (
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: 12,
-                padding: '14px 20px',
-                background: 'rgba(122,34,46,0.10)', border: '1px solid rgba(122,34,46,0.25)', borderRadius: 10,
-              }}>
-                <span style={{ fontSize: 18, flexShrink: 0 }}>❌</span>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: '#d44' }}>
-                    {t('products.notifications.rejected.title')}
-                  </div>
-                  <div style={{ fontSize: 11, color: C.gray, marginTop: 2 }}>
-                    {latestClaim.adminNote
-                      ? t('products.notifications.rejected.detailWithNote', { item: latestClaim.productName || getItemLabelCap(t, latestClaim.productName), note: latestClaim.adminNote })
-                      : t('products.notifications.rejected.detailNoNote', { item: latestClaim.productName || getItemLabelCap(t, latestClaim.productName) })}
-                  </div>
-                </div>
-                <button
-                  onClick={() => setDismissedClaimIds(prev => new Set([...prev, latestClaim.id]))}
-                  style={{
-                    background: 'none', border: 'none', color: '#999', cursor: 'pointer',
-                    fontSize: 16, padding: '4px 8px', flexShrink: 0,
-                  }}
-                >✕</button>
-              </div>
-            )}
-
-            {latestClaim.status === 'error' && (
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: 12,
-                padding: '14px 20px',
-                background: 'rgba(255,100,0,0.10)', border: '1px solid rgba(255,100,0,0.25)', borderRadius: 10,
-              }}>
-                <span style={{ fontSize: 18, flexShrink: 0 }}>⚠️</span>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: '#ff6400' }}>
-                    {t('products.notifications.error.title')}
-                  </div>
-                  <div style={{ fontSize: 11, color: C.gray, marginTop: 2 }}>
-                    {t('products.notifications.error.detail', {
-                      item: latestClaim.productName || getItemLabelCap(t, latestClaim.productName),
-                      note: latestClaim.adminNote || t('products.notifications.error.defaultNote'),
-                    })}
-                  </div>
-                </div>
-                <button
-                  onClick={() => setDismissedClaimIds(prev => new Set([...prev, latestClaim.id]))}
-                  style={{
-                    background: 'none', border: 'none', color: '#999', cursor: 'pointer',
-                    fontSize: 16, padding: '4px 8px', flexShrink: 0,
-                  }}
-                >✕</button>
-              </div>
-            )}
-
-          </div>
-        )}
+                >&times;</button>
+              )}
+            </div>
+          );
+        })()}
 
         {/* ══════ STATS BAR ══════ */}
         <div style={{
@@ -1481,254 +1242,12 @@ const Products: React.FC = () => {
         );
       })()}
 
-      {/* ════════════ RECEIPT UPLOAD MODAL (CLAIM FLOW) ════════════ */}
-      {showReceiptModal && (
-        <Modal isOpen onClose={() => { setShowReceiptModal(false); setShowQrLink(false); setQrPolling(false); }} title={t('products.receiptModal.title')}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 20, minHeight: 200 }}>
-
-            {receiptSuccess ? (
-              <div style={{ textAlign: 'center', padding: 32 }}>
-                <div style={{ fontSize: 48, marginBottom: 12 }}>&#x2713;</div>
-                <p style={{ fontSize: 16, fontWeight: 600, marginBottom: 8 }}>{t('products.receiptModal.success.title')}</p>
-                <p style={{ fontSize: 13, color: C.gray, marginBottom: 24 }}>
-                  {t('products.receiptModal.success.desc', { item: getItemLabel(t, receiptProductName) })}
-                </p>
-                <Button onClick={() => setShowReceiptModal(false)}>{t('products.receiptModal.success.done')}</Button>
-              </div>
-
-            ) : showQrLink && uploadToken ? (
-              /* ── QR Code screen — desktop waits for phone upload ── */
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20, padding: '16px 0' }}>
-                <p style={{ fontSize: 14, fontWeight: 500, margin: 0, textAlign: 'center' }}>
-                  {t('products.receiptModal.qr.scanTitle')}
-                </p>
-                <p style={{ fontSize: 12, color: C.gray, margin: 0, textAlign: 'center', maxWidth: 300 }}>
-                  {t('products.receiptModal.qr.scanDesc')}
-                </p>
-                <div style={{
-                  padding: 16, background: '#fff', borderRadius: 12,
-                  border: bdr, display: 'inline-block',
-                }}>
-                  <QRCodeSVG
-                    value={`${window.location.origin}/api/products/claim-upload/${uploadToken}/page`}
-                    size={200}
-                  />
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <div style={{
-                    width: 16, height: 16, border: `2px solid ${C.border}`,
-                    borderTopColor: C.red, borderRadius: '50%',
-                    animation: 'zai-spin 0.8s linear infinite',
-                  }} />
-                  <span style={{ fontSize: 12, color: C.gray }}>{t('products.receiptModal.qr.waitingForPhoto')}</span>
-                </div>
-                <button
-                  onClick={() => { setShowQrLink(false); setQrPolling(false); }}
-                  style={{
-                    background: 'none', border: 'none', color: C.gray,
-                    fontSize: 12, cursor: 'pointer', textDecoration: 'underline',
-                  }}
-                >
-                  {t('products.receiptModal.qr.backToUploadOptions')}
-                </button>
-              </div>
-
-            ) : (
-              <>
-                <p style={{ fontSize: 13, color: C.gray, margin: 0 }}>
-                  {t('products.receiptModal.form.intro')}
-                </p>
-
-                {/* Product name (optional) — pick from claimable products */}
-                <div>
-                  <label style={labelStyle}>{t('products.receiptModal.form.productNameLabel')}</label>
-                  {claimableLoading ? (
-                    <div style={{ fontSize: 12, color: C.gray, padding: '10px 0' }}>{t('products.receiptModal.form.loadingProducts')}</div>
-                  ) : claimableRwas.length > 0 ? (
-                    <>
-                      <ProductPicker
-                        products={claimableRwas.map(r => ({
-                          id: r.rwaId,
-                          name: r.name,
-                          image: r.image,
-                          price: r.price,
-                          currency: r.currency,
-                          collection: r.collection,
-                          available: r.available,
-                        }))}
-                        value={receiptProductId}
-                        onChange={(id, product) => {
-                          setIsCustomProduct(false);
-                          setReceiptProductId(id);
-                          setReceiptProductName(product?.name || '');
-                        }}
-                        showOther
-                        onOther={() => {
-                          setIsCustomProduct(true);
-                          setReceiptProductId('');
-                          setReceiptProductName('');
-                        }}
-                        isOther={isCustomProduct}
-                        placeholder={t('products.receiptModal.form.selectProductPlaceholder')}
-                      />
-                      {isCustomProduct && (
-                        <input
-                          style={{ ...inputStyle, marginTop: 8 }}
-                          placeholder={t('products.receiptModal.form.enterProductNamePlaceholder')}
-                          value={receiptProductName}
-                          onChange={e => setReceiptProductName(e.target.value)}
-                        />
-                      )}
-                    </>
-                  ) : (
-                    <input
-                      style={inputStyle}
-                      placeholder={t('products.receiptModal.form.exampleProductPlaceholder')}
-                      value={receiptProductName}
-                      onChange={e => setReceiptProductName(e.target.value)}
-                    />
-                  )}
-                </div>
-
-                {/* Image capture / upload */}
-                <div>
-                  <label style={labelStyle}>{t('products.receiptModal.form.proofOfPurchaseLabel')}</label>
-
-                  {!receiptImage ? (
-                    <div style={{ display: 'flex', gap: 12 }}>
-                      {/* OPTION 1: Camera (mobile) or QR handoff (desktop) */}
-                      {isMobileDevice ? (
-                        <label
-                          style={{
-                            flex: 1, padding: '20px 16px', border: `2px dashed ${C.border}`, borderRadius: 8,
-                            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                            cursor: 'pointer', transition: 'border-color 0.2s', textAlign: 'center',
-                          }}
-                          onMouseEnter={e => (e.currentTarget.style.borderColor = C.red)}
-                          onMouseLeave={e => (e.currentTarget.style.borderColor = C.border)}
-                        >
-                          <CameraIcon size={28} color="#2e2e2e" />
-                          <span style={{ fontSize: 12, fontWeight: 600, color: C.mid }}>{t('products.receiptModal.form.takePhoto')}</span>
-                          <span style={{ fontSize: 10, color: C.gray }}>{t('products.receiptModal.form.openCamera')}</span>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            capture="environment"
-                            style={{ display: 'none' }}
-                            onChange={handleReceiptCapture}
-                          />
-                        </label>
-                      ) : (
-                        <div
-                          onClick={handleUsePhone}
-                          style={{
-                            flex: 1, padding: '20px 16px', border: `2px dashed ${C.border}`, borderRadius: 8,
-                            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                            cursor: 'pointer', transition: 'border-color 0.2s', textAlign: 'center',
-                          }}
-                          onMouseEnter={e => (e.currentTarget.style.borderColor = C.red)}
-                          onMouseLeave={e => (e.currentTarget.style.borderColor = C.border)}
-                        >
-                          <SmartphoneIcon size={28} color="#2e2e2e" />
-                          <span style={{ fontSize: 12, fontWeight: 600, color: C.mid }}>{t('products.receiptModal.form.usePhone')}</span>
-                          <span style={{ fontSize: 10, color: C.gray }}>{t('products.receiptModal.form.scanQrToTakePhoto')}</span>
-                        </div>
-                      )}
-
-                      {/* OPTION 2: File upload — always available */}
-                      <label
-                        style={{
-                          flex: 1, padding: '20px 16px', border: `2px dashed ${C.border}`, borderRadius: 8,
-                          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                          cursor: 'pointer', transition: 'border-color 0.2s', textAlign: 'center',
-                        }}
-                        onMouseEnter={e => (e.currentTarget.style.borderColor = C.red)}
-                        onMouseLeave={e => (e.currentTarget.style.borderColor = C.border)}
-                      >
-                        <UploadIcon size={28} color="#2e2e2e" />
-                        <span style={{ fontSize: 12, fontWeight: 600, color: C.mid }}>{t('products.receiptModal.form.uploadImage')}</span>
-                        <span style={{ fontSize: 10, color: C.gray }}>{t('products.receiptModal.form.fileTypes')}</span>
-                        <input
-                          type="file"
-                          accept="image/jpeg,image/png,image/webp,image/heic"
-                          style={{ display: 'none' }}
-                          onChange={handleReceiptCapture}
-                          ref={fileInputRef}
-                        />
-                      </label>
-                    </div>
-                  ) : (
-                    <div style={{ position: 'relative' }}>
-                      {receiptCid ? (
-                        /* Phone-uploaded (encrypted) — show confirmation with SVG icon */
-                        <div style={{
-                          width: '100%', padding: '32px 20px', borderRadius: 8,
-                          background: C.surface, textAlign: 'center',
-                          border: `1px solid ${C.border}`,
-                        }}>
-                          <div style={{ marginBottom: 8 }}>
-                            <CameraIcon size={40} color={C.mid} />
-                          </div>
-                          <div style={{ fontSize: 14, fontWeight: 600, color: C.black, marginBottom: 4 }}>
-                            {t('products.receiptModal.form.photoReceivedTitle')}
-                          </div>
-                          <div style={{ fontSize: 11, color: C.gray }}>
-                            {t('products.receiptModal.form.photoReceivedDesc')}
-                          </div>
-                        </div>
-                      ) : (
-                        <img
-                          src={receiptImage!}
-                          alt="Receipt preview"
-                          loading="lazy"
-                          decoding="async"
-                          style={{ width: '100%', maxHeight: 300, objectFit: 'contain', borderRadius: 8, background: C.surface }}
-                        />
-                      )}
-                      <button
-                        onClick={() => { setReceiptImage(null); setReceiptCid(null); setReceiptKey(null); }}
-                        style={{
-                          position: 'absolute', top: 8, right: 8,
-                          width: 28, height: 28, borderRadius: '50%',
-                          background: 'rgba(0,0,0,0.6)', color: '#fff',
-                          border: 'none', cursor: 'pointer', fontSize: 14,
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        }}
-                      >
-                        &#x2715;
-                      </button>
-                    </div>
-                  )}
-                </div>
-
-                {receiptError && (
-                  <div style={{ color: C.red, fontSize: 13 }}>{receiptError}</div>
-                )}
-
-                {/* Submit */}
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
-                  <Button onClick={() => setShowReceiptModal(false)}>{t('products.receiptModal.form.cancel')}</Button>
-                  <button
-                    onClick={handleReceiptSubmit}
-                    disabled={!hasProof || !hasProduct || receiptSubmitting}
-                    style={{
-                      padding: '10px 24px', fontSize: 11, fontWeight: 600,
-                      letterSpacing: '0.15em', textTransform: 'uppercase',
-                      border: 'none', borderRadius: 4,
-                      background: (!hasProof || !hasProduct || receiptSubmitting) ? C.border : C.red,
-                      color: '#fff', fontFamily: C.font,
-                      cursor: (!hasProof || !hasProduct || receiptSubmitting) ? 'default' : 'pointer',
-                      opacity: receiptSubmitting ? 0.6 : 1,
-                    }}
-                  >
-                    {receiptSubmitting ? t('products.receiptModal.form.submitting') : t('products.receiptModal.form.submitClaim')}
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        </Modal>
-      )}
+      {/* ════════════ CLAIM DRAWER ════════════ */}
+      <ClaimDrawer
+        isOpen={showReceiptModal}
+        onClose={() => setShowReceiptModal(false)}
+        onSubmitted={handleClaimSubmitted}
+      />
 
       {/* ════════════ INSURANCE MODAL ════════════ */}
       {showInsuranceModal && insuranceProduct && (

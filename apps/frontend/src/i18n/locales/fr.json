@@ -705,7 +705,15 @@
         "title": "Erreur de création — administrateur averti",
         "detail": "{{item}} — {{note}}",
         "defaultNote": "une erreur est survenue pendant la création"
-      }
+      },
+      "label": {
+        "pending": "En cours",
+        "minting": "Création",
+        "validated": "Ajouté",
+        "rejected": "Refusé",
+        "error": "Erreur"
+      },
+      "dismiss": "Masquer"
     },
     "stats": {
       "productsClaimed": "Produits enregistrés",
@@ -863,6 +871,63 @@
     },
     "dates": {
       "unknown": "Inconnue"
+    },
+    "claimDrawer": {
+      "eyebrow": "Ma collection",
+      "title": "Enregistrer un produit",
+      "close": "Fermer",
+      "steps": {
+        "product": "Produit",
+        "proof": "Justificatif"
+      },
+      "pick": {
+        "lead": "Cherchez par nom ou parcourez les créations zai. Choisissez celle que vous possédez.",
+        "searchPlaceholder": "Essayez « blade », « masque », « oak »",
+        "clearSearch": "Effacer la recherche",
+        "all": "Tout",
+        "loading": "Chargement des produits…",
+        "loadFailed": "Impossible de charger les produits.",
+        "retry": "Réessayer",
+        "noMatch": "Aucun résultat. Essayez un mot plus court ou utilisez le bouton ci-dessous.",
+        "cantFind": "Je ne trouve pas mon produit",
+        "manualLabel": "Comment s’appelle-t-il",
+        "manualPlaceholder": "Tel qu’il figure sur votre ticket",
+        "manualHint": "Aucun souci. L’équipe l’identifiera à la main grâce à votre justificatif d’achat.",
+        "notInCatalogue": "Hors catalogue"
+      },
+      "proof": {
+        "change": "Modifier",
+        "lead": "Ajoutez votre justificatif d’achat : une photo du ticket, ou une capture d’écran de la facture ou de la confirmation de commande.",
+        "dropTitle": "Déposez votre ticket ici",
+        "dropSub": "ou cliquez pour parcourir · JPG, PNG, WebP ou HEIC, jusqu’à 7 Mo",
+        "or": "ou",
+        "phoneDesktop": "Prendre une photo avec votre téléphone",
+        "phoneMobile": "Photographier le ticket",
+        "ready": "Prêt à envoyer ✓",
+        "remove": "Retirer",
+        "phoneReceived": "Photo reçue depuis votre téléphone",
+        "hint": "<b>Ce que l’équipe vérifie :</b> le nom du produit, la date et le vendeur. Vous pouvez masquer les prix si vous le souhaitez."
+      },
+      "errors": {
+        "notImage": "Veuillez choisir une photo ou une image de votre ticket.",
+        "tooLarge": "Cette image est trop lourde. Veuillez en choisir une de moins de 7 Mo."
+      },
+      "foot": {
+        "back": "Retour",
+        "continue": "Continuer",
+        "submit": "Envoyer la demande",
+        "submitting": "Envoi…",
+        "done": "Terminé"
+      },
+      "done": {
+        "title": "Demande envoyée",
+        "desc": "Nous avons bien reçu votre demande pour <b>{{item}}</b> et votre justificatif d’achat.",
+        "submitted": "Envoyée",
+        "review": "zai vérifie votre justificatif",
+        "reviewSub": "Nous vous écrivons dès que la vérification est faite.",
+        "joins": "Le produit rejoint votre collection",
+        "joinsSub": "Les points sont crédités sur votre solde et, lorsque le produit l’inclut, vous pouvez activer l’assurance ski offerte."
+      }
     }
   },
   "events": {

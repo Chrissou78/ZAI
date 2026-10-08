@@ -705,7 +705,15 @@
         "title": "Minting error — admin notified",
         "detail": "{{item}} — {{note}}",
         "defaultNote": "an error occurred during minting"
-      }
+      },
+      "label": {
+        "pending": "In review",
+        "minting": "Minting",
+        "validated": "Added",
+        "rejected": "Rejected",
+        "error": "Error"
+      },
+      "dismiss": "Dismiss"
     },
     "stats": {
       "productsClaimed": "Products Claimed",
@@ -863,6 +871,63 @@
     },
     "dates": {
       "unknown": "Unknown"
+    },
+    "claimDrawer": {
+      "eyebrow": "My collection",
+      "title": "Claim a product",
+      "close": "Close",
+      "steps": {
+        "product": "Product",
+        "proof": "Proof"
+      },
+      "pick": {
+        "lead": "Search by name, or browse what zai makes. Pick the one you own.",
+        "searchPlaceholder": "Try “blade”, “goggles”, “oak”",
+        "clearSearch": "Clear search",
+        "all": "All",
+        "loading": "Loading products…",
+        "loadFailed": "We could not load the products.",
+        "retry": "Try again",
+        "noMatch": "Nothing matches that. Try a shorter word, or use the button below.",
+        "cantFind": "I cannot find my product",
+        "manualLabel": "What is it called",
+        "manualPlaceholder": "Write it as it appears on your receipt",
+        "manualHint": "No problem. The team will match it by hand from your proof of purchase.",
+        "notInCatalogue": "Not in the catalogue"
+      },
+      "proof": {
+        "change": "Change",
+        "lead": "Add your proof of purchase: a photo of the receipt, or a screenshot of the invoice or order confirmation.",
+        "dropTitle": "Drop your receipt here",
+        "dropSub": "or click to browse · JPG, PNG, WebP or HEIC, up to 7 MB",
+        "or": "or",
+        "phoneDesktop": "Take a photo with your phone",
+        "phoneMobile": "Take a photo of the receipt",
+        "ready": "Ready to send ✓",
+        "remove": "Remove",
+        "phoneReceived": "Photo received from your phone",
+        "hint": "<b>What the team checks:</b> the product name, the date and the seller. Prices can be blacked out if you prefer."
+      },
+      "errors": {
+        "notImage": "Please choose a photo or an image of your receipt.",
+        "tooLarge": "That image is too large. Please choose one under 7 MB."
+      },
+      "foot": {
+        "back": "Back",
+        "continue": "Continue",
+        "submit": "Submit claim",
+        "submitting": "Submitting…",
+        "done": "Done"
+      },
+      "done": {
+        "title": "Claim sent",
+        "desc": "We have your claim for <b>{{item}}</b> and your proof of purchase.",
+        "submitted": "Submitted",
+        "review": "zai reviews your proof",
+        "reviewSub": "We email you as soon as it has been reviewed.",
+        "joins": "Product joins your collection",
+        "joinsSub": "Points are credited to your balance, and where a product includes it you can activate the complimentary ski insurance."
+      }
     }
   },
   "events": {

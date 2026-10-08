@@ -705,7 +705,15 @@
         "title": "铸造出错 — 管理员已收到通知",
         "detail": "{{item}} — {{note}}",
         "defaultNote": "铸造过程中发生错误"
-      }
+      },
+      "label": {
+        "pending": "审核中",
+        "minting": "生成中",
+        "validated": "已添加",
+        "rejected": "已拒绝",
+        "error": "出错"
+      },
+      "dismiss": "关闭"
     },
     "stats": {
       "productsClaimed": "已认领产品",
@@ -863,6 +871,63 @@
     },
     "dates": {
       "unknown": "未知"
+    },
+    "claimDrawer": {
+      "eyebrow": "我的收藏",
+      "title": "认领产品",
+      "close": "关闭",
+      "steps": {
+        "product": "产品",
+        "proof": "凭证"
+      },
+      "pick": {
+        "lead": "按名称搜索，或浏览 zai 的产品，选择您拥有的那一款。",
+        "searchPlaceholder": "试试“blade”“雪镜”“oak”",
+        "clearSearch": "清除搜索",
+        "all": "全部",
+        "loading": "正在加载产品…",
+        "loadFailed": "无法加载产品。",
+        "retry": "重试",
+        "noMatch": "没有匹配的产品。请尝试更短的关键词，或使用下方按钮。",
+        "cantFind": "找不到我的产品",
+        "manualLabel": "产品名称",
+        "manualPlaceholder": "请按收据上的名称填写",
+        "manualHint": "没关系，团队会根据您的购买凭证人工匹配。",
+        "notInCatalogue": "不在目录中"
+      },
+      "proof": {
+        "change": "更改",
+        "lead": "添加购买凭证：收据照片，或发票、订单确认的截图。",
+        "dropTitle": "将收据拖放到此处",
+        "dropSub": "或点击选择文件 · JPG、PNG、WebP 或 HEIC，最大 7 MB",
+        "or": "或",
+        "phoneDesktop": "用手机拍照",
+        "phoneMobile": "拍摄收据",
+        "ready": "可以发送 ✓",
+        "remove": "移除",
+        "phoneReceived": "已收到手机上传的照片",
+        "hint": "<b>团队会核对：</b>产品名称、日期和销售方。如您愿意，可以遮住价格。"
+      },
+      "errors": {
+        "notImage": "请选择收据的照片或图片。",
+        "tooLarge": "图片太大，请选择小于 7 MB 的图片。"
+      },
+      "foot": {
+        "back": "返回",
+        "continue": "继续",
+        "submit": "提交认领",
+        "submitting": "正在提交…",
+        "done": "完成"
+      },
+      "done": {
+        "title": "认领已提交",
+        "desc": "我们已收到您对 <b>{{item}}</b> 的认领及购买凭证。",
+        "submitted": "已提交",
+        "review": "zai 审核您的凭证",
+        "reviewSub": "审核完成后，我们会发邮件通知您。",
+        "joins": "产品加入您的收藏",
+        "joinsSub": "积分将计入您的余额；如产品包含免费滑雪保险，您可以将其激活。"
+      }
     }
   },
   "events": {

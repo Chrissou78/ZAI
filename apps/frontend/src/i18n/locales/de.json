@@ -705,7 +705,15 @@
         "title": "Fehler bei der Prägung — Administrator wurde informiert",
         "detail": "{{item}} — {{note}}",
         "defaultNote": "beim Prägen ist ein Fehler aufgetreten"
-      }
+      },
+      "label": {
+        "pending": "In Prüfung",
+        "minting": "Wird erstellt",
+        "validated": "Hinzugefügt",
+        "rejected": "Abgelehnt",
+        "error": "Fehler"
+      },
+      "dismiss": "Ausblenden"
     },
     "stats": {
       "productsClaimed": "Registrierte Produkte",
@@ -863,6 +871,63 @@
     },
     "dates": {
       "unknown": "Unbekannt"
+    },
+    "claimDrawer": {
+      "eyebrow": "Meine Sammlung",
+      "title": "Produkt registrieren",
+      "close": "Schliessen",
+      "steps": {
+        "product": "Produkt",
+        "proof": "Nachweis"
+      },
+      "pick": {
+        "lead": "Suchen Sie nach Namen oder stöbern Sie im Sortiment von zai. Wählen Sie das Produkt, das Sie besitzen.",
+        "searchPlaceholder": "Zum Beispiel „Blade“, „Brille“, „Oak“",
+        "clearSearch": "Suche löschen",
+        "all": "Alle",
+        "loading": "Produkte werden geladen…",
+        "loadFailed": "Die Produkte konnten nicht geladen werden.",
+        "retry": "Erneut versuchen",
+        "noMatch": "Keine Treffer. Versuchen Sie ein kürzeres Wort oder nutzen Sie die Schaltfläche unten.",
+        "cantFind": "Ich finde mein Produkt nicht",
+        "manualLabel": "Wie heisst es",
+        "manualPlaceholder": "So, wie es auf Ihrer Quittung steht",
+        "manualHint": "Kein Problem. Das Team ordnet es anhand Ihres Kaufnachweises von Hand zu.",
+        "notInCatalogue": "Nicht im Katalog"
+      },
+      "proof": {
+        "change": "Ändern",
+        "lead": "Fügen Sie Ihren Kaufnachweis hinzu: ein Foto der Quittung oder einen Screenshot der Rechnung bzw. Bestellbestätigung.",
+        "dropTitle": "Quittung hier ablegen",
+        "dropSub": "oder klicken zum Auswählen · JPG, PNG, WebP oder HEIC, bis 7 MB",
+        "or": "oder",
+        "phoneDesktop": "Mit dem Handy fotografieren",
+        "phoneMobile": "Quittung fotografieren",
+        "ready": "Bereit zum Senden ✓",
+        "remove": "Entfernen",
+        "phoneReceived": "Foto vom Handy erhalten",
+        "hint": "<b>Was das Team prüft:</b> den Produktnamen, das Datum und den Verkäufer. Preise dürfen Sie gerne schwärzen."
+      },
+      "errors": {
+        "notImage": "Bitte wählen Sie ein Foto oder Bild Ihrer Quittung.",
+        "tooLarge": "Das Bild ist zu gross. Bitte wählen Sie eines unter 7 MB."
+      },
+      "foot": {
+        "back": "Zurück",
+        "continue": "Weiter",
+        "submit": "Registrierung senden",
+        "submitting": "Wird gesendet…",
+        "done": "Fertig"
+      },
+      "done": {
+        "title": "Registrierung gesendet",
+        "desc": "Wir haben Ihre Registrierung für <b>{{item}}</b> und Ihren Kaufnachweis erhalten.",
+        "submitted": "Gesendet",
+        "review": "zai prüft Ihren Nachweis",
+        "reviewSub": "Wir schreiben Ihnen eine E-Mail, sobald die Prüfung abgeschlossen ist.",
+        "joins": "Das Produkt kommt in Ihre Sammlung",
+        "joinsSub": "Die Punkte werden Ihrem Konto gutgeschrieben, und wo das Produkt sie umfasst, können Sie die kostenlose Skiversicherung aktivieren."
+      }
     }
   },
   "events": {
