@@ -104,9 +104,14 @@ function decryptBuffer(encryptedBuffer, keyHex) {
  * ───────────────────────────────────────────────────────── */
 let zaiRwaCache = null;
 let zaiRwaCacheTime = 0;
+// Five minutes, not an hour: zai edit products in Engage (names, photos,
+// prices, categories, new products) and expect to see the change here. An
+// hour left a recategorised ski filed under Apparel long after it was fixed.
+// One small request per five minutes is nothing for the RWA API.
+const ZAI_RWA_TTL_MS = 5 * 60 * 1000;
 
 async function getZaiRwaMap() {
-  if (zaiRwaCache && Date.now() - zaiRwaCacheTime < 3600000) return zaiRwaCache;
+  if (zaiRwaCache && Date.now() - zaiRwaCacheTime < ZAI_RWA_TTL_MS) return zaiRwaCache;
   try {
     const { status, data } = await apiFetch(RWA_BASE, '/rwa?limit=200');
     if (status === 200 && data) {
