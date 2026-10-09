@@ -2,6 +2,7 @@
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import { sendMail, ADMIN_INBOX } from '../_lib/mailer.js';
+import { claimReceivedEmail } from '../_lib/emails/claimReceived.js';
 import {
   applyCors,
   authenticate,
@@ -593,15 +594,6 @@ async function notifyClaimReceived(userEmail, userName, productName) {
   const safeName = sanitizeString(userName);
   const safeProduct = sanitizeString(productName) || 'Not specified';
 
-  const userBody =
-    emailP(`Hi ${safeName},`) +
-    emailP(`We've received your claim for <strong>${safeProduct}</strong>. Our team will review your proof of purchase and get back to you shortly.`) +
-    emailTable([
-      ['Product', safeProduct],
-      ['Status', '<span style="color:#e6a817;font-weight:600;">Pending Review</span>'],
-    ]) +
-    emailP('<span style="color:#6a6a6a;font-size:13px;">You\'ll receive another email once your claim has been reviewed.</span>');
-
   const adminBody =
     emailP(`<strong>${safeName}</strong> (${sanitizeString(userEmail) || 'no email'}) submitted a new product claim.`) +
     emailTable([
@@ -612,12 +604,12 @@ async function notifyClaimReceived(userEmail, userName, productName) {
     ]) +
     emailBtn('Review Claims', `${FRONTEND()}/admin`);
 
-  await notifyAll(
-    userEmail,
-    `New claim — ${safeProduct}`,
-    emailWrap('Claim Received', userBody),
-    emailWrap('New Claim Submitted', adminBody)
-  );
+  // The member's copy is zai's own designed template; the team's stays in
+  // the standard shell, with the review link.
+  const member = claimReceivedEmail({ name: userName, productName, baseUrl: FRONTEND() });
+  const sends = [sendEmail(ADMIN_INBOX, `New claim — ${safeProduct}`, emailWrap('New Claim Submitted', adminBody))];
+  if (userEmail && userEmail !== ADMIN_INBOX) sends.push(sendEmail(userEmail, member.subject, member.html));
+  await Promise.all(sends).catch(() => {});
 }
 
 async function notifyClaimValidated(userEmail, userName, productName) {
