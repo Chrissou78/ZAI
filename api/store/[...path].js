@@ -2,7 +2,7 @@ import { randomUUID } from 'crypto';
 import { getPool, initDB, requireAdmin, isAdmin } from '../db.js';
 import { pointsForAmount, chfForPoints, categoryEarnsPoints, pointsToCoverCHF, TIERS, VOUCHER_VALID_YEARS, tierForPoints, effectivePriceCHF } from '../points.js';
 import { applyCors, authenticate } from '../middleware.js';
-import { notifyOrder, notifyMember, mailStatus } from '../_lib/mailer.js';
+import { notifyOrder, notifyMember, mailStatus, SALES_COPY_TO } from '../_lib/mailer.js';
 import { envReport } from '../_lib/envcheck.js';
 import { stripeAccountStatus } from '../_lib/stripecheck.js';
 import { getStripe, chargeContext, applyChargeRouting, DIRECT_CHARGES } from '../_lib/stripe.js';
@@ -244,6 +244,7 @@ async function fulfillDealRedemption({ redemptionId, dealId, userId, pointsUsed,
   // never affect a purchase that has already been paid for and fulfilled.
   buyerLine(userId).then(({ who, email }) => notifyOrder({
     subject: `New deal purchase — ${deal?.title || dealId}`,
+    cc: SALES_COPY_TO,
     title: 'A member purchased a deal',
     rows: [
       ['Item', deal?.title || dealId],
@@ -1207,6 +1208,7 @@ async function handleDeals(req, res, segments, method, userId, decoded) {
     // touch within two working days, so the team has to hear about it.
     buyerLine(userId).then(({ who, email }) => notifyOrder({
       subject: `Points redemption — ${deal.title}`,
+      cc: SALES_COPY_TO,
       title: 'A member redeemed a reward with points',
       rows: [
         ['Item', deal.title],

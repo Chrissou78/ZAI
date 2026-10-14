@@ -258,15 +258,28 @@ export function notifyMember({ to, subject, title, greeting, rows, footNote }) {
  * Fire-and-forget: a failed notification must never fail the purchase that
  * triggered it. Callers are not expected to await this.
  */
-export function notifyOrder({ title, rows, footNote, subject }) {
+/**
+ * Who else gets a copy of product sales — paid deal purchases and points
+ * redemptions, the orders that ship. zai asked for their fulfilment contact
+ * at Only Swiss Products to be copied. SALES_NOTIFY_CC (comma-separated)
+ * replaces the default; set it empty to copy no one.
+ */
+export const SALES_COPY_TO = (process.env.SALES_NOTIFY_CC ?? 'frigg.steinmann@onlyswissproducts.com')
+  .split(',').map(s => s.trim()).filter(Boolean);
+
+export function notifyOrder({ title, rows, footNote, subject, cc }) {
   if (!mailConfigured()) {
     console.warn('[notify] SMTP not configured — skipping:', subject);
     return Promise.resolve(false);
   }
+  const copy = (cc || []).filter(Boolean);
   return Promise.resolve()
     .then(() => getTransporter())
-    .then(t => t.sendMail({ from: FROM, to: ADMIN_INBOX, subject, html: wrap(title, rows, footNote) }))
-    .then(() => { console.log('[notify] sent:', subject); return true; })
+    .then(t => t.sendMail({
+      from: FROM, to: ADMIN_INBOX, subject, html: wrap(title, rows, footNote),
+      ...(copy.length ? { cc: copy } : {}),
+    }))
+    .then(() => { console.log('[notify] sent:', subject, copy.length ? `(cc ${copy.join(', ')})` : ''); return true; })
     .catch((e) => { console.error('[notify] FAILED:', subject, e.message); return false; });
 }
 
