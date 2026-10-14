@@ -116,7 +116,7 @@ const MainLayout: React.FC = () => {
                 Sized to keep the bar's original height. aria-label preserves
                 the accessible name the text used to provide. */}
             <span role="img" aria-label={t('layout.brand')} style={{ display: 'flex' }}>
-              <ZaiWordmark width={43} height={24} />
+              <ZaiWordmark height={24} />
             </span>
           </div>
         )}

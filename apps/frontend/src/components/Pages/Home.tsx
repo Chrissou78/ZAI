@@ -553,7 +553,7 @@ const Home: React.FC = () => {
             }}
           >
             <ZaiMark size={72} color="#ffffff" />
-            <ZaiWordmark width={50} height={24} />
+            <ZaiWordmark height={24} />
           </div>
           <div
             style={{
