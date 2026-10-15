@@ -5,7 +5,7 @@ import { applyCors, authenticate } from '../middleware.js';
 import { notifyOrder, notifyMember, mailStatus, SALES_COPY_TO } from '../_lib/mailer.js';
 import { envReport } from '../_lib/envcheck.js';
 import { stripeAccountStatus } from '../_lib/stripecheck.js';
-import { getStripe, chargeContext, applyChargeRouting, DIRECT_CHARGES } from '../_lib/stripe.js';
+import { getStripe, chargeContext, applyChargeRouting, onPaymentAccount, DIRECT_CHARGES } from '../_lib/stripe.js';
 
 // ══════════════════════════════════════════════════════════
 // TIERS — the table lives in api/points.js (single source of truth,
@@ -1068,7 +1068,7 @@ async function handleDeals(req, res, segments, method, userId, decoded) {
     try {
       // Must name the same account the charge was created on, or Stripe
       // reports it as not found rather than as belonging elsewhere.
-      pi = await stripe.paymentIntents.retrieve(redemption.stripe_session_id, chargeContext());
+      pi = await onPaymentAccount(opts => stripe.paymentIntents.retrieve(redemption.stripe_session_id, opts));
     } catch (e) {
       return res.status(502).json({ error: 'Could not verify payment with Stripe' });
     }

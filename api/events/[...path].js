@@ -2,7 +2,7 @@ import jwt from 'jsonwebtoken';
 import { applyCors } from '../middleware.js';
 import { randomUUID } from 'crypto';
 import { getPool, initDB } from '../db.js';
-import { getStripe, chargeContext, applyChargeRouting } from '../_lib/stripe.js';
+import { getStripe, chargeContext, applyChargeRouting, onPaymentAccount } from '../_lib/stripe.js';
 import { notifyOrder, notifyMember } from '../_lib/mailer.js';
 
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -610,7 +610,7 @@ export default async function handler(req, res) {
 
       let pi;
       try {
-        pi = await stripe.paymentIntents.retrieve(payment.stripe_payment_intent, chargeContext());
+        pi = await onPaymentAccount(opts => stripe.paymentIntents.retrieve(payment.stripe_payment_intent, opts));
       } catch (e) {
         return res.status(502).json({ success: false, error: 'Could not verify payment with Stripe' });
       }
@@ -695,10 +695,12 @@ export default async function handler(req, res) {
           // The refund has to be issued on the account that holds the charge,
           // and in direct mode that is zai's — a refund attempted on the
           // platform simply cannot see the payment.
-          await stripe.refunds.create({
+          // Bookings paid before the switch to direct charges live on the
+          // platform; onPaymentAccount finds them there.
+          await onPaymentAccount(opts => stripe.refunds.create({
             payment_intent: payment.stripe_payment_intent,
             amount: Math.round(refundAmount * 100),
-          }, chargeContext());
+          }, opts));
           await getPool().query(
             `UPDATE event_payments SET status = 'refunded', refund_amount_chf = $2, updated_at = NOW() WHERE id = $1`,
             [payment.id, refundAmount]

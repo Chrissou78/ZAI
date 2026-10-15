@@ -50,6 +50,29 @@ export function chargeContext() {
 }
 
 /**
+ * Run a Stripe call against the payment's account, falling back to the
+ * platform when the object is not on zai's account.
+ *
+ * After switching to direct charges, payments taken before the switch still
+ * live on the platform: refunding an older event booking, or confirming a
+ * checkout that was open during the switch, would otherwise look on zai's
+ * account, find nothing, and fail. Only "resource_missing" falls back — any
+ * other error is real and is thrown as is.
+ *
+ *   const pi = await onPaymentAccount(opts => stripe.paymentIntents.retrieve(id, opts));
+ */
+export async function onPaymentAccount(call) {
+  const ctx = chargeContext();
+  if (!ctx) return call(undefined);
+  try {
+    return await call(ctx);
+  } catch (e) {
+    if (e?.code !== 'resource_missing') throw e;
+    return call(undefined);
+  }
+}
+
+/**
  * Apply the routing half of a PaymentIntent — fee, destination, merchant of
  * record — to a config object built by the caller.
  *
