@@ -579,6 +579,9 @@ export default async function handler(req, res) {
         data: {
           clientSecret: paymentIntent.client_secret, paymentId, amount, currency,
           listAmount, voucherCode, voucherDiscount,
+          // Direct mode: the PaymentIntent lives on zai's account; Stripe.js
+          // must be loaded for that account to confirm it.
+          stripeAccount: chargeContext()?.stripeAccount || null,
         },
       });
     }

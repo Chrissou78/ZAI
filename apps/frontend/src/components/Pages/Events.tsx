@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
-import { stripePromise } from '../../lib/stripe';
+import { stripeFor } from '../../lib/stripe';
 import { useAppContext } from '../../context/AppContext';
 import { apiService } from '../../services/api';
 
@@ -467,6 +467,7 @@ const Events: React.FC = () => {
   const [paymentData, setPaymentData] = useState<{
     clientSecret: string; amount: number; currency: string; paymentId: string;
     listAmount?: number; voucherCode?: string | null; voucherDiscount?: number;
+    stripeAccount?: string | null;
   } | null>(null);
 
   // ─── Tier event voucher (see Rewards → "Tier event vouchers") ───
@@ -708,7 +709,7 @@ const Events: React.FC = () => {
             await registerFullyCovered(eventId, data);
             return;
           }
-          const { clientSecret, amount: amt, currency, paymentId, listAmount, voucherCode, voucherDiscount } = data || {};
+          const { clientSecret, amount: amt, currency, paymentId, listAmount, voucherCode, voucherDiscount, stripeAccount } = data || {};
           if (!clientSecret) {
             // Never mount Stripe Elements without a client secret.
             alert(response.data?.error || t('events.errors.startCheckoutFailed'));
@@ -719,6 +720,7 @@ const Events: React.FC = () => {
             listAmount: listAmount != null ? Number(listAmount) : undefined,
             voucherCode: voucherCode ?? null,
             voucherDiscount: voucherDiscount != null ? Number(voucherDiscount) : 0,
+            stripeAccount: stripeAccount || null,
           });
           localStorage.setItem('zai_pending_event_payment', paymentId);
         } else {
@@ -1420,7 +1422,7 @@ const Events: React.FC = () => {
                       <span style={{ fontSize: 18, fontWeight: 600 }}>{paymentData.currency.toUpperCase()} {toNum(paymentData.amount).toFixed(2)}</span>
                     </div>
                   </div>
-                  <Elements stripe={stripePromise} options={elementsOptions}>
+                  <Elements stripe={stripeFor(paymentData.stripeAccount)} options={elementsOptions}>
                     <EventPaymentForm
                       amount={paymentData.amount}
                       currency={paymentData.currency}

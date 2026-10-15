@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import { useTranslation } from 'react-i18next';
-import { stripePromise } from '../../lib/stripe';
+import { stripeFor } from '../../lib/stripe';
 import ProductImageFallback from '../Common/ProductImageFallback';
 import { PRODUCT_IMAGE_RATIO, PRODUCT_IMAGE_MAX_HEIGHT, PRODUCT_GRID_COLUMNS, PRODUCT_CARD_MAX_WIDTH } from '../Common/productCard';
 import PointsStore from './PointsStore';
@@ -212,7 +212,7 @@ function DealModal({ deal, onClose, onSuccess }: {
   });
   const [saveAddress, setSaveAddress] = useState(true);
   const [shipError, setShipError] = useState('');
-  const [paymentData, setPaymentData] = useState<{ clientSecret: string; amount: number; redemptionId: string } | null>(null);
+  const [paymentData, setPaymentData] = useState<{ clientSecret: string; amount: number; redemptionId: string; stripeAccount?: string | null } | null>(null);
 
   useEffect(() => {
     fetch('/api/store/rewards/balance', { headers: authHeaders() })
@@ -266,7 +266,7 @@ function DealModal({ deal, onClose, onSuccess }: {
         onClose();
         onSuccess();
       } else if (json.success && json.data?.clientSecret) {
-        setPaymentData({ clientSecret: json.data.clientSecret, amount: json.data.amount, redemptionId: json.data.redemptionId });
+        setPaymentData({ clientSecret: json.data.clientSecret, amount: json.data.amount, redemptionId: json.data.redemptionId, stripeAccount: json.data.stripeAccount || null });
         // Survives a 3D-Secure/local-payment-method redirect so Updates can
         // finish confirmation on return, even though this component unmounts.
         localStorage.setItem('zai_pending_redemption', json.data.redemptionId);
@@ -501,7 +501,7 @@ function DealModal({ deal, onClose, onSuccess }: {
               <span style={{ fontSize: 18, fontWeight: 600 }}>CHF {paymentData.amount.toFixed(2)}</span>
             </div>
 
-            <Elements stripe={stripePromise} options={elementsOptions}>
+            <Elements stripe={stripeFor(paymentData.stripeAccount)} options={elementsOptions}>
               <InlinePaymentForm
                 amount={paymentData.amount}
                 redemptionId={paymentData.redemptionId}

@@ -1030,6 +1030,9 @@ async function handleDeals(req, res, segments, method, userId, decoded) {
         clientSecret: paymentIntent.client_secret,
         redemptionId,
         amount: finalCHF,
+        // In direct mode the PaymentIntent lives on zai's account, and
+        // Stripe.js must be told so or it cannot find it to confirm.
+        stripeAccount: chargeContext()?.stripeAccount || null,
       },
     });
   }
@@ -1688,6 +1691,49 @@ async function handleMedia(req, res, segments, method, decoded) {
 
 // ── STRIPE WEBHOOK ──────────────────────────────────────
 async function handleStripe(req, res, segments) {
+
+  // GET /api/store/stripe/oauth/callback?code=ac_...
+  // Where Stripe sends zai's owner back after they approve connecting their
+  // own Stripe account to our platform (Settings → Connect → Onboarding
+  // options → OAuth must list this URL as a redirect). The authorisation code
+  // is short-lived and single-use, so it is exchanged here at once instead of
+  // being copied out of the address bar and relayed.
+  //
+  // It only records and reports the connection. Payments move to the account
+  // when STRIPE_CONNECTED_ACCOUNT_ID and STRIPE_DIRECT_CHARGES are set on the
+  // server — a deliberate step, so nobody can redirect zai's sales by
+  // approving a connection.
+  if (req.method === 'GET' && segments[0] === 'oauth' && segments[1] === 'callback') {
+    const url = new URL(req.url, 'http://localhost');
+    const code = url.searchParams.get('code');
+    const oauthError = url.searchParams.get('error_description') || url.searchParams.get('error');
+    const page = (title, body) => res.status(200).set('Content-Type', 'text/html; charset=utf-8').send(
+      `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title></head>`
+      + `<body style="font-family:Helvetica,Arial,sans-serif;background:#f4f2ee;color:#111;padding:48px 20px;"><div style="max-width:520px;margin:0 auto;background:#fff;padding:32px;border-radius:10px;">`
+      + `<div style="font-size:10px;letter-spacing:.3em;color:#7a222e;margin-bottom:10px;">ZAI EXPERIENCE CLUB · STRIPE</div>${body}</div></body></html>`
+    );
+    const esc = (v) => String(v ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+
+    if (oauthError || !code) {
+      console.warn('[stripe-oauth] not connected:', oauthError || 'no code');
+      return page('Not connected', `<h1 style="font-weight:300;">Not connected</h1><p>${esc(oauthError || 'Stripe did not return an authorisation code.')}</p><p>Nothing was changed.</p>`);
+    }
+    try {
+      const stripe = await getStripe();
+      const token = await stripe.oauth.token({ grant_type: 'authorization_code', code });
+      const acct = await stripe.accounts.retrieve(token.stripe_user_id);
+      const name = acct.business_profile?.name || acct.settings?.dashboard?.display_name || acct.company?.name || '';
+      const cards = acct.capabilities?.card_payments || 'none';
+      console.log('[stripe-oauth] connected', token.stripe_user_id, name, 'card_payments=' + cards, 'charges=' + acct.charges_enabled);
+      return page('Connected', `<h1 style="font-weight:300;">Stripe account connected</h1>`
+        + `<p><b>${esc(name || 'Account')}</b><br><code>${esc(token.stripe_user_id)}</code></p>`
+        + `<p>Card payments: <b>${esc(cards)}</b> · Charges: <b>${acct.charges_enabled ? 'enabled' : 'not enabled'}</b></p>`
+        + `<p style="color:#6a6a6a;font-size:13px;">Payments are not moved yet. The OnChain Labs team switches them over once this connection is confirmed. You can close this page.</p>`);
+    } catch (e) {
+      console.error('[stripe-oauth] exchange failed:', e.message);
+      return page('Not connected', `<h1 style="font-weight:300;">Not connected</h1><p>${esc(e.message)}</p><p>Nothing was changed. The link can be opened again.</p>`);
+    }
+  }
 
   // POST /api/store/stripe/webhook
   if (req.method === 'POST' && segments[0] === 'webhook') {

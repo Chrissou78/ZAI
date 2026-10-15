@@ -58,18 +58,27 @@ if (WANT_URL) {
     process.exit(1);
   }
   // read_write is what lets the platform create charges on their account.
+  // The return page exchanges the code itself (api/store stripe/oauth/callback)
+  // and shows the connected account, so nothing has to be copied back. It must
+  // be listed under Redirects in the platform's OAuth settings.
+  const REDIRECT = (process.env.PUBLIC_APP_URL || 'https://experience.zai.ch').replace(/\/+$/, '')
+    + '/api/store/stripe/oauth/callback';
   const url = 'https://connect.stripe.com/oauth/authorize'
     + '?response_type=code'
     + '&client_id=' + encodeURIComponent(CLIENT_ID)
     + '&scope=read_write'
+    + '&redirect_uri=' + encodeURIComponent(REDIRECT)
+    // Open on "sign in", not "create an account": zai already has one.
+    + '&stripe_landing=login'
     + '&stripe_user[country]=CH';
   console.log('');
   console.log('Send this to zai. They sign into THEIR OWN Stripe account and approve:');
   console.log('');
   console.log('  ' + url);
   console.log('');
-  console.log('Stripe then redirects to the URL registered on the platform, with ?code=ac_...');
-  console.log('in the address bar. Send that code back and finish with:');
+  console.log('Stripe then returns them to ' + REDIRECT + ',');
+  console.log('which completes the connection and shows the account it connected.');
+  console.log('Only if that page failed, finish by hand with the code from its address bar:');
   console.log('');
   console.log('  node scripts/stripe-connect-account.mjs --code ac_...');
   process.exit(0);
