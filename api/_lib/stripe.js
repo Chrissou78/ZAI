@@ -59,7 +59,11 @@ export function chargeContext() {
  * account, find nothing, and fail. Only "resource_missing" falls back — any
  * other error is real and is thrown as is.
  *
- *   const pi = await onPaymentAccount(opts => stripe.paymentIntents.retrieve(id, opts));
+ *   const pi = await onPaymentAccount(opts => stripe.paymentIntents.retrieve(id, {}, opts));
+ *
+ * Note the empty params: in stripe-node, retrieve/update/cancel take
+ * (id, params, options). Passing options second sends "stripeAccount" to
+ * Stripe as a request parameter, which it rejects.
  */
 export async function onPaymentAccount(call) {
   const ctx = chargeContext();

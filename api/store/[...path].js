@@ -1068,7 +1068,7 @@ async function handleDeals(req, res, segments, method, userId, decoded) {
     try {
       // Must name the same account the charge was created on, or Stripe
       // reports it as not found rather than as belonging elsewhere.
-      pi = await onPaymentAccount(opts => stripe.paymentIntents.retrieve(redemption.stripe_session_id, opts));
+      pi = await onPaymentAccount(opts => stripe.paymentIntents.retrieve(redemption.stripe_session_id, {}, opts));
     } catch (e) {
       return res.status(502).json({ error: 'Could not verify payment with Stripe' });
     }

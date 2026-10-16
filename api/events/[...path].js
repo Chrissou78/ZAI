@@ -610,7 +610,7 @@ export default async function handler(req, res) {
 
       let pi;
       try {
-        pi = await onPaymentAccount(opts => stripe.paymentIntents.retrieve(payment.stripe_payment_intent, opts));
+        pi = await onPaymentAccount(opts => stripe.paymentIntents.retrieve(payment.stripe_payment_intent, {}, opts));
       } catch (e) {
         return res.status(502).json({ success: false, error: 'Could not verify payment with Stripe' });
       }
