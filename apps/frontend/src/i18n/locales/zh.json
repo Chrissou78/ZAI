@@ -1062,13 +1062,13 @@
       "page": "第 {{current}} 页,共 {{total}} 页"
     },
     "follow": {
-      "eyebrow": "关注 zai",
-      "heading": "随时掌握最新动态",
-      "desc": "关注我们的 WhatsApp 频道,获取活动公告、新款发布以及来自达沃斯工坊的独家故事。",
+      "eyebrow": "与 zai 聊天",
+      "heading": "联系 zai",
+      "desc": "对您的产品、活动或会员资格有疑问？直接通过 WhatsApp 给 zai 团队发消息。",
       "brand": "zai Experience Club",
-      "followers": "1,843 位关注者 · 每周更新",
-      "cta": "关注 WhatsApp 频道",
-      "note": "您将被重新导向至 WhatsApp。不会分享任何个人数据。"
+      "sub": "WhatsApp Business · zai 团队",
+      "cta": "在 WhatsApp 上聊天",
+      "note": "将打开 WhatsApp。只有在您发送消息时，您的号码才会与 zai 共享。"
     },
     "upload": {
       "heading": "上传并分享",

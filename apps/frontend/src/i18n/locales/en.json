@@ -1065,13 +1065,13 @@
       "page": "Page {{current}} of {{total}}"
     },
     "follow": {
-      "eyebrow": "Follow zai",
-      "heading": "Stay in the loop",
-      "desc": "Follow our WhatsApp channel for event announcements, new model drops, and exclusive stories from the Davos manufactory.",
+      "eyebrow": "Chat with zai",
+      "heading": "Talk to zai",
+      "desc": "Questions about your products, events or membership? Message the zai team directly on WhatsApp.",
       "brand": "zai Experience Club",
-      "followers": "1,843 followers · Updated weekly",
-      "cta": "Follow WhatsApp Channel",
-      "note": "You will be redirected to WhatsApp. No personal data is shared."
+      "sub": "WhatsApp Business · zai team",
+      "cta": "Chat on WhatsApp",
+      "note": "Opens WhatsApp. Your number is only shared with zai if you send a message."
     },
     "upload": {
       "heading": "Upload & Share",

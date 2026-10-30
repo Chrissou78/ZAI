@@ -1079,13 +1079,13 @@
       "registered_few": "{{count}} registrovaní"
     },
     "follow": {
-      "eyebrow": "Sledujte zai",
-      "heading": "Zůstaňte v obraze",
-      "desc": "Sledujte náš kanál na WhatsAppu a nenechte si ujít oznámení akcí, nové modely a exkluzivní příběhy z manufaktury v Davosu.",
+      "eyebrow": "Chat se zai",
+      "heading": "Napište zai",
+      "desc": "Máte otázky k produktům, akcím nebo členství? Napište týmu zai přímo na WhatsApp.",
       "brand": "zai Experience Club",
-      "followers": "1 843 odběratelů · Aktualizováno týdně",
-      "cta": "Sledovat kanál na WhatsAppu",
-      "note": "Budete přesměrováni na WhatsApp. Nesdílejí se žádné osobní údaje."
+      "sub": "WhatsApp Business · tým zai",
+      "cta": "Chatovat na WhatsAppu",
+      "note": "Otevře WhatsApp. Vaše číslo se se zai sdílí, jen pokud pošlete zprávu."
     },
     "upload": {
       "heading": "Nahrát a sdílet",

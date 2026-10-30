@@ -1366,7 +1366,7 @@ const Community: React.FC = () => {
               </div>
               <div>
                 <div style={{ fontSize: '12px', fontWeight: 500, color: C.black }}>{t('community.follow.brand')}</div>
-                <div style={{ fontSize: '9px', color: C.muted }}>{t('community.follow.followers')}</div>
+                <div style={{ fontSize: '9px', color: C.muted }}>{t('community.follow.sub')}</div>
               </div>
             </div>
             <a href="https://wa.me/message/D2T7UUEIPTJ6M1" target="_blank" rel="noopener noreferrer"

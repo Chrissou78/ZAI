@@ -1065,13 +1065,13 @@
       "page": "Seite {{current}} von {{total}}"
     },
     "follow": {
-      "eyebrow": "zai folgen",
-      "heading": "Immer auf dem Laufenden",
-      "desc": "Folgen Sie unserem WhatsApp-Kanal für Veranstaltungsankündigungen, neue Modell-Drops und exklusive Geschichten aus der Manufaktur in Davos.",
+      "eyebrow": "Mit zai chatten",
+      "heading": "Schreiben Sie zai",
+      "desc": "Fragen zu Ihren Produkten, Veranstaltungen oder Ihrer Mitgliedschaft? Schreiben Sie dem zai Team direkt auf WhatsApp.",
       "brand": "zai Experience Club",
-      "followers": "1.843 Follower · Wöchentlich aktualisiert",
-      "cta": "WhatsApp-Kanal folgen",
-      "note": "Sie werden zu WhatsApp weitergeleitet. Es werden keine persönlichen Daten geteilt."
+      "sub": "WhatsApp Business · zai Team",
+      "cta": "Auf WhatsApp chatten",
+      "note": "Öffnet WhatsApp. Ihre Nummer wird nur mit zai geteilt, wenn Sie eine Nachricht senden."
     },
     "upload": {
       "heading": "Hochladen & Teilen",
