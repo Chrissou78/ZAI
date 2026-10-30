@@ -1062,9 +1062,9 @@
       "page": "第 {{current}} 页,共 {{total}} 页"
     },
     "follow": {
-      "eyebrow": "与 zai 聊天",
-      "heading": "联系 zai",
-      "desc": "对您的产品、活动或会员资格有疑问？直接通过 WhatsApp 给 zai 团队发消息。",
+      "eyebrow": "关注 zai",
+      "heading": "随时掌握最新动态",
+      "desc": "在 WhatsApp 上加入我们，获取活动公告、新款发布以及来自达沃斯工坊的独家故事。",
       "brand": "zai Experience Club",
       "sub": "WhatsApp Business · zai 团队",
       "cta": "在 WhatsApp 上聊天",

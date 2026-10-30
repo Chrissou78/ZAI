@@ -1065,9 +1065,9 @@
       "page": "Page {{current}} of {{total}}"
     },
     "follow": {
-      "eyebrow": "Chat with zai",
-      "heading": "Talk to zai",
-      "desc": "Questions about your products, events or membership? Message the zai team directly on WhatsApp.",
+      "eyebrow": "Follow zai",
+      "heading": "Stay in the loop",
+      "desc": "Join us on WhatsApp for event announcements, new model drops, and exclusive stories from the Davos manufactory.",
       "brand": "zai Experience Club",
       "sub": "WhatsApp Business · zai team",
       "cta": "Chat on WhatsApp",
