@@ -1369,7 +1369,7 @@ const Community: React.FC = () => {
                 <div style={{ fontSize: '9px', color: C.muted }}>{t('community.follow.followers')}</div>
               </div>
             </div>
-            <a href="https://whatsapp.com/channel/YOUR_CHANNEL_ID" target="_blank" rel="noopener noreferrer"
+            <a href="https://wa.me/message/D2T7UUEIPTJ6M1" target="_blank" rel="noopener noreferrer"
               style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                 width: '100%', padding: '11px', background: C.green, color: '#fff',
