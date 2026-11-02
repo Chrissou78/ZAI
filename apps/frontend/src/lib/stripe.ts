@@ -1,4 +1,5 @@
-import { loadStripe, type Stripe } from '@stripe/stripe-js/pure';
+import { loadStripe } from '@stripe/stripe-js/pure';
+import type { Stripe } from '@stripe/stripe-js';
 
 export const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
 
