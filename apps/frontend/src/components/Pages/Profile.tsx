@@ -215,6 +215,34 @@ const PHONE_CODES = [
   { code: '+84',  label: '+84 (VN)' },
 ];
 
+/* ── Calling code for each country in COUNTRIES (picked when the country changes) ── */
+const COUNTRY_PHONE_CODE: Record<string, string> = {
+  'Afghanistan': '+93', 'Albania': '+355', 'Algeria': '+213', 'Andorra': '+376', 'Angola': '+244',
+  'Argentina': '+54', 'Armenia': '+374', 'Australia': '+61', 'Austria': '+43', 'Azerbaijan': '+994',
+  'Bahrain': '+973', 'Bangladesh': '+880', 'Belgium': '+32', 'Bolivia': '+591',
+  'Bosnia and Herzegovina': '+387', 'Brazil': '+55', 'Bulgaria': '+359', 'Cambodia': '+855',
+  'Cameroon': '+237', 'Canada': '+1', 'Chile': '+56', 'China': '+86', 'Colombia': '+57',
+  'Costa Rica': '+506', 'Croatia': '+385', 'Cuba': '+53', 'Cyprus': '+357', 'Czech Republic': '+420',
+  'Denmark': '+45', 'Dominican Republic': '+1', 'Ecuador': '+593', 'Egypt': '+20', 'Estonia': '+372',
+  'Ethiopia': '+251', 'Finland': '+358', 'France': '+33', 'Georgia': '+995', 'Germany': '+49',
+  'Ghana': '+233', 'Greece': '+30', 'Guatemala': '+502', 'Hong Kong': '+852', 'Hungary': '+36',
+  'Iceland': '+354', 'India': '+91', 'Indonesia': '+62', 'Iran': '+98', 'Iraq': '+964',
+  'Ireland': '+353', 'Israel': '+972', 'Italy': '+39', 'Jamaica': '+1', 'Japan': '+81',
+  'Jordan': '+962', 'Kazakhstan': '+7', 'Kenya': '+254', 'Kuwait': '+965', 'Latvia': '+371',
+  'Lebanon': '+961', 'Libya': '+218', 'Liechtenstein': '+423', 'Lithuania': '+370',
+  'Luxembourg': '+352', 'Malaysia': '+60', 'Malta': '+356', 'Mexico': '+52', 'Moldova': '+373',
+  'Monaco': '+377', 'Mongolia': '+976', 'Montenegro': '+382', 'Morocco': '+212', 'Mozambique': '+258',
+  'Netherlands': '+31', 'New Zealand': '+64', 'Nigeria': '+234', 'North Macedonia': '+389',
+  'Norway': '+47', 'Oman': '+968', 'Pakistan': '+92', 'Panama': '+507', 'Paraguay': '+595',
+  'Peru': '+51', 'Philippines': '+63', 'Poland': '+48', 'Portugal': '+351', 'Qatar': '+974',
+  'Romania': '+40', 'Russia': '+7', 'Saudi Arabia': '+966', 'Senegal': '+221', 'Serbia': '+381',
+  'Singapore': '+65', 'Slovakia': '+421', 'Slovenia': '+386', 'South Africa': '+27',
+  'South Korea': '+82', 'Spain': '+34', 'Sri Lanka': '+94', 'Sweden': '+46', 'Switzerland': '+41',
+  'Taiwan': '+886', 'Thailand': '+66', 'Tunisia': '+216', 'Turkey': '+90', 'UAE': '+971',
+  'Uganda': '+256', 'Ukraine': '+380', 'United Kingdom': '+44', 'United States': '+1',
+  'Uruguay': '+598', 'Uzbekistan': '+998', 'Venezuela': '+58', 'Vietnam': '+84',
+};
+
 /* ── Helper: extract phone code ── */
 function parsePhone(phoneNumber: string): { phoneCode: string; phoneLocal: string } {
   if (!phoneNumber) return { phoneCode: '+41', phoneLocal: '' };
@@ -656,6 +684,9 @@ const Profile: React.FC = () => {
   }, []);
 
   const [isEditing, setIsEditing] = useState(false);
+  // True once the phone code is the member's own choice (picked by hand, or
+  // part of a saved number); the country then no longer changes it.
+  const phoneCodeChosen = useRef(false);
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'purchases'>('overview');
   const [stats, setStats] = useState<UserStats>({ productsClaimed: 0, eventsAttended: 0 });
@@ -829,6 +860,17 @@ const Profile: React.FC = () => {
 
   const handleSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const { name, value } = e.target;
+    if (name === 'phoneCode') phoneCodeChosen.current = true;
+    if (name === 'country') {
+      // Follow the country with the phone code, unless that would re-label a
+      // number the member already gave under a code of their own choosing.
+      setFormData(prev => {
+        const code = COUNTRY_PHONE_CODE[value];
+        const follow = code && (!prev.phoneLocal || !phoneCodeChosen.current);
+        return follow ? { ...prev, country: value, phoneCode: code } : { ...prev, country: value };
+      });
+      return;
+    }
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
@@ -1102,7 +1144,7 @@ const Profile: React.FC = () => {
 
         <button
           onClick={() => {
-            if (isEditing) { handleSave(); } else { setIsEditing(true); }
+            if (isEditing) { handleSave(); } else { phoneCodeChosen.current = Boolean(formData.phoneLocal); setIsEditing(true); }
           }}
           disabled={isLoading}
           style={{
