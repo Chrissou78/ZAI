@@ -54,6 +54,9 @@ interface PrivacySettings {
   communityVisibility: boolean;
 }
 interface RegionSettings {
+  // Member-chosen region. Not `country`: the table default sets that to
+  // 'Switzerland' for everyone, so it can't tell a choice from the default.
+  home?: string;
   currency: string;
   language: string;
 }
@@ -90,8 +93,8 @@ const Settings: React.FC = () => {
     dataSharing: false, analytics: true,
     profileVisibility: true, communityVisibility: true,
   });
-  const [country, setCountry] = useState<string>(user?.country || '');
-  const [countrySaving, setCountrySaving] = useState(false);
+  const [addressCountry, setAddressCountry] = useState<string>(user?.country || '');
+  const [regionSaving, setRegionSaving] = useState(false);
   const [region, setRegion] = useState<RegionSettings>({
     currency: 'CHF', language: 'en',
   });
@@ -148,11 +151,11 @@ const Settings: React.FC = () => {
       setLoading(false);
     };
     fetchSettings();
-    // Account region shows the saved profile country; the user held in memory
+    // The address country is the region's fallback; the user held in memory
     // can predate a change made on the Profile page or another device.
     apiService.get('/users/me').then(res => {
       const d = (res.data as any)?.data;
-      if (d && typeof d.country === 'string') setCountry(d.country);
+      if (d && typeof d.country === 'string') setAddressCountry(d.country);
     }).catch(() => { /* keep what we have */ });
   }, []);
 
@@ -242,33 +245,27 @@ const Settings: React.FC = () => {
   };
 
   /* ── Account region ──
-     The member's home country, the same field as the Profile address
-     country (user_profiles.country). PUT /users/me merges omitted fields
-     against the saved row, so sending only country leaves the rest alone. */
+     Its own setting (user_settings.region.home), separate from the address
+     country on the Profile page, and shown on the profile card next to the
+     currency. Until the member picks one it falls back to the address
+     country. The settings endpoint merges sections, so this saves alone. */
   const countryLabel = (name: string) => t(`profile.countries.${name}`, name);
-  const handleCountryChange = async (next: string) => {
-    if (!user || next === country) return;
-    const previous = country;
-    setCountry(next);
-    setCountrySaving(true); setError(''); setSuccess('');
+  const regionShown = region.home || addressCountry;
+  const handleRegionChange = async (next: string) => {
+    if (next === regionShown) return;
+    const previous = region.home;
+    setRegion(prev => ({ ...prev, home: next }));
+    setRegionSaving(true); setError(''); setSuccess('');
     try {
-      const res = await apiService.put('/users/me', { country: next });
-      const data = res.data as any;
-      if (data?.jwtToken) {
-        localStorage.setItem('token', data.jwtToken);
-        localStorage.setItem('zai_token', data.jwtToken);
-      }
-      const updatedUser = { ...user, country: next };
-      setUser(updatedUser);
-      localStorage.setItem('zai_user', JSON.stringify(updatedUser));
+      await apiService.put('/users/me/settings', { region: { home: next } });
       setSuccess(t('settings.alerts.saved'));
       setTimeout(() => setSuccess(''), 3000);
     } catch {
-      // Roll back so the row never shows a country that wasn't saved.
-      setCountry(previous);
+      // Roll back so the row never shows a region that wasn't saved.
+      setRegion(prev => ({ ...prev, home: previous }));
       setError(t('settings.alerts.saveFailed'));
     }
-    setCountrySaving(false);
+    setRegionSaving(false);
   };
 
   /* ── Password change ── */
@@ -696,9 +693,9 @@ const Settings: React.FC = () => {
                 desc={t('settings.region.accountRegionDesc')}
                 right={
                   <select
-                    value={country}
-                    disabled={countrySaving}
-                    onChange={e => handleCountryChange(e.target.value)}
+                    value={regionShown}
+                    disabled={regionSaving}
+                    onChange={e => handleRegionChange(e.target.value)}
                     style={{
                       fontSize: '13px', color: C.black, fontWeight: 500,
                       border: `1px solid ${C.border}`, padding: '7px 10px',
@@ -707,8 +704,8 @@ const Settings: React.FC = () => {
                     }}
                   >
                     {/* A country saved before this list existed stays selectable. */}
-                    {!country && <option value="">{t('profile.fields.selectCountry')}</option>}
-                    {country && !COUNTRIES.includes(country) && <option value={country}>{country}</option>}
+                    {!regionShown && <option value="">{t('profile.fields.selectCountry')}</option>}
+                    {regionShown && !COUNTRIES.includes(regionShown) && <option value={regionShown}>{regionShown}</option>}
                     {COUNTRIES.map(c => (<option key={c} value={c}>{countryLabel(c)}</option>))}
                   </select>
                 }

@@ -96,7 +96,7 @@
     "region": {
       "heading": "地区与货币",
       "accountRegion": "账户所在地区",
-      "accountRegionDesc": "您的居住国家，与个人资料地址一致",
+      "accountRegionDesc": "显示在您个人资料中的货币旁边",
       "currency": {
         "title": "货币",
         "desc": "用于定价及奖励价值计算"
@@ -451,7 +451,7 @@
       "memberSince": "会员起始于 {{date}}",
       "card": "卡号：{{number}}",
       "nfcCard": "NFC 卡号：{{id}}",
-      "regionTag": "瑞士法郎 · 阿尔卑斯地区"
+      "regionTag": "瑞士法郎 · {{region}}"
     },
     "sections": {
       "personalInformation": "个人信息",

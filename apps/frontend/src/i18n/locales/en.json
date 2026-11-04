@@ -96,7 +96,7 @@
     "region": {
       "heading": "Region & Currency",
       "accountRegion": "Account region",
-      "accountRegionDesc": "Your home country, as on your profile address",
+      "accountRegionDesc": "Shown on your profile next to your currency",
       "currency": {
         "title": "Currency",
         "desc": "Used for pricing and reward values"
@@ -451,7 +451,7 @@
       "memberSince": "Member since {{date}}",
       "card": "Card: {{number}}",
       "nfcCard": "NFC Card: {{id}}",
-      "regionTag": "CHF · Alpine region"
+      "regionTag": "CHF · {{region}}"
     },
     "sections": {
       "personalInformation": "Personal Information",

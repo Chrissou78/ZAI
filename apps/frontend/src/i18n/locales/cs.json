@@ -96,7 +96,7 @@
     "region": {
       "heading": "Region a měna",
       "accountRegion": "Region účtu",
-      "accountRegionDesc": "Země vašeho bydliště, stejně jako v adrese profilu",
+      "accountRegionDesc": "Zobrazuje se ve vašem profilu vedle měny",
       "currency": {
         "title": "Měna",
         "desc": "Používá se pro ceny a hodnoty odměn"
@@ -461,7 +461,7 @@
       "memberSince": "Členem od {{date}}",
       "card": "Karta: {{number}}",
       "nfcCard": "NFC karta: {{id}}",
-      "regionTag": "CHF · Alpský region"
+      "regionTag": "CHF · {{region}}"
     },
     "sections": {
       "personalInformation": "Osobní údaje",

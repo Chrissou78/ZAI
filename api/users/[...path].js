@@ -422,9 +422,19 @@ export default async function handler(req, res) {
       await initDB();
       await ensureProfile(decoded);
       await ensureSettings(decoded.userId);
+      // Merge what was sent into what is stored. Overwriting every section
+      // meant any caller that left one out wiped it (Settings never sends
+      // `card`), and the region row could not be saved on its own.
+      const section = (v) => (v && typeof v === 'object' && !Array.isArray(v) ? JSON.stringify(v) : null);
       await getPool().query(
-        `UPDATE user_settings SET notifications=$2, privacy=$3, card=$4, region=$5, updated_at=NOW() WHERE user_id=$1`,
-        [decoded.userId, JSON.stringify(body.notifications || {}), JSON.stringify(body.privacy || {}), JSON.stringify(body.card || {}), JSON.stringify(body.region || {})]
+        `UPDATE user_settings SET
+           notifications = COALESCE(notifications, '{}'::jsonb) || COALESCE($2::jsonb, '{}'::jsonb),
+           privacy       = COALESCE(privacy,       '{}'::jsonb) || COALESCE($3::jsonb, '{}'::jsonb),
+           card          = COALESCE(card,          '{}'::jsonb) || COALESCE($4::jsonb, '{}'::jsonb),
+           region        = COALESCE(region,        '{}'::jsonb) || COALESCE($5::jsonb, '{}'::jsonb),
+           updated_at = NOW()
+         WHERE user_id=$1`,
+        [decoded.userId, section(body.notifications), section(body.privacy), section(body.card), section(body.region)]
       );
       return res.json({ success: true, message: 'Settings saved' });
     } catch (err) {

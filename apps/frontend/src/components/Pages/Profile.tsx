@@ -688,6 +688,7 @@ const Profile: React.FC = () => {
   const [nfcSupported, setNfcSupported] = useState(false);
   const [nfcReading, setNfcReading] = useState(false);
   const [cardNumberStored, setCardNumberStored] = useState('');
+  const [regionHome, setRegionHome] = useState('');
 
   /* ── Rewards state ── */
   const [points, setPoints] = useState(0);
@@ -808,6 +809,11 @@ const Profile: React.FC = () => {
       } catch { /* fall back to context user */ }
     };
     fetchProfile();
+    // Region chosen in Settings, shown next to the currency on the card.
+    apiService.get('/users/me/settings').then(res => {
+      const home = (res.data as any)?.settings?.region?.home;
+      if (!cancelled) setRegionHome(typeof home === 'string' ? home : '');
+    }).catch(() => { /* card falls back to the address country */ });
     return () => { cancelled = true; };
   }, [user]);
 
@@ -1071,7 +1077,9 @@ const Profile: React.FC = () => {
   const nfcCardId = clean((user as any).nfcCardId);
   if (cardNumberStored) bulletItems.push(t('profile.bullets.card', { number: cardNumberStored }));
   else if (nfcCardId) bulletItems.push(t('profile.bullets.nfcCard', { id: nfcCardId }));
-  bulletItems.push(t('profile.bullets.regionTag'));
+  // Settings > Region, or the address country until one is chosen there.
+  const region = regionHome || formData.country;
+  bulletItems.push(region ? t('profile.bullets.regionTag', { region: countryLabel(region) }) : 'CHF');
 
   const selectStyle: React.CSSProperties = {
     width: '100%',

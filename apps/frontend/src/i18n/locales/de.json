@@ -96,7 +96,7 @@
     "region": {
       "heading": "Region & Währung",
       "accountRegion": "Kontoregion",
-      "accountRegionDesc": "Ihr Wohnsitzland, wie in Ihrer Profiladresse",
+      "accountRegionDesc": "Wird in Ihrem Profil neben der Währung angezeigt",
       "currency": {
         "title": "Währung",
         "desc": "Wird für Preise und Prämienwerte verwendet"
@@ -451,7 +451,7 @@
       "memberSince": "Mitglied seit {{date}}",
       "card": "Karte: {{number}}",
       "nfcCard": "NFC-Karte: {{id}}",
-      "regionTag": "CHF · Alpenregion"
+      "regionTag": "CHF · {{region}}"
     },
     "sections": {
       "personalInformation": "Persönliche Angaben",
