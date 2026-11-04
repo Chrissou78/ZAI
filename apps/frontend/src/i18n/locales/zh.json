@@ -96,6 +96,7 @@
     "region": {
       "heading": "地区与货币",
       "accountRegion": "账户所在地区",
+      "accountRegionDesc": "您的居住国家，与个人资料地址一致",
       "currency": {
         "title": "货币",
         "desc": "用于定价及奖励价值计算"

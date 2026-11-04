@@ -96,6 +96,7 @@
     "region": {
       "heading": "Région et devise",
       "accountRegion": "Région du compte",
+      "accountRegionDesc": "Votre pays de résidence, comme dans l'adresse de votre profil",
       "currency": {
         "title": "Devise",
         "desc": "Utilisée pour les prix et la valeur des récompenses"

@@ -96,6 +96,7 @@
     "region": {
       "heading": "Region & Währung",
       "accountRegion": "Kontoregion",
+      "accountRegionDesc": "Ihr Wohnsitzland, wie in Ihrer Profiladresse",
       "currency": {
         "title": "Währung",
         "desc": "Wird für Preise und Prämienwerte verwendet"

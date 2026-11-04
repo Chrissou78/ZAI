@@ -96,6 +96,7 @@
     "region": {
       "heading": "Region a měna",
       "accountRegion": "Region účtu",
+      "accountRegionDesc": "Země vašeho bydliště, stejně jako v adrese profilu",
       "currency": {
         "title": "Měna",
         "desc": "Používá se pro ceny a hodnoty odměn"

@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useAppContext } from '../../context/AppContext';
 import { useWalletAuth } from '../../hooks/useWalletAuth';
 import { apiService } from '../../services/api';
+import { COUNTRIES } from '../../lib/countries';
 import { SUPPORTED_LANGUAGES, SupportedLanguage, mapToSupportedLanguage } from '../../i18n';
 
 /* ── Design tokens ── */
@@ -53,15 +54,9 @@ interface PrivacySettings {
   communityVisibility: boolean;
 }
 interface RegionSettings {
-  country: string;
-  countryCode: string;
   currency: string;
   language: string;
 }
-
-const COUNTRY_MAP: Record<string, string> = {
-  CH: 'Switzerland', DE: 'Germany', FR: 'France', AT: 'Austria', IT: 'Italy', US: 'United States', GB: 'United Kingdom',
-};
 
 const Settings: React.FC = () => {
   const { t, i18n } = useTranslation();
@@ -95,8 +90,10 @@ const Settings: React.FC = () => {
     dataSharing: false, analytics: true,
     profileVisibility: true, communityVisibility: true,
   });
+  const [country, setCountry] = useState<string>(user?.country || '');
+  const [countrySaving, setCountrySaving] = useState(false);
   const [region, setRegion] = useState<RegionSettings>({
-    country: 'Switzerland', countryCode: 'CH', currency: 'CHF', language: 'en',
+    currency: 'CHF', language: 'en',
   });
   const [security, setSecurity] = useState<SecuritySettings>({
     twoFactorEnabled: false, twoFactorMethod: 'none',
@@ -151,6 +148,12 @@ const Settings: React.FC = () => {
       setLoading(false);
     };
     fetchSettings();
+    // Account region shows the saved profile country; the user held in memory
+    // can predate a change made on the Profile page or another device.
+    apiService.get('/users/me').then(res => {
+      const d = (res.data as any)?.data;
+      if (d && typeof d.country === 'string') setCountry(d.country);
+    }).catch(() => { /* keep what we have */ });
   }, []);
 
   useEffect(() => {
@@ -236,6 +239,36 @@ const Settings: React.FC = () => {
       setRegion(prev => ({ ...prev, language: previous }));
       setError(t('settings.alerts.languageSaveFailed'));
     }
+  };
+
+  /* ── Account region ──
+     The member's home country, the same field as the Profile address
+     country (user_profiles.country). PUT /users/me merges omitted fields
+     against the saved row, so sending only country leaves the rest alone. */
+  const countryLabel = (name: string) => t(`profile.countries.${name}`, name);
+  const handleCountryChange = async (next: string) => {
+    if (!user || next === country) return;
+    const previous = country;
+    setCountry(next);
+    setCountrySaving(true); setError(''); setSuccess('');
+    try {
+      const res = await apiService.put('/users/me', { country: next });
+      const data = res.data as any;
+      if (data?.jwtToken) {
+        localStorage.setItem('token', data.jwtToken);
+        localStorage.setItem('zai_token', data.jwtToken);
+      }
+      const updatedUser = { ...user, country: next };
+      setUser(updatedUser);
+      localStorage.setItem('zai_user', JSON.stringify(updatedUser));
+      setSuccess(t('settings.alerts.saved'));
+      setTimeout(() => setSuccess(''), 3000);
+    } catch {
+      // Roll back so the row never shows a country that wasn't saved.
+      setCountry(previous);
+      setError(t('settings.alerts.saveFailed'));
+    }
+    setCountrySaving(false);
   };
 
   /* ── Password change ── */
@@ -660,11 +693,24 @@ const Settings: React.FC = () => {
               <SectionHead text={t('settings.region.heading')} />
               <Row
                 title={t('settings.region.accountRegion')}
-                desc={COUNTRY_MAP[region.countryCode] || region.country}
+                desc={t('settings.region.accountRegionDesc')}
                 right={
-                  <span style={{ fontSize: '13px', color: C.black, fontWeight: 500 }}>
-                    {region.countryCode}
-                  </span>
+                  <select
+                    value={country}
+                    disabled={countrySaving}
+                    onChange={e => handleCountryChange(e.target.value)}
+                    style={{
+                      fontSize: '13px', color: C.black, fontWeight: 500,
+                      border: `1px solid ${C.border}`, padding: '7px 10px',
+                      background: '#fff', cursor: 'pointer', fontFamily: C.font,
+                      outline: 'none', maxWidth: '180px',
+                    }}
+                  >
+                    {/* A country saved before this list existed stays selectable. */}
+                    {!country && <option value="">{t('profile.fields.selectCountry')}</option>}
+                    {country && !COUNTRIES.includes(country) && <option value={country}>{country}</option>}
+                    {COUNTRIES.map(c => (<option key={c} value={c}>{countryLabel(c)}</option>))}
+                  </select>
                 }
               />
               <Row
