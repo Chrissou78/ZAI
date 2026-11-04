@@ -618,6 +618,10 @@ export default function Updates() {
   }, []);
 
   const featuredDeal = deals.find(d => d.featured) || deals[0];
+  // Hours only in the last two days; before that, whole days.
+  const timeLeftLabel = (ms: number) => ms < 48 * 3600000
+    ? t('updates.featured.availableHoursOnly', { hours: Math.max(1, Math.ceil(ms / 3600000)) })
+    : t('updates.featured.availableDaysOnly', { count: Math.floor(ms / 86400000) });
   // The featured deal is deliberately NOT excluded here — it gets the hero
   // banner treatment above AND still appears as a normal card in the grid
   // below, so members browsing the card list don't have to notice the banner
@@ -741,16 +745,32 @@ export default function Updates() {
                   <div style={{ ...LABEL, color: '#888', marginBottom: 16 }}>{t('updates.featured.label')}</div>
                   <h2 style={{ fontSize: 'clamp(20px, 2.5vw, 28px)', fontWeight: 400, margin: '0 0 12px' }}>{featuredDeal.title}</h2>
                   <div style={{ fontSize: 12, color: '#999', display: 'flex', gap: 20, marginBottom: 20, flexWrap: 'wrap' }}>
-                    {featuredDeal.ends_at && <span>{t('updates.featured.availableHoursOnly', { hours: Math.ceil((new Date(featuredDeal.ends_at).getTime() - Date.now()) / 86400000) })}</span>}
+                    {featuredDeal.ends_at && <span>{timeLeftLabel(new Date(featuredDeal.ends_at).getTime() - Date.now())}</span>}
                     <span>{t('updates.featured.exclusiveMemberPricing')}</span>
                     {featuredDeal.spots_left > 0 && <span>{t('updates.featured.limitedAvailability')}</span>}
+                  </div>
+                  {/* Same price line as the deal cards below. */}
+                  <div style={{ display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: 10, marginBottom: 20 }}>
+                    {discountPct(featuredDeal) > 0 && (
+                      <>
+                        <span style={{ fontSize: 15, fontWeight: 300, color: '#888', textDecoration: 'line-through', textDecorationThickness: '1px' }}>
+                          CHF {chf(parseFloat(featuredDeal.price_chf) || 0)}
+                        </span>
+                        <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', color: '#fff', background: C.red, padding: '2px 7px', borderRadius: 3 }}>
+                          -{discountPct(featuredDeal)}%
+                        </span>
+                      </>
+                    )}
+                    <span style={{ fontSize: 26, fontWeight: 200, letterSpacing: '-0.02em' }}>
+                      CHF {chf(payablePrice(featuredDeal))}
+                    </span>
                   </div>
                   <button onClick={() => setSelectedDeal(featuredDeal)} style={{
                     padding: '14px 28px', background: C.red, color: '#fff', border: 'none',
                     fontSize: 11, fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase',
                     borderRadius: 4, cursor: 'pointer', fontFamily: C.font,
                   }}>
-                    {t('updates.featured.claimOffer', { price: parseFloat(featuredDeal.price_chf).toLocaleString('de-CH') })}
+                    {t('updates.featured.claimOffer', { price: chf(payablePrice(featuredDeal)) })}
                   </button>
                 </div>
 

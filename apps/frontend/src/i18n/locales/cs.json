@@ -1255,6 +1255,10 @@
     "featured": {
       "label": "— DOPORUČENÁ NABÍDKA",
       "availableHoursOnly": "⊙ Dostupné pouze {{hours}} h",
+      "availableDaysOnly_one": "⊙ Dostupné pouze {{count}} den",
+      "availableDaysOnly_few": "⊙ Dostupné pouze {{count}} dny",
+      "availableDaysOnly_many": "⊙ Dostupné pouze {{count}} dní",
+      "availableDaysOnly_other": "⊙ Dostupné pouze {{count}} dní",
       "exclusiveMemberPricing": "Exkluzivní členská cena",
       "limitedAvailability": "Omezená dostupnost",
       "claimOffer": "Využít nabídku, {{price}} CHF",

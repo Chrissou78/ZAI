@@ -1238,6 +1238,7 @@
     "featured": {
       "label": "— 精选优惠",
       "availableHoursOnly": "⊙ 仅剩 {{hours}} 小时",
+      "availableDaysOnly_other": "⊙ 仅剩 {{count}} 天",
       "exclusiveMemberPricing": "会员专享价格",
       "limitedAvailability": "名额有限",
       "claimOffer": "立即领取，CHF {{price}}",

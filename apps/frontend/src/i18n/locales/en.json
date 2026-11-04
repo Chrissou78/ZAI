@@ -1241,6 +1241,8 @@
     "featured": {
       "label": "— FEATURED DEAL",
       "availableHoursOnly": "⊙ Available {{hours}}h only",
+      "availableDaysOnly_one": "⊙ Available {{count}} day only",
+      "availableDaysOnly_other": "⊙ Available {{count}} days only",
       "exclusiveMemberPricing": "Exclusive Member Pricing",
       "limitedAvailability": "Limited availability",
       "claimOffer": "Claim offer, CHF {{price}}",

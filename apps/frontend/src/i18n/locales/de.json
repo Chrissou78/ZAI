@@ -1241,6 +1241,8 @@
     "featured": {
       "label": "— Top-Angebot",
       "availableHoursOnly": "⊙ Nur noch {{hours}} Std. verfügbar",
+      "availableDaysOnly_one": "⊙ Nur noch {{count}} Tag verfügbar",
+      "availableDaysOnly_other": "⊙ Nur noch {{count}} Tage verfügbar",
       "exclusiveMemberPricing": "Exklusiver Mitgliederpreis",
       "limitedAvailability": "Begrenzte Verfügbarkeit",
       "claimOffer": "Angebot sichern, CHF {{price}}",
