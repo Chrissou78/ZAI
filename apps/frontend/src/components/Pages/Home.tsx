@@ -68,8 +68,8 @@ const TIERS = [
 
 /* ── Locked-feature tooltip (hover) ── */
 /**
- * Confirmed ecosystem partners. Logos are hosted on our own Pinata account
- * rather than hotlinked from the partner's site, so a redesign on their end
+ * Confirmed ecosystem partners. Logos are hosted by us (our Pinata account or
+ * public/partners/) rather than hotlinked from the partner's site, so a redesign on their end
  * cannot blank out our home page.
  *
  * Any remaining slots render as the original placeholder tiles, so the row
@@ -86,6 +86,8 @@ const PARTNERS: {
    * it used than altered.
    */
   lightTile?: boolean;
+  /** Height cap for the logo; a squarer crest-style logo needs more than a wide wordmark. */
+  maxHeight?: number;
 }[] = [
   {
     name: 'Asten Hotels',
@@ -96,6 +98,15 @@ const PARTNERS: {
     logo: 'https://pink-certain-crab-380.mypinata.cloud/ipfs/QmbPErW6oFX7V4tPdx8gqcD1uTwvMXnTuo1zjA1rkXH8v4',
     url: 'https://www.astenhotels.com/en',
     lightTile: true,
+  },
+  {
+    name: 'Kulm Hotel St. Moritz',
+    // zai's supplied artwork, trimmed, white made transparent, black kept.
+    // Served from our own site (public/partners/), not hotlinked.
+    logo: '/partners/kulm-hotel-st-moritz.png',
+    url: 'https://www.kulm.com/en',
+    lightTile: true,
+    maxHeight: 112,
   },
 ];
 
@@ -1446,7 +1457,7 @@ const Home: React.FC = () => {
                     // Fill the tile's width; maxHeight only bites for a
                     // squarer logo than this one.
                     width: '100%',
-                    maxHeight: '80px',
+                    maxHeight: `${partner.maxHeight ?? 80}px`,
                     height: 'auto',
                     objectFit: 'contain',
                     // A logo on its own light panel is already at full
