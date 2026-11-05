@@ -101,9 +101,10 @@ const PARTNERS: {
   },
   {
     name: 'Kulm Hotel St. Moritz',
-    // zai's supplied artwork, trimmed, white made transparent, black kept.
+    // Kulm's own vector logo, taken from the SVG embedded on kulm.com
+    // (same artwork as the 900px PNG zai supplied, but sharp at any size).
     // Served from our own site (public/partners/), not hotlinked.
-    logo: '/partners/kulm-hotel-st-moritz.png',
+    logo: '/partners/kulm-hotel-st-moritz.svg',
     url: 'https://www.kulm.com/en',
     lightTile: true,
     maxHeight: 112,
