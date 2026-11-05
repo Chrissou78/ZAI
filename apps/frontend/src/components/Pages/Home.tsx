@@ -1403,8 +1403,11 @@ const Home: React.FC = () => {
               // is a single partner, and auto-fit with a fractional max would
               // stretch that one tile across the whole 900px row. Tracks stay
               // the same size as partners are added, filling from the left.
-              // min() keeps it from overflowing a container narrower than 300.
-              gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 300px), 300px))',
+              // On phones the min() drops to half the row, so partners sit
+              // two abreast instead of stacking as full-width tiles. A plain
+              // size, not minmax(..., 300px): auto-fill counts columns by the
+              // max, which would leave one 300px column on a phone.
+              gridTemplateColumns: 'repeat(auto-fill, min(calc(50% - 0.5rem), 300px))',
               justifyContent: 'start',
               // No background or border on the grid itself. It used to carry
               // '#1e1e1e' so that the 1px gap drew hairlines between tiles —
@@ -1428,12 +1431,13 @@ const Home: React.FC = () => {
                   // A dark logo tile would otherwise dissolve into the page.
                   border: '1px solid #1e1e1e',
                   // Narrow side padding: every pixel of it comes straight off
-                  // the logo's width.
-                  padding: '2rem 1rem',
+                  // the logo's width. Padding and height shrink on phones so
+                  // the row stays compact; full size from ~640px up.
+                  padding: 'clamp(0.75rem, 5vw, 2rem) clamp(0.5rem, 2.5vw, 1rem)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  minHeight: '140px',
+                  minHeight: 'clamp(72px, 22vw, 140px)',
                   position: 'relative',
                   overflow: 'hidden',
                   textDecoration: 'none',
@@ -1458,7 +1462,9 @@ const Home: React.FC = () => {
                     // Fill the tile's width; maxHeight only bites for a
                     // squarer logo than this one.
                     width: '100%',
-                    maxHeight: `${partner.maxHeight ?? 80}px`,
+                    // Scales down with the viewport on phones (e.g. Kulm's
+                    // 112px cap is ~64px at 375px wide); full cap on desktop.
+                    maxHeight: `min(${partner.maxHeight ?? 80}px, ${((partner.maxHeight ?? 80) * 0.152).toFixed(1)}vw)`,
                     height: 'auto',
                     objectFit: 'contain',
                     // A logo on its own light panel is already at full
