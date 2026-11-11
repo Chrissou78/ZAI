@@ -1052,7 +1052,6 @@
     "directory": {
       "heading": "会员名录",
       "badge": "zai 会员",
-      "registered_other": "已注册 {{count}} 人",
       "searchPlaceholder": "搜索会员或所在地...",
       "empty": "未找到会员",
       "blockedBadge": "已屏蔽",

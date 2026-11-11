@@ -1054,8 +1054,6 @@
     "directory": {
       "heading": "Directory",
       "badge": "zai members",
-      "registered_one": "{{count}} registered",
-      "registered_other": "{{count}} registered",
       "searchPlaceholder": "Search members or locations...",
       "empty": "No members found",
       "blockedBadge": "blocked",

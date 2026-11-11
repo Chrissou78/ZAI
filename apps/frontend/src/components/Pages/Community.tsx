@@ -41,7 +41,6 @@ interface Comment {
   id: string; text: string; authorId: string; authorName: string; createdAt: string;
 }
 
-interface CommunityStats { totalMembers: number; totalPhotos: number; }
 
 interface ReactionResponse {
   success: boolean; action: 'added' | 'removed'; emoji: string; data?: Reaction;
@@ -656,7 +655,6 @@ const Community: React.FC = () => {
   }, []);
 
   const [members, setMembers] = useState<Member[]>([]);
-  const [stats, setStats] = useState<CommunityStats>({ totalMembers: 0, totalPhotos: 0 });
 
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
@@ -704,13 +702,6 @@ const Community: React.FC = () => {
     } catch (err) { console.error('Error fetching members:', err); }
   }, []);
 
-  const fetchStats = useCallback(async () => {
-    try {
-      const res = await apiService.get('/community/stats');
-      if (res.data?.success) setStats(res.data.data);
-    } catch (err) { console.error('Error fetching stats:', err); }
-  }, []);
-
   const fetchPhotos = useCallback(async () => {
     try {
       const res = await apiService.get('/community/gallery', { params: { limit: 200, offset: 0 } });
@@ -731,10 +722,10 @@ const Community: React.FC = () => {
   useEffect(() => {
     (async () => {
       setIsLoading(true);
-      await Promise.all([fetchMembers(), fetchStats(), fetchPhotos(), fetchStories()]);
+      await Promise.all([fetchMembers(), fetchPhotos(), fetchStories()]);
       setIsLoading(false);
     })();
-  }, [fetchMembers, fetchStats, fetchPhotos, fetchStories]);
+  }, [fetchMembers, fetchPhotos, fetchStories]);
 
   // ─── Photo pagination ───
 
@@ -779,7 +770,6 @@ const Community: React.FC = () => {
         setPhotos(prev => [res.data.data, ...prev]);
         setPhotoPage(1);
         setShowUpload(false); setUploadCaption(''); setUploadFile(null); setUploadPreview(null);
-        fetchStats();
       }
     } catch (err: any) { alert(err.response?.data?.error || t('community.upload.errors.uploadFailed')); }
     finally { setUploading(false); }
@@ -814,7 +804,7 @@ const Community: React.FC = () => {
     try {
       await apiService.delete(`/community/gallery/${photoId}`);
       setPhotos(prev => prev.filter(p => p.id !== photoId));
-      setSelectedPhoto(null); fetchStats();
+      setSelectedPhoto(null);
     } catch (err: any) { alert(err.response?.data?.error || t('community.photo.errors.deletePhoto')); }
   };
 
@@ -1097,7 +1087,6 @@ const Community: React.FC = () => {
     );
   }
 
-  const totalCount = stats.totalMembers || members.length;
 
   // ═══════════════════════════════
   //  RENDER
@@ -1251,7 +1240,6 @@ const Community: React.FC = () => {
               <span style={{ ...lbl, fontSize: '10px', letterSpacing: '0.22em', color: C.gray, fontWeight: 600 }}>{t('community.directory.heading')}</span>
               <span style={{ ...lbl, fontSize: '9px', letterSpacing: '0.18em', color: C.red, fontWeight: 600 }}>{t('community.directory.badge')}</span>
             </div>
-            <div style={{ padding: '0 20px 4px', fontSize: '10px', color: C.muted }}>{t('community.directory.registered', { count: totalCount })}</div>
             <div style={{ padding: '8px 20px 12px', position: 'relative' }}>
               <div style={{ position: 'absolute', left: 28, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
                 <SearchIcon size={12} color={C.muted} />

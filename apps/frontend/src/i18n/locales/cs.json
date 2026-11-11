@@ -1067,8 +1067,6 @@
     "directory": {
       "heading": "Adresář",
       "badge": "členové zai",
-      "registered_one": "{{count}} registrovaný",
-      "registered_other": "{{count}} registrovaných",
       "searchPlaceholder": "Hledat členy nebo místa...",
       "empty": "Nenalezeni žádní členové",
       "blockedBadge": "blokován",
@@ -1076,8 +1074,7 @@
       "block": "Blokovat",
       "prev": "‹ PŘEDCHOZÍ",
       "next": "DALŠÍ ›",
-      "page": "Strana {{current}} z {{total}}",
-      "registered_few": "{{count}} registrovaní"
+      "page": "Strana {{current}} z {{total}}"
     },
     "follow": {
       "eyebrow": "Sledujte zai",
